@@ -57,7 +57,7 @@ If two members would answer one of the questions above differently, write both a
 ## After the consultation
 
 Fill this in within a week of your slot.
-
+|---|---|---|---|---|
 | # | What we heard | What we will do about it | Owner | By when |
 | 1 | 포괄적인 scope로, 누구를 위한 service인지 targeting 필요 | 프로젝트 진행하며 실제 사용처에 맞는 scope 구체화 진행 | - | - |
 | 2 | Gpt, claude, gemini와 같은 AI Service에 동일 기능 요청 시, 어느 수준으로 가능한지 testing 필요 | AI활용 동의 고객 사례에 대해 민감정보 masking 후 test 진행 | - | - |
