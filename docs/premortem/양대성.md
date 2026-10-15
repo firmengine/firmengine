@@ -1,4 +1,4 @@
-# Premortem — [your name]
+# Premortem — [양대성]
 
 Team: [9, Firm Engine]
 Written on: [2026-10-03]
