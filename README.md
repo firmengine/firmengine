@@ -23,7 +23,7 @@
 
 ## private git profile
 
-* [임태훈] (Link)
+* [임태훈] [(Link)](https://equipment0226.github.io/)
 * [홍푸른] (Link)
-* [배지열] (Link)
-* [양대성] (Link)
+* [배지열] [(Link)](https://jiyeolbae.github.io/)
+* [양대성] [(Link)](https://equipment0226.github.io/)
