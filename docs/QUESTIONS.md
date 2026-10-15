@@ -71,4 +71,4 @@ Fill this in within a week of your slot.
 | Date | What changed and why |
 |---|---|
 | [2026-10-06] | Draft for consultation |
-| [2026-10-15] | Revised after consultation on [2026-10-09]: Added after the consultation |
+| [2026-10-15] | Revised after consultation on [2026-10-09]: Added "after the consultation" |
