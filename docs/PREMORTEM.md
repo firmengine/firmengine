@@ -118,7 +118,7 @@ A premortem that analyzes a product you no longer build is worse than none, beca
 | Date | What changed and why |
 |---|---|
 | [2026-10-07] | Draft for consultation |
-| [YYYY-MM-DD] | Revised after consultation on [date]: [what changed] |
+| [2026-10-15] | Revised after consultation on [2026-10-09]: [No change] |
 
 ---
 
