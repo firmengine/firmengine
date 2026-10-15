@@ -74,8 +74,8 @@ Revision log
 
 |Date|What changed and why|
 |-|-|
-|\[YYYY-MM-DD]2026-10-06|Draft for consultation : <br />What would make us drop this idea 기준이 사용자의 시스템효과 동의 >> 소요시간 기준|
-|\[YYYY-MM-DD]2026-10-09|Revised after consultation on \[date]: \[what changed]|
+|\2026-10-06|Draft for consultation : <br />What would make us drop this idea 기준이 사용자의 시스템효과 동의 >> 소요시간 기준|
+|\2026-10-09|Revised after consultation on \[date]:2026-10-09 \ No change|
 
 
 
