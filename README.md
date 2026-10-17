@@ -24,6 +24,6 @@
 ## private git profile
 
 * [임태훈] [(Link)](https://equipment0226.github.io/)
-* [홍푸른] (Link)
+* [홍푸른] [(Link)](https://decentian.github.io/)
 * [배지열] [(Link)](https://jiyeolbae.github.io/)
 * [양대성] [(Link)](https://equipment0226.github.io/)
