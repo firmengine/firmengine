@@ -1,0 +1,176 @@
+{
+  "id": "firmengineLocalP0",
+  "name": "Firm Engine P0 · evidence to court forms",
+  "active": false,
+  "nodes": [
+    {
+      "id": "intake",
+      "name": "Local document job",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "firmengine-p0",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "firmengine-p0",
+        "responseMode": "onReceived",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    },
+    {
+      "id": "classify",
+      "name": "1. Evidence / submitted-form split",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/classify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.body.session_id, run_token: $json.body.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "extract",
+      "name": "2. GPT-6 Luna evidence extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        520,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/extract",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "validate",
+      "name": "3. Provenance + deterministic checks",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        780,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/validate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "generate",
+      "name": "4. Court DOCX + XLSX drafts",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1040,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "instructions",
+      "name": "Local P0 setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -320
+      ],
+      "parameters": {
+        "width": 1000,
+        "height": 240,
+        "content": "## Firm Engine · local P0\nRun scripts/run_local.py to import/publish this workflow and start both services.\nOpen the app at http://127.0.0.1:8010 and upload evidence.\nOnly session_id + short-lived run_token pass through n8n. OpenAI keys and document contents stay in the local API.\nThe extractor uses GPT-6 Luna. Completed court forms are held out for evaluation.\nGenerated files ALWAYS require post-generation caseworker + lawyer review. No court submission node."
+      }
+    }
+  ],
+  "connections": {
+    "Local document job": {
+      "main": [
+        [
+          {
+            "node": "1. Evidence / submitted-form split",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Evidence / submitted-form split": {
+      "main": [
+        [
+          {
+            "node": "2. GPT-6 Luna evidence extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. GPT-6 Luna evidence extraction": {
+      "main": [
+        [
+          {
+            "node": "3. Provenance + deterministic checks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Provenance + deterministic checks": {
+      "main": [
+        [
+          {
+            "node": "4. Court DOCX + XLSX drafts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "executionTimeout": 3600
+  },
+  "pinData": {}
+}

@@ -1,0 +1,8 @@
+{
+  "name": "firmengine-n8n-p0",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local n8n orchestration for evidence-grounded rehabilitation form drafts",
+  "scripts": { "n8n": "n8n start" },
+  "dependencies": { "n8n": "2.45.3" }
+}
