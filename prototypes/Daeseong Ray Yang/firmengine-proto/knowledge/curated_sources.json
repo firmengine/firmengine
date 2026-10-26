@@ -1,0 +1,141 @@
+[
+  {
+    "source_id": "observation:2013ma668",
+    "title": "2013마668: 자료 보완과 시정 기회",
+    "url": "https://www.law.go.kr/LSW/precInfoP.do?evtNo=2013%EB%A7%88668",
+    "authority": "PUBLIC_JUDGMENT",
+    "kind": "case_observation",
+    "scope": "public",
+    "valid_from": "2013-07-12",
+    "reviewed": true,
+    "content": "관찰한 판례: 대법원 2013.7.12. 2013마668. 보정 요구에 응했지만 자료가 충분하지 않은 경우, 특별한 사정 없이 추가 보정이나 심문을 통한 시정 기회도 주지 않고 곧바로 불성실 신청으로 기각할 수 없다는 취지다. 활용: 자료요청에 answered와 resolved 상태를 구분하고, 부족한 항목과 추가 소명을 기록한다. 개별 사정을 생략한 자동 인가·기각 규칙으로 사용하지 않는다.",
+    "metadata": {
+      "public_judgment": true,
+      "verified_on": "2026-10-26",
+      "case_observation_not_statute": true,
+      "feature_keys": [
+        "court.orders[]",
+        "issue.answered",
+        "issue.resolved"
+      ],
+      "summary_not_full_snapshot": true,
+      "summary_content_sha256": "b63b4c4c5b1d25d5859d5d8c2dbaadda32cb185e0da66d7614d2da50f9174d41"
+    }
+  },
+  {
+    "source_id": "observation:2013ma101",
+    "title": "2013마101: 최근 채무의 사용처 확인",
+    "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=171784",
+    "authority": "PUBLIC_JUDGMENT",
+    "kind": "case_observation",
+    "scope": "public",
+    "valid_from": "2013-03-15",
+    "reviewed": true,
+    "content": "관찰한 판례: 대법원 2013.3.15. 2013마101. 신청에 가까운 시기의 신규 대출 비중만으로 부당한 신청 목적 등을 단정하기 어렵고 기존 채무 상환 등 실제 사용처가 중요했던 사례다. 활용: 채무 발생일, 원채권 동일성, 대환 여부, 거래 흐름과 사용처 자료를 연결한다. 최근 채무 비율을 자동 탈락 조건으로 변환하지 않는다.",
+    "metadata": {
+      "public_judgment": true,
+      "verified_on": "2026-10-26",
+      "case_observation_not_statute": true,
+      "feature_keys": [
+        "debts[].incurred_at",
+        "debts[].origin_contract_id",
+        "flows.unexplained_items[]"
+      ],
+      "summary_not_full_snapshot": true,
+      "summary_content_sha256": "9ec92a5b068a92dd7986fb89c5223c4b61ec86d18a9e77683a39accbe0422cb4"
+    }
+  },
+  {
+    "source_id": "observation:2010ma1179",
+    "title": "2010마1179: 편파변제와 재산회복 검토",
+    "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=150036",
+    "authority": "PUBLIC_JUDGMENT",
+    "kind": "case_observation",
+    "scope": "public",
+    "valid_from": "2010-11-30",
+    "reviewed": true,
+    "content": "관찰한 판례: 대법원 2010.11.30. 2010마1179. 특정 채권자에 대한 변제·담보제공 사정만으로 채권자 일반 이익에 부적합하다는 기각사유가 된다고 보지 않았다. 부인권에 따른 재산회복이나 계획수정 검토가 구분된다. 활용: 처분재산, 대금 흐름, 상대방, 담보와 회복 가능성을 검토 질문으로 만든다. 당시 판결의 과거 변제기간을 현행 기본값으로 복사하지 않는다.",
+    "metadata": {
+      "public_judgment": true,
+      "verified_on": "2026-10-26",
+      "case_observation_not_statute": true,
+      "feature_keys": [
+        "assets[].disposal_history[]",
+        "assets[].successor_asset_ids",
+        "plan.liquidation_floor"
+      ],
+      "summary_not_full_snapshot": true,
+      "summary_content_sha256": "229aba936ef5ffadcccc2bb48fd0ee2750e1261cf9d46d4e48d9ca9404b9edba"
+    }
+  },
+  {
+    "source_id": "observation:2024da221042",
+    "title": "2024다221042: 인가 후 전액 대위변제 예외",
+    "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=612877",
+    "authority": "PUBLIC_JUDGMENT",
+    "kind": "case_observation",
+    "scope": "public",
+    "valid_from": "2025-10-16",
+    "reviewed": true,
+    "content": "관찰한 판례: 대법원 2025.10.16. 2024다221042. 목록 누락채권의 비면책 원칙과, 원채권이 기재된 사건에서 인가 후 전액 대위변제한 보증인의 구상금채권에 대한 예외를 구분한다. 활용: 원채권 목록 기재, 인가일, 대위변제일, 전액 여부, 변제완료·면책과 특별사정을 확인한다. 모든 누락 보증채무에 일반화하거나 원채권과 구상금을 이중 합산하지 않는다.",
+    "metadata": {
+      "public_judgment": true,
+      "verified_on": "2026-10-26",
+      "case_observation_not_statute": true,
+      "feature_keys": [
+        "debts[].guarantee_subrogation",
+        "debts[].listed_snapshots",
+        "case.confirmation_date"
+      ],
+      "summary_not_full_snapshot": true,
+      "summary_content_sha256": "0a6f088d314d8261909e31aa4a3fe22cff4e4d19dc8390bb637d9303a5c6b1d9"
+    }
+  },
+  {
+    "source_id": "example:salary_alternative_evidence",
+    "title": "급여 증빙 대체 경로: 가상 처리 예시",
+    "url": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2",
+    "authority": "DESIGN_EXAMPLE",
+    "kind": "fewshot",
+    "scope": "public",
+    "valid_from": "2026-10-01",
+    "reviewed": true,
+    "content": "가상 예시. 입력: 급여소득자가 원천징수영수증을 불가피하게 확보하지 못했고 사용자 서명 소득증명서를 제출했다. 처리: 불가피 사유, 대상자·현재 고용·기간·급여 항목을 대조하고 서울 제402호의 대체증빙 경로를 검토한다. 단지 문서명이 다르다는 이유로 중복 요청하지 않는다. 소득 평균 산정기간과 대체서류 대상기간은 별도 확인한다. 출력: 소득증빙 요건 충족 후보와 담당자 확인 항목; 법적 인정 완료는 아님.",
+    "metadata": {
+      "synthetic": true,
+      "official_rule": "SEOUL.402.2.3.a",
+      "source_verified_on": "2026-10-26",
+      "not_a_case_answer": true,
+      "summary_content_sha256": "1106805a226812caa9de85a7fb0d6ac656903d71e6ee94a5f09e8b0935db2d86"
+    }
+  },
+  {
+    "source_id": "reviewed-summary:seoul402",
+    "title": "Seoul rule402 income evidence and valuation source contract",
+    "url": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2",
+    "authority": "SEOUL_PRACTICE",
+    "kind": "reviewed_source_summary",
+    "scope": "public",
+    "valid_from": "2026-10-01",
+    "reviewed": true,
+    "content": "Seoul rule402, pages208-210 of the printed practice rules. Wage evidence normally uses a withholding certificate; when unavoidably unavailable, employer-signed salary or income evidence, or the last six months salary bank transactions can be considered. Business evidence includes business registration or equivalent, VAT taxable revenue and tax income certificates, sales and purchases records, card sales, and profit/loss or monthly revenue, necessary expense and actual income reporting for the year before application. A document coverage period is distinct from the income averaging period. Vehicle evidence combines registration and market-price evidence; owned real estate combines registry and supported market or reported transaction data. Additional documents that a court may order are distinct from baseline attachments. This is a source-checked summary, not a verbatim full PDF or legal approval.",
+    "metadata": {
+      "summary_not_full_snapshot": true,
+      "source_verified_on": "2026-10-26",
+      "printed_pages": [
+        208,
+        209,
+        210
+      ],
+      "activation_approved": false,
+      "feature_keys": [
+        "income.monthly_net",
+        "income.business_revenue",
+        "income.necessary_cost",
+        "income.period",
+        "assets[].valuation_method"
+      ],
+      "summary_content_sha256": "1b0ab4915637b0d649c2e971e0c26eb2f1a5a6aca488c4b4ccd87c14bc292df6"
+    }
+  }
+]

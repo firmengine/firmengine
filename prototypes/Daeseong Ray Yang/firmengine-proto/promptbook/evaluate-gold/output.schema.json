@@ -1,0 +1,110 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "page_coverage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "legibility": {
+            "type": "string",
+            "enum": [
+              "readable",
+              "partially_masked",
+              "unreadable",
+              "blank"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "page",
+          "sections",
+          "legibility",
+          "notes"
+        ]
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "category": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "expected_text": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "numeric_values": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "comparison_type": {
+            "type": "string",
+            "enum": [
+              "scalar",
+              "row",
+              "narrative",
+              "declaration",
+              "structure"
+            ]
+          },
+          "scorable": {
+            "type": "boolean"
+          },
+          "unscorable_reason": {
+            "type": "string"
+          },
+          "interpretation_sensitive": {
+            "type": "boolean"
+          },
+          "critical": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "page",
+          "category",
+          "label",
+          "expected_text",
+          "numeric_values",
+          "comparison_type",
+          "scorable",
+          "unscorable_reason",
+          "interpretation_sensitive",
+          "critical"
+        ]
+      }
+    }
+  },
+  "required": [
+    "page_coverage",
+    "checks"
+  ]
+}

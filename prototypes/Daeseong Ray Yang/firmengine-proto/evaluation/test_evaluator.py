@@ -11,6 +11,11 @@ import evaluate_sample as evaluator
 
 
 class EvaluationTests(unittest.TestCase):
+    def test_equivalent_corporate_notations_match_without_merging_different_names(self):
+        for name in ["(주)테스트은행", "테스트은행 (주)", "㈜테스트은행", "주식회사 테스트은행", "（주）테스트은행"]:
+            self.assertEqual(evaluator.normalized_text(name), "테스트은행")
+        self.assertNotEqual(evaluator.normalized_text("테스트은행"), evaluator.normalized_text("테스트카드"))
+
     def test_exact_amounts_and_currency_units(self):
         self.assertTrue(evaluator.equal_values("1,234원", "1234"))
         self.assertFalse(evaluator.equal_values("1234", "12345"))
@@ -32,6 +37,13 @@ class EvaluationTests(unittest.TestCase):
         self.assertIsNone(evaluator.find_field({"records": [row, dict(row, value="200")]}, "debt_principal_total")[0])
         self.assertIsNone(evaluator.find_field({"records": [row]}, "debt_total")[0])
 
+    def test_conflicting_creditor_snapshots_do_not_use_last_value(self):
+        row = {"key": "creditor_principal", "entity": "테스트은행", "value": "100"}
+        values = evaluator.creditor_values({"records": [row, dict(row, value="200")]})
+        self.assertIsNone(values["테스트은행"]["principal"])
+        values = evaluator.creditor_values({"records": [row, dict(row, value="200", state="excluded")]})
+        self.assertEqual(values["테스트은행"]["principal"], "100")
+
     def test_reads_actual_office_artifacts_and_checks_label(self):
         evaluator.PRIVATE.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=evaluator.PRIVATE, prefix="synthetic_test_") as directory:
@@ -42,6 +54,7 @@ class EvaluationTests(unittest.TestCase):
             table.cell(0, 1).text = "1,234원"
             doc.save(path / "draft.docx")
             book = Workbook()
+            book.active.title = "계산근거"
             book.active.append(["차량가액", 4321])
             book.save(path / "calc.xlsx")
             artifacts, warnings = evaluator.artifact_rows({"artifact_dir": directory, "artifacts": [{"name": "draft.docx"}, {"name": "calc.xlsx"}]})

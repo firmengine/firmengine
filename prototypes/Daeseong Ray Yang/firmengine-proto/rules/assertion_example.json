@@ -1,0 +1,23 @@
+{
+  "assertion_id": "demo-assertion-01",
+  "case_id": "demo-matter-001",
+  "object_id": "lease-01",
+  "feature_key": "assets[].gross_value",
+  "value": "80000000",
+  "currency": "KRW",
+  "unit": "won",
+  "state": "REPORTED",
+  "precision": "APPROXIMATE",
+  "valid_at": "2026-10-18",
+  "recorded_at": "2026-10-19T00:00:00+09:00",
+  "evidence_refs": [
+    {
+      "document_id": "demo-consultation-01",
+      "location": "문단7",
+      "excerpt": "보증금은8천 정도이고 전세대출이 있어요."
+    }
+  ],
+  "supersedes": null,
+  "accepted_for_filing": false,
+  "note": "가상예시. 전세대출의 질권·양도담보 성립은 별도 판단"
+}

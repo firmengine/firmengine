@@ -1,0 +1,44 @@
+{
+  "version": "1.0-DESIGN",
+  "types": [
+    "case.opened",
+    "case.court_linked",
+    "document.registered",
+    "assertion.recorded",
+    "assertion.disputed",
+    "assertion.superseded",
+    "assessment.completed",
+    "assessment.invalidated",
+    "issue.opened",
+    "issue.answered",
+    "issue.resolved",
+    "issue.reopened",
+    "artifact.created",
+    "review.recorded",
+    "review.invalidated",
+    "submission.frozen",
+    "court_notice.received",
+    "deadline.changed",
+    "external_action.requested",
+    "external_action.succeeded",
+    "external_action.failed",
+    "knowledge.candidate_created",
+    "knowledge.release_activated"
+  ],
+  "envelope": [
+    "event_id",
+    "tenant_id",
+    "case_id",
+    "type",
+    "recorded_at",
+    "actor_id",
+    "idempotency_key",
+    "expected_case_revision",
+    "payload_reference"
+  ],
+  "notes": [
+    "DB변경·event·outbox를 같은 트랜잭션으로 기록",
+    "원문전체 대신 문서ID·hash·변경메타 사용",
+    "외부 응답불명은 조정 상태로 보존"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "version": "1.1.0",
+  "model": "configured",
+  "reasoning_effort": "low",
+  "max_output_tokens": 16000,
+  "image_long_edge": 950,
+  "batch_pages": 4,
+  "max_input_tokens": 24000,
+  "image_token_estimate": 2400,
+  "global_concurrency": 3,
+  "agent_concurrency": 2,
+  "http_retries": 2,
+  "missing_feature_retries": 0,
+  "request_timeout_seconds": 240,
+  "connect_timeout_seconds": 20,
+  "queue_timeout_seconds": 300,
+  "retry_backoff_seconds": 2,
+  "rag_top_k": 3,
+  "rag_chars_per_hit": 900,
+  "max_features_per_task": 48
+}

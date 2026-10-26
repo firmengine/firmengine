@@ -1,0 +1,16 @@
+{
+  "document_kind": "assets",
+  "reference_checks": [
+    {
+      "id": "assets-001",
+      "expected_text": "테스트 예금 잔액 100000원",
+      "scorable": true
+    }
+  ],
+  "primary_document_lines": [
+    {
+      "index": 0,
+      "text": "예금 잔액 | [확인 필요]"
+    }
+  ]
+}

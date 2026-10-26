@@ -1,0 +1,221 @@
+{
+  "version": "blueprint-source-snapshot-2026-10-18",
+  "verification_status": "BLUEPRINT_REFERENCE_REQUIRES_CURRENT_VERIFICATION",
+  "sources": [
+    {
+      "id": "K01",
+      "title": "채무자회생법 제579조 — 신청자격·가용소득",
+      "url": "https://www.law.go.kr/lsLinkProc.do?joNo=057900&lsClsCd=L&lsNm=채무자회생및파산에관한법률&mode=11"
+    },
+    {
+      "id": "K02",
+      "title": "채무자회생법 제3조 — 관할",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028273375"
+    },
+    {
+      "id": "K03",
+      "title": "채무자회생법 제595조 — 개시신청 기각",
+      "url": "https://law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1024710787"
+    },
+    {
+      "id": "K04",
+      "title": "채무자회생법 제614조 — 변제계획 인가",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+    },
+    {
+      "id": "K05",
+      "title": "채무자회생법 제611조 — 계획 내용·변제기간",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276221"
+    },
+    {
+      "id": "K06",
+      "title": "채무자회생법 제589조의2 — 채권자목록 수정",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1016539555"
+    },
+    {
+      "id": "K07",
+      "title": "채무자회생법 제624조 — 면책결정",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1023719129"
+    },
+    {
+      "id": "K08",
+      "title": "채무자회생법 제625조 — 면책효력·비면책채권",
+      "url": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1000527594"
+    },
+    {
+      "id": "K09",
+      "title": "채무자회생법 제580조 — 재산 범위",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0580&lsiSeq=290631&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "K10",
+      "title": "채무자회생법 제583조 — 재단채권",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276255"
+    },
+    {
+      "id": "K11",
+      "title": "채무자회생법 제620조 — 인가 전 폐지",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0620&lsiSeq=290631&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "K12",
+      "title": "채무자회생법 제621조 — 인가 후 폐지",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0621&lsiSeq=290631&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "K13",
+      "title": "법제처 — 면책효력·취소, 제626조 안내",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=5&cciNo=1&cnpClsNo=2&csmSeq=1286&popMenu=ov"
+    },
+    {
+      "id": "K14",
+      "title": "채무자회생법 시행령 제16조 — 면제재산",
+      "url": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0016&lsiSeq=263089&urlMode=lsScJoRltInfoR"
+    },
+    {
+      "id": "K15",
+      "title": "민사집행법 제246조 — 압류금지채권",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1031916473"
+    },
+    {
+      "id": "K16",
+      "title": "민사집행법 시행령 — 공단 법령 전문",
+      "url": "https://www.nhis.or.kr/lm/lmxsrv/law/lawFullContent.do?SEQ_HISTORY=598007"
+    },
+    {
+      "id": "K17",
+      "title": "근로자퇴직급여 보장법 제7조",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1021160023"
+    },
+    {
+      "id": "K18",
+      "title": "채무자 회생 및 파산에 관한 규칙 — 현행",
+      "url": "https://www.law.go.kr/LSW/LsiJoLinkP.do?docType=JO&joNo=007900000&languageType=KO&lsNm=채무자%20회생%20및%20파산에%20관한%20규칙&paras=1"
+    },
+    {
+      "id": "K19",
+      "title": "개인회생사건 처리지침 — 2026.7.1 시행",
+      "url": "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651"
+    },
+    {
+      "id": "K20",
+      "title": "서울회생법원 실무준칙 — 2026.10.1자",
+      "url": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+    },
+    {
+      "id": "K21",
+      "title": "서울회생법원 2026년도 생계비 의결 공고",
+      "url": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=41&pageIndex=1&searchWord=&seqnum=19158"
+    },
+    {
+      "id": "K22",
+      "title": "보건복지부 — 2026년 기준 중위소득",
+      "url": "https://www.mohw.go.kr/menu.es?mid=a10708010300"
+    },
+    {
+      "id": "K23",
+      "title": "서울회생법원 — 변제기간 단축 대상 개정, 2026.10.1",
+      "url": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=&currentPage=&gubun=172&searchWord=&seqnum=3187"
+    },
+    {
+      "id": "K24",
+      "title": "주택임대차보호법 시행령 제10·11조",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lspttninfSeq=130113"
+    },
+    {
+      "id": "K25",
+      "title": "법제처 — 신청 기각 및 2013마668 보정 법리",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=3&cciNo=1&cnpClsNo=3&csmSeq=1286&popMenu=ov"
+    },
+    {
+      "id": "K26",
+      "title": "대법원 2024다221042 — 누락 보증인 대위변제 예외",
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=612877"
+    },
+    {
+      "id": "K27",
+      "title": "서울회생법원 회생위원 직무편람 제5판 — 2024.12",
+      "url": "https://slb.scourt.go.kr/rel/information/qna/member_manual.pdf"
+    },
+    {
+      "id": "K28",
+      "title": "금융결제원 — 계좌·대출·보험 조회 FAQ",
+      "url": "https://payinfo.or.kr/cs/faq/qryListWebFaq.do"
+    },
+    {
+      "id": "K29",
+      "title": "법제처 — 신청서·첨부서류 작성 안내",
+      "url": "https://www.easylaw.go.kr/CSP/CnpClsMain.laf?ccfNo=2&cciNo=1&cnpClsNo=1&csmSeq=1286&popMenu=ov"
+    },
+    {
+      "id": "K30",
+      "title": "서울회생법원 — 신청서 양식모음",
+      "url": "https://slb.scourt.go.kr/rel/information/min/MinListAction.work?gubun=0"
+    },
+    {
+      "id": "K31",
+      "title": "대법원 2013마101 등 — 최근 대출·반복신청",
+      "url": "https://www.law.go.kr/precStmdInfoP.do?precSeq=171784"
+    },
+    {
+      "id": "K32",
+      "title": "대법원 2010마1179 — 편파변제 관련",
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=150036"
+    },
+    {
+      "id": "K33",
+      "title": "울산지방법원 — 2022.10.7 공식 자료제출목록 게시본(과거 보조자료)",
+      "url": "https://ulsan.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000411&gubun=41&pageIndex=20&searchWord=&seqnum=11465"
+    },
+    {
+      "id": "T01",
+      "title": "PostgreSQL numeric",
+      "url": "https://www.postgresql.org/docs/current/datatype-numeric.html"
+    },
+    {
+      "id": "T02",
+      "title": "Cloud SQL / pgvector",
+      "url": "https://docs.cloud.google.com/sql/docs/postgres/ai-overview"
+    },
+    {
+      "id": "T03",
+      "title": "n8n execution retention",
+      "url": "https://docs.n8n.io/deploy/host-n8n/configure-n8n/scaling/manage-execution-data.md"
+    },
+    {
+      "id": "T04",
+      "title": "Python Decimal",
+      "url": "https://docs.python.org/3/library/decimal.html"
+    },
+    {
+      "id": "T05",
+      "title": "서울회생법원 사건조회 FAQ",
+      "url": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=47&pageIndex=1&seqnum=145"
+    },
+    {
+      "id": "T06",
+      "title": "Cloud Run request timeout",
+      "url": "https://docs.cloud.google.com/run/docs/configuring/request-timeout"
+    },
+    {
+      "id": "T07",
+      "title": "Kakao BizMessage 공식 안내",
+      "url": "https://docs.kakaoi.ai/kakao_i_connect_message/bizmessage_eng/"
+    },
+    {
+      "id": "T08",
+      "title": "Google Sheets API limits",
+      "url": "https://developers.google.com/workspace/sheets/api/limits"
+    },
+    {
+      "id": "T09",
+      "title": "GCS Object Versioning",
+      "url": "https://docs.cloud.google.com/storage/docs/object-versioning?hl=en"
+    },
+    {
+      "id": "T10",
+      "title": "Slack chat.postMessage",
+      "url": "https://docs.slack.dev/reference/methods/chat.postMessage/"
+    }
+  ]
+}

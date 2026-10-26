@@ -1,0 +1,12 @@
+{
+  "id": "evaluate-forms",
+  "version": "2.0.0",
+  "model": "gpt-6-luna",
+  "store": false,
+  "max_output_tokens": 16000,
+  "placeholders": [
+    "document_kind",
+    "reference_checks",
+    "primary_document_lines"
+  ]
+}

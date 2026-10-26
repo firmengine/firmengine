@@ -1,0 +1,9 @@
+{
+  "synthetic": true,
+  "input": {
+    "document_id": "synthetic-document",
+    "original_page": 1,
+    "text": "가상 예시입니다. 실제 사건 원문을 예시에 넣지 않습니다."
+  },
+  "note": "평가 정답과 실제 사건 원문을 공개 예시에 복사하지 마세요."
+}

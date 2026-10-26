@@ -1,0 +1,22 @@
+{
+  "id": "seoul-blueprint-arithmetic-v1",
+  "jurisdiction": "KR-SEOUL",
+  "status": "REVIEW_REQUIRED",
+  "source_snapshot": "2026-10-18",
+  "feature_catalog_count": 84,
+  "scope": "partial_numeric_rules_and_evidence_requirements",
+  "not_a_complete_eligibility_engine": true,
+  "implemented_numeric_rules": [
+    "KR.579.DEBT_LIMITS",
+    "SEOUL.405.BASIC_LIVING_2026",
+    "KR.614.MINIMUM_REPAYMENT",
+    "KR.614.LIQUIDATION_COMPARISON",
+    "SEOUL.405.ADDITIONAL_HOUSING",
+    "INCOME.MONTHLY_NET",
+    "PLAN.NOMINAL_PAYMENTS"
+  ],
+  "source_file_hashes": {
+    "feature_catalog.json": "5b849ee4d1526c5be7fc47560fba409d7f362d2d9265051be18c6d2947034afe",
+    "lawgraph_rule_examples.json": "92fa81583c636657b2cdf8b40416a2d61956ac702f40751dac4c894ef3edc825"
+  }
+}

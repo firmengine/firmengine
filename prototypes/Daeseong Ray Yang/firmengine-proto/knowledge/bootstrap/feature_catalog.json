@@ -1,0 +1,1279 @@
+{
+  "version": "1.0-DESIGN",
+  "jurisdiction": "KR-SEOUL",
+  "legal_verified_on": "2026-10-18",
+  "feature_count": 84,
+  "features": [
+    {
+      "key": "case.application_date",
+      "type": "date",
+      "label": "신청일·예정일",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "case.commencement_date",
+      "type": "date?",
+      "label": "개시일",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "case.confirmation_date",
+      "type": "date?",
+      "label": "인가일",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "case.discharge_final_date",
+      "type": "date?",
+      "label": "면책확정일",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "case.procedural_stage",
+      "type": "enum",
+      "label": "법적 절차단계",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "person.birth_date",
+      "type": "date",
+      "label": "연령근거",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "person.natural_person",
+      "type": "boolean",
+      "label": "개인 여부",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "jurisdiction.residence",
+      "type": "text",
+      "label": "실제주소",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "jurisdiction.workplace",
+      "type": "text?",
+      "label": "계속근무지",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "jurisdiction.main_business",
+      "type": "text?",
+      "label": "주된사업장",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "history.proceedings[]",
+      "type": "object[]",
+      "label": "10년 내 과거사건·결과",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "history.discharge_dates[]",
+      "type": "date[]",
+      "label": "과거 면책 날짜",
+      "group": "사건·인적사항",
+      "note": "상담 추출 후 공적 문서·법원문서로 대조",
+      "legal_source_ids": [
+        "K01",
+        "K02",
+        "K03",
+        "K06"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "solvency.payment_difficulty[]",
+      "type": "object[]",
+      "label": "지급곤란 사실",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.sources[]",
+      "type": "object[]",
+      "label": "급여·사업·연금",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.recurring_evidence[]",
+      "type": "reference[]",
+      "label": "반복수입 증거",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.job_changed_at",
+      "type": "date?",
+      "label": "이직일",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.period",
+      "type": "date_range",
+      "label": "평균 산정기간",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.monthly_gross",
+      "type": "money?",
+      "label": "세전수입",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.monthly_net",
+      "type": "money?",
+      "label": "실수령수입",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.tax_social_insurance",
+      "type": "money?",
+      "label": "법정공제",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.business_revenue",
+      "type": "money?",
+      "label": "사업매출",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.necessary_cost",
+      "type": "money?",
+      "label": "사업필요비",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.seasonality",
+      "type": "enum",
+      "label": "계절성",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income.expected_change",
+      "type": "object?",
+      "label": "증빙 가능한 장래변동",
+      "group": "지급곤란·소득",
+      "note": "수입의 추출과 반복·확실성의 법률판단을 분리",
+      "legal_source_ids": [
+        "K01",
+        "K19"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "household.members[]",
+      "type": "object[]",
+      "label": "관계·나이·동거",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "dependents.support_evidence[]",
+      "type": "reference[]",
+      "label": "실제부양",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "spouse.income_amount",
+      "type": "money?",
+      "label": "지난1년 소득금액",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "spouse.total_wage",
+      "type": "money?",
+      "label": "지난1년 총급여",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "dependents.care_need",
+      "type": "object?",
+      "label": "돌봄·장애",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "household.recognized_count",
+      "type": "integer?",
+      "label": "검토된 가구원수",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.base_allowance",
+      "type": "money?",
+      "label": "기본생계 산술",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.housing_actual",
+      "type": "money?",
+      "label": "지속주거비",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.housing_location",
+      "type": "text",
+      "label": "실거주지역",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.education_actual",
+      "type": "money?",
+      "label": "자녀별교육비",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.medical_net",
+      "type": "money?",
+      "label": "보전조정의료비",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.extra_allowed",
+      "type": "money?",
+      "label": "인정추가생계",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.other_expense_issue",
+      "type": "object?",
+      "label": "고소득 기타생계 쟁점",
+      "group": "가구·생계비",
+      "note": "실제 가구구성과 인정 부양·생계비를 별도로 관리",
+      "legal_source_ids": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].origin_contract_id",
+      "type": "text",
+      "label": "원채권 동일성",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].current_creditor_id",
+      "type": "text",
+      "label": "현채권자",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].cause",
+      "type": "enum+text",
+      "label": "발생원인",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].incurred_at",
+      "type": "date?",
+      "label": "발생일",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].principal",
+      "type": "money?",
+      "label": "원금잔액",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].interest",
+      "type": "money?",
+      "label": "이자잔액",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].amount_as_of",
+      "type": "date?",
+      "label": "잔액기준일",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].due_date",
+      "type": "date?",
+      "label": "납부기한",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].security_status",
+      "type": "enum",
+      "label": "담보법적성격",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].collateral_ids",
+      "type": "text[]",
+      "label": "담보자산",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].priority_status",
+      "type": "enum",
+      "label": "우선권",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].estate_claim_status",
+      "type": "enum",
+      "label": "재단채권",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].non_discharge_ground",
+      "type": "enum[]",
+      "label": "비면책근거",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].dispute",
+      "type": "enum",
+      "label": "다툼",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].guarantee_subrogation",
+      "type": "object?",
+      "label": "보증·대위",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "debts[].listed_snapshots",
+      "type": "text[]",
+      "label": "제출목록이력",
+      "group": "채무",
+      "note": "원계약·채권자·금액·성질을 채무 객체마다 반복 저장",
+      "legal_source_ids": [
+        "K01",
+        "K06",
+        "K08",
+        "K10"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].type",
+      "type": "enum",
+      "label": "재산·청구권종류",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].legal_owner",
+      "type": "text?",
+      "label": "명의자",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].beneficial_owner_issue",
+      "type": "object?",
+      "label": "실질귀속",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].ownership_share",
+      "type": "decimal?",
+      "label": "지분",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].gross_value",
+      "type": "money?",
+      "label": "평가액",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].valuation_as_of",
+      "type": "date?",
+      "label": "기준일",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].valuation_method",
+      "type": "text",
+      "label": "시가·회수가능성근거",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].secured_balance",
+      "type": "money?",
+      "label": "실제담보잔액",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].protection_basis",
+      "type": "reference[]",
+      "label": "압류금지근거",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].exemption_application",
+      "type": "object?",
+      "label": "면제신청·기한",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].exemption_decision",
+      "type": "object?",
+      "label": "인정결정·금액",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].liquidation_contribution",
+      "type": "money?",
+      "label": "청산가치반영",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].disposal_history[]",
+      "type": "object[]",
+      "label": "처분·대금",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "assets[].successor_asset_ids",
+      "type": "text[]",
+      "label": "대체재산",
+      "group": "재산",
+      "note": "재산 존재·귀속·평가·보호·면제결정을 별도로 관리",
+      "legal_source_ids": [
+        "K09",
+        "K14",
+        "K15",
+        "K20",
+        "K27"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "coverage.debt_inventory",
+      "type": "enum",
+      "label": "채무조사완전성",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "coverage.asset_inventory",
+      "type": "enum",
+      "label": "재산조사완전성",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "coverage.account_periods[]",
+      "type": "object[]",
+      "label": "계좌조회범위",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "flows.unexplained_items[]",
+      "type": "object[]",
+      "label": "미설명흐름",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "court.objection_status",
+      "type": "enum",
+      "label": "채권자·회생위원이의",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "court.orders[]",
+      "type": "object[]",
+      "label": "요구·기한",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "court.service_date",
+      "type": "date?",
+      "label": "송달일",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.disposable_income",
+      "type": "money?",
+      "label": "가용소득",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.term_months",
+      "type": "integer?",
+      "label": "변제기간",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.start_date",
+      "type": "date?",
+      "label": "기산일",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.term_exception_basis",
+      "type": "reference[]",
+      "label": "기간특례근거",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.payments[]",
+      "type": "object[]",
+      "label": "회차·금액·재원",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.total_present_value",
+      "type": "money?",
+      "label": "평가변제총액",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.liquidation_floor",
+      "type": "money?",
+      "label": "청산가치",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.priority_full_payment",
+      "type": "enum",
+      "label": "전액변제",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.funding_evidence[]",
+      "type": "reference[]",
+      "label": "추가재원",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.performability",
+      "type": "enum",
+      "label": "수행가능성",
+      "group": "검증·절차·계획",
+      "note": "법적 적용조건과 계산 결과를 별도로 관리",
+      "legal_source_ids": [
+        "K03",
+        "K04",
+        "K05",
+        "K07",
+        "K11",
+        "K12"
+      ],
+      "requires_evidence_ref": true,
+      "unknown_policy": "NULL_NOT_ZERO"
+    }
+  ]
+}

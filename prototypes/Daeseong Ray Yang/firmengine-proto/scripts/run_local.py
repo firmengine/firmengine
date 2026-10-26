@@ -16,7 +16,7 @@ sys.path.insert(0, str(ROOT))
 from app import config
 
 
-def workflow():
+def legacy_workflow():
     nodes = [{'id': 'intake', 'name': 'Local document job', 'type': 'n8n-nodes-base.webhook',
               'typeVersion': 2, 'position': [0, 0], 'webhookId': 'firmengine-p0',
               'parameters': {'httpMethod': 'POST', 'path': 'firmengine-p0', 'responseMode': 'onReceived', 'options': {'responseCode': 202}}}]
@@ -42,6 +42,9 @@ def workflow():
             'pinData': {}}
 
 
+from workflows.build import workflow, law_watch
+
+
 def make_env():
     local = ROOT / '.runtime'
     local.mkdir(exist_ok=True)
@@ -49,6 +52,9 @@ def make_env():
     if not keyfile.exists():
         keyfile.write_text(secrets.token_hex(32), encoding='ascii')
     env = os.environ.copy()
+    from app.main import internal_token
+    for secret_name in ('OPENAI_API_KEY', 'OPEN_AI_API_KEY'):
+        env.pop(secret_name, None)
     env.update({'N8N_USER_FOLDER': str(local / 'n8n'), 'N8N_ENCRYPTION_KEY': keyfile.read_text().strip(),
                 'N8N_HOST': '127.0.0.1', 'N8N_LISTEN_ADDRESS': '127.0.0.1', 'N8N_PORT': str(config.N8N_PORT),
                 'N8N_PROTOCOL': 'http', 'N8N_SECURE_COOKIE': 'false', 'N8N_DIAGNOSTICS_ENABLED': 'false',
@@ -58,6 +64,7 @@ def make_env():
                 'EXECUTIONS_DATA_SAVE_ON_ERROR': 'none', 'EXECUTIONS_DATA_SAVE_ON_SUCCESS': 'none',
                 'EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS': 'false', 'EXECUTIONS_DATA_SAVE_ON_PROGRESS': 'false',
                 'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS': 'true', 'GENERIC_TIMEZONE': 'Asia/Seoul',
+                'FIRMENGINE_INTERNAL_TOKEN': internal_token(), 'N8N_BLOCK_ENV_ACCESS_IN_NODE': 'false',
                 'API_PORT': str(config.API_PORT), 'N8N_PORT': str(config.N8N_PORT), 'PYTHONUTF8': '1'})
     return env
 
@@ -67,7 +74,7 @@ def port_free(port):
         return sock.connect_ex(('127.0.0.1', port)) != 0
 
 
-def registered_workflow(env, expected):
+def registered_workflow(env, expected, allow_upgrade=False):
     """Inspect our isolated n8n database read-only; preserve existing user edits."""
     database = Path(env['N8N_USER_FOLDER']) / '.n8n' / 'database.sqlite'
     if not database.exists():
@@ -93,6 +100,10 @@ def registered_workflow(env, expected):
 
         settings = json.loads(row['settings'] or '{}')
         if not matches(row['nodes'], row['connections']) or any(settings.get(k) != v for k, v in expected['settings'].items()):
+            if allow_upgrade:
+                backup = ROOT / '.runtime' / ('workflow-backup-' + expected['id'] + '-' + str(time.time_ns()) + '.json')
+                backup.write_text(json.dumps(dict(row), ensure_ascii=False, indent=2), encoding='utf-8')
+                return 'upgrade'
             raise SystemExit('The existing n8n workflow has different content. Review it in the n8n editor; startup will not overwrite it.')
         if row['activeVersionId']:
             active = db.execute('SELECT nodes, connections FROM workflow_history WHERE versionId=?', (row['activeVersionId'],)).fetchone()
@@ -105,10 +116,13 @@ def registered_workflow(env, expected):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--write-workflow', action='store_true')
+    parser.add_argument('--upgrade-workflows', action='store_true', help='Back up and upgrade managed workflow definitions.')
     args = parser.parse_args()
     target = ROOT / 'workflows' / 'firmengine-p0.json'
     target.parent.mkdir(exist_ok=True)
     target.write_text(json.dumps(workflow(), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    watch_target = ROOT / 'workflows' / 'law-watch.json'
+    watch_target.write_text(json.dumps(law_watch(), ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     if args.write_workflow:
         print('workflows/firmengine-p0.json generated')
         return
@@ -124,14 +138,17 @@ def main():
     log_path = ROOT / '.runtime' / 'services.log'
     children = []
     with log_path.open('w', encoding='utf-8') as log:
-        registered = registered_workflow(env, workflow())
         commands = []
-        if registered is None:
-            commands.append([node, str(n8n), 'import:workflow', '--input', str(target)])
-        if registered != 'active':
-            commands.append([node, str(n8n), 'publish:workflow', '--id', 'firmengineLocalP0'])
-        if registered == 'active':
-            print('Reusing the registered, published local workflow.', flush=True)
+        for definition, path in ((workflow(), target), (law_watch(), watch_target)):
+            registered = registered_workflow(env, definition, args.upgrade_workflows)
+            if registered == 'upgrade':
+                commands.append([node, str(n8n), 'unpublish:workflow', '--id', definition['id']])
+            if registered in (None, 'upgrade'):
+                commands.append([node, str(n8n), 'import:workflow', '--input', str(path)])
+            if registered != 'active':
+                commands.append([node, str(n8n), 'publish:workflow', '--id', definition['id']])
+            else:
+                print('Reusing published workflow: ' + definition['id'], flush=True)
         for command in commands:
             print('Preparing n8n workflow...', flush=True)
             done = subprocess.run(command, cwd=ROOT, env=env, stdout=log, stderr=log, creationflags=flags)

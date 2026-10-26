@@ -40,6 +40,38 @@ def fact(value, *, period='2026-10-01', unit='KRW', page=1, confidence='high'):
 
 
 class EvidenceEngineTests(unittest.TestCase):
+    def test_source_backed_proposed_arithmetic_never_confirms_case_inputs(self):
+        session = complete_session()
+        for row in session['records']:
+            row['state'] = 'unreviewed'
+        session['draft_fields'] = {
+            key: {'value': value, 'kind': 'proposal', 'status': 'proposed',
+                  'source_record_ids': [next(row['id'] for row in session['records'] if row['key'] == key)]}
+            for key, value in {'approved_monthly_income': '2500000', 'recognized_living_cost': '1500000',
+                               'monthly_trustee_fee': '0', 'repayment_months': '36'}.items()
+        }
+        session['draft_creditors'] = [{'name': '합성은행', 'period': '2026-10-01',
+            'principal': '100000000', 'interest': '500000', 'status': 'proposed',
+            'source_record_ids': [row['id'] for row in session['records'] if row['key'].startswith('creditor_')]}]
+        engine.validate(session)
+        proposed = {row['key']: row for row in session.get('draft_calculations', [])}
+        self.assertEqual(proposed.get('total_repayment', {}).get('value'), '36000000')
+        self.assertEqual(proposed['total_repayment']['status'], 'proposed')
+        self.assertTrue(all(row['status'] == 'pending' for row in session['calculations']))
+        self.assertTrue(all(row['state'] == 'unreviewed' for row in session['records']))
+        self.assertTrue(session['issues'])
+
+    def test_evidenced_public_form_details_survive_extraction_without_becoming_confirmed(self):
+        details = {'service_address': '합성 송달주소', 'creditor_cause': '증빙에 명시된 대여금',
+                   'asset_account_number': '00123456789', 'family_relationship': '자녀',
+                   'housing_type': '임차 주택', 'education': '합성학교 졸업'}
+        facts = [{**fact(value), 'key': key, 'unit': '', 'entity': '합성 대상'}
+                 for key, value in details.items()]
+        records = engine.merge_facts(facts)
+        found = {row['key']: row for row in records if row['key'] in details}
+        self.assertEqual({key: row['value'] for key, row in found.items()}, details)
+        self.assertTrue(all(row['state'] == 'unreviewed' and row['sources'] for row in found.values()))
+
     def test_missing_legal_inputs_are_explicit_placeholders(self):
         rows = engine.merge_facts([])
         by_key = {row['key']: row for row in rows}

@@ -12,12 +12,31 @@ INACTIVE = {'excluded', 'rejected', 'superseded'}
 REQUIRED_KEYS = ['client_name', 'resident_id', 'address', 'business_name', 'court_name', *REVIEW_INPUTS]
 IDENTITY_KEYS = {'client_name', 'resident_id', 'address', 'registered_address', 'phone',
                  'court_name', 'business_name', 'business_type', 'tax_type', 'business_registration',
-                 'business_address', 'opening_date', 'statement', 'prior_proceedings'}
+                 'business_address', 'opening_date', 'statement', 'prior_proceedings',
+                 'application_date', 'case_number', 'service_address', 'lawyer_name',
+                 'lawyer_address', 'lawyer_phone', 'lawyer_email', 'related_cases',
+                 'refund_bank', 'refund_account', 'repayment_start_date', 'repayment_end_date',
+                 'repayment_day', 'debt_as_of', 'secured_claim_details', 'disputed_claim_details',
+                 'assignment_order_details', 'other_claim_details', 'exempt_details',
+                 'additional_living_reason', 'family_details', 'education', 'career_history',
+                 'marriage_history', 'residence_start', 'housing_type', 'housing_tenant',
+                 'housing_owner', 'housing_owner_relationship', 'enforcement_history',
+                 'debt_cause_categories', 'asset_disposal_plan', 'estate_claim_plan',
+                 'priority_claim_plan', 'payment_schedule_details', 'unconfirmed_claim_plan',
+                 'trustee_payment_details', 'discharge_clause_review', 'plan_other_details',
+                 'allocation_basis'}
 MONEY_KEYS = {'annual_revenue', 'annual_expenses', 'annual_business_income', 'monthly_revenue',
               'monthly_expense', 'monthly_income', 'approved_monthly_income', 'recognized_living_cost',
               'monthly_trustee_fee', 'liquidation_value', 'bank_balance', 'insurance_surrender',
               'housing_deposit', 'vehicle_value', 'real_estate_value', 'assets_total',
-              'creditor_principal', 'creditor_interest', 'asset_value'}
+              'creditor_principal', 'creditor_interest', 'asset_value',
+              'secured_debt_total', 'unsecured_debt_total', 'creditor_original_principal',
+              'creditor_secured_recovery', 'creditor_shortfall', 'creditor_secured_amount',
+              'creditor_disputed_amount', 'creditor_undisputed_amount', 'cash',
+              'business_assets_value', 'loan_receivables', 'trade_receivables', 'retirement_value',
+              'other_assets', 'exempt_value', 'asset_return_amount', 'housing_cost', 'medical_cost',
+              'education_cost', 'family_monthly_income', 'family_assets', 'housing_arrears',
+              'present_value', 'standard_living_cost'}
 INTEGER_KEYS = {'repayment_months', 'household_size'}
 
 
@@ -153,18 +172,20 @@ def _creditor_problem(records):
     return ''
 
 
-def calculate(records):
+def calculate(records, *, proposal=False):
     records = _active(records)
+    accepted_states = {'confirmed', 'proposed'} if proposal else {'confirmed'}
 
     def scalar(key):
         rows = [row for row in records if row.get('key') == key]
-        return _numeric(rows[0]) if len(rows) == 1 and rows[0].get('state') == 'confirmed' else None
+        return _numeric(rows[0]) if len(rows) == 1 and rows[0].get('state') in accepted_states else None
 
     calculations = []
 
     def emit(key, label, value, formula, sources, unit='KRW'):
         calculations.append({'key': key, 'label': label, 'value': format(value, 'f') if value is not None else None,
-                             'unit': unit, 'formula': formula, 'status': 'calculated' if value is not None else 'pending', 'sources': sources})
+                             'unit': unit, 'formula': formula,
+                             'status': ('proposed' if proposal else 'calculated') if value is not None else 'pending', 'sources': sources})
 
     with localcontext() as context:
         context.prec = 256
@@ -175,7 +196,7 @@ def calculate(records):
             unique = len({normalize(row.get('entity')) for row in rows}) == len(rows)
             same_scope = not scope_problem if key == 'creditor_interest' else True
             ok = rows and unique and same_scope and all(
-                normalize(row.get('entity')) and row.get('state') == 'confirmed' and _numeric(row) is not None for row in rows)
+                normalize(row.get('entity')) and row.get('state') in accepted_states and _numeric(row) is not None for row in rows)
             value = sum((_numeric(row) for row in rows), Decimal(0)) if ok else None
             totals[key] = value
             emit('debt_principal_total' if key.endswith('principal') else 'debt_interest_total', name, value,
@@ -195,9 +216,66 @@ def calculate(records):
     return calculations
 
 
+def propose_calculations(session):
+    """Compute a separate draft view from explicit source-backed selections.
+
+    This view never mutates records, resolves a conflict, or satisfies validate's
+    confirmed-only gate. A missing fee, repayment term, or amount stays pending.
+    """
+    active = _active(session.get('records', []))
+    record_ids = {row['id'] for row in active}
+    fields = session.get('draft_fields') or {}
+    if not fields and not session.get('draft_creditors'):
+        return []
+    inputs, provenance = [], []
+
+    def supported(candidate):
+        if not isinstance(candidate, dict) or candidate.get('status') != 'proposed':
+            return False
+        return bool(set(candidate.get('source_record_ids') or []).intersection(record_ids)
+                    or candidate.get('source_pages'))
+
+    def proposed_row(key, value, candidate, entity='', period=''):
+        provenance.append(candidate)
+        return {'id': f'draft:{key}:{entity}:{period}', 'key': key, 'value': value,
+                'entity': entity, 'period': period, 'unit': _unit(key, candidate.get('unit')),
+                'state': 'proposed'}
+
+    for key in ('approved_monthly_income', 'recognized_living_cost', 'monthly_trustee_fee', 'repayment_months'):
+        reviewed = [row for row in active if row.get('key') == key and row.get('state') == 'confirmed']
+        if len(reviewed) == 1:
+            inputs.append(reviewed[0])
+            continue
+        candidate = fields.get(key)
+        if supported(candidate):
+            inputs.append(proposed_row(key, candidate.get('value'), candidate))
+    debt_rows = [row for row in active if row.get('key') in ('creditor_principal', 'creditor_interest')]
+    if debt_rows and all(row.get('state') == 'confirmed' for row in debt_rows) and not _creditor_problem(debt_rows):
+        inputs.extend(debt_rows)
+    else:
+        for creditor in session.get('draft_creditors') or []:
+            if not supported(creditor):
+                continue
+            name = str(creditor.get('name') or creditor.get('entity') or '').strip()
+            contract = str(creditor.get('contract_id') or '').strip()
+            entity = f'{name} / {contract}' if contract else name
+            for suffix in ('principal', 'interest'):
+                inputs.append(proposed_row('creditor_' + suffix, creditor.get(suffix), creditor,
+                                           entity, _period(creditor.get('period'))))
+    result = calculate(inputs, proposal=True)
+    for calculation in result:
+        calculation['review_required'] = True
+        calculation['source_record_ids'] = sorted({identifier for candidate in provenance
+            for identifier in candidate.get('source_record_ids', []) if identifier in record_ids})
+        calculation['source_pages'] = [page for candidate in provenance for page in candidate.get('source_pages', [])]
+        calculation['formula'] += ' · 미승인 제안 입력에 대한 산술이며 사건 승인·법적 판단이 아님'
+    return result
+
+
 def validate(session):
     records = _active(session.get('records', []))
     session['calculations'] = calculate(records)
+    session['draft_calculations'] = propose_calculations(session)
     issues = []
 
     def issue(code, message, record=None):

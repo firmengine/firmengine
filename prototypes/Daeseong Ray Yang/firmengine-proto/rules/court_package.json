@@ -1,0 +1,438 @@
+{
+  "version": "court-output-package-v1",
+  "verified_on": "2026-10-26",
+  "jurisdiction": "KR-SEOUL",
+  "scope": "Supported initial filing forms and conditional applications; court-specific orders, full procedural exceptions and signature validation require review. Input evidence completeness is a distinct assessment.",
+  "current_procedure_source": {
+    "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2200000108651&chrClsCd=010201",
+    "title": "개인회생사건 처리지침 (2026.7.1 시행) 제2조·제4조의2·제5조"
+  },
+  "entries": [
+    {
+      "id": "application",
+      "title": "개인회생절차 개시신청서",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "client_name",
+        "resident_id",
+        "address",
+        "court_name",
+        "statement"
+      ],
+      "attachments": [],
+      "template_id": "D5100",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "creditors",
+      "title": "개인회생채권자목록",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "creditor_principal",
+        "creditor_interest",
+        "creditor_address"
+      ],
+      "attachments": [
+        "secured_annex",
+        "disputed_annex",
+        "assignment_annex",
+        "other_claim_annex"
+      ],
+      "template_id": "D5106",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "assets",
+      "title": "재산목록",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "assets_total",
+        "liquidation_value"
+      ],
+      "attachments": [
+        "asset_valuation"
+      ],
+      "template_id": "D5101",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "income_expense",
+      "title": "수입 및 지출에 관한 목록",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "approved_monthly_income",
+        "household_size",
+        "recognized_living_cost"
+      ],
+      "attachments": [],
+      "template_id": "D5103",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "statement",
+      "title": "진술서",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "client_name",
+        "statement",
+        "prior_proceedings"
+      ],
+      "attachments": [],
+      "template_id": "D5105",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "repayment_plan",
+      "title": "변제계획안(가용소득)",
+      "kind": "GENERATED_FORM",
+      "required_when": "income_only_plan",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "repayment_months",
+        "repayment_start_date",
+        "monthly_payment",
+        "total_repayment"
+      ],
+      "attachments": [
+        "payment_schedule"
+      ],
+      "template_id": "D5110",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "repayment_plan_assets",
+      "title": "변제계획안(가용소득과 재산처분)",
+      "kind": "GENERATED_FORM",
+      "required_when": "decision:plan_asset_disposal",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "asset_valuation"
+      ],
+      "required_features": [
+        "repayment_months",
+        "asset_disposal_plan",
+        "monthly_payment",
+        "total_repayment"
+      ],
+      "attachments": [
+        "payment_schedule"
+      ],
+      "template_id": "D5111",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "payment_schedule",
+      "title": "개인회생채권 변제예정액표",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "creditors"
+      ],
+      "required_features": [
+        "plan_allocations"
+      ],
+      "attachments": [],
+      "template_id": "PAYMENT_SCHEDULE",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "secured_annex",
+      "title": "채권자목록 부속서류 1 · 별제권부채권",
+      "kind": "GENERATED_FORM",
+      "required_when": "creditor:secured",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "creditors"
+      ],
+      "required_features": [
+        "creditor_collateral",
+        "creditor_secured_recovery",
+        "creditor_shortfall"
+      ],
+      "attachments": [],
+      "template_id": "ANNEX_SECURED",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "disputed_annex",
+      "title": "채권자목록 부속서류 2 · 다툼 있는 채권",
+      "kind": "GENERATED_FORM",
+      "required_when": "creditor:disputed",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "creditors"
+      ],
+      "required_features": [
+        "creditor_disputed_amount",
+        "creditor_undisputed_amount",
+        "creditor_dispute_reason"
+      ],
+      "attachments": [],
+      "template_id": "ANNEX_DISPUTED",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "assignment_annex",
+      "title": "채권자목록 부속서류 3 · 전부명령",
+      "kind": "GENERATED_FORM",
+      "required_when": "creditor:assignment",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "creditors"
+      ],
+      "required_features": [
+        "creditor_assignment_order"
+      ],
+      "attachments": [],
+      "template_id": "ANNEX_ASSIGNMENT",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "other_claim_annex",
+      "title": "채권자목록 부속서류 4 · 기타",
+      "kind": "GENERATED_FORM",
+      "required_when": "creditor:other_claim",
+      "source_ids": [
+        "K18",
+        "K19"
+      ],
+      "depends_on": [
+        "creditors"
+      ],
+      "required_features": [
+        "creditor_other_details"
+      ],
+      "attachments": [],
+      "template_id": "ANNEX_OTHER",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "asset_valuation",
+      "title": "재산별 평가·청산가치 산정 부속명세",
+      "kind": "GENERATED_FORM",
+      "required_when": "assets_present",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "assets"
+      ],
+      "required_features": [
+        "asset_valuations"
+      ],
+      "attachments": [],
+      "template_id": "ASSET_VALUATION",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "evidence_index",
+      "title": "제출 증빙목록·편철 대조표",
+      "kind": "GENERATED_FORM",
+      "required_when": "always",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [],
+      "attachments": [],
+      "template_id": "EVIDENCE_INDEX",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": false
+    },
+    {
+      "id": "protected_assets",
+      "title": "개인회생재단에 속하지 않는 재산목록 제출서",
+      "kind": "CONDITIONAL_APPLICATION",
+      "required_when": "decision:protected_assets_list",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "assets"
+      ],
+      "required_features": [
+        "protected_assets"
+      ],
+      "attachments": [],
+      "template_id": "D5108",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "exemption_application",
+      "title": "면제재산 결정신청서",
+      "kind": "CONDITIONAL_APPLICATION",
+      "required_when": "decision:exemption_application",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [
+        "assets"
+      ],
+      "required_features": [
+        "exempt_details",
+        "exempt_value"
+      ],
+      "attachments": [
+        "exemption_lease",
+        "exemption_residence"
+      ],
+      "template_id": "D5109",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "stay_application",
+      "title": "중지명령 신청서",
+      "kind": "CONDITIONAL_APPLICATION",
+      "required_when": "decision:stay_application",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "stay_request",
+        "stay_reason",
+        "enforcement_case_number"
+      ],
+      "attachments": [
+        "enforcement_order"
+      ],
+      "template_id": "D5113",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    },
+    {
+      "id": "prohibition_application",
+      "title": "금지명령 신청서",
+      "kind": "CONDITIONAL_APPLICATION",
+      "required_when": "decision:prohibition_application",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "depends_on": [],
+      "required_features": [
+        "prohibition_request",
+        "prohibition_reason"
+      ],
+      "attachments": [],
+      "template_id": "D5114",
+      "status": "editable_reconstruction_review_required",
+      "mandatory_when_applicable": true
+    }
+  ],
+  "conditional_attachments": [
+    {
+      "id": "enforcement_order",
+      "title": "중지 대상 집행 결정문",
+      "decision": "stay_application",
+      "document_types": [
+        "enforcement_order"
+      ],
+      "source_ids": [
+        "K19"
+      ],
+      "mandatory": true
+    },
+    {
+      "id": "exemption_basis_evidence",
+      "title": "면제재산 신청 소명자료",
+      "decision": "exemption_application",
+      "document_types": [
+        "exemption_evidence",
+        "lease_contract",
+        "resident_registration"
+      ],
+      "source_ids": [
+        "K19"
+      ],
+      "mandatory": true
+    }
+  ]
+}

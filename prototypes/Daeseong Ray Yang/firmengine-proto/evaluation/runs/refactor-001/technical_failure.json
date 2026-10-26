@@ -1,0 +1,21 @@
+{
+  "run_name": "refactor-001",
+  "observed_at": "2026-10-26T09:20:14.673938+00:00",
+  "evaluation_status": "not_scored_technical_failure",
+  "worker_status": "FAILED",
+  "worker_attempts": 3,
+  "error_type": "HTTPStatusError",
+  "export_available": false,
+  "artifact_count": 0,
+  "functional_gate_result": "not_reached",
+  "document_quality_result": "not_evaluated",
+  "automated_completeness_pass": false,
+  "court_submission_ready": false,
+  "frozen_target_count": 227,
+  "frozen_scorable_count": 212,
+  "rubric_sha256": "a6d869f578451bb52bbe8b6bb4dbce3d28b84d039e2b0519d2ecf97d5ebb5d80",
+  "frozen_golden_sha256": "4cc625a09b417ce6b9b846351e9ac8dd8bcb0498f1ad24201ca17c181f46cec9",
+  "criteria_changed": false,
+  "expected_values_disclosed": false,
+  "note": "No scoring was performed because the workflow job did not succeed. This is a technical failure, not a successful HITL gate or a successful document-generation result."
+}

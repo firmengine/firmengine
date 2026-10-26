@@ -1,6 +1,6 @@
 'use strict';
 
-// All case data stays in this page's memory. Server sessions own expiration.
+// The server owns persisted cases. This page holds only the currently open snapshot.
 const $ = (id) => document.getElementById(id);
 let session = null;
 let health = null;
@@ -9,6 +9,7 @@ let pollTimer = null;
 let toastTimer = null;
 let busy = false;
 let editingRecord = null;
+let editingRecordRevision = null;
 let lastHeartbeat = 0;
 let refreshInFlight = false;
 let generationChanged = false;
@@ -46,8 +47,9 @@ function displayUnit(unit) { return ({ KRW: '원', months: '개월', persons: '�
 function amount(value, unit) {
   if (value === null || value === undefined || value === '') return '확인 필요';
   const raw = String(value);
-  const number = Number(raw.replaceAll(',', ''));
-  const display = raw.trim() !== '' && Number.isFinite(number) ? new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 }).format(number) : raw;
+  const normalized = raw.replaceAll(',', '');
+  const number = Number(normalized);
+  const display = /^-?\d+$/.test(normalized) ? new Intl.NumberFormat('ko-KR').format(BigInt(normalized)) : raw.trim() !== '' && Number.isFinite(number) ? new Intl.NumberFormat('ko-KR', { maximumFractionDigits: 3 }).format(number) : raw;
   return unit ? `${display} ${displayUnit(unit)}` : display;
 }
 
@@ -97,16 +99,19 @@ async function api(path, options = {}) {
 }
 
 function sessionPath(suffix = '') { return `/api/sessions/${encodeURIComponent(session.id)}${suffix}`; }
+function casePath(suffix = '') { return `/api/cases/${encodeURIComponent(session.id)}${suffix}`; }
+function isProcessing() { return ['running', 'queued'].includes(session?.status); }
 
 function setBusy(value) {
   busy = value;
-  $('upload-button').disabled = value || selectedFiles.length === 0 || session?.status === 'running';
-  $('sample-button').disabled = value || session?.status === 'running';
-  $('file-input').disabled = value || session?.status === 'running';
+  $('upload-button').disabled = value || !session || selectedFiles.length === 0;
+  $('sample-button').disabled = value;
+  $('file-input').disabled = value || !session;
   $('end-session').disabled = value;
-  $('run-button').disabled = value || session?.status === 'running';
-  $('regenerate-button').disabled = value || session?.status === 'running';
+  $('run-button').disabled = value || isProcessing();
+  $('regenerate-button').disabled = value || isProcessing();
   updateReviewControls();
+  window.updateCaseControls?.();
 }
 
 async function loadHealth() {
@@ -150,9 +155,10 @@ function chooseFiles(files) {
 
 function clearTransientUI() {
   editingRecord = null;
+  editingRecordRevision = null;
   generationChanged = false;
   lastHeartbeat = 0;
-  for (const id of ['record-dialog', 'page-dialog']) if ($(id).open) $(id).close();
+  for (const id of ['record-dialog', 'page-dialog', 'editor-dialog']) if ($(id).open) $(id).close();
   for (const id of ['record-value', 'record-reason', 'caseworker-name', 'lawyer-name', 'evidence-pages', 'file-input']) $(id).value = '';
   $('page-image').removeAttribute('src');
   $('template-approved').checked = false;
@@ -161,22 +167,17 @@ function clearTransientUI() {
   chooseFiles([]);
 }
 
-async function closeCurrentSession(ask = true) {
+async function closeCurrentSession() {
   if (!session) return true;
-  if (ask && !window.confirm('현재 세션을 종료하면 임시 자료와 검토 이력이 삭제됩니다. 필요한 결과를 내려받으셨나요?')) return false;
-  const oldId = session.id;
-  await api(sessionPath(), { method: 'DELETE' });
   clearTimeout(pollTimer);
-  if (session?.id === oldId) {
-    session = null;
-    clearTransientUI();
-    render();
-  }
+  session = null;
+  clearTransientUI();
+  render();
   return true;
 }
 
 function acceptSession(payload) {
-  if (!payload || !payload.id) throw new Error('서버가 유효한 사건 세션을 반환하지 않았습니다.');
+  if (!payload || !payload.id) throw new Error('서버가 유효한 사건 정보를 반환하지 않았습니다.');
   if (!session || payload.id !== session.id) {
     $('template-approved').checked = false;
     $('caseworker-name').value = '';
@@ -184,6 +185,7 @@ function acceptSession(payload) {
     lastHeartbeat = 0;
   }
   session = payload;
+  window.caseAccepted?.(payload);
   if (session.template_approved) $('template-approved').checked = true;
   render();
   schedulePoll();
@@ -192,8 +194,8 @@ function acceptSession(payload) {
 function schedulePoll() {
   clearTimeout(pollTimer);
   if (!session) return;
-  // Polls do not send heartbeat: observing progress is not user activity.
-  pollTimer = setTimeout(refreshSession, session.status === 'running' ? 2000 : 12000);
+  // Workflow progress and stored case changes are observed without altering review state.
+  pollTimer = setTimeout(refreshSession, isProcessing() ? 2000 : 12000);
 }
 
 async function refreshSession() {
@@ -201,7 +203,7 @@ async function refreshSession() {
   const currentId = session.id;
   refreshInFlight = true;
   try {
-    const result = await api(sessionPath());
+    const result = await api(casePath());
     if (session?.id === currentId && Number(result.revision || 0) >= Number(session.revision || 0)) {
       session = result;
       render();
@@ -212,7 +214,7 @@ async function refreshSession() {
       session = null;
       clearTransientUI();
       render();
-      errorMessage(new Error('세션이 종료되었거나 만료되었습니다. 서류를 다시 업로드해주세요.'));
+      errorMessage(new Error('이 사건을 찾을 수 없습니다. 사건 목록을 새로 확인해주세요.'));
     } else {
       setText('progress-message', '진행 상태를 다시 확인하고 있습니다.');
     }
@@ -226,7 +228,7 @@ async function runSession() {
   if (!session) return;
   await loadHealth();
   if (health && !health.api_key_configured) throw new Error('API 키를 설정한 뒤 자동화를 실행해주세요.');
-  const result = await api(sessionPath('/run'), { method: 'POST', body: '{}' });
+  const result = await api(casePath('/run'), { method: 'POST', body: '{}' });
   generationChanged = false;
   if (result?.id) acceptSession(result);
   else await refreshSession();
@@ -236,6 +238,7 @@ function stageIndex() {
   if (!session) return -1;
   if (session.status === 'reviewed' || session.reviews?.lawyer) return 5;
   if (session.stage === 'edited') return 2;
+  if (session.status === 'needs_action') return 2;
   if (session.status === 'ready') return 4;
   const stage = String(session.stage || '').toLowerCase();
   if (/review|ready|complete|done/.test(stage)) return 4;
@@ -264,8 +267,8 @@ function render() {
   const blocking = issues.filter((issue) => ['error', 'blocking', 'critical'].includes(issue.severity)).length;
   const pages = docs.reduce((total, doc) => total + (Number(doc.pages) || 0), 0);
   const evidencePages = docs.reduce((total, doc) => total + (Array.isArray(doc.evidence_pages) ? doc.evidence_pages.length : 0), 0);
-  const running = session?.status === 'running';
-  const statusLabels = { uploaded: ['접수 완료', 'neutral'], running: ['처리 중', 'green'], ready: ['검토 대기', 'orange'], failed: ['확인 필요', 'red'], reviewed: ['검토 완료', 'green'] };
+  const running = isProcessing();
+  const statusLabels = { uploaded: ['접수 완료', 'neutral'], queued: ['처리 대기', 'neutral'], running: ['처리 중', 'green'], needs_action: ['자료·검토 보완 필요', 'orange'], ready: ['검토 대기', 'orange'], failed: ['처리 실패 · 확인 필요', 'red'], reviewed: ['검토 완료', 'green'] };
   const [statusLabel, tone] = session ? statusLabels[session.status] || ['확인 필요', 'neutral'] : ['시작 대기', 'neutral'];
 
   setText('session-status', statusLabel);
@@ -289,15 +292,15 @@ function render() {
   setText('record-count', records.length ? `${records.length}개 항목` : '대기 중');
   if (session) {
     setText('session-caption', `CURRENT CASE · ${session.id.slice(0, 8)}`);
-    setText('progress-message', session.message || (running ? '서류를 처리하고 있습니다.' : '자료가 준비되었습니다.'));
+    setText('progress-message', `${session.message || (running ? '서류를 처리하고 있습니다.' : '자료가 준비되었습니다.')}${running ? ' 처리 중에도 자료와 값을 수정할 수 있으며 변경한 버전으로 다시 평가합니다.' : ''}`);
     setText('session-detail', `버전 ${session.revision ?? 1} · ${docs.length}개 자료 · ${statusLabel}`);
     const progress = Math.max(0, Math.min(100, Number(session.progress) || 0));
     $('progress-fill').style.width = `${progress}%`;
     $('progress-track').setAttribute('aria-valuenow', String(progress));
     $('work-indicator').classList.toggle('running', running);
     $('work-indicator').textContent = running ? '↻' : session.status === 'reviewed' ? '✓' : '↗';
-    show('run-button', ['uploaded', 'failed'].includes(session.status));
-    setText('run-button', session.status === 'failed' ? '자동화 다시 실행' : '서류 자동화 시작');
+    show('run-button', docs.length > 0 && !running);
+    setText('run-button', session.status === 'failed' ? '자동화 다시 실행' : records.length ? '새 자료 포함 다시 분석' : '서류 자동화 시작');
   }
 
   renderDocuments(docs);
@@ -309,6 +312,7 @@ function render() {
   show('regenerate-bar', Boolean(session && records.length && !running));
   setText('regenerate-button', generationChanged ? '변경한 값으로 문서 다시 생성' : '확정값으로 문서 다시 생성');
   setBusy(busy);
+  window.renderCaseWorkspace?.();
 }
 
 function renderDocuments(documents) {
@@ -361,7 +365,7 @@ function renderRecords(records) {
     const action = node('td');
     const button = node('button', '검토', 'button secondary small');
     button.type = 'button';
-    button.disabled = session.status === 'running';
+    button.disabled = busy;
     button.addEventListener('click', () => openRecord(record.id));
     action.append(button);
     row.append(label, value, period, state, source, action);
@@ -410,6 +414,7 @@ function renderArtifacts(artifacts) {
       link.addEventListener('click', heartbeat);
       card.append(link);
     }
+    window.renderArtifactActions?.(card, artifact);
     root.append(card);
   }
 }
@@ -439,7 +444,7 @@ function renderReviews() {
 
 function updateReviewControls() {
   const hasArtifacts = Boolean(session?.artifacts?.length);
-  const enabled = hasArtifacts && !busy && session?.status !== 'running';
+  const enabled = hasArtifacts && !busy && !isProcessing();
   $('template-approved').disabled = !enabled;
   $('caseworker-button').disabled = !enabled || !session || Boolean(session.reviews?.caseworker);
   $('lawyer-button').disabled = !enabled || !session?.reviews?.caseworker || Boolean(session?.reviews?.lawyer);
@@ -451,6 +456,7 @@ function openRecord(recordId) {
   const record = session?.records?.find((item) => item.id === recordId);
   if (!record) return;
   editingRecord = record.id;
+  editingRecordRevision = session.revision;
   $('record-exclude').disabled = record.state === 'excluded';
   setText('record-save', record.state === 'excluded' ? '다시 포함 및 확인' : '값 확인 및 저장');
   setText('record-dialog-title', record.label || record.key);
@@ -500,28 +506,29 @@ async function heartbeat(event) {
   if (!session || Date.now() - lastHeartbeat < 30000) return;
   lastHeartbeat = Date.now();
   try { await api(sessionPath('/heartbeat'), { method: 'POST' }); }
-  catch { /* The next session poll shows an expired session. */ }
+  catch { /* A later refresh will show an unavailable case. */ }
 }
 
 $('file-input').addEventListener('change', (event) => chooseFiles(event.target.files));
-for (const type of ['dragenter', 'dragover']) $('drop-zone').addEventListener(type, (event) => { event.preventDefault(); if (!busy && session?.status !== 'running') $('drop-zone').classList.add('dragover'); });
+for (const type of ['dragenter', 'dragover']) $('drop-zone').addEventListener(type, (event) => { event.preventDefault(); if (!busy && session) $('drop-zone').classList.add('dragover'); });
 for (const type of ['dragleave', 'drop']) $('drop-zone').addEventListener(type, (event) => { event.preventDefault(); $('drop-zone').classList.remove('dragover'); });
-$('drop-zone').addEventListener('drop', (event) => { if (!busy && session?.status !== 'running') chooseFiles(event.dataTransfer.files); });
+$('drop-zone').addEventListener('drop', (event) => { if (!busy && session) chooseFiles(event.dataTransfer.files); });
 
 $('upload-form').addEventListener('submit', async (event) => {
   event.preventDefault();
-  if (!selectedFiles.length || busy) return;
+  if (!session || !selectedFiles.length || busy) return;
   show('error-notice', false);
   setBusy(true);
   try {
     const uploadFiles = [...selectedFiles];
     const pages = $('evidence-pages').value.trim();
-    if (!(await closeCurrentSession())) return;
     const form = new FormData();
     for (const file of uploadFiles) form.append('files', file);
     if (pages) form.append('evidence_pages', pages);
-    acceptSession(await api('/api/sessions', { method: 'POST', body: form }));
-    toast('자료가 접수되었습니다. 서류 자동화를 시작할 수 있습니다.');
+    acceptSession(await api(casePath('/documents'), { method: 'POST', body: form }));
+    chooseFiles([]);
+    $('file-input').value = '';
+    toast('자료를 저장했습니다. 변경한 사건 버전으로 자동화를 다시 확인합니다.');
   } catch (error) { errorMessage(error); }
   finally { setBusy(false); }
 });
@@ -552,7 +559,7 @@ $('run-button').addEventListener('click', async () => {
 
 $('end-session').addEventListener('click', async () => {
   setBusy(true);
-  try { if (await closeCurrentSession()) toast('세션을 종료하고 임시 자료를 삭제했습니다.'); }
+  try { if (await closeCurrentSession()) toast('사건을 닫았습니다. 저장된 내용은 사건 목록에서 다시 열 수 있습니다.'); }
   catch (error) { errorMessage(error); }
   finally { setBusy(false); }
 });
@@ -565,7 +572,7 @@ $('record-form').addEventListener('submit', async (event) => {
   if (!reason) { $('record-reason').focus(); return; }
   $('record-save').disabled = true;
   try {
-    const result = await api(sessionPath(`/records/${encodeURIComponent(editingRecord)}`), { method: 'PATCH', body: JSON.stringify({ value: value === '' ? null : value, confirmed: true, reason }) });
+    const result = await api(sessionPath(`/records/${encodeURIComponent(editingRecord)}`), { method: 'PATCH', body: JSON.stringify({ value: value === '' ? null : value, confirmed: true, reason, expected_revision: editingRecordRevision }) });
     generationChanged = true;
     $('template-approved').checked = false;
     acceptSession(result);
@@ -584,7 +591,7 @@ $('record-exclude').addEventListener('click', async () => {
   $('record-exclude').disabled = true;
   $('record-save').disabled = true;
   try {
-    const result = await api(sessionPath(`/records/${encodeURIComponent(editingRecord)}`), { method: 'PATCH', body: JSON.stringify({ value: record.value, confirmed: false, excluded: true, reason }) });
+    const result = await api(sessionPath(`/records/${encodeURIComponent(editingRecord)}`), { method: 'PATCH', body: JSON.stringify({ value: record.value, confirmed: false, excluded: true, reason, expected_revision: editingRecordRevision }) });
     generationChanged = true;
     $('template-approved').checked = false;
     acceptSession(result);
@@ -599,11 +606,11 @@ $('regenerate-button').addEventListener('click', async () => {
   show('error-notice', false);
   setBusy(true);
   try {
-    acceptSession(await api(sessionPath('/generate'), { method: 'POST', body: '{}' }));
+    acceptSession(await api(casePath('/generate'), { method: 'POST', body: '{}' }));
     generationChanged = false;
     $('template-approved').checked = false;
     render();
-    toast('현재 값으로 문서를 생성했습니다. 생성본을 확인해주세요.');
+    toast('현재 값으로 문서 생성을 요청했습니다. 처리 상태와 생성본을 확인해주세요.');
   } catch (error) { errorMessage(error); }
   finally { setBusy(false); }
 });
@@ -628,7 +635,7 @@ for (const role of ['caseworker', 'lawyer']) {
 document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => $(button.dataset.close).close()));
 document.querySelectorAll('.workspace-tabs a').forEach((link) => link.addEventListener('click', () => { document.querySelectorAll('.workspace-tabs a').forEach((item) => item.classList.toggle('active', item === link)); }));
 document.querySelectorAll('dialog').forEach((dialog) => dialog.addEventListener('click', (event) => { if (event.target === dialog) dialog.close(); }));
-$('page-image').addEventListener('error', () => toast('원본 페이지를 불러오지 못했습니다. 세션 상태를 확인해주세요.', true));
+$('page-image').addEventListener('error', () => toast('원본 페이지를 불러오지 못했습니다. 자료와 연결 상태를 확인해주세요.', true));
 document.addEventListener('pointerdown', heartbeat, { passive: true });
 document.addEventListener('keydown', heartbeat, { passive: true });
 document.addEventListener('wheel', heartbeat, { passive: true });

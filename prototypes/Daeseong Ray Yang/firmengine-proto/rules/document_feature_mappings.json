@@ -1,0 +1,570 @@
+{
+  "version": "seoul-document-purpose-v2",
+  "jurisdiction": "KR-SEOUL",
+  "status": "REVIEW_REQUIRED",
+  "note": "Purpose-based partial mappings from the supplied blueprint; no claim that every court attachment or current practice rule is implemented. Required evidence periods are resolved from the case, not inferred from income averaging periods.",
+  "requirements": [
+    {
+      "id": "identity",
+      "label": "신청인·주소 확인",
+      "scope": "case",
+      "income_types": [
+        "business",
+        "wage",
+        "mixed",
+        "unknown"
+      ],
+      "purpose_features": [
+        "jurisdiction.residence",
+        "person.natural_person"
+      ],
+      "period_policy": "application_context",
+      "alternatives": [
+        {
+          "all_of": [
+            "resident_registration"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K18",
+        "K19",
+        "K29"
+      ],
+      "document_basis": "COMMON_ATTACHMENT"
+    },
+    {
+      "id": "salary_income",
+      "label": "급여소득·반복수입 확인",
+      "scope": "case",
+      "income_types": [
+        "wage",
+        "mixed"
+      ],
+      "purpose_features": [
+        "income.monthly_net",
+        "income.recurring_evidence[]"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "condition": "primary_available",
+          "all_of": [
+            "withholding_certificate"
+          ]
+        },
+        {
+          "condition": "primary_unavoidably_unavailable",
+          "any_of": [
+            [
+              "employer_signed_salary_statement"
+            ],
+            [
+              "employer_signed_income_certificate"
+            ],
+            [
+              "salary_bank_statement_for_required_period"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K19",
+        "K20"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "business_registration",
+      "label": "영업소득 유형·사업장 확인",
+      "scope": "case",
+      "income_types": [
+        "business",
+        "mixed"
+      ],
+      "purpose_features": [
+        "income.sources[]",
+        "jurisdiction.main_business"
+      ],
+      "period_policy": "application_context",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "business_registration"
+            ],
+            [
+              "business_contract",
+              "platform_settlement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K19",
+        "K20"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "business_income",
+      "label": "사업매출·필요경비 및 산정기간 확인",
+      "scope": "case",
+      "income_types": [
+        "business",
+        "mixed"
+      ],
+      "purpose_features": [
+        "income.business_revenue",
+        "income.necessary_cost",
+        "income.period",
+        "income.recurring_evidence[]"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "business_tax_return",
+              "business_expense_ledger"
+            ],
+            [
+              "monthly_business_report",
+              "business_bank_statement"
+            ],
+            [
+              "platform_settlement",
+              "business_expense_ledger"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K19",
+        "K20",
+        "K27"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "household",
+      "label": "가족구성·실제부양 확인",
+      "scope": "case",
+      "income_types": [
+        "business",
+        "wage",
+        "mixed",
+        "unknown"
+      ],
+      "purpose_features": [
+        "household.members[]",
+        "dependents.support_evidence[]",
+        "household.recognized_count"
+      ],
+      "period_policy": "application_context",
+      "alternatives": [
+        {
+          "all_of": [
+            "family_relationship_certificate",
+            "household_support_evidence"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K19",
+        "K20",
+        "K21"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "debt_statement",
+      "label": "원계약·현채권자·원금·이자·성질 확인",
+      "scope": "debt",
+      "purpose_features": [
+        "debts[].origin_contract_id",
+        "debts[].current_creditor_id",
+        "debts[].principal",
+        "debts[].interest",
+        "debts[].amount_as_of",
+        "debts[].security_status",
+        "debts[].priority_status",
+        "debts[].estate_claim_status",
+        "debts[].dispute"
+      ],
+      "period_policy": "balance_as_of",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "debt_certificate"
+            ],
+            [
+              "loan_contract",
+              "debt_balance_statement"
+            ],
+            [
+              "judgment",
+              "current_debt_evidence"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "vehicle_valuation",
+      "label": "차량 소유·지분·시가·담보 확인",
+      "scope": "vehicle",
+      "purpose_features": [
+        "assets[].legal_owner",
+        "assets[].ownership_share",
+        "assets[].gross_value",
+        "assets[].valuation_as_of",
+        "assets[].valuation_method",
+        "assets[].secured_balance"
+      ],
+      "period_policy": "valuation_as_of",
+      "alternatives": [
+        {
+          "all_of": [
+            "vehicle_register",
+            "vehicle_market_evidence",
+            "secured_balance_evidence"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "property_valuation",
+      "label": "부동산 소유·시가·담보·임차권 확인",
+      "scope": "real_estate",
+      "purpose_features": [
+        "assets[].legal_owner",
+        "assets[].ownership_share",
+        "assets[].gross_value",
+        "assets[].valuation_as_of",
+        "assets[].valuation_method",
+        "assets[].secured_balance"
+      ],
+      "period_policy": "valuation_as_of",
+      "alternatives": [
+        {
+          "all_of": [
+            "real_estate_register",
+            "property_market_evidence",
+            "secured_balance_evidence"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "insurance_value",
+      "label": "보험 계약자·현재 해약환급가치 확인",
+      "scope": "insurance",
+      "purpose_features": [
+        "assets[].legal_owner",
+        "assets[].gross_value",
+        "assets[].valuation_as_of",
+        "assets[].secured_balance"
+      ],
+      "period_policy": "valuation_as_of",
+      "alternatives": [
+        {
+          "all_of": [
+            "insurance_policy",
+            "insurance_surrender_certificate",
+            "insurance_loan_statement"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "bank_balance",
+      "label": "계좌 소유·기준일 잔고·조회범위 확인",
+      "scope": "bank_account",
+      "purpose_features": [
+        "assets[].legal_owner",
+        "assets[].gross_value",
+        "assets[].valuation_as_of",
+        "coverage.account_periods[]"
+      ],
+      "period_policy": "balance_as_of",
+      "alternatives": [
+        {
+          "all_of": [
+            "bank_balance_certificate",
+            "bank_statement"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K09",
+        "K20"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "lease_value",
+      "label": "임차보증금 반환권·담보 및 주거비 확인",
+      "scope": "lease",
+      "purpose_features": [
+        "assets[].legal_owner",
+        "assets[].gross_value",
+        "assets[].secured_balance",
+        "assets[].valuation_method"
+      ],
+      "period_policy": "application_context",
+      "alternatives": [
+        {
+          "all_of": [
+            "lease_contract",
+            "lease_payment_evidence",
+            "secured_balance_evidence"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K09",
+        "K14",
+        "K20",
+        "K24"
+      ],
+      "document_basis": "CONDITIONAL_ATTACHMENT"
+    },
+    {
+      "id": "asset_inventory",
+      "label": "기타 재산의 존재·귀속·가액 확인",
+      "scope": "asset",
+      "purpose_features": [
+        "assets[].type",
+        "assets[].legal_owner",
+        "assets[].gross_value",
+        "assets[].valuation_method"
+      ],
+      "period_policy": "valuation_as_of",
+      "alternatives": [
+        {
+          "all_of": [
+            "asset_ownership_evidence",
+            "asset_valuation_evidence"
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION"
+    },
+    {
+      "id": "passive_income_rent",
+      "label": "임대수입 발생원인·기간·순액·반복성 확인",
+      "scope": "income_source",
+      "source_kinds": [
+        "rent"
+      ],
+      "purpose_features": [
+        "income_source.kind",
+        "income_source.net",
+        "income_source.period",
+        "income_source.recurring_evidence"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "rental_contract",
+              "rent_receipt_statement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K01",
+        "K19"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION",
+      "note": "소득으로 산정할 수 있는 권리인지, 보호 법률·반복성·기간·중복 여부는 검토한다. 급여를 자동으로 가용소득으로 인정하지 않는다."
+    },
+    {
+      "id": "passive_income_interest",
+      "label": "이자수입 발생원인·기간·순액·반복성 확인",
+      "scope": "income_source",
+      "source_kinds": [
+        "interest"
+      ],
+      "purpose_features": [
+        "income_source.kind",
+        "income_source.net",
+        "income_source.period",
+        "income_source.recurring_evidence"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "interest_income_statement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K01",
+        "K19"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION",
+      "note": "소득으로 산정할 수 있는 권리인지, 보호 법률·반복성·기간·중복 여부는 검토한다. 급여를 자동으로 가용소득으로 인정하지 않는다."
+    },
+    {
+      "id": "passive_income_dividend",
+      "label": "배당수입 발생원인·기간·순액·반복성 확인",
+      "scope": "income_source",
+      "source_kinds": [
+        "dividend"
+      ],
+      "purpose_features": [
+        "income_source.kind",
+        "income_source.net",
+        "income_source.period",
+        "income_source.recurring_evidence"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "dividend_income_statement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K01",
+        "K19"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION",
+      "note": "소득으로 산정할 수 있는 권리인지, 보호 법률·반복성·기간·중복 여부는 검토한다. 급여를 자동으로 가용소득으로 인정하지 않는다."
+    },
+    {
+      "id": "passive_income_pension",
+      "label": "연금수입 발생원인·기간·순액·반복성 확인",
+      "scope": "income_source",
+      "source_kinds": [
+        "pension"
+      ],
+      "purpose_features": [
+        "income_source.kind",
+        "income_source.net",
+        "income_source.period",
+        "income_source.recurring_evidence"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "pension_entitlement_certificate",
+              "pension_payment_statement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K01",
+        "K19"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION",
+      "note": "소득으로 산정할 수 있는 권리인지, 보호 법률·반복성·기간·중복 여부는 검토한다. 급여를 자동으로 가용소득으로 인정하지 않는다."
+    },
+    {
+      "id": "passive_income_benefit",
+      "label": "복지·사회보장 급여 발생원인·기간·순액·반복성 확인",
+      "scope": "income_source",
+      "source_kinds": [
+        "benefit",
+        "benefits"
+      ],
+      "purpose_features": [
+        "income_source.kind",
+        "income_source.net",
+        "income_source.period",
+        "income_source.recurring_evidence"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "benefit_decision",
+              "benefit_payment_statement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K01",
+        "K19"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION",
+      "note": "소득으로 산정할 수 있는 권리인지, 보호 법률·반복성·기간·중복 여부는 검토한다. 급여를 자동으로 가용소득으로 인정하지 않는다."
+    },
+    {
+      "id": "passive_income_other",
+      "label": "기타 반복수입 발생원인·기간·순액·반복성 확인",
+      "scope": "income_source",
+      "source_kinds": [
+        "other"
+      ],
+      "purpose_features": [
+        "income_source.kind",
+        "income_source.net",
+        "income_source.period",
+        "income_source.recurring_evidence"
+      ],
+      "period_policy": "income_evidence_period",
+      "alternatives": [
+        {
+          "any_of": [
+            [
+              "income_source_contract",
+              "income_payment_statement"
+            ]
+          ]
+        }
+      ],
+      "legal_basis": [
+        "K01",
+        "K19"
+      ],
+      "document_basis": "INTERNAL_VERIFICATION",
+      "note": "소득으로 산정할 수 있는 권리인지, 보호 법률·반복성·기간·중복 여부는 검토한다. 급여를 자동으로 가용소득으로 인정하지 않는다."
+    }
+  ]
+}

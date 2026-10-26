@@ -1,0 +1,68 @@
+{
+  "id": "firmengineLawWatch",
+  "name": "Firm Engine · official law watch",
+  "active": false,
+  "nodes": [
+    {
+      "id": "schedule",
+      "name": "Daily 09:00 Seoul",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "check",
+      "name": "Fetch compare validate inform",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        300,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/knowledge/check",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({token: $env.FIRMENGINE_INTERNAL_TOKEN}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Daily 09:00 Seoul": {
+      "main": [
+        [
+          {
+            "node": "Fetch compare validate inform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "timezone": "Asia/Seoul",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false
+  },
+  "pinData": {}
+}

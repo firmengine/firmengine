@@ -1,0 +1,33 @@
+{
+  "document_type": "salary_evidence",
+  "subject": "current_employment",
+  "period": "resolved_from_case_context",
+  "purpose_features": [
+    "income.monthly_net",
+    "income.recurring_evidence[]"
+  ],
+  "alternatives": [
+    {
+      "condition": "primary_available",
+      "all_of": [
+        "withholding_certificate"
+      ]
+    },
+    {
+      "condition": "primary_unavoidably_unavailable",
+      "any_of": [
+        [
+          "employer_signed_salary_statement"
+        ],
+        [
+          "employer_signed_income_certificate"
+        ],
+        [
+          "salary_bank_statement_for_required_period"
+        ]
+      ]
+    }
+  ],
+  "note": "예시. 서류기간과 소득평균기간은 별개이며 실제 해당성·예규·서울402호·보정명령에 따라 확정",
+  "must_not_request_again_if": "동일 대상·기간·목적을 충족하는 유효 증빙이 이미 존재함"
+}

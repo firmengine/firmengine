@@ -1,0 +1,17 @@
+{
+  "pages": [
+    {
+      "document_id": "synthetic-document",
+      "page": 6
+    },
+    {
+      "document_id": "synthetic-document",
+      "page": 7
+    }
+  ],
+  "document_types": {
+    "business_tax_return": "종합소득세·부가세 신고서 또는 소득금액증명",
+    "filed_form": "기작성·기제출 법원 서류",
+    "unknown": "판독 불가 또는 분류표에 없는 자료"
+  }
+}

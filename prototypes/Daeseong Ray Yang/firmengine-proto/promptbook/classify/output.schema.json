@@ -1,0 +1,59 @@
+{
+  "$defs": {
+    "PageRole": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "title": "Document Id",
+          "type": "string"
+        },
+        "page": {
+          "title": "Page",
+          "type": "integer"
+        },
+        "role": {
+          "enum": [
+            "evidence",
+            "filed_form",
+            "administrative",
+            "unknown"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "document_type": {
+          "title": "Document Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document_id",
+        "page",
+        "role",
+        "title",
+        "document_type"
+      ],
+      "title": "PageRole",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/PageRole"
+      },
+      "title": "Pages",
+      "type": "array"
+    }
+  },
+  "required": [
+    "pages"
+  ],
+  "title": "Classification",
+  "type": "object"
+}

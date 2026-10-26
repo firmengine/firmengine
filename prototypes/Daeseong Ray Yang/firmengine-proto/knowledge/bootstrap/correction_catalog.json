@@ -1,0 +1,2705 @@
+{
+  "version": "1.0.0",
+  "source_design_sha256": "5e95c0df40c41f5ed90579bfe81d8596576ab6bdc89aa8886d40deacca84909f",
+  "source_checked_on": "2026-10-26",
+  "coverage": {
+    "common_documents": 22,
+    "conditional_evidence": 28,
+    "additional_court_orders": 12,
+    "omission_detection": 24
+  },
+  "entries": [
+    {
+      "id": "DOC-01",
+      "title": "개인회생절차개시신청서",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "공통 신청서",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "법원 양식. 신청인·연락처·신청원인·재산·채무",
+      "original_cells": {
+        "ID": "D01",
+        "서류": "개인회생절차개시신청서",
+        "구분": "공통 신청서",
+        "작성·발급처 / 용도": "법원 양식. 신청인·연락처·신청원인·재산·채무"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-02",
+      "title": "개인회생채권자목록 및 필요한 부속명세",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "공통",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "모든 채권의 원인·금액·현채권자 주소. 담보·분쟁·전부명령 등 별도 내역",
+      "original_cells": {
+        "ID": "D02",
+        "서류": "개인회생채권자목록 및 필요한 부속명세",
+        "구분": "공통",
+        "작성·발급처 / 용도": "모든 채권의 원인·금액·현채권자 주소. 담보·분쟁·전부명령 등 별도 내역"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-03",
+      "title": "재산목록",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "공통",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "예금·보험·보증금·부동산·차량·미수금·퇴직급여·기타 권리와 평가·공제근거",
+      "original_cells": {
+        "ID": "D03",
+        "서류": "재산목록",
+        "구분": "공통",
+        "작성·발급처 / 용도": "예금·보험·보증금·부동산·차량·미수금·퇴직급여·기타 권리와 평가·공제근거"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-04",
+      "title": "수입 및 지출에 관한 목록",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "공통",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "월평균 소득·가구·부양·기본 및 추가생활비",
+      "original_cells": {
+        "ID": "D04",
+        "서류": "수입 및 지출에 관한 목록",
+        "구분": "공통",
+        "작성·발급처 / 용도": "월평균 소득·가구·부양·기본 및 추가생활비"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-05",
+      "title": "급여소득자·영업소득자 소명자료",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "소득 유형별 필수",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "근로·사업 지속성 증명. 아래 유형별 증빙",
+      "original_cells": {
+        "ID": "D05",
+        "서류": "급여소득자·영업소득자 소명자료",
+        "구분": "소득 유형별 필수",
+        "작성·발급처 / 용도": "근로·사업 지속성 증명. 아래 유형별 증빙"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-06",
+      "title": "진술서",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "공통",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "직업·주거·채무발생·지급곤란 경위 등 사실 중심 작성",
+      "original_cells": {
+        "ID": "D06",
+        "서류": "진술서",
+        "구분": "공통",
+        "작성·발급처 / 용도": "직업·주거·채무발생·지급곤란 경위 등 사실 중심 작성"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-07",
+      "title": "변제계획안 및 변제예정액표",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "별도 법정기한 준수",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "법원 양식. 재원·기간·채권별 배분·총액",
+      "original_cells": {
+        "ID": "D07",
+        "서류": "변제계획안 및 변제예정액표",
+        "구분": "별도 법정기한 준수",
+        "작성·발급처 / 용도": "법원 양식. 재원·기간·채권별 배분·총액"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-08",
+      "title": "자료제출목록에 기재된 자료 및 제출현황 정리",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "처리지침에 따른 자료 준비",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "해당 자료 제출과 면제·미제출 사유 관리. 목록 서식 자체의 제출은 현행 접수서식·명령 확인",
+      "original_cells": {
+        "ID": "D08",
+        "서류": "자료제출목록에 기재된 자료 및 제출현황 정리",
+        "구분": "처리지침에 따른 자료 준비",
+        "작성·발급처 / 용도": "해당 자료 제출과 면제·미제출 사유 관리. 목록 서식 자체의 제출은 현행 접수서식·명령 확인"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-09",
+      "title": "주민등록등본",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "공통 기본첨부",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "정부24·주민센터. 현주소·가구 관계",
+      "original_cells": {
+        "ID": "D09",
+        "서류": "주민등록등본",
+        "구분": "공통 기본첨부",
+        "작성·발급처 / 용도": "정부24·주민센터. 현주소·가구 관계"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-10",
+      "title": "주민등록초본, 가족관계·혼인관계증명서",
+      "group": "common_documents",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "실무 기본 준비 / 해당 보정",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "주소변동·부양·배우자 확인. 모든 세부 증명서를 동일한 법정필수로 표시하지 않음",
+      "original_cells": {
+        "ID": "D10",
+        "서류": "주민등록초본, 가족관계·혼인관계증명서",
+        "구분": "실무 기본 준비 / 해당 보정",
+        "작성·발급처 / 용도": "주소변동·부양·배우자 확인. 모든 세부 증명서를 동일한 법정필수로 표시하지 않음"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-11",
+      "title": "본인 지적전산자료조회결과서·지방세 세목별 과세증명서",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "서울 준칙상 재산검증 기본",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "지자체·관련 공적 발급서비스. 지역·기간·세목 범위 확인",
+      "original_cells": {
+        "ID": "D11",
+        "서류": "본인 지적전산자료조회결과서·지방세 세목별 과세증명서",
+        "구분": "서울 준칙상 재산검증 기본",
+        "작성·발급처 / 용도": "지자체·관련 공적 발급서비스. 지역·기간·세목 범위 확인"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-12",
+      "title": "국민건강보험 자격득실확인서·국민연금 산정용 가입내역확인서",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "서울 준칙상 소득 관련",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "국민건강보험공단·국민연금공단",
+      "original_cells": {
+        "ID": "D12",
+        "서류": "국민건강보험 자격득실확인서·국민연금 산정용 가입내역확인서",
+        "구분": "서울 준칙상 소득 관련",
+        "작성·발급처 / 용도": "국민건강보험공단·국민연금공단"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-13",
+      "title": "소득세 등 납부증명, 소득금액증명 등",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "적용 소득·세금에 따라",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "국세청·홈택스. 신고소득·법정공제의 근거",
+      "original_cells": {
+        "ID": "D13",
+        "서류": "소득세 등 납부증명, 소득금액증명 등",
+        "구분": "적용 소득·세금에 따라",
+        "작성·발급처 / 용도": "국세청·홈택스. 신고소득·법정공제의 근거"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-14",
+      "title": "재직증명서·고용 확인서 등",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "required_features",
+      "applicability": {
+        "income_types": [
+          "wage",
+          "mixed"
+        ]
+      },
+      "conditions": "급여소득자",
+      "required_features": [
+        "income_source.employer"
+      ],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [
+        {
+          "any_of": [
+            "employment_certificate",
+            "employer_confirmation_with_business_registration",
+            "equivalent_employment_evidence"
+          ]
+        }
+      ],
+      "blocking_policy": "mandatory_when_applicable",
+      "status": "official_source_verified",
+      "evidence_request": "사용자 발급. 고용주 사업자등록 첨부 확인서 또는 준하는 자료",
+      "original_cells": {
+        "ID": "D14",
+        "서류": "재직증명서·고용 확인서 등",
+        "구분": "급여소득자",
+        "작성·발급처 / 용도": "사용자 발급. 고용주 사업자등록 첨부 확인서 또는 준하는 자료"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": "2026-10-26",
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-15",
+      "title": "근로소득원천징수영수증",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "document_requirement",
+      "applicability": {
+        "income_types": [
+          "wage",
+          "mixed"
+        ]
+      },
+      "conditions": "급여소득자 원칙",
+      "required_features": [
+        "income.monthly_net",
+        "income.period",
+        "income.recurring_evidence[]"
+      ],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [
+        {
+          "all_of": [
+            "withholding_certificate"
+          ]
+        },
+        {
+          "condition": "primary_unavoidably_unavailable",
+          "any_of": [
+            "employer_signed_salary_statement",
+            "employer_signed_income_certificate",
+            "six_month_salary_bank_statement"
+          ]
+        }
+      ],
+      "blocking_policy": "mandatory_when_applicable",
+      "status": "official_source_verified",
+      "evidence_request": "불가피하면 사용자 서명 급여자료·소득증명 또는 최근 6개월 급여 통장내역",
+      "original_cells": {
+        "ID": "D15",
+        "서류": "근로소득원천징수영수증",
+        "구분": "급여소득자 원칙",
+        "작성·발급처 / 용도": "불가피하면 사용자 서명 급여자료·소득증명 또는 최근 6개월 급여 통장내역"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": "2026-10-26",
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-16",
+      "title": "사업자등록 및 매출·비용·소득 자료",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "document_requirement",
+      "applicability": {
+        "income_types": [
+          "business",
+          "mixed"
+        ]
+      },
+      "conditions": "영업소득자",
+      "required_features": [
+        "income.business_revenue",
+        "income.necessary_cost",
+        "income.period"
+      ],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [
+        {
+          "purpose": "income_amount",
+          "condition": "applicable_business_reporting_path_reviewed",
+          "any_of": [
+            "profit_loss_statement",
+            "monthly_business_income_report_previous_year"
+          ]
+        }
+      ],
+      "blocking_policy": "mandatory_when_applicable",
+      "status": "official_source_verified",
+      "evidence_request": "부가세 과세표준, 소득금액, 세금계산서, 카드매출, 손익자료 또는 직전 1년 월별 수입보고",
+      "original_cells": {
+        "ID": "D16",
+        "서류": "사업자등록 및 매출·비용·소득 자료",
+        "구분": "영업소득자",
+        "작성·발급처 / 용도": "부가세 과세표준, 소득금액, 세금계산서, 카드매출, 손익자료 또는 직전 1년 월별 수입보고"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": "2026-10-26",
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-17",
+      "title": "채권자별 부채증명·계약·판결 등",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "채무 소명",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "금융회사·개인채권자·공공기관·법원. 신용조회는 발굴 단서로 병행",
+      "original_cells": {
+        "ID": "D17",
+        "서류": "채권자별 부채증명·계약·판결 등",
+        "구분": "채무 소명",
+        "작성·발급처 / 용도": "금융회사·개인채권자·공공기관·법원. 신용조회는 발굴 단서로 병행"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-18",
+      "title": "재산별 잔고·시가·권리 확인",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "해당 보유자",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "아래 유형별 표에 따라 발급",
+      "original_cells": {
+        "ID": "D18",
+        "서류": "재산별 잔고·시가·권리 확인",
+        "구분": "해당 보유자",
+        "작성·발급처 / 용도": "아래 유형별 표에 따라 발급"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-19",
+      "title": "신청일 전 10년 이내 신청 사건 관련서류",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "해당자",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "사건번호·결정·종결일·취하/기각/폐지/면책 구분",
+      "original_cells": {
+        "ID": "D19",
+        "서류": "신청일 전 10년 이내 신청 사건 관련서류",
+        "구분": "해당자",
+        "작성·발급처 / 용도": "사건번호·결정·종결일·취하/기각/폐지/면책 구분"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-20",
+      "title": "신용회복위원회·캠코 등 채무조정 자료",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "해당자",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "신청·합의·실제 납부·남은채무 확인",
+      "original_cells": {
+        "ID": "D20",
+        "서류": "신용회복위원회·캠코 등 채무조정 자료",
+        "구분": "해당자",
+        "작성·발급처 / 용도": "신청·합의·실제 납부·남은채무 확인"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-21",
+      "title": "인지·송달료·예납금 납부 확인",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "접수·절차 관리",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "법원 사건별 현행 비용 안내와 납부명령 기준",
+      "original_cells": {
+        "ID": "D21",
+        "서류": "인지·송달료·예납금 납부 확인",
+        "구분": "접수·절차 관리",
+        "작성·발급처 / 용도": "법원 사건별 현행 비용 안내와 납부명령 기준"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DOC-22",
+      "title": "위임장 등 대리관계 자료",
+      "group": "common_documents",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "대리 신청시",
+      "required_features": [],
+      "document_basis": "baseline_or_case_conditioned",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "선임한 대리인의 적법한 위임·접수 서류",
+      "original_cells": {
+        "ID": "D22",
+        "서류": "위임장 등 대리관계 자료",
+        "구분": "대리 신청시",
+        "작성·발급처 / 용도": "선임한 대리인의 적법한 위임·접수 서류"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-01",
+      "title": "본인 소유 부동산",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "본인 소유 부동산",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "등기사항전부증명, 시가·실거래자료, 담보채무 잔액, 공유지분·임대차자료",
+      "original_cells": {
+        "상황": "본인 소유 부동산",
+        "준비할 서류": "등기사항전부증명, 시가·실거래자료, 담보채무 잔액, 공유지분·임대차자료",
+        "판단 목적": "소유권·실제 담보·임차인 우선권과 순가치"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-02",
+      "title": "전·월세 거주",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "전·월세 거주",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "본인 명의 계약서, 보증금 지급증거, 대출·질권·양도담보 계약, 월차임 지급",
+      "original_cells": {
+        "상황": "전·월세 거주",
+        "준비할 서류": "본인 명의 계약서, 보증금 지급증거, 대출·질권·양도담보 계약, 월차임 지급",
+        "판단 목적": "보증금 반환권, 담보 여부, 보호·면제, 추가주거비"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-03",
+      "title": "가족·지인 집 무상거주",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "가족·지인 집 무상거주",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "무상거주사실확인서, 작성자 신분증 사본 또는 인감증명 등",
+      "original_cells": {
+        "상황": "가족·지인 집 무상거주",
+        "준비할 서류": "무상거주사실확인서, 작성자 신분증 사본 또는 인감증명 등",
+        "판단 목적": "실제 거주 및 주거비. 보증금 유무"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-04",
+      "title": "차량·이륜차·건설기계",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "차량·이륜차·건설기계",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "등록원부, 중고시가, 할부·담보잔액·리스계약",
+      "original_cells": {
+        "상황": "차량·이륜차·건설기계",
+        "준비할 서류": "등록원부, 중고시가, 할부·담보잔액·리스계약",
+        "판단 목적": "소유자와 사용자를 구분, 잔존가치 평가"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-05",
+      "title": "예금·적금·청약·외화",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "예금·적금·청약·외화",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "계좌목록, 기준일 잔고, 필요 기간 거래내역",
+      "original_cells": {
+        "상황": "예금·적금·청약·외화",
+        "준비할 서류": "계좌목록, 기준일 잔고, 필요 기간 거래내역",
+        "판단 목적": "소액·휴면 포함 보유액과 큰 거래 추적"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-06",
+      "title": "보험",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "보험",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "가입정보, 계약자·수익자, 예상해약환급금확인서, 약관대출",
+      "original_cells": {
+        "상황": "보험",
+        "준비할 서류": "가입정보, 계약자·수익자, 예상해약환급금확인서, 약관대출",
+        "판단 목적": "납입보험료 대신 현재 반환청구권과 보호범위"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-07",
+      "title": "증권·펀드·비상장주식·출자금",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "증권·펀드·비상장주식·출자금",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "증권사 잔고·거래, 주주·출자증명, 평가자료",
+      "original_cells": {
+        "상황": "증권·펀드·비상장주식·출자금",
+        "준비할 서류": "증권사 잔고·거래, 주주·출자증명, 평가자료",
+        "판단 목적": "계좌잔고와 개별종목 중복 계산 방지"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-08",
+      "title": "가상자산",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "가상자산",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "국내·외 거래소 잔고·거래·입출금, 본인 지갑 이전내역",
+      "original_cells": {
+        "상황": "가상자산",
+        "준비할 서류": "국내·외 거래소 잔고·거래·입출금, 본인 지갑 이전내역",
+        "판단 목적": "실제 손실과 다른 곳으로 이전한 재산 구별"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-09",
+      "title": "일용·프리랜서·플랫폼",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "일용·프리랜서·플랫폼",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "계약·근무내역·정산서·입금·소득신고·지급자 확인",
+      "original_cells": {
+        "상황": "일용·프리랜서·플랫폼",
+        "준비할 서류": "계약·근무내역·정산서·입금·소득신고·지급자 확인",
+        "판단 목적": "신고 누락 여부와 반복수입·실제 필요비 확인"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-10",
+      "title": "최근 이직·휴직·복직·신규취업",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "최근 이직·휴직·복직·신규취업",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "종전·현 직장 급여, 근로계약, 입사일·복직일 증빙",
+      "original_cells": {
+        "상황": "최근 이직·휴직·복직·신규취업",
+        "준비할 서류": "종전·현 직장 급여, 근로계약, 입사일·복직일 증빙",
+        "판단 목적": "일시 감소와 장래 반복수입 구별"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-11",
+      "title": "사업운영",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "사업운영",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "매입매출·세금·사업계좌·장부·사업장 임대차·설비재고 시가",
+      "original_cells": {
+        "상황": "사업운영",
+        "준비할 서류": "매입매출·세금·사업계좌·장부·사업장 임대차·설비재고 시가",
+        "판단 목적": "소득·사업자산·직원채무 분리"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-12",
+      "title": "폐업",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "폐업",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "폐업사실증명, 보증금·권리금 정산, 설비·재고 처분·대금흐름",
+      "original_cells": {
+        "상황": "폐업",
+        "준비할 서류": "폐업사실증명, 보증금·권리금 정산, 설비·재고 처분·대금흐름",
+        "판단 목적": "폐업 후에도 남는 재산과 미수·미지급금"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-13",
+      "title": "퇴직금·퇴직연금·공제회",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "퇴직금·퇴직연금·공제회",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "예상퇴직금, 제도종류, 연금·공제 잔고, 중간정산·실제 지급",
+      "original_cells": {
+        "상황": "퇴직금·퇴직연금·공제회",
+        "준비할 서류": "예상퇴직금, 제도종류, 연금·공제 잔고, 중간정산·실제 지급",
+        "판단 목적": "일반 퇴직금채권·연금 수급권·예금 구분"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-14",
+      "title": "연금·공적 급여",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "연금·공적 급여",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "수급증명·입금자료·급여종류",
+      "original_cells": {
+        "상황": "연금·공적 급여",
+        "준비할 서류": "수급증명·입금자료·급여종류",
+        "판단 목적": "수입 지속성 및 수급권 보호 법률 구분"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-15",
+      "title": "가족·지인 채무",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "가족·지인 채무",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "차용증, 실제 돈 입금, 상환, 잔액·상대방 주소",
+      "original_cells": {
+        "상황": "가족·지인 채무",
+        "준비할 서류": "차용증, 실제 돈 입금, 상환, 잔액·상대방 주소",
+        "판단 목적": "실제 채무와 단순 생활비·증여 구별"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-16",
+      "title": "보증·연대채무·구상금",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "보증·연대채무·구상금",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "보증계약, 주채무 증명, 대위변제일·금액·잔액",
+      "original_cells": {
+        "상황": "보증·연대채무·구상금",
+        "준비할 서류": "보증계약, 주채무 증명, 대위변제일·금액·잔액",
+        "판단 목적": "현재·장래 구상과 원채권 중복 방지"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-17",
+      "title": "채권양도·추심회사 변경",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "채권양도·추심회사 변경",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "양도통지·채권자변동·현재 부채증명",
+      "original_cells": {
+        "상황": "채권양도·추심회사 변경",
+        "준비할 서류": "양도통지·채권자변동·현재 부채증명",
+        "판단 목적": "현재 채권자와 동일 원채권 연결"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-18",
+      "title": "국세·지방세·사회보험 미납",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "국세·지방세·사회보험 미납",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "세목·귀속기간·납부기한별 고지·체납내역",
+      "original_cells": {
+        "상황": "국세·지방세·사회보험 미납",
+        "준비할 서류": "세목·귀속기간·납부기한별 고지·체납내역",
+        "판단 목적": "재단·우선권·일반·비면책을 각각 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-19",
+      "title": "양육비·직원임금·퇴직금",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "양육비·직원임금·퇴직금",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "판결·조정조서·급여대장·체납·지급내역",
+      "original_cells": {
+        "상황": "양육비·직원임금·퇴직금",
+        "준비할 서류": "판결·조정조서·급여대장·체납·지급내역",
+        "판단 목적": "재단채권·비면책채권 및 월별 수행가능성"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-20",
+      "title": "소송·지급명령·압류·경매",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "소송·지급명령·압류·경매",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "소장·판결·확정·집행결정·사건번호·배당표",
+      "original_cells": {
+        "상황": "소송·지급명령·압류·경매",
+        "준비할 서류": "소장·판결·확정·집행결정·사건번호·배당표",
+        "판단 목적": "다툼채권, 송달, 중지·금지 및 담보실행"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-21",
+      "title": "이혼·재산분할",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "이혼·재산분할",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "혼인·가족관계, 판결·협의·재산이전·금전 지급",
+      "original_cells": {
+        "상황": "이혼·재산분할",
+        "준비할 서류": "혼인·가족관계, 판결·협의·재산이전·금전 지급",
+        "판단 목적": "진정한 분할·실질권리·부인권 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-22",
+      "title": "상속",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "상속",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "가족관계·사망, 상속재산·채무, 분할협의, 상속포기·한정승인 결정",
+      "original_cells": {
+        "상황": "상속",
+        "준비할 서류": "가족관계·사망, 상속재산·채무, 분할협의, 상속포기·한정승인 결정",
+        "판단 목적": "등기 전 권리 포함. 포기와 협의분할의 효과를 구별"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-23",
+      "title": "전세사기·보증금 미반환",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "전세사기·보증금 미반환",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "피해자등 결정, 임차권등기, 보증·경매·배당·소송·회수자료",
+      "original_cells": {
+        "상황": "전세사기·보증금 미반환",
+        "준비할 서류": "피해자등 결정, 임차권등기, 보증·경매·배당·소송·회수자료",
+        "판단 목적": "회수가능성 평가, 기간단축, 추후 회수 신고 조건"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-24",
+      "title": "최근 매각·증여·고액 출금",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "최근 매각·증여·고액 출금",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "계약·시가·입출금·사용처·잔액·대체취득",
+      "original_cells": {
+        "상황": "최근 매각·증여·고액 출금",
+        "준비할 서류": "계약·시가·입출금·사용처·잔액·대체취득",
+        "판단 목적": "현재 잔존가치와 적법 지출, 부인권·명의신탁 가능성"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-25",
+      "title": "추가 교육·의료·주거비",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "추가 교육·의료·주거비",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "진단·납부고지·영수증·치료계획·계약·지급",
+      "original_cells": {
+        "상황": "추가 교육·의료·주거비",
+        "준비할 서류": "진단·납부고지·영수증·치료계획·계약·지급",
+        "판단 목적": "필요성·지속성·한도·기본포함액 중복"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-26",
+      "title": "해외 재산·채무·근무",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "해외 재산·채무·근무",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "현지 계좌·등기·증권·계약·세금·번역",
+      "original_cells": {
+        "상황": "해외 재산·채무·근무",
+        "준비할 서류": "현지 계좌·등기·증권·계약·세금·번역",
+        "판단 목적": "소유·실질가치·환율기준일·조회 사각지대"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-27",
+      "title": "대여금·매출채권·공탁금·환급금·보상금",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "대여금·매출채권·공탁금·환급금·보상금",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "계약·송금·장부·정산·공탁·세금자료·판결",
+      "original_cells": {
+        "상황": "대여금·매출채권·공탁금·환급금·보상금",
+        "준비할 서류": "계약·송금·장부·정산·공탁·세금자료·판결",
+        "판단 목적": "회수할 권리와 실제 회수 가능액"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "COND-28",
+      "title": "기타 경제적 권리",
+      "group": "conditional_evidence",
+      "authority": "MIXED_SOURCE_REVIEW",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "기타 경제적 권리",
+      "required_features": [],
+      "document_basis": "fact_conditioned_evidence",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "회원권·지분·매각가능 권리·지식재산 수익 등 관련 증서",
+      "original_cells": {
+        "상황": "기타 경제적 권리",
+        "준비할 서류": "회원권·지분·매각가능 권리·지식재산 수익 등 관련 증서",
+        "판단 목적": "금전적 가치가 있는 권리를 포괄 질문으로 보완"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-01",
+      "title": "배우자 토지·세금 자료",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "배우자 토지·세금 자료",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "배우자 명의 지적전산자료·지방세 세목별 과세증명",
+      "original_cells": {
+        "항목": "배우자 토지·세금 자료",
+        "준칙상 확인 범위": "배우자 명의 지적전산자료·지방세 세목별 과세증명"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-02",
+      "title": "본인 예금 거래",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "본인 예금 거래",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "신청일 직전 1년",
+      "original_cells": {
+        "항목": "본인 예금 거래",
+        "준칙상 확인 범위": "신청일 직전 1년"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-03",
+      "title": "보험 가입·증권",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "보험 가입·증권",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "본인 및 배우자 보험가입내역조회·보험증권 사본",
+      "original_cells": {
+        "항목": "보험 가입·증권",
+        "준칙상 확인 범위": "본인 및 배우자 보험가입내역조회·보험증권 사본"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-04",
+      "title": "배우자 부동산 시가",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "배우자 부동산 시가",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "시세 또는 실거래 자료",
+      "original_cells": {
+        "항목": "배우자 부동산 시가",
+        "준칙상 확인 범위": "시세 또는 실거래 자료"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-05",
+      "title": "부동산 매매대금 사용",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "부동산 매매대금 사용",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "직전 2년 본인·배우자 매매가 있는 경우",
+      "original_cells": {
+        "항목": "부동산 매매대금 사용",
+        "준칙상 확인 범위": "직전 2년 본인·배우자 매매가 있는 경우"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-06",
+      "title": "배우자 임대차",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "배우자 임대차",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "배우자 명의 계약서",
+      "original_cells": {
+        "항목": "배우자 임대차",
+        "준칙상 확인 범위": "배우자 명의 계약서"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-07",
+      "title": "과거 주거지",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "과거 주거지",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "직전 5년 주거지 부동산 등기",
+      "original_cells": {
+        "항목": "과거 주거지",
+        "준칙상 확인 범위": "직전 5년 주거지 부동산 등기"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-08",
+      "title": "폐업 정산",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "폐업 정산",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "폐업증명·사업장계약·보증금·권리금·설비재고·처분대금 잔존·사용처",
+      "original_cells": {
+        "항목": "폐업 정산",
+        "준칙상 확인 범위": "폐업증명·사업장계약·보증금·권리금·설비재고·처분대금 잔존·사용처"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-09",
+      "title": "무상거주",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "무상거주",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "확인서와 작성자 인감증명 또는 신분증 사본",
+      "original_cells": {
+        "항목": "무상거주",
+        "준칙상 확인 범위": "확인서와 작성자 인감증명 또는 신분증 사본"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-10",
+      "title": "최근 이직·현 주거",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "최근 이직·현 주거",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "종전 급여액 자료·현 주거 확인",
+      "original_cells": {
+        "항목": "최근 이직·현 주거",
+        "준칙상 확인 범위": "종전 급여액 자료·현 주거 확인"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-11",
+      "title": "10년 내 과거 신청",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "10년 내 과거 신청",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "이전 채권자목록·변제계획·보정사항·종료원인 해소 사정",
+      "original_cells": {
+        "항목": "10년 내 과거 신청",
+        "준칙상 확인 범위": "이전 채권자목록·변제계획·보정사항·종료원인 해소 사정"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "ORDER-12",
+      "title": "개명·배우자",
+      "group": "additional_court_orders",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K18",
+        "K19",
+        "K20"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "개명·배우자",
+      "required_features": [],
+      "document_basis": "court_order_only",
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "source_review_required",
+      "evidence_request": "개명 소명 기본증명·배우자 유무 혼인관계증명",
+      "original_cells": {
+        "항목": "개명·배우자",
+        "준칙상 확인 범위": "개명 소명 기본증명·배우자 유무 혼인관계증명"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-01",
+      "title": "R01 정기 송금 상대방이 채권자목록에 없음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R01 정기 송금 상대방이 채권자목록에 없음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "송금 전후내역, 계약, 최초 수령·잔액",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R01 정기 송금 상대방이 채권자목록에 없음",
+        "확인 질문": "이자·원금 상환인가, 생활비·증여·거래대금인가?",
+        "추가 증빙": "송금 전후내역, 계약, 최초 수령·잔액",
+        "후속 처리(THEN)": "채무면 목록 추가 검토. 확인 전 채무·증여 중 하나로 확정하지 않음"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-02",
+      "title": "R02 신용조회에는 없지만 독촉·소송 문서가 있음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R02 신용조회에는 없지만 독촉·소송 문서가 있음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "독촉·양도·판결·부채증명",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R02 신용조회에는 없지만 독촉·소송 문서가 있음",
+        "확인 질문": "현재 채권자와 원계약은 무엇인가?",
+        "추가 증빙": "독촉·양도·판결·부채증명",
+        "후속 처리(THEN)": "누락 여부와 채권 승계 연결. 금액 다툼 표시"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-03",
+      "title": "R03 예금조회 0원인데 이자 출금이 반복",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R03 예금조회 0원인데 이자 출금이 반복",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "대출계약·실사용잔액·이자증명",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R03 예금조회 0원인데 이자 출금이 반복",
+        "확인 질문": "마이너스통장·담보대출이 연결되어 있는가?",
+        "추가 증빙": "대출계약·실사용잔액·이자증명",
+        "후속 처리(THEN)": "예금 0원을 무채무로 해석하지 않음. 한도와 사용액 분리"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-04",
+      "title": "R04 회사·가족의 대출이 본인에게 청구됨",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R04 회사·가족의 대출이 본인에게 청구됨",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "법인·보증계약·주채무·대위변제",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R04 회사·가족의 대출이 본인에게 청구됨",
+        "확인 질문": "연대보증·공동채무·대표자 개인책임이 있는가?",
+        "추가 증빙": "법인·보증계약·주채무·대위변제",
+        "후속 처리(THEN)": "자기 채무 여부와 장래 구상·현재 원채권 중복 검사"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-05",
+      "title": "R05 보험료 출금은 있으나 보험재산 없음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R05 보험료 출금은 있으나 보험재산 없음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "보험사별 계약·해약환급·약관대출",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R05 보험료 출금은 있으나 보험재산 없음",
+        "확인 질문": "누가 계약자·피보험자인가? 환급권은 누구에게 있는가?",
+        "추가 증빙": "보험사별 계약·해약환급·약관대출",
+        "후속 처리(THEN)": "본인 권리와 보호범위에 따른 재산 반영"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-06",
+      "title": "R06 증권사·거래소로 이체했는데 잔고자료 없음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R06 증권사·거래소로 이체했는데 잔고자료 없음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "잔고·매매·입출금·지갑 전송",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R06 증권사·거래소로 이체했는데 잔고자료 없음",
+        "확인 질문": "현재 보유, 실제 손실, 다른 곳 이전 중 무엇인가?",
+        "추가 증빙": "잔고·매매·입출금·지갑 전송",
+        "후속 처리(THEN)": "남은 자산과 실제 손실 분리. 서울408호 적용"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-07",
+      "title": "R07 지방세·자동차보험·담보이자와 재산목록 불일치",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R07 지방세·자동차보험·담보이자와 재산목록 불일치",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "등록·등기·과세기간·매각자료",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R07 지방세·자동차보험·담보이자와 재산목록 불일치",
+        "확인 질문": "과거 소유인가, 현재 본인 소유인가?",
+        "추가 증빙": "등록·등기·과세기간·매각자료",
+        "후속 처리(THEN)": "현재 귀속과 매각대금 추적. 납부사실만으로 소유 확정하지 않음"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-08",
+      "title": "R08 최근 이사했는데 종전 보증금 행방 불명",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R08 최근 이사했는데 종전 보증금 행방 불명",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "종전·현 계약, 반환·지급내역",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R08 최근 이사했는데 종전 보증금 행방 불명",
+        "확인 질문": "반환금이 새 보증금·생활비·채무상환 어디에 쓰였는가?",
+        "추가 증빙": "종전·현 계약, 반환·지급내역",
+        "후속 처리(THEN)": "잔존·대체재산과 사용처 연결. 보증금 이중 계상 방지"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-09",
+      "title": "R09 매각대금 입금 이후 큰 현금 인출",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R09 매각대금 입금 이후 큰 현금 인출",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "계약·수령증·상환증명·재입금·대체취득",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R09 매각대금 입금 이후 큰 현금 인출",
+        "확인 질문": "누가 얼마를 받았고 무엇에 사용했는가?",
+        "추가 증빙": "계약·수령증·상환증명·재입금·대체취득",
+        "후속 처리(THEN)": "미소명액을 특정하고 설명 요청. 즉시 은닉 확정 금지"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-10",
+      "title": "R10 배우자·가족에게 큰 금액 또는 명의 이전",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R10 배우자·가족에게 큰 금액 또는 명의 이전",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "양쪽 관련 계약·송금·가격·사유",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R10 배우자·가족에게 큰 금액 또는 명의 이전",
+        "확인 질문": "대가·취득자금·시점·실제 소유는 무엇인가?",
+        "추가 증빙": "양쪽 관련 계약·송금·가격·사유",
+        "후속 처리(THEN)": "명의신탁·부인권·진정한 채무변제 별도 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-11",
+      "title": "R11 폐업했는데 사업재산 0으로 신고",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R11 폐업했는데 사업재산 0으로 신고",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "폐업·양도·정산·장부·거래",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R11 폐업했는데 사업재산 0으로 신고",
+        "확인 질문": "보증금·권리금·설비·재고·미수금은 어떻게 정산했는가?",
+        "추가 증빙": "폐업·양도·정산·장부·거래",
+        "후속 처리(THEN)": "남은 반환·정산권을 자산에 추가"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-12",
+      "title": "R12 장기근속·최근 퇴직인데 퇴직 관련 자료 없음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R12 장기근속·최근 퇴직인데 퇴직 관련 자료 없음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "사용자 계산·연금 유형·IRP·입금",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R12 장기근속·최근 퇴직인데 퇴직 관련 자료 없음",
+        "확인 질문": "퇴직금 제도·예상액·중간정산·연금 이전은?",
+        "추가 증빙": "사용자 계산·연금 유형·IRP·입금",
+        "후속 처리(THEN)": "권리별 보호분과 지급 후 예금 구분"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-13",
+      "title": "R13 부모·배우자 사망 또는 상속분할이 확인됨",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R13 부모·배우자 사망 또는 상속분할이 확인됨",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "가족관계·상속재산·법원결정·분할",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R13 부모·배우자 사망 또는 상속분할이 확인됨",
+        "확인 질문": "미등기 상속·예금·보험금·상속채무가 있는가?",
+        "추가 증빙": "가족관계·상속재산·법원결정·분할",
+        "후속 처리(THEN)": "권리와 부채, 포기와 협의분할의 효과 구분"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-14",
+      "title": "R14 최근 이혼·재산분할",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R14 최근 이혼·재산분할",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "협의·판결·등기·이체",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R14 최근 이혼·재산분할",
+        "확인 질문": "실제 수령·이전한 재산과 미지급 청구권은?",
+        "추가 증빙": "협의·판결·등기·이체",
+        "후속 처리(THEN)": "자기 재산·분할채권·부인권 가능성 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-15",
+      "title": "R15 해외송금·외국근무·해외투자",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R15 해외송금·외국근무·해외투자",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "해외 명세·등록·계약·번역",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R15 해외송금·외국근무·해외투자",
+        "확인 질문": "본인 현지계좌·증권·부동산·채무가 있는가?",
+        "추가 증빙": "해외 명세·등록·계약·번역",
+        "후속 처리(THEN)": "국내 조회결과의 범위 밖임을 표시하고 별도 검증"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-16",
+      "title": "R16 소득신고보다 입금·생활지출이 큼",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R16 소득신고보다 입금·생활지출이 큼",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "지급자·거래원인·계약·월별 정산",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R16 소득신고보다 입금·생활지출이 큼",
+        "확인 질문": "대출·지원·매각인지, 신고되지 않은 반복소득인지?",
+        "추가 증빙": "지급자·거래원인·계약·월별 정산",
+        "후속 처리(THEN)": "수입·차입·자산변환 구분 후 가용소득 재산정"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-17",
+      "title": "R17 앱·플랫폼 거래 후 아직 정산되지 않음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R17 앱·플랫폼 거래 후 아직 정산되지 않음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "플랫폼별 정산·채권·계약",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R17 앱·플랫폼 거래 후 아직 정산되지 않음",
+        "확인 질문": "판매대금·보증예치·환불유보·수수료는?",
+        "추가 증빙": "플랫폼별 정산·채권·계약",
+        "후속 처리(THEN)": "월소득과 기준일 미수금에 각각 적절히 반영"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-18",
+      "title": "R18 세금·양육비·직원급여·벌금 미납",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R18 세금·양육비·직원급여·벌금 미납",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "기관고지·판결·급여대장·잔액",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R18 세금·양육비·직원급여·벌금 미납",
+        "확인 질문": "원인·귀속기간·납부기한·법적 성질은?",
+        "추가 증빙": "기관고지·판결·급여대장·잔액",
+        "후속 처리(THEN)": "재단·우선권·비면책·현재 지출 분류와 수행가능성 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-19",
+      "title": "R19 과거 사건 목록과 현재 목록 다름",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R19 과거 사건 목록과 현재 목록 다름",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "과거목록·결정·현재 부채증명",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R19 과거 사건 목록과 현재 목록 다름",
+        "확인 질문": "상환·면책·양도됐는가, 단순 누락인가?",
+        "추가 증빙": "과거목록·결정·현재 부채증명",
+        "후속 처리(THEN)": "차이별 사유와 증거를 저장. 최근 면책5년 제한도 점검"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-20",
+      "title": "R20 본인 외 명의 재산에 본인 대금이 사용됨",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R20 본인 외 명의 재산에 본인 대금이 사용됨",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "자금출처·계약·사용·귀속 자료",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R20 본인 외 명의 재산에 본인 대금이 사용됨",
+        "확인 질문": "대여금인가, 증여인가, 실제 자기 소유인가?",
+        "추가 증빙": "자금출처·계약·사용·귀속 자료",
+        "후속 처리(THEN)": "대여금 반환권·명의신탁·처분행위 중 해당 법률관계 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-21",
+      "title": "R21 기준일 사이에 잔액 급변",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R21 기준일 사이에 잔액 급변",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "동일 기준일 잔액과 사이 거래",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R21 기준일 사이에 잔액 급변",
+        "확인 질문": "새 대출·상환·가격변동·매각·중복수집 중 무엇인가?",
+        "추가 증빙": "동일 기준일 잔액과 사이 거래",
+        "후속 처리(THEN)": "한 날짜로 정규화하고 변동분의 성질별 재계산"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-22",
+      "title": "R22 추가생계비 영수증이 사업경비에도 포함",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R22 추가생계비 영수증이 사업경비에도 포함",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "원영수증·장부·환급내역",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R22 추가생계비 영수증이 사업경비에도 포함",
+        "확인 질문": "동일 비용인가? 보험·보조금으로 보전되는가?",
+        "추가 증빙": "원영수증·장부·환급내역",
+        "후속 처리(THEN)": "사업비·기본생계·추가생계의 중복 공제 제거"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-23",
+      "title": "R23 최근1년 무차입이라고 했으나 카드 현금서비스 존재",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R23 최근1년 무차입이라고 했으나 카드 현금서비스 존재",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "카드이용명세·대출내역",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R23 최근1년 무차입이라고 했으나 카드 현금서비스 존재",
+        "확인 질문": "물품구입인가, 현금성 대출인가?",
+        "추가 증빙": "카드이용명세·대출내역",
+        "후속 처리(THEN)": "신설 기간단축 요건의 카드 예외 해당 여부를 별도로 검토"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "DETECT-24",
+      "title": "R24 외상으로 빌려준 돈·공탁·환급을 잊음",
+      "group": "omission_detection",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K20",
+        "K27"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "conditions": "R24 외상으로 빌려준 돈·공탁·환급을 잊음",
+      "required_features": [],
+      "document_basis": "firm_screening",
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "source_review_required",
+      "evidence_request": "송금·공탁·세금·계약·회수자료",
+      "original_cells": {
+        "ID / 발견 신호(IF)": "R24 외상으로 빌려준 돈·공탁·환급을 잊음",
+        "확인 질문": "남에게 받을 돈이나 돌려받을 보증·세금이 있는가?",
+        "추가 증빙": "송금·공탁·세금·계약·회수자료",
+        "후속 처리(THEN)": "회수청구권과 객관적 회수가치를 자산목록에 연결"
+      },
+      "jurisdiction": "KR-SEOUL",
+      "source_verified_on": null,
+      "note": "해당성·자료 대상자·기간·목적을 검증한다. 목록 존재만으로 모든 사건의 필수 항목이 되지 않는다."
+    },
+    {
+      "id": "POLICY-OUTFLOW-500K",
+      "title": "50만원 이상 출금·이체 사용처",
+      "group": "explicit_product_extensions",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "USER_POLICY"
+      ],
+      "check_type": "transaction_outflow",
+      "applicability": {},
+      "required_features": [],
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "user_policy",
+      "threshold_won": "500000",
+      "note": "사용자 지정 업무정책이다. 법정 기준액이나 자동 부인·기각 규칙이 아니다. 본인 계좌 간 이체·중복을 먼저 구분한다."
+    },
+    {
+      "id": "TAX-CLASSIFICATION",
+      "title": "조세·사회보험 체납의 개별 법적 분류",
+      "group": "explicit_product_extensions",
+      "authority": "STATUTE",
+      "source_ids": [
+        "K10",
+        "K08"
+      ],
+      "check_type": "tax_arrears",
+      "applicability": {
+        "object_types": [
+          "tax_arrears"
+        ]
+      },
+      "required_features": [
+        "tax_arrears.tax_type",
+        "tax_arrears.period",
+        "tax_arrears.due_date",
+        "tax_arrears.priority_status",
+        "tax_arrears.estate_claim_status",
+        "tax_arrears.non_discharge_ground"
+      ],
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "review_required",
+      "note": "세목·발생원인·납부기한·절차시점·징수유예·쟁송별 분류. 체납만으로 일괄 기각 또는 전액 선납을 요구하지 않는다."
+    },
+    {
+      "id": "INCOME-MULTIPLE",
+      "title": "복수 직장·영업·부수입 누락 확인",
+      "group": "explicit_product_extensions",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K01"
+      ],
+      "check_type": "income_sources",
+      "applicability": {},
+      "required_features": [
+        "income.sources[]"
+      ],
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "review_required",
+      "questions": [
+        "직장 또는 지급자가 둘 이상인가?",
+        "근로·사업·임대소득이 함께 있는가?",
+        "이자·배당·연금·복지급여·플랫폼 정산·해외수입이 있는가?",
+        "일시 수입과 장래 반복 수입, 사업 필요비와 생활비가 구분되는가?"
+      ],
+      "income_categories": [
+        "wage",
+        "business",
+        "rent",
+        "interest",
+        "dividend",
+        "pension",
+        "welfare",
+        "platform",
+        "foreign",
+        "other"
+      ],
+      "note": "모든 입금을 가용소득으로 자동 인정하지 않는다. 급여의 종류·반복성·보호 법률·중복 공제는 별도 검토한다."
+    },
+    {
+      "id": "ASSET-VALUATION",
+      "title": "재산별 기준일·지분·시가·담보·보호근거",
+      "group": "explicit_product_extensions",
+      "authority": "SEOUL_PRACTICE",
+      "source_ids": [
+        "K09",
+        "K20"
+      ],
+      "check_type": "asset_valuation",
+      "applicability": {
+        "object_types": [
+          "asset"
+        ]
+      },
+      "required_features": [
+        "assets[].ownership_share",
+        "assets[].gross_value",
+        "assets[].valuation_as_of",
+        "assets[].valuation_method"
+      ],
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "review_required"
+    },
+    {
+      "id": "ASSET-DISPOSAL",
+      "title": "처분재산의 대금과 대체재산 중복 검토",
+      "group": "explicit_product_extensions",
+      "authority": "FIRM_POLICY",
+      "source_ids": [
+        "K09",
+        "K32"
+      ],
+      "check_type": "asset_disposal",
+      "applicability": {},
+      "required_features": [
+        "assets[].disposal_history[]",
+        "assets[].successor_asset_ids"
+      ],
+      "alternatives": [],
+      "blocking_policy": "warning",
+      "status": "review_required"
+    },
+    {
+      "id": "CASE-2013MA668",
+      "title": "보정 응답과 해소 구분",
+      "group": "public_case_observations",
+      "authority": "PUBLIC_JUDGMENT",
+      "source_ids": [
+        "CASE2013MA668"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "required_features": [],
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "official_source_verified",
+      "note": "판례의 전제 사실·절차시점·특별사정을 확인하는 검토 항목이다. 모든 사건의 일반 산식·자동 승인 조건이 아니다."
+    },
+    {
+      "id": "CASE-2013MA101",
+      "title": "최근 채무 비율만으로 자동 기각 금지",
+      "group": "public_case_observations",
+      "authority": "PUBLIC_JUDGMENT",
+      "source_ids": [
+        "K31"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "required_features": [],
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "official_source_verified",
+      "note": "판례의 전제 사실·절차시점·특별사정을 확인하는 검토 항목이다. 모든 사건의 일반 산식·자동 승인 조건이 아니다."
+    },
+    {
+      "id": "CASE-2010MA1179",
+      "title": "편파변제의 회복·계획수정 검토",
+      "group": "public_case_observations",
+      "authority": "PUBLIC_JUDGMENT",
+      "source_ids": [
+        "K32"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "required_features": [],
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "official_source_verified",
+      "note": "판례의 전제 사실·절차시점·특별사정을 확인하는 검토 항목이다. 모든 사건의 일반 산식·자동 승인 조건이 아니다."
+    },
+    {
+      "id": "CASE-2024DA221042",
+      "title": "인가 후 전액 대위변제의 누락 보증인 예외",
+      "group": "public_case_observations",
+      "authority": "PUBLIC_JUDGMENT",
+      "source_ids": [
+        "K26"
+      ],
+      "check_type": "manual",
+      "applicability": {},
+      "required_features": [],
+      "alternatives": [],
+      "blocking_policy": "manual_review",
+      "status": "official_source_verified",
+      "note": "판례의 전제 사실·절차시점·특별사정을 확인하는 검토 항목이다. 모든 사건의 일반 산식·자동 승인 조건이 아니다."
+    }
+  ],
+  "limits": [
+    "확인한 설계 항목을 보존한 목록이며 모든 법률·거래·세무 예외를 망라한다는 주장이 아니다.",
+    "수동 검토 항목은 해소로 자동 판정하지 않는다. 계산·서류 핵심요건의 미확인과 보완 경고를 분리한다.",
+    "2022년 자료제출목록·2024년 직무편람의 구 금액과 기간을 현행 법정 상수로 승격하지 않는다."
+  ]
+}

@@ -1,0 +1,97 @@
+{
+  "checked_on": "2026-10-26",
+  "private_data_included": false,
+  "scope": "official_public_snapshots_only",
+  "sources": [
+    {
+      "source_id": "CASE2013MA668",
+      "title": "대법원 2013마668 보정 시정 기회",
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?evtNo=2013%EB%A7%88668",
+      "authority": "PUBLIC_JUDGMENT",
+      "content_hash": "8914c1dbb2099c1e8d853cbb9d94fe65d8ccfe8fdf9e17d4562c55e297d0a913",
+      "valid_from": "2013-07-12",
+      "recorded_at": "2026-10-26T08:27:59.646467+00:00"
+    },
+    {
+      "source_id": "K01",
+      "title": "채무자회생법 제579조 — 신청자격·가용소득",
+      "url": "https://www.law.go.kr/lsLinkProc.do?joNo=057900&lsClsCd=L&lsNm=채무자회생및파산에관한법률&mode=11",
+      "authority": "STATUTE",
+      "content_hash": "334dd5f118fa2f683d87e8312ba365be43a1926c5f41ee3a96e20dee38de14da",
+      "valid_from": "2026-10-02",
+      "recorded_at": "2026-10-26T08:19:12.826317+00:00"
+    },
+    {
+      "source_id": "K04",
+      "title": "채무자회생법 제614조 — 변제계획 인가",
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771",
+      "authority": "STATUTE",
+      "content_hash": "55192fbe0d24ec7205219a345e95715d41c3b51343062251e6c8155f3f90cb56",
+      "valid_from": "2026-10-02",
+      "recorded_at": "2026-10-26T08:19:20.381962+00:00"
+    },
+    {
+      "source_id": "K19",
+      "title": "개인회생사건 처리지침 — 2026.7.1 시행",
+      "url": "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651",
+      "authority": "DIRECTIVE",
+      "content_hash": "2a64233a3eac044c2b83c9682b9b48520ae873f2cc0a22f620d1f29b39f375b2",
+      "valid_from": "2026-07-01",
+      "recorded_at": "2026-10-26T08:19:26.641230+00:00"
+    },
+    {
+      "source_id": "K20",
+      "title": "서울회생법원 실무준칙 — 2026.10.1자",
+      "url": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2",
+      "authority": "SEOUL_PRACTICE",
+      "content_hash": "3cb433e4ea1d575d7fa34c8bcf07e75c4afc91be1c4fc72464d8809ed374c7dd",
+      "valid_from": "2026-10-01",
+      "recorded_at": "2026-10-26T09:06:42.135549+00:00"
+    },
+    {
+      "source_id": "K21",
+      "title": "서울회생법원 2026년도 생계비 의결 공고",
+      "url": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=41&pageIndex=1&searchWord=&seqnum=19158",
+      "authority": "SEOUL_PRACTICE",
+      "content_hash": "2bdc1056d97ec2f79468b940f3d2daede933e048274aaf8a5a4d133b886987bf",
+      "valid_from": "2026-01-01",
+      "recorded_at": "2026-10-26T09:12:26.127591+00:00"
+    },
+    {
+      "source_id": "K26",
+      "title": "대법원 2024다221042 — 누락 보증인 대위변제 예외",
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=612877",
+      "authority": "PUBLIC_JUDGMENT",
+      "content_hash": "e6d8f61e5b0325063245c2e7e9a06d6b78d7b1ae8478c6daf5a0784b846df709",
+      "valid_from": "2025-10-16",
+      "recorded_at": "2026-10-26T08:28:04.595484+00:00"
+    },
+    {
+      "source_id": "K31",
+      "title": "대법원 2013마101 등 — 최근 대출·반복신청",
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=171784",
+      "authority": "PUBLIC_JUDGMENT",
+      "content_hash": "f2e4c1e94ae3155b3fbd392f0bee7616baa869deede8e578bebb5d684dfeceef",
+      "valid_from": "2013-03-15",
+      "recorded_at": "2026-10-26T08:28:10.493772+00:00"
+    },
+    {
+      "source_id": "K32",
+      "title": "대법원 2010마1179 — 편파변제 관련",
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=150036",
+      "authority": "PUBLIC_JUDGMENT",
+      "content_hash": "002eb62dd28041d3ede71731e0ac774fa02293ae8de538ba12b0f8945e3a0a38",
+      "valid_from": "2010-11-30",
+      "recorded_at": "2026-10-26T08:28:14.879058+00:00"
+    },
+    {
+      "source_id": "LAW_API",
+      "title": "현행·시행예정 법령 목록",
+      "url": "https://www.law.go.kr/DRF/lawSearch.do",
+      "authority": "OFFICIAL_REFERENCE",
+      "content_hash": "731336add6c731b017cad83f46a3277304013b14c199475f4f734f4991901a38",
+      "valid_from": null,
+      "recorded_at": "2026-10-26T08:19:31.595496+00:00"
+    }
+  ]
+}

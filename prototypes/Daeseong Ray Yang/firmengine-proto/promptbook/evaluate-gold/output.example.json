@@ -1,0 +1,28 @@
+{
+  "page_coverage": [
+    {
+      "page": 1,
+      "sections": [
+        "asset_classes_and_values"
+      ],
+      "legibility": "readable",
+      "notes": "Synthetic example, no customer data."
+    }
+  ],
+  "checks": [
+    {
+      "page": 1,
+      "category": "asset_classes_and_values",
+      "label": "예금 잔액",
+      "expected_text": "테스트 예금 잔액 100000원",
+      "numeric_values": [
+        "100000"
+      ],
+      "comparison_type": "scalar",
+      "scorable": true,
+      "unscorable_reason": "",
+      "interpretation_sensitive": false,
+      "critical": true
+    }
+  ]
+}

@@ -1,0 +1,190 @@
+[
+  {
+    "id": "D5100",
+    "title": "개인회생절차 개시신청서",
+    "path": "editable/D5100.docx",
+    "version": "retry-court-mapping-2026-10-26.1",
+    "source": {
+      "id": "D5100",
+      "name": "개인회생절차 개시신청서(2021.4.20.시행)(D5100).hwp",
+      "url": "https://file.scourt.go.kr/AttachDownload?downFile=%EA%B0%9C%EC%9D%B8%ED%9A%8C%EC%83%9D%EC%A0%88%EC%B0%A8+%EA%B0%9C%EC%8B%9C%EC%8B%A0%EC%B2%AD%EC%84%9C%282021.4.20.%EC%8B%9C%ED%96%89%29%28D5100%29.hwp&file=1671090749768_165229.hwp&path=004&seqnum=139",
+      "path": "originals/D5100.hwp",
+      "sha256": "004228d59c7205e60513988bca876948640021a31a8582fb33e45c4eb0617284",
+      "retrieved_date": "2026-10-26",
+      "status": "public_blank_source_not_expert_mapping_approval"
+    },
+    "jurisdiction": "서울회생법원 참고 공개 양식",
+    "mapping_status": "RECONSTRUCTED_REVIEW_REQUIRED",
+    "expert_approved": false,
+    "original_layout_preserved": false,
+    "mapped_fields": [
+      "applicant_name",
+      "resident_number",
+      "address",
+      "service_address",
+      "phone",
+      "representative",
+      "debt_cause",
+      "repayment_months",
+      "calculations.monthly_payment",
+      "refund_account"
+    ],
+    "note": "원본의 항목·절 구조를 반영한 편집형 초안. 원본 HWP 서식의 픽셀 동일 변환이 아니며 실제 제공 양식과 최종 대응 검수가 필요합니다."
+  },
+  {
+    "id": "D5106",
+    "title": "개인회생채권자목록",
+    "path": "editable/D5106.docx",
+    "version": "retry-court-mapping-2026-10-26.1",
+    "source": {
+      "id": "D5106",
+      "name": "개인회생채권자목록(D5106).hwp",
+      "url": "https://file.scourt.go.kr/AttachDownload?downFile=%EA%B0%9C%EC%9D%B8%ED%9A%8C%EC%83%9D%EC%B1%84%EA%B6%8C%EC%9E%90%EB%AA%A9%EB%A1%9D%28D5106%29.hwp&file=1671173144868_154544.hwp&path=004&seqnum=142",
+      "path": "originals/D5106.hwp",
+      "sha256": "cbf1b68d536be3c6c7a1317818c86720a4873e80f70a37e7196ec06dba36a4bb",
+      "retrieved_date": "2026-10-26",
+      "status": "public_blank_source_not_expert_mapping_approval"
+    },
+    "jurisdiction": "서울회생법원 참고 공개 양식",
+    "mapping_status": "RECONSTRUCTED_REVIEW_REQUIRED",
+    "expert_approved": false,
+    "original_layout_preserved": false,
+    "mapped_fields": [
+      "creditors[].name",
+      "creditors[].contract_id",
+      "creditors[].cause",
+      "creditors[].address",
+      "creditors[].principal",
+      "creditors[].interest",
+      "creditors[].security",
+      "creditors[].priority",
+      "creditors[].disputed"
+    ],
+    "note": "원본의 항목·절 구조를 반영한 편집형 초안. 원본 HWP 서식의 픽셀 동일 변환이 아니며 실제 제공 양식과 최종 대응 검수가 필요합니다."
+  },
+  {
+    "id": "D5101",
+    "title": "재산목록",
+    "path": "editable/D5101.docx",
+    "version": "retry-court-mapping-2026-10-26.1",
+    "source": {
+      "id": "D5101",
+      "name": "재산목록(D5101).hwp",
+      "url": "https://file.scourt.go.kr/AttachDownload?downFile=%EC%9E%AC%EC%82%B0%EB%AA%A9%EB%A1%9D%28D5101%29.hwp&file=1671089070565_162430.hwp&path=004&seqnum=84",
+      "path": "originals/D5101.hwp",
+      "sha256": "5edc2f84e7dda3ba53dbc9a68bf5d4f3fdaeff40a2f59ecd286b6e1f51dc8937",
+      "retrieved_date": "2026-10-26",
+      "status": "public_blank_source_not_expert_mapping_approval"
+    },
+    "jurisdiction": "서울회생법원 참고 공개 양식",
+    "mapping_status": "RECONSTRUCTED_REVIEW_REQUIRED",
+    "expert_approved": false,
+    "original_layout_preserved": false,
+    "mapped_fields": [
+      "assets[].label",
+      "assets[].kind",
+      "assets[].market_value",
+      "assets[].secured_balance",
+      "assets[].exempt_amount",
+      "assets[].valuation_source",
+      "assets[].valuation_date",
+      "calculations.liquidation_value"
+    ],
+    "note": "원본의 항목·절 구조를 반영한 편집형 초안. 원본 HWP 서식의 픽셀 동일 변환이 아니며 실제 제공 양식과 최종 대응 검수가 필요합니다."
+  },
+  {
+    "id": "D5103",
+    "title": "수입 및 지출에 관한 목록",
+    "path": "editable/D5103.docx",
+    "version": "retry-court-mapping-2026-10-26.1",
+    "source": {
+      "id": "D5103",
+      "name": "수입 및 지출에 관한 목록(D5103).hwp",
+      "url": "https://file.scourt.go.kr/AttachDownload?downFile=%EC%88%98%EC%9E%85+%EB%B0%8F+%EC%A7%80%EC%B6%9C%EC%97%90+%EA%B4%80%ED%95%9C+%EB%AA%A9%EB%A1%9D%28D5103%29.hwp&file=1671173271613_154751.hwp&path=004&seqnum=85",
+      "path": "originals/D5103.hwp",
+      "sha256": "5ba56a0305184956d383de5d0ec1846c2f9ec0e9b7f449562a6935d763986460",
+      "retrieved_date": "2026-10-26",
+      "status": "public_blank_source_not_expert_mapping_approval"
+    },
+    "jurisdiction": "서울회생법원 참고 공개 양식",
+    "mapping_status": "RECONSTRUCTED_REVIEW_REQUIRED",
+    "expert_approved": false,
+    "original_layout_preserved": false,
+    "mapped_fields": [
+      "incomes[].label",
+      "incomes[].kind",
+      "incomes[].period_start",
+      "incomes[].period_end",
+      "incomes[].monthly_gross",
+      "incomes[].monthly_expense",
+      "living_cost",
+      "deductions",
+      "family[]"
+    ],
+    "note": "원본의 항목·절 구조를 반영한 편집형 초안. 원본 HWP 서식의 픽셀 동일 변환이 아니며 실제 제공 양식과 최종 대응 검수가 필요합니다."
+  },
+  {
+    "id": "D5105",
+    "title": "진술서",
+    "path": "editable/D5105.docx",
+    "version": "retry-court-mapping-2026-10-26.1",
+    "source": {
+      "id": "D5105",
+      "name": "진술서(D5105).hwp",
+      "url": "https://file.scourt.go.kr/AttachDownload?downFile=%EC%A7%84%EC%88%A0%EC%84%9C%28D5105%29.hwp&file=1671174188494_160308.hwp&path=004&seqnum=86",
+      "path": "originals/D5105.hwp",
+      "sha256": "df23ec5c82ccdbfc09aa91cebccf32980fdec52d9a58099cbd4541d57215fe29",
+      "retrieved_date": "2026-10-26",
+      "status": "public_blank_source_not_expert_mapping_approval"
+    },
+    "jurisdiction": "서울회생법원 참고 공개 양식",
+    "mapping_status": "RECONSTRUCTED_REVIEW_REQUIRED",
+    "expert_approved": false,
+    "original_layout_preserved": false,
+    "mapped_fields": [
+      "education",
+      "incomes[]",
+      "marital_history",
+      "housing_details",
+      "enforcement_details",
+      "debt_cause",
+      "statement",
+      "past_proceedings"
+    ],
+    "note": "원본의 항목·절 구조를 반영한 편집형 초안. 원본 HWP 서식의 픽셀 동일 변환이 아니며 실제 제공 양식과 최종 대응 검수가 필요합니다."
+  },
+  {
+    "id": "D5110",
+    "title": "변제계획안",
+    "path": "editable/D5110.docx",
+    "version": "retry-court-mapping-2026-10-26.1",
+    "source": {
+      "id": "D5110",
+      "name": "변제계획안(가용소득만으로 변제하는 경우)(D5110).hwp",
+      "url": "https://file.scourt.go.kr/AttachDownload?downFile=%EB%B3%80%EC%A0%9C%EA%B3%84%ED%9A%8D%EC%95%88%28%EA%B0%80%EC%9A%A9%EC%86%8C%EB%93%9D%EB%A7%8C%EC%9C%BC%EB%A1%9C+%EB%B3%80%EC%A0%9C%ED%95%98%EB%8A%94+%EA%B2%BD%EC%9A%B0%29%28D5110%29.hwp&file=1671173705925_155505.hwp&path=004&seqnum=94",
+      "path": "originals/D5110.hwp",
+      "sha256": "93d683343accde4206faf38ef847b40a331b8ddff31965afa93bf87b6cab8f63",
+      "retrieved_date": "2026-10-26",
+      "status": "public_blank_source_not_expert_mapping_approval"
+    },
+    "jurisdiction": "서울회생법원 참고 공개 양식",
+    "mapping_status": "RECONSTRUCTED_REVIEW_REQUIRED",
+    "expert_approved": false,
+    "original_layout_preserved": false,
+    "mapped_fields": [
+      "repayment_months",
+      "first_payment_date",
+      "last_payment_date",
+      "payment_day",
+      "calculations.net_income",
+      "living_cost",
+      "deductions",
+      "calculations.monthly_payment",
+      "calculations.total_payment",
+      "calculations.allocations[]",
+      "calculations.liquidation_value",
+      "commissioner_fee_details"
+    ],
+    "note": "원본의 항목·절 구조를 반영한 편집형 초안. 원본 HWP 서식의 픽셀 동일 변환이 아니며 실제 제공 양식과 최종 대응 검수가 필요합니다."
+  }
+]

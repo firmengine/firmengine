@@ -1,0 +1,17 @@
+{
+  "metadata": {"synthetic": true,"case": "가상 김보람 / 동일 은행 복수 계약","prepared_before_generation":true,"scope":"문서 본문·반복표·파일 해시 확인. 실제 사건·법적 판단 정확도 검증 아님"},
+  "checks": [
+    {"id":"application-name","type":"table_rows","file":"D5100.docx","headers":["항목","기재 내용"],"allow_extra_rows":true,"expected":[["신청인","가상 김보람"],["현재 주소","서울시 가상구 가상로 1"]]},
+    {"id":"application-monthly","type":"paragraph_contains","file":"D5100.docx","expected":"월 변제예정액은 1,000,000원"},
+    {"id":"two-contracts-kept-separate","type":"table_rows","file":"D5106.docx","headers":["번호","채권자","계약 식별자","채권 원인","주소","원금","이자","담보","권리 / 다툼"],"expected":[[1,"가상은행","LOAN-001","운영자금 대출","서울시 가상은행 본점","10,000,000원","100,000원","무담보","일반"],[2,"가상은행","LOAN-002","생활자금 대출","서울시 가상은행 본점","20,000,000원","200,000원","무담보","일반"]]},
+    {"id":"creditor-sum-in-body","type":"table_rows","file":"D5106.docx","headers":["구분","금액"],"expected":[["원금 합계","30,000,000원"],["이자 합계","300,000원"],["채권현재액 합계","30,300,000원"]]},
+    {"id":"statement-only-provided-text","type":"paragraph_contains","file":"D5105.docx","expected":"거래처 폐업으로 매출이 줄었으며 현재 사업을 유지하고 있습니다."},
+    {"id":"plan-fixed-case-duration","type":"paragraph_contains","file":"D5110.docx","expected":"24개월간 변제할 계획"},
+    {"id":"plan-repeated-allocations","type":"table_rows","file":"D5110.docx","headers":["번호","채권자","계약 식별자","기준 채권액","월 변제예정액","총 변제예정액","확정 / 유보"],"expected":[[1,"가상은행","LOAN-001","10,000,000원","333,333원","8,000,000원","확정채권"],[2,"가상은행","LOAN-002","20,000,000원","666,667원","16,000,000원","확정채권"]]},
+    {"id":"xlsx-total-debt","type":"xlsx_cell","file":"CALCULATION_BASIS.xlsx","sheet":"계산근거","cell":"B11","expected":30300000},
+    {"id":"xlsx-months","type":"xlsx_cell","file":"CALCULATION_BASIS.xlsx","sheet":"계산근거","cell":"B12","expected":24},
+    {"id":"xlsx-contract-two-source","type":"xlsx_cell","file":"CALCULATION_BASIS.xlsx","sheet":"소득원별근거","cell":"B2","expected":"가상카페"},
+    {"id":"generation-hashes","type":"manifest_integrity","file":"generation_manifest.json"},
+    {"id":"actual-sample-court-quality","type":"paragraph_contains","file":"D5100.docx","unscorable":true,"reason":"새 프로젝트에는 실제 샘플 분리본과 독립 전문가 기준답을 입력하지 않았음"}
+  ]
+}

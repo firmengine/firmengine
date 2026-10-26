@@ -1,0 +1,13 @@
+{
+  "name": "firmengine-proto-retry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fresh local Firm Engine prototype based only on the current feature specification",
+  "scripts": {
+    "start": "python scripts/run_local.py",
+    "n8n": "python scripts/run_n8n.py",
+    "build:workflows": "python workflows/build_workflows.py"
+  },
+  "engines": {"node": ">=22.16"},
+  "optionalDependencies": {"n8n": "2.39.8"}
+}

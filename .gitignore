@@ -1,3 +1,9 @@
 .env
 .env.*
-!.env.example
+env.example
+env.example.*
+*.env
+*[sS][aA][mM][pP][lL][eE]*.[pP][dD][fF]
+*샘플*.[pP][dD][fF]
+.runtime/
+.local/

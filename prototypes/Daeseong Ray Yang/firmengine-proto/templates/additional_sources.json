@@ -1,0 +1,105 @@
+{
+  "version": "2026-10-26",
+  "sources": [
+    {
+      "code": "D5108",
+      "path": "originals/D5108.hwp",
+      "title": "개인회생재단에 속하지 않는 재산목록 제출서(D5108).hwp",
+      "sha256": "4cedbf7563be3373e4a863aa68da8b6792b8e5eb66d2501435aa4f0380cbc77e",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1671088621083_161701.hwp&downFile=%EA%B0%9C%EC%9D%B8%ED%9A%8C%EC%83%9D%EC%9E%AC%EB%8B%A8%EC%97%90+%EC%86%8D%ED%95%98%EC%A7%80+%EC%95%8A%EB%8A%94+%EC%9E%AC%EC%82%B0%EB%AA%A9%EB%A1%9D+%EC%A0%9C%EC%B6%9C%EC%84%9C%28D5108%29.hwp&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5108",
+      "path": "originals/D5108.pdf",
+      "title": "개인회생재단에 속하지 않는 재산목록 제출서(D5108).pdf",
+      "sha256": "fe7779974acef03335138e66b201dc766816ece7961c561d6f484d3171a2b31d",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1745818943676_144223.pdf&downFile=%EA%B0%9C%EC%9D%B8%ED%9A%8C%EC%83%9D%EC%9E%AC%EB%8B%A8%EC%97%90+%EC%86%8D%ED%95%98%EC%A7%80+%EC%95%8A%EB%8A%94+%EC%9E%AC%EC%82%B0%EB%AA%A9%EB%A1%9D+%EC%A0%9C%EC%B6%9C%EC%84%9C%28D5108%29.pdf&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5109",
+      "path": "originals/D5109.hwp",
+      "title": "면제재산 결정신청서(D5109).hwp",
+      "sha256": "caf8b54a0656e00e150630ffb8c89d4715acf6e63f3d0e134b4cb0c7f0468da7",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1671174065744_160105.hwp&downFile=%EB%A9%B4%EC%A0%9C%EC%9E%AC%EC%82%B0+%EA%B2%B0%EC%A0%95%EC%8B%A0%EC%B2%AD%EC%84%9C%28D5109%29.hwp&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5109",
+      "path": "originals/D5109.pdf",
+      "title": "면제재산 결정신청서(D5109).pdf",
+      "sha256": "fa0f3d4ab388140ca4555c0a5a32c197aff625b6765f528f0f6cbd82681b969a",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1745800740784_093900.pdf&downFile=%EB%A9%B4%EC%A0%9C%EC%9E%AC%EC%82%B0+%EA%B2%B0%EC%A0%95%EC%8B%A0%EC%B2%AD%EC%84%9C%28D5109%29.pdf&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5111",
+      "path": "originals/D5111.hwp",
+      "title": "변제계획안(가용소득과 재산처분으로 변제에 제공하는 경우)(D5111).hwp",
+      "sha256": "0e3b99fed68daa3b7cc4ea2638b6779ad085c01f46e556cd5bbec165dbe6ff95",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1671173550839_155230.hwp&downFile=%EB%B3%80%EC%A0%9C%EA%B3%84%ED%9A%8D%EC%95%88%28%EA%B0%80%EC%9A%A9%EC%86%8C%EB%93%9D%EA%B3%BC+%EC%9E%AC%EC%82%B0%EC%B2%98%EB%B6%84%EC%9C%BC%EB%A1%9C+%EB%B3%80%EC%A0%9C%EC%97%90+%EC%A0%9C%EA%B3%B5%ED%95%98%EB%8A%94+%EA%B2%BD%EC%9A%B0%29%28D5111%29.hwp&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5111",
+      "path": "originals/D5111.pdf",
+      "title": "변제계획안(가용소득과 재산처분으로 변제에 제공하는 경우)(D5111).pdf",
+      "sha256": "46880d7032f10d9e81cfa3d82d621ef9a5c92fee26e2e4fa9a26366436139fd6",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1745818849197_144049.pdf&downFile=%EB%B3%80%EC%A0%9C%EA%B3%84%ED%9A%8D%EC%95%88%28%EA%B0%80%EC%9A%A9%EC%86%8C%EB%93%9D%EA%B3%BC+%EC%9E%AC%EC%82%B0%EC%B2%98%EB%B6%84%EC%9C%BC%EB%A1%9C+%EB%B3%80%EC%A0%9C%EC%97%90+%EC%A0%9C%EA%B3%B5%ED%95%98%EB%8A%94+%EA%B2%BD%EC%9A%B0%29%28D5111%29.pdf&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5113",
+      "path": "originals/D5113.hwp",
+      "title": "중지명령 신청서(D5113).hwp",
+      "sha256": "f7db6a956fb8536cba01961bc354f0a82434018468cd8c33533f58063ddc524b",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1671088471777_161431.hwp&downFile=%EC%A4%91%EC%A7%80%EB%AA%85%EB%A0%B9+%EC%8B%A0%EC%B2%AD%EC%84%9C%28D5113%29.hwp&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5113",
+      "path": "originals/D5113.pdf",
+      "title": "중지명령 신청서(D5113).pdf",
+      "sha256": "d0272d3fa9280134ef3035913ed52d12817c2b720e20b3f98bd12b669f4f5cd7",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1745818230252_143030.pdf&downFile=%EC%A4%91%EC%A7%80%EB%AA%85%EB%A0%B9+%EC%8B%A0%EC%B2%AD%EC%84%9C%28D5113%29.pdf&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5114",
+      "path": "originals/D5114.hwp",
+      "title": "금지명령 신청서(D5114).hwp",
+      "sha256": "8eab8a8651953be86c164efe0e9f5b67137855e49b622eb582e57210000ed2a4",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1671171040023_151040.hwp&downFile=%EA%B8%88%EC%A7%80%EB%AA%85%EB%A0%B9+%EC%8B%A0%EC%B2%AD%EC%84%9C%28D5114%29.hwp&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    },
+    {
+      "code": "D5114",
+      "path": "originals/D5114.pdf",
+      "title": "금지명령 신청서(D5114).pdf",
+      "sha256": "7659d9aad811e8bff35f4e35bb447dc5c625944b9f8f8936ed7db08032abb609",
+      "url": "https://file.scourt.go.kr/AttachDownload?path=004&file=1745818615498_143655.pdf&downFile=%EA%B8%88%EC%A7%80%EB%AA%85%EB%A0%B9+%EC%8B%A0%EC%B2%AD%EC%84%9C%28D5114%29.pdf&seqnum=",
+      "retrieved_at": "2026-10-26",
+      "source_listing": "https://www.scourt.go.kr/nm/minwon/doc/DocListAction.work?min_gubun=l",
+      "applicability_status": "review_required"
+    }
+  ]
+}

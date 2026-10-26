@@ -1,0 +1,55 @@
+{
+  "origin": "user-supplied blueprint",
+  "transferred_spec_directory": "rules",
+  "replacement_architecture": "docs/ARCHITECTURE.md",
+  "files": [
+    {
+      "path": "README.txt",
+      "sha256": "7433bd5c4200586855a5ec6ee82b21a48c39c0caadd0b21dc7b07333985ce886"
+    },
+    {
+      "path": "reference/deterministic_calculators.py",
+      "sha256": "fdeefdd68656e96857efea89548db9641aebdd3d1257698a359b5bf8e1cfc7f6"
+    },
+    {
+      "path": "reference/README.md",
+      "sha256": "e48447805abfa79879e5f1094fee0621514828fecd1c694f706ac8eb07774dd9"
+    },
+    {
+      "path": "reference/test_deterministic_calculators.py",
+      "sha256": "1f9ae2dabdb3389c6d1ca405635d4f8f599faccb8da9d2bc1f649f4afb449e81"
+    },
+    {
+      "path": "seoul_legal_reference.html",
+      "sha256": "5e95c0df40c41f5ed90579bfe81d8596576ab6bdc89aa8886d40deacca84909f"
+    },
+    {
+      "path": "spec/assertion_example.json",
+      "sha256": "377432ea378bd00e679d2ea28696e28375f8d94e15d045a2b8a549ecc681bedf"
+    },
+    {
+      "path": "spec/document_requirement_example.json",
+      "sha256": "ca365e864544349714319eabde889e7009faf3a3c196a74b4022894b500e53f7"
+    },
+    {
+      "path": "spec/event_contract.json",
+      "sha256": "dc66ec07318ecae08f7a8ffcb05bc946b78c8e90cdd0d9c34fa19fb27a376a9f"
+    },
+    {
+      "path": "spec/feature_catalog.json",
+      "sha256": "5b849ee4d1526c5be7fc47560fba409d7f362d2d9265051be18c6d2947034afe"
+    },
+    {
+      "path": "spec/lawgraph_rule_examples.json",
+      "sha256": "92fa81583c636657b2cdf8b40416a2d61956ac702f40751dac4c894ef3edc825"
+    },
+    {
+      "path": "validation.txt",
+      "sha256": "6caa6d6a2d8c6e035ccae35d5e36596a17eddabedddc5d85407e4cf7cfe9915d"
+    },
+    {
+      "path": "workflow_design.html",
+      "sha256": "77dc8dfc8b96e1a798287494be9711ce51baa41596b01519137a02db9eb0c081"
+    }
+  ]
+}

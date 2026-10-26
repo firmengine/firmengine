@@ -1,0 +1,74 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "summary": {
+      "title": "Summary",
+      "type": "string"
+    },
+    "semantic_change": {
+      "title": "Semantic Change",
+      "type": "boolean"
+    },
+    "effective_date": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Effective Date"
+    },
+    "application_date": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Application Date"
+    },
+    "date_evidence": {
+      "title": "Date Evidence",
+      "type": "string"
+    },
+    "affected_features": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Affected Features",
+      "type": "array"
+    },
+    "exception_notes": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Exception Notes",
+      "type": "array"
+    },
+    "recommendation": {
+      "enum": [
+        "reference_only",
+        "parameter_candidate",
+        "review_required"
+      ],
+      "title": "Recommendation",
+      "type": "string"
+    }
+  },
+  "required": [
+    "summary",
+    "semantic_change",
+    "effective_date",
+    "application_date",
+    "date_evidence",
+    "affected_features",
+    "exception_notes",
+    "recommendation"
+  ],
+  "title": "ChangePreview",
+  "type": "object"
+}

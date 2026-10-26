@@ -1,0 +1,4 @@
+{
+  "type": "object",
+  "description": "Runtime strict schemas for connected roles are defined in app.pipeline.CLASSIFY_SCHEMA and EXTRACT_SCHEMA. Other agents are editable planned roles, not connected calls."
+}

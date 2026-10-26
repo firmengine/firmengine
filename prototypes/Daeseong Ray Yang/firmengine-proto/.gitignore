@@ -8,3 +8,5 @@ __pycache__/
 *.pyc
 *.log
 evaluation/private/
+.env.example
+sample.pdf

@@ -1,0 +1,35 @@
+{
+  "run_name": "baseline-002",
+  "generated_export_sha256": "f00485af0f11fa2608ba2d0968b5b840c8b61cc11824e676b745619e6f6efb6f",
+  "source_sha256": "1f5d24578c8c16afbcf46f8cf0385e0233d740566ce849bebfe6824f96c6f087",
+  "rubric_sha256": "a6d869f578451bb52bbe8b6bb4dbce3d28b84d039e2b0519d2ecf97d5ebb5d80",
+  "frozen_golden_sha256": "4cc625a09b417ce6b9b846351e9ac8dd8bcb0498f1ad24201ca17c181f46cec9",
+  "artifact_set_sha256": "d95a045f93b5d99bc6a64bfce36b1cebfeca62252264af7f84f792446ed47e5f",
+  "judge_prompt_sha256": "54e3dbc75bb53f11389b66dd863e9e3edacfa9087d76b419751fd8d351edb328",
+  "generator_promptbook": [
+    {
+      "agent": "extract",
+      "version": "1.0.0",
+      "sha256": "9efceb95d69d3dab2df392d6ef96355939c5939bc6284561fc406262adc15d78",
+      "file_hashes": {
+        "config.json": "f8ff830310a90e66a25e653c1b40c0c4eb2a8597b8d3cc5990d64a26a87a0ce8",
+        "system.md": "5e8a54414ed0c42a64aab51c3940d4bd4d0f606c0098078d1d3ba8d51f5c1ef6",
+        "body.md": "608e6187acd09e2f2455720fe425fd5d6b510026ad4a50d43acd7fbf7027a454",
+        "input.schema.json": "d93fe8ed2ceffeed67ad68483b1404b9d051bd32420409ae51d6af200b008b64",
+        "output.schema.json": "2fe37ec15530d230aebf76d9d9c040c48e90c809f47119c87c35b300c1809db6"
+      },
+      "model": "gpt-6-luna",
+      "calls": 23
+    }
+  ],
+  "evaluator_code_sha256": {
+    "evaluate_sample.py": "925039494294571faa93d703caa7ce3407757055d03e6156cd08290bc5308c49",
+    "submission_quality.py": "7489f6f778e8e6a63c6cbc7d17403a33f32476333655aaa013ff382cf56bc23f"
+  },
+  "diagnostic_checker_corrections": [
+    "Corporate (ju) abbreviation normalized before punctuation removal; synthetic regression covers Korean company notations."
+  ],
+  "fixed_target_count": 227,
+  "fixed_scorable_target_count": 212,
+  "criterion_changed": false
+}

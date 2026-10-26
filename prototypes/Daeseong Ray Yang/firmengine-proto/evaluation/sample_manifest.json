@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_filename": "sample.pdf",
+  "source_filename": "sample_masking.pdf",
   "source_sha256": "1f5d24578c8c16afbcf46f8cf0385e0233d740566ce849bebfe6824f96c6f087",
   "source_bytes": 63076347,
   "total_pages": 118,
@@ -368,5 +368,6 @@
     "Never resolve missing legal judgments by copying holdout values into generation inputs.",
     "Report raw submitted totals separately from deterministic arithmetic consistency.",
     "Use redacted aggregate reports; keep person-level expected values and generated outputs only in ignored local runtime storage."
-  ]
+  ],
+  "source_relative_path": "sample_masking.pdf"
 }

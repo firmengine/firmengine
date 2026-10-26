@@ -24,7 +24,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 EVALUATION = ROOT / "evaluation"
 PRIVATE = ROOT / ".runtime" / "evaluation"
-SAMPLE = ROOT.parent / "sample.pdf"
+SAMPLE = ROOT / "sample_masking.pdf"
 MODEL = "gpt-6-luna"
 FIELD_KEYS = [
     "client_name", "court_name", "business_name", "household_size",
@@ -249,7 +249,11 @@ def extract_gold(sample: Path, force: bool = False, refresh_batch: str | None = 
 
 
 def normalized_text(value: Any) -> str:
-    return re.sub(r"[\s,\-()㈜]", "", str(value or "")).replace("주식회사", "").casefold()
+    text = str("" if value is None else value)
+    # Remove a complete corporate abbreviation before stripping punctuation;
+    # otherwise '(주)' incorrectly becomes an extra character in the entity name.
+    text = re.sub(r"\(\s*주\s*\)|（\s*주\s*）|㈜|주식회사", "", text)
+    return re.sub(r"[\s,\-()（）]", "", text).casefold()
 
 
 def number(value: Any) -> Decimal | None:
@@ -275,7 +279,7 @@ def equal_values(left: Any, right: Any) -> bool:
 def find_field(generated: dict, key: str) -> tuple[Any, str, list]:
     keys = ALIASES.get(key, [key])
     entries = generated.get("records", []) + generated.get("calculations", []) + generated.get("fields", [])
-    matches = [x for x in entries if x.get("key") in keys]
+    matches = [x for x in entries if x.get("key") in keys and x.get("state") not in ("excluded", "rejected", "superseded")]
     if matches:
         valued = [x for x in matches if x.get("value") is not None and str(x.get("value")).strip()]
         distinct = {normalized_text(x.get("value")) for x in valued}
@@ -285,8 +289,8 @@ def find_field(generated: dict, key: str) -> tuple[Any, str, list]:
         return entry.get("value"), str(entry.get("state", entry.get("status", "unknown"))), entry.get("sources", [])
     # Totals may be deterministically reconstructed only from generated creditor rows.
     if key in ["debt_principal_total", "debt_interest_total", "debt_total"]:
-        principals = [x for x in generated.get("records", []) if x.get("key") == "creditor_principal"]
-        interests = [x for x in generated.get("records", []) if x.get("key") == "creditor_interest"]
+        principals = [x for x in generated.get("records", []) if x.get("key") == "creditor_principal" and x.get("state") not in ("excluded", "rejected", "superseded")]
+        interests = [x for x in generated.get("records", []) if x.get("key") == "creditor_interest" and x.get("state") not in ("excluded", "rejected", "superseded")]
         selected = principals if key == "debt_principal_total" else interests if key == "debt_interest_total" else principals + interests
         by_identity = {}
         for entry in selected:
@@ -307,6 +311,9 @@ def find_field(generated: dict, key: str) -> tuple[Any, str, list]:
 
 def artifact_rows(generated: dict) -> tuple[list[dict], list[str]]:
     from docx import Document
+    from docx.oxml.ns import qn
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
     from openpyxl import load_workbook
     all_rows, warnings = [], []
     directory = Path(generated.get("artifact_dir", PRIVATE / "artifacts")).resolve()
@@ -322,12 +329,22 @@ def artifact_rows(generated: dict) -> tuple[list[dict], list[str]]:
         try:
             if path.suffix.lower() == ".docx":
                 doc = Document(path)
-                lines = [p.text for p in doc.paragraphs if p.text.strip()]
-                lines += [" | ".join(c.text for c in row.cells) for table in doc.tables for row in table.rows]
+                lines = []
+                for block in doc.element.body.iterchildren():
+                    if block.tag == qn("w:p"):
+                        paragraph = Paragraph(block, doc)
+                        heading = re.sub(r"\s+", "", paragraph.text)
+                        if heading.startswith(("검토·출처대조표", "검토출처대조표", "작성항목과원문근거", "증빙대조부록")):
+                            break
+                        if paragraph.text.strip():
+                            lines.append(paragraph.text)
+                    elif block.tag == qn("w:tbl"):
+                        lines.extend(" | ".join(c.text for c in row.cells) for row in Table(block, doc).rows)
             elif path.suffix.lower() == ".xlsx":
                 book = load_workbook(path, read_only=True, data_only=True)
                 lines = [" | ".join(str(c) for c in row if c is not None)
-                         for sheet in book for row in sheet.iter_rows(values_only=True)]
+                         for sheet in book if sheet.title in ("계산근거", "채권자", "재산", "월별매출경비")
+                         for row in sheet.iter_rows(values_only=True)]
                 book.close()
             else:
                 continue
@@ -386,6 +403,25 @@ def cited_pages(generated: dict) -> set[int]:
     return pages
 
 
+def creditor_values(generated: dict) -> dict:
+    grouped = {}
+    for record in generated.get("records", []):
+        if record.get("key") not in ("creditor_principal", "creditor_interest") or record.get("state") in ("excluded", "rejected", "superseded"):
+            continue
+        name = normalized_text(record.get("entity", ""))
+        field = record["key"].removeprefix("creditor_")
+        grouped.setdefault(name, {}).setdefault(field, []).append(record.get("value"))
+    result = {}
+    for name, fields in grouped.items():
+        result[name] = {}
+        for field, values in fields.items():
+            if any(value is None for value in values) or len({normalized_text(value) for value in values}) != 1:
+                result[name][field] = None
+            else:
+                result[name][field] = values[0]
+    return result
+
+
 def compare(golden_path: Path, generated_path: Path) -> dict:
     golden, generated = read_json(golden_path), read_json(generated_path)
     manifest = read_json(EVALUATION / "sample_manifest.json")
@@ -414,11 +450,7 @@ def compare(golden_path: Path, generated_path: Path) -> dict:
                 result["status"] = "match" if equal_values(value, target["value"]) else "different"
                 result["artifact_status"] = artifact_field_status(artifacts, target["key"], value, target["source_label"])
         field_results.append(result)
-    creditor_rows = {}
-    for record in generated.get("records", []):
-        if record.get("key") in ["creditor_principal", "creditor_interest"]:
-            name = normalized_text(record.get("entity", ""))
-            creditor_rows.setdefault(name, {})[record["key"].removeprefix("creditor_")] = record.get("value")
+    creditor_rows = creditor_values(generated)
     creditor_results = []
     for i, target in enumerate(golden["creditor_targets"], 1):
         candidate = creditor_rows.get(normalized_text(target["name"]), {})
@@ -465,7 +497,7 @@ def compare(golden_path: Path, generated_path: Path) -> dict:
             "Golden targets were extracted independently by the same model family; they are not a human-certified legal ground truth.",
             "A different recognition-dependent amount may reflect a legal judgment or source period difference, not an extraction error.",
             "Withheld values are reported separately from wrong values and are not counted as matches.",
-            "Artifact inspection checks label-associated values, not official template fidelity or substantive legal adequacy.",
+            "Artifact inspection excludes evidence appendices and raw extraction sheets; strict per-document completeness is scored separately in submission_report.json.",
             "No names, addresses, account identifiers, or expected/generated financial values are included in this public report.",
         ],
     }

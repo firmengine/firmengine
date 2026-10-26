@@ -1,16 +1,12 @@
-# Firm Engine · 로컬 n8n P0
+# Firm Engine · 개인회생 사건 작업공간
 
-의뢰인 증빙을 업로드하면 GPT-6 Luna가 원문 근거와 값을 추출하고, n8n이 검증·계산·법원 양식 초안 생성을 연결합니다. 생성 후 담당자와 변호사가 확인하는 로컬 프로토타입입니다.
+의뢰인 증빙을 사건별로 보관하고, 문서유형별로 사실과 원문 근거를 추출한다. n8n Code의 결정론적 계산과 필요증빙·위험 체크를 거쳐 필수 조건이 해결된 경우 편집형 법원 서류를 생성한다. 생성 후 담당자·변호사 검수를 별도로 기록한다.
 
-**인계 상태:** n8n 2.45.3 설치, 워크플로 등록·활성화와 로컬 프론트/API·n8n 기동을 완료했습니다. 전체 92쪽 샘플 실행·독립 비교 평가는 사용자 테스트로 남겨뒀습니다. 초기 코드·화면 검사와 별도의 평가 정답 준비는 중단 요청 전에 수행했습니다.
+현재 데이터 모델·흐름도·구현 한계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)에 있다. 최초 엄격 독립평가는 **채점 가능 212개 중 7개 일치**였으며, 리팩토링 합성 검증과 실제 제출본 재현 품질을 구별한다. 법원 인가확률을 수치로 예측하지 않는다.
 
-화면은 [기존 변호사·직원용 DX 프론트엔드](https://github.com/equipment0226/frontend_lawyerandstaff)의 녹색·아이보리 디자인과 작업 탭을 참고했습니다. [기존 백엔드](https://github.com/equipment0226/backend)의 공개 법원 서식 자산을 선택 재사용했으며, 이 프로토타입의 실행에는 기존 서버가 필요하지 않습니다.
+## 로컬 실행
 
-## 실행
-
-환경: Python 3.11 이상, Node.js 20.19~24.x. 이 작업에서는 Node 24와 npm 설치형 n8n 2.45.3을 사용합니다. Docker가 필요하지 않습니다.
-
-이 디렉터리에서 PowerShell로 실행합니다.
+Python 3.11+, Node.js 20.19~24.x. 현재 n8n 2.45.3을 사용한다.
 
 ```powershell
 python -m venv .venv
@@ -19,112 +15,78 @@ npm.cmd ci --no-audit --no-fund
 .venv\Scripts\python.exe scripts/run_local.py
 ```
 
-이미 의존성이 설치되어 있으면 `start-local.cmd`를 실행합니다. 실행기는 최초에 워크플로를 가져오고 활성화한 뒤 API와 n8n을 함께 시작합니다. 이후에는 동일한 등록·게시 버전을 재사용하며 편집기에서 변경한 워크플로를 자동으로 덮어쓰지 않습니다.
+설치 후에는 `start-local.cmd`로 실행할 수 있다.
 
-- 앱: <http://127.0.0.1:8010>
-- n8n 편집기: <http://127.0.0.1:5679>
-- API 문서: <http://127.0.0.1:8010/docs>
-- 종료: 실행 터미널에서 `Ctrl+C`.
+- 웹 작업공간: <http://localhost:8010>
+- n8n 편집기: <http://localhost:5679>
+- API 문서: <http://localhost:8010/docs>
 
-n8n 편집기 첫 접속 시 로컬 소유자 계정을 설정합니다. 앱의 워크플로 실행은 가져온 Webhook을 사용합니다. 다른 프로그램이 포트를 사용한다면 이 폴더의 `.env`에 `API_PORT`, `N8N_PORT`를 지정하고 실행기를 다시 시작합니다. 내부 작업 브로커는 편집기와 다른 포트인 `5680`을 사용하며, `N8N_RUNNERS_BROKER_PORT`로 지정할 수 있습니다. n8n 설정·DB는 `.runtime/n8n`에 격리되어 기존 n8n 설정을 변경하지 않습니다.
+최초 n8n 접속 때 로컬 소유자 계정을 설정한다. 실행기는 기존에 같은 내용으로 게시된 워크플로를 재사용한다. 구현을 변경해 관리형 워크플로를 갱신할 때는 `python scripts/run_local.py --upgrade-workflows`를 사용한다. 기존 정의를 `.runtime/workflow-backup-*.json`으로 백업한 뒤 가져와 게시한다. 실행 터미널의 `Ctrl+C`로 서버를 종료해도 사건·원본·생성물은 유지된다.
 
-## API 설정
+## 환경과 에이전트 설정
 
-상위 폴더 `../.env`를 자동으로 읽습니다. `OPENAI_API_KEY`와 기존 파일의 `OPEN_AI_API_KEY`를 모두 지원합니다. 이 폴더의 `.env` 또는 환경변수로 덮어쓸 수 있습니다. 키를 프론트엔드·워크플로 JSON에 넣지 않습니다.
+상위 `../.env`, 프로젝트 `.env`, 환경변수 순으로 읽는다. `OPENAI_API_KEY`와 `OPEN_AI_API_KEY` 별칭을 지원한다. 키는 UI와 워크플로 JSON에 넣지 않는다.
 
 ```dotenv
-OPENAI_API_KEY=your-key
 OPENAI_MODEL=gpt-6-luna
+CASE_CONCURRENCY=2
 OCR_CONCURRENCY=3
 OCR_BATCH_PAGES=4
+API_PORT=8010
+N8N_PORT=5679
 ```
 
-`gpt-6-luna`를 Responses API로 호출하며 `store:false`를 사용합니다. 원본 PDF를 Files API에 올리지 않고 증빙 페이지를 메모리에서 이미지로 변환해 전달합니다. `store:false`가 OpenAI의 모든 외부 보관정책을 대체하는 것은 아닙니다. 실제 운영 전 계정·서비스의 데이터 정책을 별도로 확인해야 합니다.
+실제 모델은 GPT-6 Luna이며 `store:false`로 호출한다. 원본 PDF 전체를 Files API에 올리지 않고 의뢰인 증빙 페이지 이미지를 보낸다. 임베딩은 `text-embedding-3-small`을 사용한다.
 
-## 사용 흐름
+[promptbook/README.md](promptbook/README.md)와 에이전트별 `system.md`, `body.md`, 입력·출력 스키마·예시·`config.json`을 편집하면 다음 호출부터 적용된다. 배치 크기, 입력/출력 토큰 예산, 전역·에이전트 동시성, 타임아웃, 재시도 한도도 설정한다. 실제 호출의 입력·출력·시스템 지시·본문·사용량은 Git 제외 경로 `.runtime/sessions/{case_id}/promptbook/`에 남는다. 프롬프트 본문에는 실제 사건 자료를 복사하지 않는다.
 
-1. PDF·JPG·PNG를 업로드합니다. 혼합 PDF라면 증빙 페이지 범위를 직접 지정할 수 있습니다. 지정하지 않으면 AI가 증빙·완료된 제출서류·행정서류를 분류합니다. 자동 분류는 담당자가 결과를 확인해야 합니다.
-2. ‘분석 시작’을 누르면 n8n 워크플로가 실행됩니다. n8n 연결 실패를 API 직접 실행으로 숨기지 않습니다.
-3. 추출된 값에서 문서·페이지·발췌 근거를 확인합니다. 금액·사실·적용기간을 수정·확정하거나, 이전 기간 자료 등 적용하지 않을 항목을 사유와 함께 제외합니다.
-4. 인정 월 영업소득·인정 생계비·변제기간·월 보수·청산가치 등은 담당자가 근거와 적용 기준을 확인하여 입력합니다. 누락을 0으로 채우거나 36개월을 기본 적용하지 않습니다.
-5. DOCX 6종과 계산·증빙 XLSX를 내려받을 수 있습니다. 입력값을 바꾸면 기존 파일과 확인이 무효화되므로 ‘문서 재생성’을 실행합니다.
-6. 실제 생성본과 원본 양식의 대응을 확인한 다음 담당자 확인, 변호사 최종 확인을 진행합니다. 미해결 항목이 남으면 검토 완료 처리를 차단합니다.
+## 사건 처리
 
-계산값이 부족해도 작업용 문서는 생성되며 ‘미검토 초안’, ‘확인 필요’가 표시됩니다. 최종 확인은 법원 접수·인가를 뜻하지 않습니다. 현재 확인자 입력은 로컬 데모용 기록이며 운영용 계정·역할 인증은 아직 연결하지 않았습니다.
+1. 사건을 생성하고 소득유형·신청 기준일을 지정한다. 사업·근로·혼합 소득과 개별 소득원을 구분한다.
+2. 의뢰인 자료를 업로드한다. 페이지 역할·서류유형 분류와 문서별 최소 필수 피처 추출을 병렬 처리한다. 법원 제출 완료본은 생성 입력에서 제외한다.
+3. 문서 종류·증명 대상·자료 기간과 추출값·원문 근거를 확인한다. 값 정정·채택·철회는 이전 버전을 보존한다.
+4. 계산 근거, 95개 위험 항목의 해당성·확인 상태, 대체 증빙과 추가 준비 요청을 확인한다. 변경마다 같은 사건을 다시 평가하고 이전 실행 결과는 최신 버전을 덮어쓰지 않는다.
+5. 자산 시세를 별도 평가 후보로 조회하고 근거·기준일을 검토한다. 처분 가정은 매각대금·담보상환·비용·잔여 현금을 추적한다.
+6. 필수 조건이 해결되면 적용되는 DOCX와 계산·검토 XLSX를 생성한다. 미해결 경고는 위험 이력과 함께 제공한다. 필수 조건 미해결이면 생성하지 않고 추가 자료·준비 사항을 안내한다.
+7. 생성된 필드의 원본 사실을 수정하고 재생성할 수 있다. 계산 항목은 원본 값을 수정해 재계산한다. 현재 생성본 삭제는 이력을 보존하는 보관 처리다.
+8. 실제 생성본의 해시에 묶인 담당자 검수, 변호사 최종 검수를 진행한다. 검수 후 값·생성물이 바뀌면 이전 검수는 무효화된다. 법원 제출 노드는 없다.
 
-## n8n 워크플로
+기본 규칙 판본은 `REVIEW_REQUIRED`다. 공식 원문·시행일·예외와 적용 산식을 확인하는 명시적 검토가 필요하며, AI가 이를 자동 승인하지 않는다. 로컬 확인자 이름 입력은 운영용 사용자 인증·권한을 대신하지 않는다.
 
-`workflows/firmengine-p0.json`을 n8n 편집기로 열어 각 단계를 볼 수 있습니다. `scripts/run_local.py --write-workflow`로 설정 포트를 반영한 JSON을 다시 만듭니다.
+## 저장·법령·자산 연결
 
-```mermaid
-flowchart LR
-    A[웹 업로드] --> B[n8n Webhook]
-    B --> C[증빙·제출본 분류]
-    C --> D[GPT-6 Luna 비전 추출]
-    D --> E[근거·충돌·계산 검증]
-    E --> F[DOCX·XLSX 생성]
-    F --> G[생성 후 HITL]
-```
+SQLite 원장: `.runtime/firmengine.sqlite3`. 의뢰인 보관함과 법원 생성물 보관함은 `.runtime/storage/cases/{case_id}/incoming|outgoing/`으로 분리한다. 저장소 참조는 provider·namespace·key·version·sha256으로 구성하며 Google Drive/GCS 어댑터를 추가할 수 있다. 실제 Google Workspace 연동과 다중 사용자 권한은 아직 구현하지 않았다.
 
-실제 AI·문서 처리 코드는 로컬 API에 있고 n8n의 HTTP Request 노드가 단계별로 호출합니다. n8n에는 `session_id`와 해당 실행에만 사용하는 `run_token` 및 단계 상태만 전달합니다. 원본·추출값·API 키를 노드 출력에 기록하지 않습니다. 실행 데이터 저장은 성공·실패·수동 실행 모두 비활성화합니다.
+Qdrant는 법령·준칙·사례 관찰·검토된 성공사례 컬렉션을 분리한다. 검색 전에 적용일·권한·테넌트·동일 사건 및 동일 자료 묶음을 걸러내고 최대 3개 근거만 전달한다. 실제 검토된 성공사례 컬렉션은 아직 비어 있다. n8n 일일 09:00 법령 갱신 스케줄은 로컬 서버 실행 중 동작한다. 검증된 채무한도 수치 변경만 자동 계산에 연결하며 새 의미·예외는 검토 대상으로 남긴다.
 
-## 양식과 현재 구현 범위
+자산 조회는 다음을 구분한다.
 
-- 생성: 개시신청서, 채권자목록, 재산목록, 수입 및 지출 목록, 진술서, 변제계획안의 편집형 DOCX와 계산근거 XLSX.
-- `templates/originals`: 출처 해시를 검증한 공개 빈 PDF/HWP 원본 12개.
-- `templates/*.docx`와 `templates/catalog.json`: 공식 구역·항목에 대응한 편집형 템플릿과 출처·버전.
-- 템플릿은 **공식 항목을 재구성한 초안**이며 원본 HWP와 동일한 페이지 배치나 제출 가능성을 보증하지 않습니다. 사용자가 실제 받은 최신 요청양식과의 검수·매핑이 필요합니다.
-- 미구조화 특약·특수 부속표·채권자별 변제 배분 등 미구현 영역은 확인 필요로 남깁니다. 법률 산식·지원 범위의 전문가 검토는 별도입니다.
-- 규칙 연결은 입력 → 원문 근거 → 확인값 → 결정론적 산술 → 문서 항목으로 추적합니다. 자동 법령 수집·규칙 편집기·인가 확률 예측은 포함하지 않습니다.
-- P1 필요서류 정의는 아직 완성된 조건부 Law-Graph 서비스가 아닙니다. 이 P0는 제공된 증빙에서 양식 초안을 만드는 흐름에 집중합니다.
+- `manual_evidence`: 문서/출처·기준일이 있는 수동 평가 후보.
+- `car365_reference`: 소유자 인증 조회 안내. 차량번호만으로 조회 성공을 가장하지 않는다.
+- `molit_apartment`: `MOLIT_API_KEY` 또는 공공데이터 키와 `lawd_cd`, `deal_ymd`가 필요한 실거래 비교. 거래가격을 자동 감정가로 채택하지 않는다.
+- `configured_vehicle_api`: 신뢰한 환경 설정 URL과 선택적인 `VEHICLE_VALUATION_API_KEY`로 연결하는 차량 시세 제공자.
 
-## 샘플과 독립 평가
+## 양식·실제 샘플 평가
 
-화면의 ‘샘플로 시작’은 `../sample.pdf`와 해시가 일치하는 `evaluation/sample_manifest.json`을 사용합니다.
+`templates/`에는 기본 6종과 조건부 신청서·채권 부속표·변제 배분표·자산평가표·증빙 색인 등 18개 편집형 템플릿이 있다. 공개 빈 PDF/HWP 원본·해시·출처는 별도 보존한다. 편집형 재구성이므로 실제 법원 요청양식과 레이아웃·항목·첨부를 검수해야 한다.
 
-- 원본: 118쪽 스캔 PDF.
-- 생성 입력: 증빙 92쪽.
-- 비교 전용: 이미 작성된 제출본 24쪽. 생성기에는 이미지·OCR·정답값을 전달하지 않습니다.
-- 제외: 위임·행정서류 2쪽.
-
-서버 실행 후:
+`sample_masking.pdf` 118쪽 중 의뢰인 증빙 92쪽만 물리적으로 분리한다. 작성 완료된 제출본 24쪽은 독립평가 전용, 행정자료 2쪽은 제외다. 제출본 정답은 생성기·RAG·few-shot에 넣지 않는다.
 
 ```powershell
-.venv\Scripts\python.exe scripts/run_sample.py
-.venv\Scripts\python.exe evaluation/evaluate_sample.py
+python scripts/run_sample.py --run-name refactor-001
+python evaluation/evaluate_sample.py
 ```
 
-`run_sample.py`는 실제 n8n Webhook을 호출하고 완료된 파일을 내려받도록 구성했습니다. 평가기는 별도 추출한 제출본 목표값과 생성 결과·실제 DOCX/XLSX 내용을 비교합니다. 자세한 재현은 [evaluation/README.md](evaluation/README.md)를 참고합니다. 전체 평가가 실행된 후에만 `evaluation/REPORT.md`와 `report.json`이 생성됩니다.
-
-정답·개인별 생성 결과는 Git 제외된 `.runtime/evaluation`에만 저장합니다. 이 명시적 평가용 사본은 앱 세션 만료와 별도로 보관되므로 평가를 마친 뒤 직접 정리할 수 있습니다. 공개 평가 보고서에는 원문·이름·개별 금액을 넣지 않습니다. 한 사건의 제출본 대조는 범용 정확도나 시간 20% 단축 달성의 근거가 아니며, 시간 비교에는 동일 조건의 수작업 측정이 추가로 필요합니다.
+실행별 입력 분리·생성 결과·파일은 `.runtime/evaluation/runs/`에 별도 보존한다. 필수 조건으로 생성이 보류된 실행도 기록하며 성공으로 계산하지 않는다. 평가 기준과 방법은 [evaluation/README.md](evaluation/README.md), 공개 결과는 [evaluation/SUBMISSION_REPORT.md](evaluation/SUBMISSION_REPORT.md)를 참고한다.
 
 ## 검증
 
 ```powershell
-.venv\Scripts\python.exe -m unittest discover -s tests -v
-.venv\Scripts\python.exe -m compileall -q app scripts evaluation
+python -m unittest discover -s tests -q
+python -m compileall -q app scripts evaluation
 node --check static/app.js
+node --check static/workspace.js
+python scripts/browser_smoke.py
 ```
 
-추가로 Playwright가 설치되어 있으면 서버 실행 후 `python scripts/browser_smoke.py`로 화면을 확인합니다. 합성 자료로 검증하며 실제 AI 호출은 하지 않습니다.
-
-## 로컬 자료 관리
-
-앱 세션은 명시적 종료 또는 사용자 활동 없는 60분 뒤 삭제합니다. 폴링은 만료 시간을 연장하지 않습니다. 프로세스 재시작 시 복구하지 않고 남은 세션 임시파일을 정리합니다. 사용자가 내려받은 파일과 명시적 평가용 사본은 별도입니다.
-
-`.env`, `.runtime`, `node_modules`, `.venv`, 개인별 평가 결과는 Git에서 제외합니다. 원본 `sample.pdf`는 상위 폴더에서 읽으며 이 프로젝트의 공개 서식 자산에 포함하지 않습니다. 실제 고객자료·키를 저장소에 추가하지 않도록 합니다.
-
-## 주요 파일
-
-| 경로 | 역할 |
-|---|---|
-| `app/main.py` | 업로드·세션·n8n 단계 API·HITL·다운로드 |
-| `app/ai.py` | GPT-6 Luna 페이지 분류·비전 추출 |
-| `app/engine.py` | 원문 근거 연결·충돌·누락 검증·산술 |
-| `app/rendering.py` | 공개 양식 기반 DOCX·XLSX 생성 |
-| `static/` | DX 스타일의 로컬 작업 화면 |
-| `workflows/firmengine-p0.json` | 가져오기 가능한 n8n 워크플로 |
-| `scripts/run_local.py` | 격리 n8n 초기화·활성화·API 동시 실행 |
-| `evaluation/` | 독립 페이지 분리·제출본 대조 평가 |
-
-참고 문서: [양대성 기능 명세](../../../docs/specs/양대성-feature.md), [n8n npm 설치](https://docs.n8n.io/hosting/installation/npm/), [GPT-6 Luna API](https://developers.openai.com/api/docs/models/gpt-6-luna).
+합성 검증은 실제 모델 호출 없이 버전·자료 분리·계산·생성 차단·파일 해시·검수와 UI 계약을 확인한다. 실제 제출 문서 품질은 별도 독립평가로 판단한다.

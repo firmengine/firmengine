@@ -1,0 +1,297 @@
+{
+  "version": "prototype-extensions-v2",
+  "note": "These extend, and are not claimed to be part of, the unchanged 84-feature blueprint catalog.",
+  "features": [
+    {
+      "key": "income.recognized_monthly_net",
+      "type": "money?",
+      "label": "검토 인정 월소득",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.recognized_total",
+      "type": "money?",
+      "label": "검토 인정 월생계비",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "plan.monthly_trustee_fee",
+      "type": "money?",
+      "label": "월 회생위원 보수",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "claims.total_present_value",
+      "type": "money?",
+      "label": "정규화된 채권 현재가치",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.housing_included",
+      "type": "money?",
+      "label": "기본생계비 포함 주거비",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "living.housing_cap",
+      "type": "money?",
+      "label": "검토된 추가주거비 상한",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "person.name",
+      "type": "text",
+      "label": "신청인 이름",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "person.resident_id",
+      "type": "text",
+      "label": "주민등록번호",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "person.phone",
+      "type": "text",
+      "label": "연락처",
+      "unknown_policy": "NULL_NOT_ZERO"
+    },
+    {
+      "key": "income_source.kind",
+      "type": "enum",
+      "label": "소득원 종류",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.employer",
+      "type": "text",
+      "label": "고용주·지급자",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.business",
+      "type": "text",
+      "label": "사업명",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.business_address",
+      "type": "text",
+      "label": "사업장 주소",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.period",
+      "type": "period",
+      "label": "소득 산정기간",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.net",
+      "type": "money?",
+      "label": "소득원별 월 순소득",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.gross",
+      "type": "money?",
+      "label": "소득원별 월 총소득",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.revenue",
+      "type": "money?",
+      "label": "사업별 월 매출",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.necessary_cost",
+      "type": "money?",
+      "label": "사업별 월 필요경비",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.tax_social_insurance",
+      "type": "money?",
+      "label": "소득원별 세금·사회보험 공제",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "income_source.recurring_evidence",
+      "type": "text",
+      "label": "반복·계속 수입 근거",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "income_source"
+    },
+    {
+      "key": "coverage.income_sources",
+      "type": "coverage",
+      "label": "전체 소득원 조사 범위",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "case"
+    },
+    {
+      "key": "living.additional_housing_requested",
+      "type": "bool?",
+      "label": "추가 주거비 인정 요청 여부",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "case"
+    },
+    {
+      "key": "transactions[].posted_at",
+      "type": "text",
+      "label": "거래일",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].inflow",
+      "type": "money?",
+      "label": "입금액",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].outflow",
+      "type": "money?",
+      "label": "출금액",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].counterparty",
+      "type": "text",
+      "label": "거래 상대방",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].description",
+      "type": "text",
+      "label": "적요",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].account_id",
+      "type": "text",
+      "label": "계좌 객체",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].source_row",
+      "type": "text",
+      "label": "원본 행 식별자",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].purpose",
+      "type": "text",
+      "label": "사용 목적",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "transactions[].classification",
+      "type": "text",
+      "label": "대출·본인계좌이체·소득 등 분류",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "transaction"
+    },
+    {
+      "key": "tax_arrears.authority",
+      "type": "text",
+      "label": "과세·징수기관",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.tax_type",
+      "type": "text",
+      "label": "세목",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.period",
+      "type": "text",
+      "label": "귀속기간",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.amount",
+      "type": "money?",
+      "label": "체납액",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.due_date",
+      "type": "text",
+      "label": "납부기한",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.collection_status",
+      "type": "text",
+      "label": "징수 상태",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.deferral_status",
+      "type": "text",
+      "label": "유예 상태",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.priority_status",
+      "type": "text",
+      "label": "우선권 분류",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.estate_claim_status",
+      "type": "text",
+      "label": "재단채권 분류",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    },
+    {
+      "key": "tax_arrears.non_discharge_ground",
+      "type": "text",
+      "label": "비면책 근거",
+      "unknown_policy": "NULL_NOT_ZERO",
+      "object_scope": "tax_arrears"
+    }
+  ],
+  "income_source_kinds": [
+    "wage",
+    "business",
+    "rent",
+    "interest",
+    "dividend",
+    "pension",
+    "benefit",
+    "other",
+    "loan",
+    "own_transfer"
+  ],
+  "income_note": "Loan and own-account transfers are excluded only after classification is VERIFIED. Explicit source period and monthly measurement are required; annual amounts are never divided automatically."
+}

@@ -1,0 +1,32 @@
+{
+  "recorded_at": "2026-10-26T08:37:18.972316+00:00",
+  "test_type": "real_public_source_embedding_and_qdrant_smoke",
+  "embedding_model": "text-embedding-3-small",
+  "reasoner_model": "gpt-6-luna",
+  "real_provider_embeddings": true,
+  "indexed_versions": 13,
+  "indexed_chunks": 46,
+  "collections": {
+    "legal_norms": 5,
+    "practice_rules": 17,
+    "case_observations": 24,
+    "fewshot_success": 0
+  },
+  "query_result_count": 3,
+  "query_methods": [
+    "qdrant_dense"
+  ],
+  "max_returned_chunk_chars": 1200,
+  "customer_case_data_used": false,
+  "benchmark_golden_indexed": false,
+  "unit_tests": {
+    "passed": 10,
+    "synthetic_vector_fixture_only_in_filter_unit_test": true
+  },
+  "limits": [
+    "A retrieval smoke test is not a legal-answer accuracy benchmark.",
+    "No actual successful client cases are present in fewshot_success.",
+    "New source versions added later may change collection counts."
+  ],
+  "implementation_sha256": "66a33f48782fc28198b9fc88a6cfe0a907470150139c13ec75e0ab6daf8d6297"
+}

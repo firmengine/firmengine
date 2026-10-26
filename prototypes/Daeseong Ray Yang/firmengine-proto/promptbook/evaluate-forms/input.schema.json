@@ -1,0 +1,38 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "document_kind": {
+      "type": "string"
+    },
+    "reference_checks": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "primary_document_lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "index": {
+            "type": "integer"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "text"
+        ]
+      }
+    }
+  },
+  "required": [
+    "document_kind",
+    "reference_checks",
+    "primary_document_lines"
+  ]
+}

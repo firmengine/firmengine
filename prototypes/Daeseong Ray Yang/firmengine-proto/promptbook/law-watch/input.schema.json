@@ -1,0 +1,34 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "source_id": {
+      "title": "Source Id",
+      "type": "string"
+    },
+    "source_url": {
+      "title": "Source Url",
+      "type": "string"
+    },
+    "observed_at": {
+      "title": "Observed At",
+      "type": "string"
+    },
+    "previous_text": {
+      "title": "Previous Text",
+      "type": "string"
+    },
+    "current_text": {
+      "title": "Current Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_id",
+    "source_url",
+    "observed_at",
+    "previous_text",
+    "current_text"
+  ],
+  "title": "LawWatchInput",
+  "type": "object"
+}

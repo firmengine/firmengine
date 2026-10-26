@@ -1,6 +1,7 @@
 """Run the real sample through n8n, export private outputs for independent scoring."""
 from pathlib import Path
 import argparse
+from datetime import datetime, timezone
 import json
 import time
 import httpx
@@ -11,10 +12,26 @@ ROOT = Path(__file__).resolve().parents[1]
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--base', default='http://127.0.0.1:8010')
+    p.add_argument('--run-name', default=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ'))
     args = p.parse_args()
     private = ROOT / '.runtime' / 'evaluation'
     private.mkdir(parents=True, exist_ok=True)
+    if not args.run_name.replace('-', '').replace('_', '').isalnum():
+        raise SystemExit('run-name must contain letters, digits, - or _ only')
+    run_dir = private / 'runs' / args.run_name
+    run_dir.mkdir(parents=True, exist_ok=False)
     with httpx.Client(base_url=args.base, timeout=60) as client:
+        deadline = time.monotonic() + 300
+        while time.monotonic() < deadline:
+            try:
+                health = client.get('/api/health', timeout=5)
+                if health.status_code == 200 and health.json().get('n8n_ready'):
+                    break
+            except httpx.HTTPError:
+                pass
+            time.sleep(2)
+        else:
+            raise SystemExit('API/n8n did not become ready')
         response = client.post('/api/sessions/sample')
         response.raise_for_status()
         session = response.json()
@@ -34,12 +51,12 @@ def main():
                 last = mark
             if session['status'] == 'failed':
                 raise SystemExit('Workflow failed: ' + session['message'])
-            if session['status'] in ('ready', 'reviewed') and session['artifacts']:
+            if session['status'] == 'needs_action' or session['status'] in ('ready', 'reviewed') and session['artifacts']:
                 break
             time.sleep(3)
         else:
             raise SystemExit('Workflow timeout')
-        artifacts = private / 'artifacts'
+        artifacts = run_dir / 'artifacts'
         artifacts.mkdir(exist_ok=True)
         for item in session['artifacts']:
             data = client.get(item['url'])
@@ -49,6 +66,8 @@ def main():
                 raise ValueError('Invalid artifact filename')
             (artifacts / name).write_bytes(data.content)
         session['artifact_dir'] = str(artifacts)
+        session['evaluation_run'] = args.run_name
+        (run_dir / 'generated.json').write_text(json.dumps(session, ensure_ascii=False, indent=2), encoding='utf-8')
         (private / 'generated.json').write_text(json.dumps(session, ensure_ascii=False, indent=2), encoding='utf-8')
         print(json.dumps({'status': session['status'], 'records': len(session['records']), 'artifacts': len(session['artifacts']),
                           'metrics': session['metrics'], 'export': '.runtime/evaluation/generated.json'}, ensure_ascii=True), flush=True)

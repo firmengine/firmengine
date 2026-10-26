@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "document_kind": {
+      "type": "string"
+    },
+    "original_pages": {
+      "type": "array",
+      "items": {
+        "type": "integer"
+      }
+    },
+    "section_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "document_kind",
+    "original_pages",
+    "section_categories"
+  ]
+}

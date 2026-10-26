@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "description": "Minimal page or task input, no whole case. See app.pipeline for strict classify/extract wire schemas.",
+  "properties": {
+    "document_id": {
+      "type": "string"
+    },
+    "original_page": {
+      "type": "integer"
+    },
+    "text": {
+      "type": "string"
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

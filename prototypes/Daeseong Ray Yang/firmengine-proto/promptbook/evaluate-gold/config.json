@@ -1,0 +1,12 @@
+{
+  "id": "evaluate-gold",
+  "version": "2.0.0",
+  "model": "gpt-6-luna",
+  "store": false,
+  "max_output_tokens": 18000,
+  "placeholders": [
+    "document_kind",
+    "original_pages",
+    "section_categories"
+  ]
+}
