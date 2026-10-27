@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "4fc6524532d1d5292a63324f91afbfaade9d16cab9c7741ff6c67577ea1c032a",
+  "source_digest": "85fbf353ce7404e76a3b8e8d332f5e65ea8a2194d73310a53df934d79b61f526",
   "files": [
     {
       "path": ".gitignore",
@@ -739,8 +739,8 @@
     },
     {
       "path": "lib/applicant-identity.ts",
-      "sha256": "b4205305efc900607aed42b5ce410ef86f18085fb66c1b48c9e2818b07b6504a",
-      "bytes": 2925,
+      "sha256": "1fb535eafe76476a2d6eba104d2286b599fd0de21ff77bbc1f020c6f98a32d44",
+      "bytes": 2954,
       "mode": "100644"
     },
     {
@@ -823,8 +823,8 @@
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "26331b108c07b31a78fe208d6edc416750ae2ba8c18b9e3a5c487659a368df23",
-      "bytes": 40032,
+      "sha256": "fa3171f48b0d9ac2a125d0787503cf34ecc8c1d4a26e3508484a52a02a57e785",
+      "bytes": 41133,
       "mode": "100644"
     },
     {
@@ -841,14 +841,14 @@
     },
     {
       "path": "lib/extraction.ts",
-      "sha256": "fe7b5a6a89803b62d949625c50f54abf1b3632c6f8762baf2c346a022c76e39c",
-      "bytes": 45456,
+      "sha256": "81060829e316173f7afbccded99da25d494b14a0ead55408137f9ce24c67b6a8",
+      "bytes": 45698,
       "mode": "100644"
     },
     {
       "path": "lib/form-mapping.ts",
-      "sha256": "efef71f19a710b23678e8722e75a027932b834d401a3b35960888d19b59c04cb",
-      "bytes": 26055,
+      "sha256": "4ffabeb742eadbe0407ac6a29b341091845cb311081b5f98df87fad8719f69e4",
+      "bytes": 26303,
       "mode": "100644"
     },
     {
@@ -937,8 +937,8 @@
     },
     {
       "path": "lib/office-writer.ts",
-      "sha256": "e6a546daf217dbf6fc95095172248f4329cc709b2a234a3a04641cc029ef7064",
-      "bytes": 20150,
+      "sha256": "669ea26ea6abe88a33812206df22af412e47c07ba505749281afb11e41111005",
+      "bytes": 23825,
       "mode": "100644"
     },
     {
@@ -973,7 +973,7 @@
     },
     {
       "path": "lib/reprojection.ts",
-      "sha256": "d9a00af1ac7d52e8af6e786cd1ef220b7e7f74366f1e9de7c05b03a17d646469",
+      "sha256": "5b649b5de1cfbd32cd9ff6e097a513a0cd2a04777c4cbd32b7b2c93c923b5649",
       "bytes": 11501,
       "mode": "100644"
     },
@@ -1014,9 +1014,15 @@
       "mode": "100644"
     },
     {
+      "path": "lib/source-quantity.ts",
+      "sha256": "4dd584a6d2dbb1d7c2b8847b11ee4cc8866e53fb52e1074ec85a8b4c73a5a02c",
+      "bytes": 2921,
+      "mode": "100644"
+    },
+    {
       "path": "lib/source-verification.ts",
-      "sha256": "7c2e3781496f7043a77f06a5fa95285a6d920662872be0b31493de1dbdef766a",
-      "bytes": 11660,
+      "sha256": "f6d482ec69994e5bf9d77689eb50de405e85c89db3589890ac2536f972825700",
+      "bytes": 11266,
       "mode": "100644"
     },
     {
@@ -1447,8 +1453,8 @@
     },
     {
       "path": "tests/extraction-semantics.test.ts",
-      "sha256": "c79159af595163d7e7055215843d6e89f5772fca13d8560f3606f8eebe14a54e",
-      "bytes": 12510,
+      "sha256": "00a30dd9a974848c874d2135c9ccf57641a9bd4ad7941b79a7afec4db3170456",
+      "bytes": 15597,
       "mode": "100644"
     },
     {
@@ -1507,14 +1513,14 @@
     },
     {
       "path": "tests/office.test.ts",
-      "sha256": "109ffbb7c70c7d7b393579386075a4753f212b2eb20cb4b6edfdf57c83de2550",
-      "bytes": 10205,
+      "sha256": "12a98cb3109093cfa4a8a9f19daa3b8d2ebe7887fa18b25569fc4d61af24fab4",
+      "bytes": 11717,
       "mode": "100644"
     },
     {
       "path": "tests/output-resolution.test.ts",
-      "sha256": "787777c6d74dd95f3ab6a70702065fab107b62ac5a033ae21e44d872660de731",
-      "bytes": 14602,
+      "sha256": "9d805a219cf255a3b60757123cc3dfdae1318a4771d1021ae7908219f351bfa6",
+      "bytes": 16944,
       "mode": "100644"
     },
     {
@@ -1593,6 +1599,12 @@
       "path": "tests/source-index-perf.test.ts",
       "sha256": "23d2912adf30ef1e35c3014db1b69e53c1f50a4cff5a2375741f2afe662c9a69",
       "bytes": 2351,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/source-quantity.test.ts",
+      "sha256": "d472bb2d22bed887644c6e0d7808bb70046440d006dcf0dd588944bbebed99f1",
+      "bytes": 8711,
       "mode": "100644"
     },
     {

@@ -7,6 +7,7 @@ import { buildFormBindings,MISSING_FORM_VALUE } from "../lib/form-mapping.ts";
 import { buildCourtPackage } from "../lib/exports.ts";
 import { assessCase } from "../lib/assessment.ts";
 import { applicantIdentityValue,reconcileApplicantContext } from "../lib/applicant-identity.ts";
+import type { Fact } from "../lib/domain.ts";
 
 const hash="f".repeat(64);
 const f=(key:string,value:string,unit:string|null=null):ReadField=>({key,label:key,value,unit,quote:key==="gross_value"?`해약환급금 ${value}${unit??""}`:`${key} ${value}`,confidence:"clear",bbox:null});
@@ -104,6 +105,39 @@ test("지분 미확정도 인용된 재산 총액은 초안에 표시하고 신�
   assert.equal(bindings.rows.asset[0].applicant_share_value,MISSING_FORM_VALUE);
   assert.match(bindings.rows.asset[0].attribution_status,/귀속분 미확정/);
   assert.equal(bindings.scalars.insurance_surrender,MISSING_FORM_VALUE);
+});
+
+test("다른 사람의 단독 연락처·등록주소도 신청인 역할 없이 신청서에 채우지 않는다",()=>{
+  const data=fixture();
+  const add=(id:string,subjectId:string,key:string,value:string)=>{
+    const quote=`${key}: ${value}`;
+    data.pages[0].text+="\n"+quote;
+    data.facts.push({id,logicalId:id,version:1,subjectId,key,value,state:"extracted",recognition:"unreviewed",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote}],validation:[]});
+  };
+  add("other-phone","other-person","person.phone","02-000-0000");
+  add("other-address","other-person","person.registered_address","Synthetic other address");
+  let bindings=buildFormBindings(data,calculateCase(data,DRAFT_RULESET));
+  assert.equal(bindings.scalars.phone,MISSING_FORM_VALUE);
+  assert.equal(bindings.scalars.registered_address,MISSING_FORM_VALUE);
+  add("other-role","other-person","person.role","creditor");
+  add("applicant-phone","applicant-person","person.phone","010-0000-0000");
+  add("applicant-address","applicant-person","person.registered_address","Synthetic applicant address");
+  add("applicant-role","applicant-person","person.role","applicant");
+  bindings=buildFormBindings(data,calculateCase(data,DRAFT_RULESET));
+  assert.equal(bindings.scalars.phone,"010-0000-0000");
+  assert.equal(bindings.scalars.registered_address,"Synthetic applicant address");
+  assert.ok(data.facts.every(f=>f.recognition==="unreviewed"));
+});
+
+test("출처가 인용돼도 무효인 기계 검증 증명은 공개 양식의 값으로 사용하지 않는다",()=>{
+  const data=fixture(),quote="사업장명 Synthetic firm";
+  data.pages[0].text+="\n"+quote;
+  const fact:Fact={id:"business-name",logicalId:"business-name",version:1,subjectId:"business",key:"business.name",value:"Synthetic firm",state:"extracted",recognition:"unreviewed",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote}],validation:[]};
+  data.facts.push(fact);
+  assert.equal(buildFormBindings(data,calculateCase(data,DRAFT_RULESET)).scalars.business_name,"Synthetic firm");
+  fact.state="verified";
+  fact.sourceVerification={method:"independent_luna_cross_read"} as NonNullable<Fact["sourceVerification"]>;
+  assert.equal(buildFormBindings(data,calculateCase(data,DRAFT_RULESET)).scalars.business_name,MISSING_FORM_VALUE);
 });
 
 test("채무 우선·보증·양도 충돌은 채권자 초안의 원문관측 표에 모두 보존한다",()=>{

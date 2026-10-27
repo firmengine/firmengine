@@ -116,3 +116,21 @@ test("원형 D5110 기본 가용소득 산식과 승인한 일반채권 변제�
   assert.equal(planned.rows.find(r=>r[0]==="월 변제예정액")?.[1],"10,000원");
   assert.equal(planned.rows.find(r=>r[0]==="명목 총변제액")?.[1],"360,000원");
 });
+
+test("large source appendix writes and reopens every synthetic row", async () => {
+  const data = sourceCase();
+  data.pages[0].role = "evidence";
+  data.pages[0].text = Array.from({ length: 5_200 }, (_, i) => i===5_199 ? `Synthetic citation ${i} & <xml>\ncontinued` : `Synthetic citation ${i} & <xml>`).join(" ");
+  data.facts = Array.from({ length: 5_200 }, (_, i) => ({
+    id: `synthetic-${i}`, logicalId: `synthetic-${i}`, version: 1, subjectId: `synthetic-${i}`, key: "person.synthetic_observation",
+    value: i===5_199 ? `Synthetic observation ${i} & <xml>\ncontinued` : `Synthetic observation ${i} & <xml>`, state: "verified" as const, recognition: "accepted" as const,
+    refs: [{ documentId: "proof", page: 1, quote: i===5_199 ? `Synthetic citation ${i} & <xml>\ncontinued` : `Synthetic citation ${i} & <xml>` }], validation: [],
+  }));
+  const files = await writeOfficePackage({ data, rules: DRAFT_RULESET, mode: "draft" });
+  const rendered = JSON.parse(strFromU8(files.find((file) => file.kind === "rendered_json")!.bytes)) as RenderedOffice;
+  const appendix = rendered.documents.find((document) => document.kind === "application")!;
+const observed = appendix.tables.find((table) => table.title.includes("출처 기반 원문 관측"))!;
+  assert.equal(observed.rows.length, 5_200);
+  assert.equal(observed.rows[5_199][2], "Synthetic observation 5199 & <xml>\ncontinued");
+  assert.equal(observed.rows[5_199][7], "synthetic-only.pdf, p.1: “Synthetic citation 5199 & <xml>\ncontinued”");
+});

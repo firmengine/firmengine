@@ -50,6 +50,8 @@ export interface Fact {
   key: string;
   value: Json;
   rawValue?: string;
+  /** Exact unit token read beside the source value, including non-monetary fields. */
+  sourceUnit?: string | null;
   numeric?: NumericInput;
   periodStart?: string;
   periodEnd?: string;
@@ -377,8 +379,9 @@ export function factSourceLineageIssues(data: CaseData, ids: string[], index?:Ca
       const validBinding = proof.factBinding?.id === fact.id && proof.factBinding.logicalId === fact.logicalId && proof.factBinding.version === fact.version;
       const validProofReads = Array.isArray(proof.proofReads) && proof.proofReads.length > 0 && typeof proof.field?.value === "string" && proof.proofReads.every(p => p.model === AI_MODEL && typeof p.promptVersion === "string" && !!p.promptVersion.trim() && typeof p.promptHash === "string" && /^[a-f0-9]{64}$/i.test(p.promptHash) && Number.isFinite(Date.parse(p.verifiedAt)) && p.fieldIndex >= 0 && p.recordIndex >= 0 && ["agrees","corrected"].includes(p.status) && typeof p.value === "string" && p.value.normalize("NFKC").trim() === proof.field.value.normalize("NFKC").trim() && (p.unit===null?proof.field.unit===null:typeof proof.field.unit==="string"&&p.unit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim()) && typeof p.quote === "string" && !!p.quote.trim()) && Array.isArray(proof.proofReadIndexes) && proof.proofReads.length === proof.proofReadIndexes.length;
       const validNumeric = !fact.numeric || fact.numeric.normalizationStatus === "exact" && fact.numeric.amountWon !== null && typeof proof.field?.unit === "string" && fact.numeric.unit.normalize("NFKC").trim() === proof.field.unit.normalize("NFKC").trim() && normalizeMoney(raw, proof.field.unit).amountWon === fact.numeric.amountWon;
+      const validSourceUnit = !Object.hasOwn(fact,"sourceUnit") || (fact.sourceUnit===null ? proof.field?.unit===null : typeof fact.sourceUnit==="string" && typeof proof.field?.unit==="string" && fact.sourceUnit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim());
       const validProofIndexBinding = Array.isArray(proof.proofReadIndexes) && Array.isArray(proof.proofReads) && Array.isArray(proof.verificationQuotes) && proof.proofReads.every((p,i)=>p.pass===proof.proofReadIndexes[i]?.pass&&p.recordIndex===proof.proofReadIndexes[i]?.recordIndex&&p.fieldIndex===proof.proofReadIndexes[i]?.fieldIndex&&p.quote===proof.verificationQuotes[i]);
-      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
+      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
     }
     const normalized=[...factIssues];index?.lineageById.set(id,normalized);for(const issue of normalized)issues.add(issue);
   }
@@ -515,13 +518,15 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
     data.household.recognition = "unreviewed";
   }
   for (const raw of extraction.facts ?? []) {
-    if (!raw.key || !raw.subjectId || raw.value === undefined || !Array.isArray(raw.refs) || !raw.refs.length || raw.refs.some((r) => !validSourceRef(data, r))) { warnings.push("유효한 문서·페이지·원문 인용이 없는 사실 후보를 제외했습니다."); continue; }
+    if (!raw.key || !raw.subjectId || raw.value === undefined || Object.hasOwn(raw,"sourceUnit")&&raw.sourceUnit!==null&&typeof raw.sourceUnit!=="string" || !Array.isArray(raw.refs) || !raw.refs.length || raw.refs.some((r) => !validSourceRef(data, r))) { warnings.push("유효한 문서·페이지·원문 인용이 없는 사실 후보를 제외했습니다."); continue; }
     let logicalId = raw.logicalId || [raw.subjectId, raw.key, raw.periodStart ?? "", raw.periodEnd ?? "", raw.refs[0].documentId].join(":");
     // Include tombstones so a new extraction cannot restart at version 1 under an older version 2.
     let prior: Fact | undefined = data.facts.filter((f) => f.logicalId === logicalId).sort((a, b) => b.version - a.version)[0];
     if (prior && prior.state !== "retracted" && (prior.state === "verified" || prior.reviewer)) {
       const sameSource = JSON.stringify(prior.refs.map(r => [r.documentId,r.page,r.quote,r.sourceHash])) === JSON.stringify((raw.refs ?? []).map(r => [r.documentId,r.page,r.quote,r.sourceHash]));
-      const sameReading = JSON.stringify(prior.value) === JSON.stringify(raw.value) && JSON.stringify(prior.numeric ?? null) === JSON.stringify(raw.numeric ?? null);
+      const priorSourceUnit=Object.hasOwn(prior,"sourceUnit")?prior.sourceUnit:prior.sourceVerification?.field?.unit??(prior.numeric?.unit&&prior.numeric.unit!=="unknown"?prior.numeric.unit:null);
+      const sameSourceUnit=(a:string|null|undefined,b:string|null|undefined)=>a==null&&b==null||typeof a==="string"&&typeof b==="string"&&a.normalize("NFKC").trim()===b.normalize("NFKC").trim();
+      const sameReading = JSON.stringify(prior.value) === JSON.stringify(raw.value) && JSON.stringify(prior.numeric ?? null) === JSON.stringify(raw.numeric ?? null) && (!Object.hasOwn(raw,"sourceUnit") || sameSourceUnit(priorSourceUnit,raw.sourceUnit as string|null|undefined));
       if (sameReading && (!prior.sourceVerification || sameSource)) { if (raw.id) idMap.set(raw.id, prior.id); continue; }
       if (prior.sourceVerification && (!sameReading || !sameSource)) {
         const tombstone:Fact={ ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, state: "retracted", recognition: "rejected", sourceVerification: undefined, reviewReason: "기계 교차판독 사실의 원문·값이 변경되어 증명을 무효화했습니다.", createdAt: at };
@@ -535,7 +540,7 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
     const id = crypto.randomUUID();
     if (raw.id) idMap.set(raw.id, id);
     const validation = (Array.isArray(raw.validation) ? raw.validation : []).filter((v) => v && typeof v.code === "string" && typeof v.message === "string" && ["info", "warning", "error"].includes(v.severity)).map((v) => ({ code: v.code, message: v.message, severity: v.severity }));
-    const fact: Fact = { id, logicalId, version: (prior?.version ?? 0) + 1, supersedes: prior?.id, subjectId: raw.subjectId, key: raw.key, value: raw.value, rawValue: raw.rawValue, numeric: raw.numeric, periodStart: raw.periodStart, periodEnd: raw.periodEnd, asOf: raw.asOf, state: logicalId.includes(":candidate:") ? "disputed" : "extracted", recognition: "unreviewed", refs: raw.refs, validation, createdAt: at };
+    const fact: Fact = { id, logicalId, version: (prior?.version ?? 0) + 1, supersedes: prior?.id, subjectId: raw.subjectId, key: raw.key, value: raw.value, rawValue: raw.rawValue, ...(Object.hasOwn(raw,"sourceUnit")?{sourceUnit:raw.sourceUnit as string|null}:{}), numeric: raw.numeric, periodStart: raw.periodStart, periodEnd: raw.periodEnd, asOf: raw.asOf, state: logicalId.includes(":candidate:") ? "disputed" : "extracted", recognition: "unreviewed", refs: raw.refs, validation, createdAt: at };
     if (raw.numeric && moneyValue(raw.numeric) === null) fact.validation.push({ code: "NORMALIZATION_REVIEW", message: "원문 금액·통화·단위를 다시 확인하세요.", severity: "warning" });
     data.facts.push(fact);
   }

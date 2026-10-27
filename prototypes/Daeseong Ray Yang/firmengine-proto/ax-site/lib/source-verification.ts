@@ -1,4 +1,5 @@
 import { AI_MODEL, normalizeMoney } from "./domain.ts";
+import { isSourceMoney } from "./source-quantity.ts";
 
 /** Trusted server-side cross-read proof; it never grants legal recognition. */
 export const SOURCE_VERIFICATION_METHOD = "independent_luna_cross_read" as const;
@@ -31,8 +32,7 @@ const validInstant = (s: string) => { try { return Number.isFinite(Date.parse(s)
 const nonempty = (s: unknown): s is string => typeof s === "string" && !!normalize(s);
 const sameUnit = (a: string | null, b: string | null) => a === null ? b === null : b !== null && normalize(a) === normalize(b);
 const fieldKey = (f: ReadField) => canonicalKey(f.key);
-const monetaryKeys = new Set(["principal","interest","total","gross","expenses","net","gross_value","secured_payoff","disposal_costs","protected_value","amount","reported_amount","balance","monthly_rent","deposit","secured_balance","arrears_deduction","tax_arrears","premium_arrears","late_charge","total_arrears","disposition_amount","arrears_amount","current_balance","claim_amount","amount_due","refund_value","guarantee_limit","guarantee_amount"]);
-const isMonetary = (key: string) => monetaryKeys.has(key.split(".").at(-1) ?? key);
+const isMonetary = (key: string,unit:string|null) => isSourceMoney(key,unit);
 const fieldAt = (read: PageRead, ri: number, fi: number) => read.records[ri]?.fields[fi];
 const checksAt = (pass: ReviewPass, ri: number, fi: number) => pass.checks.filter(c => c.recordIndex === ri && c.fieldIndex === fi);
 function matchingAgreement(check: Check, field: ReadField) { return check.status === "agrees" && check.value !== null && check.value === field.value && sameUnit(check.unit, field.unit) && nonempty(check.quote); }
@@ -43,7 +43,7 @@ function proofFor(read: PageRead, passes: readonly ReviewPass[], ri: number, fi:
   if (verifies.length !== 1 || repairs.length > 1) return null;
   const firsts = checksAt(verifies[0],ri,fi), field = fieldAt(read,ri,fi);
   if (!field || field.confidence !== "clear" || field.value === null || !nonempty(field.quote)) return null;
-  if (isMonetary(fieldKey(field)) && (!nonempty(field.unit) || normalizeMoney(field.value,normalize(field.unit)).normalizationStatus !== "exact")) return null;
+  if (isMonetary(fieldKey(field),field.unit) && (!nonempty(field.unit) || normalizeMoney(field.value,normalize(field.unit)).normalizationStatus !== "exact")) return null;
   if (!firsts.length) {
     if (repairs.length !== 1) return null;
     const seconds = checksAt(repairs[0],ri,fi);

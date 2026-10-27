@@ -1,4 +1,5 @@
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
+import { isSourceMoney } from "./source-quantity.ts";
 import { documentFamily } from "./document-routing.ts";
 export const PROMPT_VERSION="luna-evidence-3.7.0";
 export const DOC_FIELDS:Record<string,string>={
@@ -165,7 +166,6 @@ export function projectPage(read:PageRead,documentId:string,page:number,document
   const family=documentFamily(read.documentType),isCreditReport=creditReportType(read.documentType),isHealthArrears=healthArrearsType(read.documentType);
 const namespaces=new Set(["person","income","debt","asset","transaction","household","case","applicant","spouse","court","business","statement","family","tax","procedure","credit_report","health_insurance_arrears","bank_account","lease"]);
   let household:ExtractionPayload["household"];
-  const monetary=new Set(["principal","principal_balance","outstanding_principal","original_principal","interest","overdue_interest","total","total_claim","gross","expenses","net","gross_value","secured_payoff","disposal_costs","protected_value","amount","reported_amount","balance","monthly_rent","deposit","secured_balance","arrears_deduction","tax_arrears","premium_arrears","late_charge","total_arrears","disposition_amount","arrears_amount","current_balance","claim_amount","amount_due","refund_value","guarantee_limit","guarantee_amount"]);
   read.records.forEach((r,ri)=>{
     const id=`${documentId}:p${page}:${r.category}:${ri}`,ids:string[]=[];
     const localKey=(f:ReadField)=>{const key=canonicalKey(f.key),prefixes=[r.category,...(isCreditReport?["credit_report"]:[]),...(isHealthArrears?["health_insurance_arrears"]:[]),"bank_account","lease"],prefix=prefixes.find(p=>key.startsWith(p+".")),local=prefix?key.slice(prefix.length+1):key;return sourceFieldKey(local,read.documentType);};
@@ -187,14 +187,15 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const validation:Fact["validation"]=[];
       if(f.confidence!=="clear")validation.push({code:"UNCERTAIN_READING",message:"재판독 필요: 계산 투영에서 제외한 값입니다.",severity:"warning"});
       if(conflicting.has(key))validation.push({code:"FIELD_CONFLICT",message:"같은 필드에 상충하는 원문값이 있습니다.",severity:"error"});
-      if(monetary.has(key)&&!f.unit?.trim())validation.push({code:"MONETARY_UNIT_MISSING",message:"원문 금액 단위가 확인되지 않아 원화 정규화와 계산을 보류했습니다.",severity:"warning"});
+      const monetary=isSourceMoney(key,f.unit);
+      if(monetary&&!f.unit?.trim())validation.push({code:"MONETARY_UNIT_MISSING",message:"원문 금액 단위가 확인되지 않아 원화 정규화와 계산을 보류했습니다.",severity:"warning"});
       // Every projected value has its own source fact; uncertain facts cannot license a different amount.
       if(usable(f))ids.push(fid);
       const normalizedKey=canonicalKey(f.key),rawPrefix=namespaces.has(normalizedKey.split(".")[0])&&normalizedKey.includes(".")?normalizedKey.split(".")[0]:null,rawLocal=rawPrefix?normalizedKey.slice(rawPrefix.length+1):normalizedKey,factType=isCreditReport?"credit_report":isHealthArrears?"health_insurance_arrears":r.category;
       const leaseField=family==="lease"&&["tenant","landlord","applicant_role","applicant_is_tenant","applicant_is_landlord","deposit","monthly_rent","secured_balance","arrears_deduction","use","start_date","end_date","period_start","period_end"].includes(key);
       const accountField=["bank_account","bank_transactions"].includes(family)&&r.category!=="transaction"&&["institution","owner","account_number","balance","active","as_of"].includes(key);
       const factKey=isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
-      facts.push({id:fid,subjectId:id,logicalId:`${id}:${key}${conflicting.has(key)?`:candidate:${fi}`:""}`,key:factKey,value:f.value,rawValue:f.value,...(monetary.has(key)?{numeric:sourceMoney(f)}:{}),periodStart:value("period_start"),periodEnd:value("period_end"),asOf:value("as_of"),refs:[{documentId,page,quote:f.quote,sourceHash:documentHash,...(f.bbox?.length===4&&f.bbox.every(x=>typeof x==="number"&&x>=0&&x<=1)&&f.bbox[0]<=f.bbox[2]&&f.bbox[1]<=f.bbox[3]?{bbox:f.bbox as [number,number,number,number]}:{})}],validation});
+      facts.push({id:fid,subjectId:id,logicalId:`${id}:${key}${conflicting.has(key)?`:candidate:${fi}`:""}`,key:factKey,value:f.value,rawValue:f.value,sourceUnit:f.unit,...(monetary?{numeric:sourceMoney(f)}:{}),periodStart:value("period_start"),periodEnd:value("period_end"),asOf:value("as_of"),refs:[{documentId,page,quote:f.quote,sourceHash:documentHash,...(f.bbox?.length===4&&f.bbox.every(x=>typeof x==="number"&&x>=0&&x<=1)&&f.bbox[0]<=f.bbox[2]&&f.bbox[1]<=f.bbox[3]?{bbox:f.bbox as [number,number,number,number]}:{})}],validation});
     }
     if(!ids.length)return;
     if(r.category==="income"){
@@ -215,7 +216,14 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
     if(r.category==="asset"){
       if(leaseType(read.documentType)&&!(["applicant_is_tenant","asset_owner_role","ownership_role"].some(k=>value(k)==="yes"||value(k)==="applicant"))){warnings.push(`${id}: 임대차 문서만으로 신청인 소유자산을 판단하지 않았습니다. 신청인 역할의 원문 근거가 필요합니다.`);return;}
       if(!value("label"))warnings.push(`${id}: 인용된 재산명이 없어 재산명 확인이 필요합니다.`);
-      const assetKind=sourceAssetKind(value("kind"));
+      // The document family is a routing signal for the typed category, not a
+      // source fact or legal-recognition decision. Use it only when the row has
+      // no explicit contradictory kind; retain every original kind reading as
+      // a fact so uncertainty/conflicts remain visible to review.
+      const rawKinds=byKey.get("kind")??[];
+      const noKindReading=!rawKinds.length||rawKinds.every(candidate=>candidate.value===null||!candidate.value.trim());
+      const familyKindReading=rawKinds.length>0&&rawKinds.every(candidate=>candidate.value!==null&&sourceAssetKind(candidate.value)==="insurance");
+      const assetKind=family==="insurance"&&(noKindReading||familyKindReading)?"insurance":sourceAssetKind(value("kind"));
       let grossValue=num("gross_value"),securedPayoff=num("secured_payoff");
       if(assetKind==="insurance"||/insurance|보험/.test(read.documentType)){
         const refundQuote=/(?:해약|해지|예상)?\s*환급금|surrender\s*value|cash\s*value/i;

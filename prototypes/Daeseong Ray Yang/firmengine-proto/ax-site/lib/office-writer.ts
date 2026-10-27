@@ -1,7 +1,6 @@
 /** Office generation is deterministic code; no model, filesystem, or network call occurs here. */
-import { AlignmentType, BorderStyle, Document, Footer, HeadingLevel, Packer, PageNumber, PageOrientation, Paragraph, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType } from "docx";
 import * as XLSX from "xlsx";
-import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { strFromU8, strToU8, unzipSync, zipSync, Zip, ZipDeflate } from "fflate";
 import { createCaseReadIndex } from "./domain.ts";
 import type { ArtifactKind, CaseData, RuleSet } from "./domain.ts";
 import { assessCase } from "./assessment.ts";
@@ -61,7 +60,6 @@ export function serializeRenderedOffice(rendered: RenderedOffice): Uint8Array {
   return strToU8(JSON.stringify(rendered));
 }
 
-const FONT = { ascii: "Malgun Gothic", hAnsi: "Malgun Gothic", eastAsia: "맑은 고딕", cs: "Malgun Gothic" };
 const modeLabel = (mode: OfficeMode) => mode === "final" ? "최종 검토본 · 서명·제출 승인 전" : "검토용 초안";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -70,57 +68,33 @@ function cleanText(value: string): string {
   // XML 1.0 excludes most control characters. Preserve ordinary tab/newline content.
   return String(value ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "�");
 }
-function paragraph(text: string, options: { bold?: boolean; size?: number; color?: string; keepNext?: boolean } = {}): Paragraph {
-  const lines = cleanText(text).split(/\r?\n/);
-  return new Paragraph({
-    spacing: { after: 110, line: 280 }, keepNext: options.keepNext,
-    children: lines.map((line, index) => new TextRun({ text: line, break: index ? 1 : undefined, font: FONT, size: options.size ?? 20, bold: options.bold, color: options.color ?? "17251E" })),
-  });
+function xmlEscape(value: string): string {
+  return cleanText(value).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&apos;");
 }
-function documentTable(table: ExportTable, availableWidth: number): Table {
-  const count = Math.max(1, table.headers.length);
-  const widths = Array.from({ length: count }, (_, index) => Math.floor(availableWidth / count) + (index < availableWidth % count ? 1 : 0));
-  const row = (values: string[], header: boolean) => new TableRow({
-    tableHeader: header, cantSplit: true,
-    children: widths.map((width, index) => new TableCell({
-      width: { size: width, type: WidthType.DXA },
-      margins: { top: 90, bottom: 90, left: 90, right: 90 },
-      shading: { fill: header ? "EAF1EC" : "FFFFFF" },
-      children: [paragraph(values[index] ?? "", { size: count >= 7 ? 16 : 18, bold: header })],
-    })),
-  });
-  return new Table({
-    width: { size: availableWidth, type: WidthType.DXA }, columnWidths: widths,
-    layout: TableLayoutType.FIXED,
-    borders: Object.fromEntries(["top", "bottom", "left", "right", "insideHorizontal", "insideVertical"].map((side) => [side, { style: BorderStyle.SINGLE, size: 4, color: "CAD5CD" }])),
-    rows: [row(table.headers, true), ...(table.rows.length ? table.rows : [["[확인된 기재 항목 없음 · 검토 필요]"]]).map((values) => row(values, false))],
-  });
+function directLargeTableDocx(item: CourtDocument, payload: ExportPackage, mode: OfficeMode): Uint8Array {
+  const landscape=item.tables.some(table=>table.headers.length>6), pageWidth=landscape?16838:11906, pageHeight=landscape?11906:16838, width=pageWidth-1800;
+  const p=(text:string,style="Normal",size=18,bold=false,keepNext=false)=>`<w:p><w:pPr><w:pStyle w:val="${style}"/>${keepNext?"<w:keepNext/>":""}<w:spacing w:after="110" w:line="280"/></w:pPr>${cleanText(text).split(/\r?\n/).map((line,index)=>`${index?"<w:r><w:br/></w:r>":""}<w:r><w:rPr>${bold?"<w:b/>":""}<w:rFonts w:ascii="Malgun Gothic" w:hAnsi="Malgun Gothic" w:eastAsia="맑은 고딕"/><w:sz w:val="${size}"/></w:rPr><w:t xml:space="preserve">${xmlEscape(line)}</w:t></w:r>`).join("")}</w:p>`;
+  const tableStart=(table:ExportTable)=>{const count=Math.max(1,table.headers.length),col=Math.floor(width/count),widths=Array.from({length:count},(_,i)=>col+(i<width%count?1:0));return {widths,start:`<w:tbl><w:tblPr><w:tblW w:w="${width}" w:type="dxa"/><w:tblLayout w:type="fixed"/><w:tblBorders>${["top","bottom","left","right","insideH","insideV"].map(side=>`<w:${side} w:val="single" w:sz="4" w:color="CAD5CD"/>`).join("")}</w:tblBorders></w:tblPr><w:tblGrid>${widths.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>`};};
+  const rowXml=(values:string[],widths:number[],header:boolean)=>`<w:tr><w:trPr><w:cantSplit/>${header?"<w:tblHeader/>":""}</w:trPr>${widths.map((w,i)=>`<w:tc><w:tcPr><w:tcW w:w="${w}" w:type="dxa"/><w:shd w:fill="${header?"EAF1EC":"FFFFFF"}"/><w:tcMar><w:top w:w="90" w:type="dxa"/><w:start w:w="90" w:type="dxa"/><w:bottom w:w="90" w:type="dxa"/><w:end w:w="90" w:type="dxa"/></w:tcMar></w:tcPr>${p(values[i]??"","Normal",widths.length>=7?16:18,header)}</w:tc>`).join("")}</w:tr>`;
+  const documentPrefix=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${p("FIRM ENGINE  /  "+modeLabel(mode),"Normal",17,true)}${p(item.title,"Title",34,true)}${item.paragraphs.map(text=>p(text,"Normal",18)).join("")}`;
+  const documentSuffix=`<w:sectPr><w:footerReference w:type="default" r:id="rId2"/><w:pgSz w:w="${pageWidth}" w:h="${pageHeight}"${landscape?' w:orient="landscape"':""}/><w:pgMar w:top="900" w:right="900" w:bottom="900" w:left="900" w:header="360" w:footer="360"/></w:sectPr></w:body></w:document>`;
+  const styles=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Malgun Gothic" w:hAnsi="Malgun Gothic" w:eastAsia="맑은 고딕"/><w:sz w:val="20"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after="100" w:line="280"/></w:pPr></w:pPrDefault></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Title"><w:name w:val="Title"/><w:basedOn w:val="Normal"/></w:style><w:style w:type="paragraph" w:styleId="Heading2"><w:name w:val="heading 2"/><w:basedOn w:val="Normal"/><w:uiPriority w:val="9"/></w:style></w:styles>`;
+  const footer=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="right"/></w:pPr><w:r><w:rPr><w:sz w:val="15"/><w:color w:val="607064"/></w:rPr><w:t xml:space="preserve">v${payload.caseRevision} · ${xmlEscape(modeLabel(mode))}  |  </w:t></w:r><w:fldSimple w:instr="PAGE"><w:r><w:t>1</w:t></w:r></w:fldSimple><w:r><w:t> / </w:t></w:r><w:fldSimple w:instr="NUMPAGES"><w:r><w:t>1</w:t></w:r></w:fldSimple></w:p></w:ftr>`;
+  const output:Uint8Array[]=[];let zipError:Error|undefined;
+  const zip=new Zip((error,data)=>{if(error)zipError=error;else if(data)output.push(data);});
+  const addText=(name:string,text:string)=>{const file=new ZipDeflate(name,{level:6});zip.add(file);file.push(strToU8(text),true);};
+  addText("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`);
+  addText("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`);
+  addText("docProps/core.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:creator>Firm Engine</dc:creator><dc:title>${xmlEscape(item.title)}</dc:title><dc:subject>${xmlEscape(modeLabel(mode))}</dc:subject><dc:description>${xmlEscape(payload.scope)}</dc:description></cp:coreProperties>`);addText("word/styles.xml",styles);addText("word/footer1.xml",footer);addText("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>`);
+  const documentFile=new ZipDeflate("word/document.xml",{level:6});zip.add(documentFile);
+  const push=(text:string)=>documentFile.push(strToU8(text));push(documentPrefix);
+  for(const table of item.tables){push(p(table.title,"Heading2",24,true,true));const spec=tableStart(table);push(spec.start);push(rowXml(table.headers,spec.widths,true));const rows=table.rows.length?table.rows:[["[확인된 기재 항목 없음 · 검토 필요]"]];for(const row of rows)push(rowXml(row,spec.widths,false));push("</w:tbl><w:p><w:pPr><w:spacing w:after=\"60\"/></w:pPr></w:p>");}
+  documentFile.push(strToU8(documentSuffix),true);zip.end();if(zipError)throw zipError;
+  const size=output.reduce((sum,chunk)=>sum+chunk.length,0),result=new Uint8Array(size);let offset=0;for(const chunk of output){result.set(chunk,offset);offset+=chunk.length;}return result;
 }
-
 async function writeDocx(item: CourtDocument, payload: ExportPackage, mode: OfficeMode): Promise<Uint8Array> {
-  const landscape = item.tables.some((table) => table.headers.length > 6);
-  const pageWidth = landscape ? 16838 : 11906;
-  const width = pageWidth - 1800;
-  const children: (Paragraph | Table)[] = [
-    paragraph("FIRM ENGINE  /  " + modeLabel(mode), { size: 17, bold: true, color: "000000" }),
-    new Paragraph({ heading: HeadingLevel.TITLE, spacing: { before: 80, after: 260 }, children: [new TextRun({ text: cleanText(item.title), font: FONT, size: 34, bold: true, color: "000000" })] }),
-    ...item.paragraphs.map((text) => paragraph(text, { size: 18 })),
-  ];
-  for (const table of item.tables) {
-    children.push(new Paragraph({ heading: HeadingLevel.HEADING_2, spacing: { before: 240, after: 100 }, keepNext: true, children: [new TextRun({ text: cleanText(table.title), font: FONT, size: 24, bold: true, color: "000000" })] }));
-    children.push(documentTable(table, width));
-    children.push(new Paragraph({ spacing: { after: 60 }, children: [] }));
-  }
-  const doc = new Document({
-    creator: "Firm Engine", title: item.title, subject: modeLabel(mode), description: payload.scope,
-    styles: { default: { document: { run: { font: FONT, size: 20 }, paragraph: { spacing: { line: 280, after: 100 } } } } },
-    sections: [{
-      properties: { page: { size: { width: 11906, height: 16838, orientation: landscape ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT }, margin: { top: 900, right: 900, bottom: 900, left: 900, header: 360, footer: 360 } } },
-      footers: { default: new Footer({ children: [new Paragraph({ alignment: AlignmentType.RIGHT, children: [new TextRun({ text: `v${payload.caseRevision} · ${modeLabel(mode)}  |  `, font: FONT, size: 15, color: "607064" }), new TextRun({ children: [PageNumber.CURRENT], font: FONT, size: 15 }), new TextRun({ text: " / ", size: 15 }), new TextRun({ children: [PageNumber.TOTAL_PAGES], font: FONT, size: 15 })] })] }) },
-      children,
-    }],
-  });
-  return new Uint8Array(await Packer.toArrayBuffer(doc));
+  // Stream appendix XML into the DOCX ZIP so large fact tables do not allocate a docx object per cell.
+  return directLargeTableDocx(item,payload,mode);
 }
 
 function writeWorkbook(payload: ExportPackage, mode: OfficeMode): Uint8Array {

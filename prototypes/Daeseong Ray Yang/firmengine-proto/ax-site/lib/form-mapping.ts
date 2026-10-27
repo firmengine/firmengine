@@ -8,7 +8,7 @@ import { resolveDebtRows } from "./debt-resolution.ts";
 import { applicantIdentityValue } from "./applicant-identity.ts";
 import { PUBLIC_FORM_BASE64, PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
-export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.0";
+export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.1";
 export const MISSING_FORM_VALUE = "[확인 필요]";
 export const BASIC_FORM_CODES: Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>> = {
   application: "D5100", creditors: "D5106", assets: "D5101", income_expense: "D5103",
@@ -45,7 +45,7 @@ const assetLabels: Record<string,string> = { cash:"현금",deposit:"예금",insu
 const allocationLabels: Record<string,string> = { principal_then_interest_pro_rata:"원금 비례배분 후 잔여금으로 이자 배분",principal_only_pro_rata:"원금 비례배분" };
 const normalizedKey = (key: string) => key.replace(/[A-Z]/g, (x) => "_" + x.toLowerCase());
 function usableFact(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
-  return fact.state !== "disputed" && fact.recognition !== "rejected" && !!fact.refs.length && fact.refs.every((r) => validSourceRef(data, r,index)) && !fact.validation.some((v) => v.severity === "error" || ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(v.code));
+  return fact.state !== "disputed" && fact.recognition !== "rejected" && !!fact.refs.length && fact.refs.every((r) => validSourceRef(data, r,index)) && !fact.validation.some((v) => v.severity === "error" || ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(v.code)) && !factSourceLineageIssues(data,[fact.id],index).some(code=>code!=="SOURCE_VERIFICATION_REQUIRED");
 }
 function sourceValid(data: CaseData, ids: string[],index?:CaseReadIndex): boolean {
   // Draft preview may show clear, cited extracted values before cross-read.
@@ -86,6 +86,8 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     client_name: present(data.context.applicant?.name || (applicantIdentityValue(data,"name",index) !== MISSING_FORM_VALUE ? applicantIdentityValue(data,"name",index) : undefined)),
     address: present(data.context.applicant?.address || (applicantIdentityValue(data,"address",index) !== MISSING_FORM_VALUE ? applicantIdentityValue(data,"address",index) : undefined)),
     resident_id: present(data.context.applicant?.residentIdMasked || (applicantIdentityValue(data,"resident_id_masked",index) !== MISSING_FORM_VALUE ? applicantIdentityValue(data,"resident_id_masked",index) : undefined)),
+    phone: applicantIdentityValue(data,"phone",index),
+    registered_address: applicantIdentityValue(data,"registered_address",index),
     court_name: pick("court_name") !== MISSING_FORM_VALUE ? pick("court_name") : data.context.courtId === "seoul" ? "서울회생법원" : MISSING_FORM_VALUE,
     application_date: present(data.context.applicationDate), debt_as_of: present(data.context.asOf),
     statement: present(data.context.applicant?.statement || (pick("statement") !== MISSING_FORM_VALUE ? pick("statement") : undefined)),
@@ -131,7 +133,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   const ownGross = (id: string): bigint | null => {
     const asset = assetResolution.rows.find((a) => a.id === id)!;
     const gross = moneyValue(asset.grossValue);
-    if (conflictedAssets.has(asset.id) || !sourceValid(data, asset.factIds) || gross === null || gross < 0n || !Number.isSafeInteger(asset.ownershipBps) || asset.ownershipBps! < 0 || asset.ownershipBps! > 10000) return null;
+    if (conflictedAssets.has(asset.id) || !sourceValid(data, asset.factIds,index) || gross === null || gross < 0n || !Number.isSafeInteger(asset.ownershipBps) || asset.ownershipBps! < 0 || asset.ownershipBps! > 10000) return null;
     return (gross * BigInt(asset.ownershipBps!) + 9999n) / 10000n;
   };
   rows.asset = assetResolution.rows.map((asset) => {
@@ -150,7 +152,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   for (const [key, kind] of Object.entries({cash:"cash",bank_balance:"deposit",insurance_surrender:"insurance",vehicle_value:"vehicle",housing_deposit:"lease_deposit",real_estate_value:"real_estate",retirement_value:"retirement",business_assets_value:"business",other_assets:"other"})) scalars[key] = assetSum(kind);
   scalars.assets_total = assetSum();
   rows.month = data.incomes.map((income) => {
-    const valid = sourceValid(data, income.factIds);
+    const valid = sourceValid(data, income.factIds,index);
     return { entity: present(income.label), period: `${income.periodStart || "?"} ~ ${income.periodEnd || "?"}; ${income.amountBasis || "unknown"}; ${income.periodMonths ?? "?"}개월`, revenue: valid ? numeric(income.gross) : MISSING_FORM_VALUE, expense: valid ? numeric(income.expenses) : MISSING_FORM_VALUE, net_income: valid ? numeric(income.net) : MISSING_FORM_VALUE };
   });
   const business = calculation.incomeGroups.filter((group) => group.sourceIds.some(id=>data.incomes.find(s=>s.id===id)?.kind==="business"));

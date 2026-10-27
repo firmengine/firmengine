@@ -10,7 +10,7 @@ function usableIdentityFact(data:CaseData,fact:Fact,index?:CaseReadIndex):boolea
 function valueOf(fact:Fact):string{return typeof fact.value==="string"?fact.value:"";}
 
 /** Resolve identity only from explicit applicant namespace or a same-subject, source-backed applicant role. */
-export function applicantIdentityValue(data:CaseData,key:"name"|"address"|"resident_id_masked",index?:CaseReadIndex):string{
+export function applicantIdentityValue(data:CaseData,key:"name"|"address"|"resident_id_masked"|"phone"|"registered_address",index?:CaseReadIndex):string{
   const facts=currentFacts(data,index),roleBySubject=new Map<string,Fact[]>(),directKey=`applicant.${key}`,personKey=`person.${key}`;
   for(const fact of facts)if(["person.role","applicant.role"].includes(fact.key))roleBySubject.set(fact.subjectId,[...(roleBySubject.get(fact.subjectId)??[]),fact]);
   const rejectedDirectSubjects=new Set(facts.filter(fact=>fact.key===directKey&&!usableIdentityFact(data,fact,index)).map(fact=>fact.subjectId));

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { DOC_FIELDS,EXTRACT_INSTRUCTIONS,projectPage,type PageRead,type ReadField } from "../lib/extraction.ts";
+import { DOC_FIELDS,EXTRACT_INSTRUCTIONS,applyFirstVerification,applyTargetedRepair,projectPage,type FieldReviewCheck,type PageRead,type ReadField } from "../lib/extraction.ts";
 import { createSourceVerificationReceipts,sourceVerificationFieldLocation } from "../lib/source-verification.ts";
 
 const sha="e".repeat(64);
@@ -35,6 +35,40 @@ test("보험 해약환급금은 명시적 0과 원문 단위를 보존한다",()
   assert.equal(scaled.assets?.[0].grossValue?.amountWon,"245000");
   const absentUnit=projectPage(asset([f("refund_value","245","해약환급금 245")]),"synthetic-insurance",3,sha);
   assert.equal(absentUnit.assets?.[0].grossValue?.amountWon,null);
+});
+
+test("보험 문서 family는 typed asset kind만 보완하고 원문 kind 불확실성은 그대로 둔다",()=>{
+  const uncertain=(key:string,value:string,quote:string,unit:string|null=null):ReadField=>({...f(key,value,quote,unit),confidence:"uncertain"});
+  const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"보험 계약 행",fields:[
+    uncertain("kind","insurance","보험 해약환급금 안내"),
+    f("gross_value","794000","해약환급금 794,000원","원"),
+    f("monthly_premium","184000","월 보험료 184,000원","원"),
+    f("coverage_amount","149150000","주계약 보장액 149,150,000원","원"),
+  ]}]};
+  const projected=projectPage(read,"synthetic-insurance-family",1,sha);
+  assert.equal(projected.assets?.[0].kind,"insurance");
+  assert.equal(projected.assets?.[0].grossValue?.amountWon,"794000");
+  assert.ok(projected.facts?.some(fact=>fact.key==="asset.kind"&&fact.validation?.some(v=>v.code==="UNCERTAIN_READING")));
+  assert.equal(projected.facts?.find(fact=>fact.key==="asset.coverage_amount")?.value,"149150000");
+  assert.equal(projected.facts?.find(fact=>fact.key==="asset.monthly_premium")?.value,"184000");
+
+  const firstChecks:FieldReviewCheck[]=read.records[0].fields.map((field,fieldIndex)=>({recordIndex:0,fieldIndex,status:fieldIndex===0?"ambiguous":"agrees",value:fieldIndex===0?"insurance":field.value,unit:field.unit,quote:fieldIndex===0?"보험":field.quote,reason:fieldIndex===0?"불일치":"원문 일치"}));
+  const verified=applyFirstVerification(read,firstChecks);
+  assert.equal(verified.targets.length,1,"kind source disagreement remains visible as a review target");
+  const repaired=applyTargetedRepair(verified.read,firstChecks,[]);
+  assert.equal(repaired.disagreements,1,"family fallback does not erase an uncertain source read");
+});
+
+test("insurance family does not override an explicit contradictory kind or another family",()=>{
+  const insuranceRead=(documentType:string,fields:ReadField[]):PageRead=>({documentType,complete:true,warnings:[],records:[{category:"asset",label:"typed row",fields}]});
+  const insurance=projectPage(insuranceRead("insurance",[f("kind","vehicle","차량 종류"),f("label","차량","차량"),f("gross_value","100","평가액 100원","원")]),"synthetic-insurance",1,sha);
+  assert.equal(insurance.assets?.[0].kind,"vehicle");
+  const noFamily=projectPage(insuranceRead("unknown",[f("label","합성 재산","합성 재산"),f("gross_value","100","평가액 100원","원")]),"synthetic-unknown-family",2,sha);
+  assert.equal(noFamily.assets?.[0].kind,"other");
+  const uncertainVehicle:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"상충 유형",fields:[
+    {...f("kind","vehicle","차량 종류"),confidence:"uncertain"},f("label","차량","차량"),f("gross_value","100","평가액 100원","원"),
+  ]}]};
+  assert.equal(projectPage(uncertainVehicle,"synthetic-conflicting-kind",3,sha).assets?.[0].kind,"other");
 });
 
 test("보험 환급금 별칭 선택은 필드 순서에 무관하고 상충한 두 원문값은 계산에서 보류한다",()=>{
