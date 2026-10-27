@@ -9,6 +9,7 @@ import { observedSourceDetails } from "./observed-source-details.ts";
 import { applicantIdentityValue } from "./applicant-identity.ts";
 import { applicantStatementForForm } from "./statement-paragraphs.ts";
 import { PUBLIC_FORM_METADATA } from "./form-template-data.ts";
+import { guaranteeSourceAnnex, transactionSourceAnnex, transactionSourcePrintTables } from "./source-review-annexes.ts";
 
 export interface ExportTable { title: string; headers: string[]; rows: string[][] }
 export interface CourtDocument {
@@ -211,9 +212,13 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
       ],
     });
   }
-  documents.find(item=>item.kind==="evidence_index")?.tables.push(conditionalFormRoutes(data,sourceIndex));
+  const transactionAnnex=transactionSourceAnnex(data,sourceIndex),guaranteeAnnex=guaranteeSourceAnnex(data,sourceIndex);
+  documents.find(item=>item.kind==="evidence_index")?.tables.push(conditionalFormRoutes(data,sourceIndex),...transactionSourcePrintTables(transactionAnnex));
+  documents.find(item=>item.kind==="creditors")?.tables.push(guaranteeAnnex);
   const facts = currentFacts(data,sourceIndex);
   const workbook: WorkbookSheet[] = [
+    textSheet("거래원문검토", [[transactionAnnex.title],transactionAnnex.headers,...transactionAnnex.rows]),
+    textSheet("보증원문검토", [[guaranteeAnnex.title],guaranteeAnnex.headers,...guaranteeAnnex.rows]),
     textSheet("채권원금이자", [["채무 ID", "계약 ID", "채권자", "원금(원)", "이자(원)", "합계(원)", "분류", "기준일", "보증역할", "채권성격", "주채무 ID", "대위·구상 상태", "한도 처리", "처리 검토", "근거"], ...c.debtRows.map((r) => { const d = resolvedDebts.find((debt) => debt.id === r.id)!; const g = d.guaranteeDetails; return [r.id, d.contractId, r.creditor, r.principalWon, r.interestWon, r.totalWon, r.classification, d.asOf, g?.liabilityRole, g?.claimNature, g?.underlyingDebtId, g?.recourseStatus, g?.capTreatment, g?.capTreatmentReviewed === true ? "검토됨" : "검토 전", refs(data, d.factIds,sourceIndex)]; })]),
     textSheet("보증연대 검토", [["채무 ID", "채권자", "신청인 채무 원금", "신청인 채무 이자", "원문 보증청구액", "원문 보증한도", "역할", "채권 성격", "주채무 ID", "대위·구상 상태", "한도 처리", "검토 여부", "검토 사유", "근거"], ...data.debts.filter((d) => d.guaranteeDetails || d.factIds.some((id) => { const f=sourceIndex.byId.get(id); return !!f && /guarantee|surety|보증|연대/i.test(f.key); })).map((d) => { const g = d.guaranteeDetails; return [d.id, d.creditor, verifiedWon(d.principal), verifiedWon(d.interest), verifiedWon(g?.sourceGuaranteeAmount), verifiedWon(g?.sourceGuaranteeLimit), g?.liabilityRole, g?.claimNature, g?.underlyingDebtId, g?.recourseStatus, g?.capTreatment, g?.capTreatmentReviewed === true ? "검토됨" : "검토 전", g?.reviewReason, refs(data, d.factIds,sourceIndex)]; })]),
     textSheet("소득원", [["ID", "소득원", "유형", "금액 기준", "개월수", "총수입(원)", "경비(원)", "순소득(원)", "월평균(원)", "근거"], ...data.incomes.map((s) => [s.id, s.label, s.kind, s.amountBasis, s.periodMonths?.toString(), s.gross?.amountWon, s.expenses?.amountWon, s.net?.amountWon, c.incomeRows.find((r) => r.id === s.id)?.monthlyWon, refs(data, s.factIds,sourceIndex)])]),

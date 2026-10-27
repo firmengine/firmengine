@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "cbccd889320125f72fbf29295ff62d08c043754b4dc12d59e1c609b3d209d5ee",
+  "source_digest": "234cd1bb4af7b07a40df30a56575fdfc3102562e04189abcaac601b3fa4aee06",
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "a8f84520e0d245e502a5723ea377a698a9a162cc0474790c01e1a13e3c787bc1",
-      "bytes": 7567,
+      "sha256": "91ad7e43c6fe82034fa38d7abd4479d49fc84597c3f85dd7cf5aee91456473dd",
+      "bytes": 8076,
       "mode": "100644"
     },
     {
@@ -859,8 +859,8 @@
     },
     {
       "path": "lib/exports.ts",
-      "sha256": "acc862f5a7a96e2062cbe5471f0d4720deba6740b090087ac205ae86c7fd61d3",
-      "bytes": 34211,
+      "sha256": "1ac73f0c612f1aa79a40c957c17e18ddd3b4e3e8817dff07f460cc32695efa4a",
+      "bytes": 34805,
       "mode": "100644"
     },
     {
@@ -1047,6 +1047,12 @@
       "path": "lib/source-quantity.ts",
       "sha256": "fadb18b7b5b6c7d1520beb8ecc376dc8df099bd2c9c26f206201c4337c3d3cf3",
       "bytes": 5662,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/source-review-annexes.ts",
+      "sha256": "8694204fb2fe72c1ea6d41b085bbd0bda1603e5a5060af027697f9f1007acccc",
+      "bytes": 16015,
       "mode": "100644"
     },
     {
@@ -1309,8 +1315,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "32e670c7a00fa292d1f4feb1f278138c3bcb8a6ea00971bb00bd289556052863",
-      "bytes": 25084,
+      "sha256": "0ab98bb07dd3c51159a4af963e9a252a3cef36f10cbc10610a89a43f3b321918",
+      "bytes": 25593,
       "mode": "100644"
     },
     {
@@ -1725,6 +1731,12 @@
       "path": "tests/source-quantity.test.ts",
       "sha256": "2b67457f9e4a441f0924e1ef725904fc6046de36b11effa0037f41bf5b67e5d7",
       "bytes": 8825,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/source-review-annexes.test.ts",
+      "sha256": "acf0de7b92b0bb4c1e4a3915f5fee8948bf084c1b7a0ddb5339eeb23e4ce2621",
+      "bytes": 21351,
       "mode": "100644"
     },
     {
