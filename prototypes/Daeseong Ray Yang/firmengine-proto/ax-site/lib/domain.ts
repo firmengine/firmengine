@@ -184,6 +184,8 @@ export interface CaseContext {
   inventoryComplete: { income: TriState; debt: TriState; asset: TriState };
   planMonths?: number | null;
   exceptionalTermReviewed?: boolean;
+  /** Explicit human disposition for a shortened plan, bound to the reviewed evidence and plan. */
+  shortenedTermReview?: { months: number; ruleReleaseId: string; reason: string; basisFingerprint: string } | null;
   monthlyTrusteeFee?: NumericInput | null;
   monthlyPriorityPayment?: NumericInput | null;
   monthlyEstatePayment?: NumericInput | null;
@@ -510,10 +512,39 @@ export interface ExtractionPayload {
   warnings?: string[];
 }
 
+const reviewFieldKey=(key:string)=>{
+  const normalized=key.trim().replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase();
+  return normalized==="debt.outstanding_principal"?"debt.principal_balance":normalized;
+};
+function reviewedSourceField(prior:Fact,raw:Partial<Fact>,exact:boolean):boolean {
+  if(reviewFieldKey(prior.key)!==reviewFieldKey(raw.key??"")||!raw.refs?.length)return false;
+  const box=(ref:SourceRef)=>Array.isArray(ref.bbox)&&ref.bbox.length===4&&ref.bbox.every(n=>Number.isFinite(n)&&n>=0&&n<=1)&&ref.bbox[0]<ref.bbox[2]&&ref.bbox[1]<ref.bbox[3]?ref.bbox:null;
+  const quote=(value:string)=>value.normalize("NFKC").trim();
+  return raw.refs.every(ref=>prior.refs.some(old=>{
+    if(ref.documentId!==old.documentId||ref.page!==old.page||ref.sourceHash!==old.sourceHash)return false;
+    const a=box(ref),b=box(old);
+    if(a&&b)return JSON.stringify(a)===JSON.stringify(b)&&(!exact||quote(ref.quote)===quote(old.quote));
+    // Record ordinals can move and a repeated quote is not a stable row anchor.
+    // Preserve the old human decision, but leave this reread as a candidate.
+    return false;
+  }));
+}
+
 /** Untrusted extraction never grants source verification or legal acceptance. */
 export function applyExtraction(input: CaseData, extraction: ExtractionPayload): CaseData {
   const data = touchCase(input);
   const idMap = new Map<string, string>();
+  const blockedByManual=new Set<string>();
+  // Keep the latest HUMAN decision even if a legacy automatic reread later
+  // created a newer candidate. Only another human decision can supersede it.
+  const humanDecisions=new Map<string,Fact>();
+  const previousHeads=new Map<string,Fact>();
+  for(const fact of input.facts){
+    if(!previousHeads.has(fact.logicalId)||previousHeads.get(fact.logicalId)!.version<fact.version)previousHeads.set(fact.logicalId,fact);
+    if(fact.reviewer&&(!humanDecisions.has(fact.logicalId)||humanDecisions.get(fact.logicalId)!.version<fact.version))humanDecisions.set(fact.logicalId,fact);
+  }
+  const humanByKey=new Map<string,Fact[]>();
+  for(const fact of humanDecisions.values()){const key=reviewFieldKey(fact.key);humanByKey.set(key,[...(humanByKey.get(key)??[]),fact]);}
   const warnings = [...(extraction.warnings ?? [])];
   for (const page of extraction.pages ?? []) {
     if (!data.documents.some((d) => d.id === page.documentId && d.status === "active" && d.pages.includes(page.page))) { warnings.push("문서 범위 밖의 추출 페이지를 제외했습니다."); continue; }
@@ -528,6 +559,20 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
   const scope = new Set((extraction.replacesPages ?? []).filter((p) => data.pages.some((existing) => existing.documentId === p.documentId && existing.page === p.page && existing.role === "evidence") && data.documents.some((d) => d.id === p.documentId && d.status === "active" && d.pages.includes(p.page))).map((p) => `${p.documentId}:${p.page}`));
   const withdrawn = new Set<string>();
   const at = new Date().toISOString();
+  for(const decision of [...humanDecisions.values()]){
+    const head=previousHeads.get(decision.logicalId)!;
+    const key=reviewFieldKey(decision.key),peers=humanByKey.get(key)!;
+    const incoming=(extraction.facts??[]).filter(raw=>reviewedSourceField(decision,raw,false));
+    const touched=decision.refs.every(ref=>scope.has(`${ref.documentId}:${ref.page}`))||incoming.length===1;
+    if(head.version<=decision.version||head.reviewer||!touched||!decision.refs.length||decision.refs.some(ref=>!validSourceRef(data,ref))||peers.filter(other=>reviewedSourceField(other,decision,false)).length!==1)continue;
+    // Repair a legacy machine overwrite by copying the recorded human decision;
+    // this is a history-linked restoration, not a new review or source proof.
+    const restored:Fact={...decision,id:crypto.randomUUID(),version:head.version+1,supersedes:head.id,createdAt:at,validation:[...decision.validation,{code:"RESTORED_HUMAN_DECISION",severity:"info",message:`기존 수동 판단 ${decision.id}을 가린 자동 버전 ${head.id} 이후에 동일 판단을 복원했습니다.`}]};
+    data.facts.push(restored);humanDecisions.set(restored.logicalId,restored);humanByKey.set(key,peers.map(fact=>fact.id===decision.id?restored:fact));
+    for(const group of [data.incomes,data.debts,data.assets,data.transactions])for(const item of group)item.factIds=item.factIds.map(id=>id===decision.id?restored.id:id);
+    data.household.factIds=data.household.factIds.map(id=>id===decision.id?restored.id:id);
+    warnings.push("과거 자동 버전이 가린 유효한 수동 판단을 원래 검토 기록에 연결하여 복원했습니다.");
+  }
   for (const prior of currentFacts(data)) {
     if (!prior.refs.length || !prior.refs.every((ref) => scope.has(`${ref.documentId}:${ref.page}`))) continue;
     // Human-reviewed facts survive rereading. Machine cross-read facts are
@@ -547,14 +592,35 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
   for (const raw of extraction.facts ?? []) {
     if (!raw.key || !raw.subjectId || raw.value === undefined || Object.hasOwn(raw,"sourceUnit")&&raw.sourceUnit!==null&&typeof raw.sourceUnit!=="string" || !Array.isArray(raw.refs) || !raw.refs.length || raw.refs.some((r) => !validSourceRef(data, r))) { warnings.push("유효한 문서·페이지·원문 인용이 없는 사실 후보를 제외했습니다."); continue; }
     let logicalId = raw.logicalId || [raw.subjectId, raw.key, raw.periodStart ?? "", raw.periodEnd ?? "", raw.refs[0].documentId].join(":");
+    const directDecision=humanDecisions.get(logicalId);
+    const keyedDecisions=humanByKey.get(reviewFieldKey(raw.key))??[];
+    const relatedDecisions=keyedDecisions.filter(fact=>reviewedSourceField(fact,raw,false));
+    // A broad/shared coordinate cannot prove which source row was reviewed.
+    const uniqueSource=relatedDecisions.length===1&&(extraction.facts??[]).filter(other=>reviewedSourceField(relatedDecisions[0],other,false)).length===1;
+    if(uniqueSource&&relatedDecisions[0].state==="retracted"){
+      if(raw.id)blockedByManual.add(raw.id);
+      warnings.push("사람이 철회한 동일 원문 필드는 재판독·키 정규화로 다시 활성화하지 않았습니다. 변경이 필요하면 철회 판단을 직접 검토하세요.");
+      continue;
+    }
     // Include tombstones so a new extraction cannot restart at version 1 under an older version 2.
     let prior: Fact | undefined = data.facts.filter((f) => f.logicalId === logicalId).sort((a, b) => b.version - a.version)[0];
+    const unlocatedCoincidence=keyedDecisions.some(fact=>raw.refs!.some(ref=>fact.refs.some(old=>ref.documentId===old.documentId&&ref.page===old.page&&ref.sourceHash===old.sourceHash&&ref.quote.normalize("NFKC").trim()===old.quote.normalize("NFKC").trim()&&(!ref.bbox||!old.bbox))));
+    if(directDecision&&(!uniqueSource||!relatedDecisions.includes(directDecision))){
+      // Parser row ordinals can move. A reused logical ID is not permission to
+      // overwrite a human decision at a different/uncertain source location.
+      logicalId+=":candidate:"+crypto.randomUUID();prior=undefined;
+      warnings.push("행 순서 또는 원문 위치가 기존 수동 판단과 달라 자동 연결하지 않고 상충 후보로 보존했습니다.");
+    }else if(!directDecision&&(relatedDecisions.length||unlocatedCoincidence)){
+      const exact=relatedDecisions.filter(fact=>reviewedSourceField(fact,raw,true));
+      if(uniqueSource&&exact.length===1&&exact[0].subjectId===raw.subjectId){prior=exact[0];logicalId=prior.logicalId;}
+      else {logicalId+=":candidate:"+crypto.randomUUID();prior=undefined;warnings.push("기존 수동 검토와 겹치는 원문 필드의 연결이 불확실하여 별도 상충 후보로 보존했습니다.");}
+    }
     if (prior && prior.state !== "retracted" && (prior.state === "verified" || prior.reviewer)) {
-      const sameSource = JSON.stringify(prior.refs.map(r => [r.documentId,r.page,r.quote,r.sourceHash])) === JSON.stringify((raw.refs ?? []).map(r => [r.documentId,r.page,r.quote,r.sourceHash]));
+      const sameSource = JSON.stringify(prior.refs.map(r => [r.documentId,r.page,r.quote,r.sourceHash,r.bbox??null])) === JSON.stringify((raw.refs ?? []).map(r => [r.documentId,r.page,r.quote,r.sourceHash,r.bbox??null]));
       const priorSourceUnit=Object.hasOwn(prior,"sourceUnit")?prior.sourceUnit:prior.sourceVerification?.field?.unit??(prior.numeric?.unit&&prior.numeric.unit!=="unknown"?prior.numeric.unit:null);
       const sameSourceUnit=(a:string|null|undefined,b:string|null|undefined)=>a==null&&b==null||typeof a==="string"&&typeof b==="string"&&a.normalize("NFKC").trim()===b.normalize("NFKC").trim();
       const sameReading = JSON.stringify(prior.value) === JSON.stringify(raw.value) && JSON.stringify(prior.numeric ?? null) === JSON.stringify(raw.numeric ?? null) && (!Object.hasOwn(raw,"sourceUnit") || sameSourceUnit(priorSourceUnit,raw.sourceUnit as string|null|undefined));
-      if (sameReading && (!prior.sourceVerification || sameSource)) { if (raw.id) idMap.set(raw.id, prior.id); continue; }
+      if (sameReading && sameSource) { if (raw.id) idMap.set(raw.id, prior.id); continue; }
       if (prior.sourceVerification && (!sameReading || !sameSource)) {
         const tombstone:Fact={ ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, state: "retracted", recognition: "rejected", sourceVerification: undefined, reviewReason: "기계 교차판독 사실의 원문·값이 변경되어 증명을 무효화했습니다.", createdAt: at };
         data.facts.push(tombstone);prior = tombstone;
@@ -575,6 +641,7 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
   function merge<T extends { id: string; factIds: string[]; recognition?: Recognition; legalReview?: Recognition }>(existing: T[], received: T[]): T[] {
     const result = [...existing];
     for (const raw of received) {
+      if((raw.factIds??[]).some(id=>blockedByManual.has(id))){warnings.push("수동 철회한 원문 필드를 포함한 객체는 재판독으로 덮어쓰지 않았습니다.");continue;}
       const ids = (raw.factIds ?? []).map((id) => idMap.get(id) ?? id);
       if (!raw.id || !ids.length || ids.some((id) => !active.has(id))) { warnings.push("현재 사실 근거와 연결되지 않은 객체 후보를 제외했습니다."); continue; }
       const item = { ...raw, factIds: ids };

@@ -2,7 +2,8 @@ import { resolveDebtRows } from "./debt-resolution.ts";
 import { resolveIncomeRows } from "./income-resolution.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { createCaseReadIndex, currentFacts, factSourceLineageIssues, moneyValue } from "./domain.ts";
-import type { Asset, CaseData, CaseReadIndex, Debt, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
+import type { Asset, CaseData, CaseReadIndex, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
+import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-proposals.ts";
 
 const ZERO = BigInt(0);
 const ONE = BigInt(1);
@@ -96,6 +97,9 @@ function nonnegative(input: NumericInput | null | undefined): bigint | null {
 }
 function invalidLineage(data: CaseData, ids: string[],index?:CaseReadIndex): string[] {
   return factSourceLineageIssues(data, ids,index).filter((code) => ["SOURCE_FACTS_MISSING", "STALE_OR_RETRACTED_FACT", "DISPUTED_OR_REJECTED_FACT", "SOURCE_REFERENCE_INVALID"].includes(code));
+}
+function sourceChecked(data: CaseData, fact: { id: string; state: string; recognition?: string; validation: { severity: string }[] }): boolean {
+  return fact.state === "verified" && fact.recognition === "accepted" && fact.validation.every((item) => item.severity !== "error") && factSourceLineageIssues(data, [fact.id]).length === 0;
 }
 
 function monthIndex(value: string | undefined): number | null {
@@ -324,7 +328,9 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   const principal = sumKnown(debtRows.map((r) => r.principalWon === null ? null : BigInt(r.principalWon)), debtComplete);
   const interest = sumKnown(debtRows.map((r) => r.interestWon === null ? null : BigInt(r.interestWon)), debtComplete);
   const totalDebt = principal === null || interest === null ? null : principal + interest;
-  let capComplete = debtComplete, secured = ZERO, unsecured = ZERO;
+  const capDateMatchesApplication = data.context.asOf === data.context.applicationDate;
+  let capComplete = debtComplete && capDateMatchesApplication, secured = ZERO, unsecured = ZERO;
+  if (!capDateMatchesApplication) issues.push("DEBT_CAP_APPLICATION_DATE_MISMATCH");
   for (const debt of deduped.rows) {
     const row = debtRows.find((r) => r.id === debt.id)!;
     if (debt.excludedByReview && debt.legalReview === "accepted" && debt.exclusionReason?.trim()) continue;
@@ -341,7 +347,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     if (row.totalWon === null || debt.secured === "unknown" || debt.classification === "unknown" || !debt.asOf || debt.asOf !== data.context.asOf || (["tax", "estate", "disputed", "non_dischargeable"].includes(debt.classification) && debt.legalReview !== "accepted")) { capComplete = false; continue; }
     if (debt.secured === "yes") secured += BigInt(row.totalWon); else unsecured += BigInt(row.totalWon);
   }
-  if (!capComplete) issues.push("DEBT_CAP_CLASSIFICATION_INCOMPLETE");
+  if (!capComplete && capDateMatchesApplication) issues.push("DEBT_CAP_CLASSIFICATION_INCOMPLETE");
   for(const debt of deduped.rows)if((debt.priority===undefined||debt.priority==="unknown")&&!(debt.excludedByReview&&debt.legalReview==="accepted"&&debt.exclusionReason?.trim()))issues.push(`DEBT_PRIORITY_TREATMENT_REQUIRED:${debt.id}`);
   const assetResolution = resolveAssetRows(data,index);
   duplicateIds.push(...assetResolution.duplicates); issues.push(...assetResolution.issues);
@@ -411,6 +417,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
 
 export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIndex=createCaseReadIndex(data)): Assessment {
   const calculation = calculateCase(data, rules,sourceIndex), findings: Finding[] = [];
+  const legalProposals = buildLegalProposals(data);
   function add(id: string, category: Finding["category"], title: string, detail: string, outcome: Finding["outcome"], nextAction?: string, objectId?: string, factIds: string[] = [], sources: string[] = []) {
     findings.push({ id, category, title, detail, outcome, severity: outcome === "pass" ? "info" : category === "eligibility" && outcome === "fail" ? "blocking" : "warning", nextAction, objectId, factIds, ruleSourceIds: sources });
   }
@@ -445,6 +452,9 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
   // Finalization must not omit a provisional/blocked calculation just because its numeric result exists.
   for (const trace of calculation.traces) if (trace.status !== "calculated") add("trace_" + trace.id, trace.status === "blocked" ? "evidence" : "legal_review", trace.title + " 산식 확정", trace.status === "blocked" ? "현재 근거로 계산을 확정할 수 없습니다." : "값은 임시 계산이며 관련 원문·인정·산식 검토가 남아 있습니다.", trace.status === "blocked" ? "unknown" : "review_required", "산식 입력과 최신 검토 상태를 확인하세요.", undefined, [...new Set(trace.inputs.flatMap((x) => x.factIds))]);
   if (rulesCurrent && rules.debtCaps) {
+    if (data.context.asOf !== data.context.applicationDate) {
+      add("cap_application_date", "eligibility", "신청일 기준 채무한도 대조", `신청일 ${data.context.applicationDate}과 채무 계산 기준일 ${data.context.asOf}이 달라 현재 채무한도 계산을 신청일 당시 금액으로 확인할 수 없습니다.`, "unknown", "신청일 기준 채무 자료로 맞추거나 신청일 당시 잔액을 별도 대조하세요.", undefined, [], rules.sources.map((s) => s.id));
+    }
     for (const [kind, amount, cap] of [["담보", calculation.securedDebtWon, rules.debtCaps.securedWon], ["무담보", calculation.unsecuredDebtWon, rules.debtCaps.unsecuredWon]] as const) {
       const pass = amount === null ? null : rules.debtCaps.comparison === "lte" ? BigInt(amount) <= BigInt(cap) : BigInt(amount) < BigInt(cap);
       add("cap_" + kind, "eligibility", kind + " 채무한도", amount === null ? "같은 기준일의 채무금액·분류·목록 완전성을 확인해야 합니다." : `${amount}원 / 한도 ${cap}원 (${rules.debtCaps.comparison === "lte" ? "이하" : "미만"})`, pass === null ? "unknown" : pass ? "pass" : "fail", pass === false ? "채무 포함·제외와 기준일을 검토하고 다른 절차를 검토하세요." : undefined, undefined, [], rules.sources.map((s) => s.id));
@@ -454,6 +464,30 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
     const months = data.context.planMonths;
     const allowed = months <= rules.term.ordinaryMonths || (data.context.exceptionalTermReviewed === true && !!rules.term.exceptionalMaxMonths && months <= rules.term.exceptionalMaxMonths);
     add("plan_term", "eligibility", "변제기간 검토", `${months}개월 / 원칙 범위 ${rules.term.ordinaryMonths}개월, 특별사정 검토 시 ${rules.term.exceptionalMaxMonths ?? "미확인"}개월`, allowed ? "pass" : data.context.exceptionalTermReviewed === true ? "fail" : "review_required", allowed ? undefined : "연장 요건·특별사정·법원 판단이 필요한지 확인하세요.");
+    if (data.context.courtId === "seoul" && data.context.applicationDate >= "2026-10-01" && months < rules.term.ordinaryMonths) {
+      const candidate = legalProposals.termCandidate;
+      const review = data.context.shortenedTermReview;
+      const fingerprint = shortenedTermBasisFingerprint(data);
+      const reviewMatches = !!review && review.months === months && review.ruleReleaseId === rules.id && review.basisFingerprint === fingerprint && !!review.reason.trim();
+      const candidatePass = candidate.status === "candidate_for_human_review";
+      const detail = `${months}개월 단축기간은 서울회생법원 준칙 제424호의 후보요건과 사건별 검토가 필요합니다. 후보 상태: ${candidate.status}.`;
+      const outcome: Finding["outcome"] = candidatePass && reviewMatches ? "pass" : candidate.status === "unknown" || candidate.status === "unsupported_version" ? "unknown" : "review_required";
+      add("seoul_424_shortened_term", "eligibility", "서울회생법원 단축기간 후보와 사건별 검토", detail, outcome, outcome === "pass" ? undefined : "근거가 확인된 준칙상 후보 경로를 검토하고, 현재 기간·규칙판본·근거에 연결된 사건별 검토 이유를 기록하세요.", undefined, [...new Set(candidate.conditions.flatMap((condition) => condition.factIds))], ["seoul-practice-2026"]);
+    }
+  }
+  if (legalProposals.objection.value === "unknown") {
+    add("objection_status", "eligibility", "이의 여부 확인", "채권자와 회생위원의 이의 여부가 각각 확인된 source-verified·legally-accepted 사실로 확정되지 않았습니다.", "unknown", "두 이의 여부를 각각 확인하고 근거를 검토하세요.", undefined, legalProposals.objection.factIds);
+  } else if (legalProposals.objection.value === "yes") {
+    const minimum = legalProposals.objectionMinimum;
+    const minimumOutcome: Finding["outcome"] = minimum.status === "comparison" ? minimum.comparison === "meets_minimum" ? "pass" : "fail" : "unknown";
+    add("objection_minimum", "eligibility", "이의 사건 최소변제액", minimum.reason, minimumOutcome, minimumOutcome === "pass" ? undefined : "인가결정일 기준 채권 총액·계획 변제 현재가치와 적용 판본을 확인하세요.", undefined, minimum.status === "comparison" ? minimum.sourceFactIds : legalProposals.objection.factIds, [minimum.sourceUrl]);
+    add("objection_individual_liquidation", "eligibility", "이의 채권자별 청산배당 비교", "현재 자료 모델은 전체 청산가치 비교만 계산하며, 이의 제기 채권자의 개별 청산배당액 비교를 증명하지 않습니다.", "unknown", "이의 채권자별 신고채권액과 파산 배당예정액을 개별 대조하는 구조화된 검토가 필요합니다.", undefined, legalProposals.objection.factIds);
+    const incomeDuringTerm = currentFacts(data).filter((fact) => fact.key === "plan.disposableIncomeDuringTerm");
+    const committed = currentFacts(data).filter((fact) => fact.key === "plan.amountCommitted");
+    const reviewedAmount = (rows: typeof incomeDuringTerm) => rows.length === 1 && sourceChecked(data, rows[0]) && rows[0].numeric ? moneyValue(rows[0].numeric) : null;
+    const incomeTotal = reviewedAmount(incomeDuringTerm), committedTotal = reviewedAmount(committed);
+    const allIncomeOutcome: Finding["outcome"] = incomeTotal === null || committedTotal === null ? "unknown" : committedTotal >= incomeTotal ? "pass" : "fail";
+    add("objection_all_disposable_income", "eligibility", "이의 사건 가용소득 전부 제공", incomeTotal === null || committedTotal === null ? "변제기간 전체 가용소득과 계획 투입액의 별도 source-verified·legally-accepted 집계가 확인되지 않았습니다." : `변제기간 전체 가용소득 ${incomeTotal}원과 계획 투입액 ${committedTotal}원을 대조했습니다.`, allIncomeOutcome, allIncomeOutcome === "pass" ? undefined : "변제기간 전체 기준의 가용소득 및 계획 투입 총액을 각각 확인하고 대조하세요.", undefined, [...incomeDuringTerm, ...committed].map((fact) => fact.id), rules.sources.map((s) => s.id));
   }
   if (calculation.disposableIncomeWon !== null && BigInt(calculation.disposableIncomeWon) <= ZERO) add("disposable_nonpositive", "eligibility", "가용소득 부족", "현재 인정 입력값에서 월 가용소득이 0원 이하입니다.", "fail", "계속 수입·생계비·우선채권 변제를 재검토하고 다른 절차의 적합성을 검토하세요.");
   add("liquidation", "eligibility", "청산가치 보장", calculation.liquidationComparison === "unknown" ? "현재가치 근거 또는 재산가액이 미확정입니다." : "변제액의 검토 현재가치와 청산가치를 대조했습니다.", calculation.liquidationComparison === "met" ? "pass" : calculation.liquidationComparison === "not_met" ? "fail" : "unknown", calculation.liquidationComparison === "met" ? undefined : "현재가치 산식·평가기준일·담보부족액·면제재산을 검토하세요.");

@@ -131,7 +131,7 @@ test("채권최고액·저당설정액은 실제 상환잔액 공제로 사용�
 test("현재 채무증명서에서만 의미가 같은 원금·합계·채권자·잔액기준일 키를 typed projection에 연결한다",()=>{
   const read:PageRead={documentType:"채무잔액증명서",complete:true,warnings:[],records:[{category:"debt",label:"힌트",fields:[
     f("debt.creditor_name","합성은행","채권자 합성은행"),
-    f("debt.principal_balance","120","현재 원금잔액 120만원","만원"),
+    {...f("debt.principal_balance","120","현재 원금잔액 120만원","만원"),bbox:[.1,.2,.4,.25]},
     f("debt.total_claim","135","총 청구액 135만원","만원"),
     f("debt.as_of_date","2026-01-31","잔액기준일 2026-01-31"),f("debt.issue_date","2026-02-02","증명서 발급일 2026-02-02"),
     f("debt.original_principal","500","최초 대출원금 500만원","만원"),
@@ -153,13 +153,13 @@ test("문서 라우팅은 국문·영문 증명서명을 canonical family로 안
   assert.match(EXTRACT_INSTRUCTIONS,/document_title/);assert.match(EXTRACT_INSTRUCTIONS,/canonical family/);
 });
 
-test("현재 잔액 alias와 표준 필드가 충돌하면 원문 facts만 남기고 typed principal을 보류한다",()=>{
+test("일반 원금과 명시 현재잔액은 별도 의미이며 typed principal은 현재잔액을 선택한다",()=>{
   const read:PageRead={documentType:"debt_balance_certificate",complete:true,warnings:[],records:[{category:"debt",label:"힌트",fields:[
-    f("creditor_name","합성은행","채권자 합성은행"),f("principal","100","원금 100원","원"),f("principal_balance","90","원금잔액 90원","원"),
+    f("creditor_name","합성은행","채권자 합성은행"),f("principal","100","원금 100원","원"),{...f("principal_balance","90","원금잔액 90원","원"),bbox:[.1,.2,.4,.25]},
   ]}]};
   const p=projectPage(read,"synthetic-conflict",1,sha);
-  assert.equal(p.debts?.length,0);assert.ok(p.facts?.some(x=>x.key==="debt.principal_balance"));
-  assert.ok(p.warnings?.some(x=>x.includes("상충값")));
+  assert.equal(p.debts?.[0].principal?.amountWon,"90");assert.ok(p.facts?.some(x=>x.key==="debt.principal_balance"));
+  assert.ok(!p.warnings?.some(x=>x.includes("상충값")));
 });
 
 test("신용조회·채권이력의 원금 키는 현재 채무로 승격되지 않으며 실제 문서 제목은 별도 fact다",()=>{

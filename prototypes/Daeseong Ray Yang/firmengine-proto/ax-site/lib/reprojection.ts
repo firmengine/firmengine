@@ -7,7 +7,7 @@ export class ReprojectionError extends Error { readonly status = 409; }
 const conflict = (message: string) => new ReprojectionError(message);
 
 /** Bump whenever source-to-fact projection semantics change. This is not a model prompt version. */
-export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.11";
+export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-28.12";
 
 export interface StoredPageJobForReprojection {
   id: string;
@@ -59,6 +59,20 @@ export function parseHistoricalReadProvenance(job: StoredPageJobForReprojection,
 
 export function hasCurrentProjection(saved: StoredReadResult, job: StoredPageJobForReprojection, sourceSha256: string): boolean {
   return saved.projection?.version === PAGE_PROJECTION_VERSION && saved.projection.sourceSha256 === sourceSha256 && saved.projection.cacheKey === job.cacheKey;
+}
+
+/** Diagnostic reads may expose legacy records; mutations need actual extraction provenance. */
+export function hasBoundExtractionProvenance(saved: StoredReadResult, job: StoredPageJobForReprojection, provenance: HistoricalReadProvenance): boolean {
+  const passes = Array.isArray(saved.extractionPasses) ? saved.extractionPasses : [];
+  return passes.length > 0 && passes.every(value => {
+    if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+    const pass = value as Record<string, unknown>;
+    return pass.model === provenance.model && pass.model === "gpt-6-luna" && typeof pass.promptVersion === "string" && !!pass.promptVersion.trim() && typeof pass.promptHash === "string" && /^[a-f0-9]{64}$/i.test(pass.promptHash) && pass.sourceHash === provenance.documentSha256 && pass.baseImageHash === job.imageHash && typeof pass.verifiedAt === "string" && Number.isFinite(Date.parse(pass.verifiedAt));
+  });
+}
+
+export function requireReprojectionProvenance(saved: StoredReadResult, job: StoredPageJobForReprojection, provenance: HistoricalReadProvenance): void {
+  if (!hasBoundExtractionProvenance(saved, job, provenance)) throw conflict("저장 판독의 추출 모델·프롬프트·원본·이미지 연결이 없어 재투영할 수 없습니다. 같은 원본의 이 증빙 페이지만 현행 방식으로 재판독하세요.");
 }
 
 export function prepareStoredReadReprojection(input: {

@@ -1,5 +1,5 @@
 import type { CaseData } from "./domain";
-import { hasCurrentProjection, prepareStoredReadReprojection, type StoredPageJobForReprojection, type StoredReadResult } from "./reprojection";
+import { hasBoundExtractionProvenance, hasCurrentProjection, prepareStoredReadReprojection, requireReprojectionProvenance, type StoredPageJobForReprojection, type StoredReadResult } from "./reprojection";
 import { db, bucket, getCase, HttpError, sha256 } from "./server-store";
 
 type JobRow = StoredPageJobForReprojection & { image_key: string | null; image_hash: string | null; cache_key: string | null; lease_until: string | null; document_sha256: string; ready: number; original_key: string | null; active_processing_jobs: number };
@@ -34,14 +34,9 @@ async function inspect(caseId: string, jobId: string, data?: CaseData) {
 export async function inspectStoredPageJob(caseId: string, jobId: string) {
   const { job, saved, provenance } = await inspect(caseId, jobId);
   const extractionPasses=Array.isArray(saved.extractionPasses)?saved.extractionPasses:[];
-  const hasBoundExtractionProvenance=extractionPasses.length>0&&extractionPasses.every((value:unknown)=>{
-    if(!value||typeof value!=="object"||Array.isArray(value))return false;
-    const pass=value as Record<string,unknown>;
-    return pass.model===provenance.model&&typeof pass.promptVersion==="string"&&!!pass.promptVersion.trim()&&typeof pass.promptHash==="string"&&/^[a-f0-9]{64}$/i.test(pass.promptHash)&&pass.sourceHash===provenance.documentSha256&&pass.baseImageHash===job.imageHash&&typeof pass.verifiedAt==="string"&&Number.isFinite(Date.parse(pass.verifiedAt));
-  });
   return {
     job: { id: job.id, documentId: job.documentId, page: job.page, role: job.role, status: job.status, stage: job.stage, cacheKey: job.cacheKey },
-    historicalProvenance: { ...provenance, extractionPassCount: extractionPasses.length, hasBoundExtractionProvenance },
+    historicalProvenance: { ...provenance, extractionPassCount: extractionPasses.length, hasBoundExtractionProvenance: hasBoundExtractionProvenance(saved,job,provenance) },
     stored: { read: saved.read, firstRead: saved.firstRead, extractionRead: saved.extractionRead, review: saved.review, verifierPasses: saved.verifierPasses, extractionPasses: saved.extractionPasses, reverification: saved.reverification, historicalReceiptCounter: provenance.storedReceiptCount, projection: saved.projection },
   };
 }
@@ -49,6 +44,9 @@ export async function inspectStoredPageJob(caseId: string, jobId: string) {
 /** Reproject a single saved read without calling the model or modifying page-job completion state. */
 export async function reprojectCasePage(caseId: string, jobId: string) {
   const inspection = await inspect(caseId, jobId);
+  // Enforce before any claim/write, including a legacy current-version marker.
+  // Receipt reuse remains a separate exact-field check in reprojectStoredPage.
+  requireReprojectionProvenance(inspection.saved,inspection.job,inspection.provenance);
   if (hasCurrentProjection(inspection.saved, inspection.job, inspection.provenance.documentSha256)) return { ...inspection, alreadyApplied: true as const };
   return { ...inspection, alreadyApplied: false as const };
 }

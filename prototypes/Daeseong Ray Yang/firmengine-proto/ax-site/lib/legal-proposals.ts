@@ -125,5 +125,46 @@ export function buildLegalProposals(data: CaseData) {
   const contextPlanPV = moneyValue(data.context.approvedPresentValue);
   const planPVConsistent = proposedPlanPV && contextPlanPV !== null && proposedPlanPV.amountWon === contextPlanPV.toString() && data.context.presentValueReviewed === true && !!data.context.presentValueBasis?.trim();
   const objectionMinimum = evaluateObjectionMinimum({ asOf: approvalDate, ruleVersion: statuteVersionCurrent ? OBJECTION_MINIMUM_RULE_VERSION : null, courtObjection: objection.value, conditionFactIds: [...(approvalDateFact && approvalDate ? [approvalDateFact.id] : []), ...objection.factIds], claimTotalPresentValue: exactReviewedWon(data, "claims.presentValue"), planPresentValue: planPVConsistent ? proposedPlanPV : null });
-  return { livingCost, termCandidate: term, objectionMinimum, currentPlanMonths: Number.isInteger(data.context.planMonths) ? data.context.planMonths : null, categoryEvidence: categoryFacts.map(({ k, f }) => ({ key: k, factId: f?.id ?? null, status: k === "applicant.age" && f && f.asOf !== appDate ? "stale_or_unbound_age" as const : f && sourceChecked(data, f) ? "source_and_recognition_checked_but_legal_specificity_unverified" as const : "unknown_or_unreviewed" as const })), courtApprovalInferred: false as const };
+  return { livingCost, termCandidate: term, objection, objectionMinimum, currentPlanMonths: Number.isInteger(data.context.planMonths) ? data.context.planMonths : null, categoryEvidence: categoryFacts.map(({ k, f }) => ({ key: k, factId: f?.id ?? null, status: k === "applicant.age" && f && f.asOf !== appDate ? "stale_or_unbound_age" as const : f && sourceChecked(data, f) ? "source_and_recognition_checked_but_legal_specificity_unverified" as const : "unknown_or_unreviewed" as const })), courtApprovalInferred: false as const };
+}
+
+/**
+ * Binds a human shortened-term review to the current case inputs that can support
+ * a §424 candidate route. This is a deterministic change detector, not a signature.
+ */
+export function shortenedTermBasisFingerprint(data: CaseData): string {
+  const relevantFactKeys = new Set([
+    "applicant.age", "legal.seoul424.statutory_severe_disability",
+    "legal.seoul424.raising_two_or_more_minor_children", "legal.seoul424.statutory_single_parent",
+    "legal.seoul424.qualifying_article14_rental_fraud_causing_insolvency",
+    "vulnerable.wageHistory", "vulnerable.minimumWageVersion", "debts.total",
+    "debts.privateCreditors", "debts.lastYearDebt",
+  ]);
+  const facts = currentFacts(data).filter((fact) => relevantFactKeys.has(fact.key)).map((fact) => ({
+    id: fact.id, key: fact.key, value: fact.value, numeric: fact.numeric, asOf: fact.asOf,
+    subjectId: fact.subjectId, state: fact.state, recognition: fact.recognition,
+    refs: fact.refs.map((ref) => [ref.documentId, ref.page]).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+  })).sort((a, b) => a.key.localeCompare(b.key) || a.id.localeCompare(b.id));
+  const basis = {
+    courtId: data.context.courtId,
+    applicationDate: data.context.applicationDate,
+    planMonths: data.context.planMonths,
+    ruleReleaseId: data.context.ruleReleaseId,
+    applicant: data.context.applicant,
+    paymentInputs: {
+      approvedMonthlyPayment: data.context.approvedMonthlyPayment,
+      approvedPresentValue: data.context.approvedPresentValue,
+      monthlyTrusteeFee: data.context.monthlyTrusteeFee,
+      monthlyPriorityPayment: data.context.monthlyPriorityPayment,
+      monthlyEstatePayment: data.context.monthlyEstatePayment,
+      householdRecognizedMembers: data.household.recognizedMembers,
+      householdRecognizedLivingCost: data.household.recognizedLivingCost,
+      householdAdditionalLivingCost: data.household.additionalLivingCost,
+      householdIncludesAdditional: data.household.livingCostIncludesAdditional,
+    },
+    facts,
+    debts: data.debts.map((debt) => ({ id: debt.id, principal: debt.principal, interest: debt.interest, asOf: debt.asOf, secured: debt.secured, classification: debt.classification, priority: debt.priority, legalReview: debt.legalReview, factIds: [...debt.factIds].sort() })).sort((a,b)=>a.id.localeCompare(b.id)),
+    incomes: data.incomes.map((income) => ({ id: income.id, net: income.net, gross: income.gross, expenses: income.expenses, recurring: income.recurring, recognition: income.recognition, factIds: [...income.factIds].sort() })).sort((a,b)=>a.id.localeCompare(b.id)),
+  };
+  return JSON.stringify(basis);
 }

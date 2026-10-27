@@ -178,7 +178,10 @@ function sourceFieldKey(key:string,documentType:string){
   const local=canonicalKey(key);
   if(creditReportType(documentType)&&local==="reported_amount")return "amount";
   if(healthArrearsType(documentType))return ({principal:"premium_arrears",interest:"late_charge",total:"total_arrears",disposition_amount:"disposal_costs"} as Record<string,string>)[local]??local;
-  if(currentDebtType(documentType))return ({principal_balance:"principal",outstanding_principal:"principal",total_claim:"total",creditor_name:"creditor",as_of_date:"as_of"} as Record<string,string>)[local]??local;
+  // Current principal is a separate semantic slot from a loan's original or
+  // unspecified principal. Keep source fact keys unchanged below; aliases share
+  // only the current slot's conflict group, never the generic principal group.
+  if(currentDebtType(documentType))return ({outstanding_principal:"principal_balance",total_claim:"total",creditor_name:"creditor",as_of_date:"as_of"} as Record<string,string>)[local]??local;
   if(documentFamily(documentType)==="lease")return ({lessee:"tenant",lessor:"landlord",security_deposit:"deposit",rent_per_month:"monthly_rent",property_location:"property_address"} as Record<string,string>)[local]??local;
   if(["bank_account","bank_transactions"].includes(documentFamily(documentType)))return ({bank:"institution",financial_institution:"institution",account_holder:"owner",account_holder_name:"owner",customer_name:"owner",active_status:"active",account_status:"active",current_balance:"balance",balance_as_of:"as_of"} as Record<string,string>)[local]??local;
   return local;
@@ -235,6 +238,21 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
     const chosen=new Map([...byKey].map(([key,fields])=>[key,field(key)??fields.find(f=>f.value!==null&&typeof f.quote==="string"&&!!f.quote.trim()&&f.confidence!=="unreadable")]));
     const value=(key:string)=>field(key)?.value??undefined;
     const num=(key:string)=>{const f=field(key);return f?sourceMoney(f):null;};
+    const currentPrincipal=()=>{
+      const explicit=byKey.get("principal_balance");
+      if(currentDebtType(read.documentType)&&explicit){
+        // Presence is independent of usability. A blank, ambiguous, wrongly
+        // labelled or conflicting current slot must never fall back to principal.
+        const currentMeaning=/(?:원금\s*(?:현재\s*)?(?:잔액|잔금)|(?:현재|미상환|남은)\s*원금|(?:outstanding|current|remaining)\s*principal|principal\s*balance)/iu;
+        if(!explicit.length||explicit.some(f=>{const money=sourceMoney(f);return !usable(f)||!isValidSourceBBox(f.bbox)||!currentMeaning.test(f.quote??"")||money.normalizationStatus!=="exact"||money.amountWon===null||BigInt(money.amountWon)<0n;}))return null;
+        return sourceMoney(explicit[0]);
+      }
+      const generic=field("principal");
+      // A generic field may remain compatible when the document has no explicit
+      // current slot; an explicitly historical/initial amount is never current.
+      if(!generic||/(?:최초|당초|초기|발생|매각\s*당시|original|initial|origination|disburs(?:ed|ement))/iu.test(generic.quote??""))return null;
+      return sourceMoney(generic);
+    };
     const integer=(key:string)=>{const v=value(key);return v&&/^\d+$/.test(v)&&Number.isSafeInteger(Number(v))?Number(v):null;};
     if(conflicting.size)warnings.push(`${id}: 동일 필드의 상충값은 계산에서 제외했습니다 (${[...conflicting].join(", ")}).`);
     for(const [fi,f]of r.fields.entries()){
@@ -266,7 +284,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
     }
     if(r.category==="debt"){
       if(["bank_transactions","bank_account"].includes(family)){warnings.push(`${id}: 은행 거래·계좌 문서에서 debt category가 판독되어 원문 사실은 보존했지만 typed 현재채무 생성은 보류했습니다.`);return;}
-      const currentClaimBasis=["principal","interest","total","current_balance","claim_amount","amount_due","tax_arrears","arrears_amount","premium_arrears","late_charge","total_arrears"].some(key=>field(key));
+      const currentClaimBasis=["principal","principal_balance","interest","total","current_balance","claim_amount","amount_due","tax_arrears","arrears_amount","premium_arrears","late_charge","total_arrears"].some(key=>field(key))||(currentDebtType(read.documentType)&&byKey.has("principal_balance"));
       if(isCreditReport){warnings.push(`${id}: 신용정보조회서의 이력 금액은 현재 잔액이 아니므로 원문 fact로만 보존하고 typed 현재 채무에서 제외했습니다.`);return;}
       if(isHealthArrears){warnings.push(`${id}: 건강보험료 미납 항목은 법적 채무 분류 전 원문 사실로만 보존했습니다.`);return;}
       if(!value("creditor")||!currentClaimBasis){warnings.push(`${id}: 명시된 채권자와 현재 채권액 근거가 모두 없어 typed 채무를 만들지 않았습니다.`);return;}
@@ -274,7 +292,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const guaranteeKeys=["liability_role","claim_nature","underlying_debt_id","guarantee_for","recourse_status","guarantee_limit","guarantee_amount"];
       const hasGuaranteeEvidence=guaranteeKeys.some(key=>field(key));
       if(hasGuaranteeEvidence)warnings.push(`${id}: 보증·조건부 채무는 원문 사실만 추출했습니다. 채권 포함 범위와 책임액은 법률 검토가 필요합니다.`);
-      debts.push({id,creditor:value("creditor")||"",contractId:value("contract_id"),principal:num("principal"),interest:num("interest"),secured:tri(value("secured")),classification:known(value("classification"),["ordinary","secured","tax","estate","non_dischargeable","disputed","unknown"],"unknown"),asOf:value("as_of"),dueDate:value("due_date"),legalReview:"unreviewed",...(hasGuaranteeEvidence?{guaranteeDetails:{liabilityRole:known(value("liability_role"),["principal","guarantor","joint_and_several","unknown"],"unknown"),claimNature:known(value("claim_nature"),["fixed","contingent","disputed","unknown"],"unknown"),underlyingDebtId:value("underlying_debt_id"),recourseStatus:known(value("recourse_status"),["not_applicable","unpaid","partially_paid","subrogated","unknown"],"unknown"),capTreatment:"unknown" as const,capTreatmentReviewed:false,sourceGuaranteeAmount:num("guarantee_amount"),sourceGuaranteeLimit:num("guarantee_limit")}}:{}),factIds:ids});
+      debts.push({id,creditor:value("creditor")||"",contractId:value("contract_id"),principal:currentPrincipal(),interest:num("interest"),secured:tri(value("secured")),classification:known(value("classification"),["ordinary","secured","tax","estate","non_dischargeable","disputed","unknown"],"unknown"),asOf:value("as_of"),dueDate:value("due_date"),legalReview:"unreviewed",...(hasGuaranteeEvidence?{guaranteeDetails:{liabilityRole:known(value("liability_role"),["principal","guarantor","joint_and_several","unknown"],"unknown"),claimNature:known(value("claim_nature"),["fixed","contingent","disputed","unknown"],"unknown"),underlyingDebtId:value("underlying_debt_id"),recourseStatus:known(value("recourse_status"),["not_applicable","unpaid","partially_paid","subrogated","unknown"],"unknown"),capTreatment:"unknown" as const,capTreatmentReviewed:false,sourceGuaranteeAmount:num("guarantee_amount"),sourceGuaranteeLimit:num("guarantee_limit")}}:{}),factIds:ids});
     }
     if(r.category==="asset"){
       if(leaseType(read.documentType)&&!(["applicant_is_tenant","asset_owner_role","ownership_role"].some(k=>value(k)==="yes"||value(k)==="applicant"))){warnings.push(`${id}: 임대차 문서만으로 신청인 소유자산을 판단하지 않았습니다. 신청인 역할의 원문 근거가 필요합니다.`);return;}

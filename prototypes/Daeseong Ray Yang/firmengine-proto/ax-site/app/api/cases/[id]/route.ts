@@ -1,4 +1,4 @@
-import { archiveExport,currentFacts,retractDocument,reviewExport,reviewFact,touchCase,type CaseContext,type FactState,type Recognition } from "../../../../lib/domain";
+import { archiveExport,currentFacts,retractDocument,reviewExport,reviewFact,touchCase,type FactState,type Recognition } from "../../../../lib/domain";
 import { assessCase } from "../../../../lib/assessment";
 import { CURRENT_RULESET } from "../../../../lib/legal-rules";
 import { caseResponse } from "../../../../lib/case-response";
@@ -17,7 +17,7 @@ export async function PATCH(request:Request,{params}:Context){try{
   if(body.action==="context"){
     if(typeof body.reason!=="string"||!body.reason.trim())throw new HttpError(400,"계산·법률 판단을 변경한 근거를 기록하세요.");
     next=touchCase(previous);
-    try{Object.assign(next.context,parseContextPatch(body.context,previous.context));if(body.household)next.household={...next.household,...parseHouseholdPatch(body.household,previous)};}catch(e){throw new HttpError(400,e instanceof Error?e.message:"입력 형식을 확인하세요.");}
+    try{const parsedContext=parseContextPatch(body.context,previous.context);Object.assign(next.context,parsedContext);if(parsedContext.shortenedTermReview===null)delete next.context.shortenedTermReview;if(body.household)next.household={...next.household,...parseHouseholdPatch(body.household,previous)};}catch(e){throw new HttpError(400,e instanceof Error?e.message:"입력 형식을 확인하세요.");}
     next.context.ruleReleaseId=CURRENT_RULESET.id;
   }else if(body.action==="upsert_object"){
     await requireUploadedSource(previous,body.source);

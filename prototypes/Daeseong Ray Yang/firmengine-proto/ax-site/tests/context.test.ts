@@ -24,3 +24,11 @@ test("소득 대표기간 변경·해제는 과거 검토를 상속하지 않고
   assert.throws(()=>parseContextPatch({filingPeriod:{start:"2026-01-01",end:""}}));
   assert.equal(parseContextPatch({filingPeriod:{start:"2026-01-01",end:"2026-12-31"},incomePeriodReviewed:true}).incomePeriodReviewed,true);
 });
+test("단축기간 검토는 실제 개월·판본·근거·입력 바인딩을 검증하고 명시 철회를 허용한다",()=>{
+  const review={months:24,ruleReleaseId:"current-release",reason:"사건 자료를 검토함",basisFingerprint:"{\"planMonths\":24}"};
+  assert.deepEqual(parseContextPatch({shortenedTermReview:review}),{shortenedTermReview:review});
+  assert.deepEqual(parseContextPatch({shortenedTermReview:null}),{shortenedTermReview:null});
+  assert.throws(()=>parseContextPatch({shortenedTermReview:{...review,months:36}}));
+  assert.throws(()=>parseContextPatch({shortenedTermReview:{...review,reason:"  "}}));
+  assert.throws(()=>parseContextPatch({shortenedTermReview:{...review,basisFingerprint:""}}));
+});

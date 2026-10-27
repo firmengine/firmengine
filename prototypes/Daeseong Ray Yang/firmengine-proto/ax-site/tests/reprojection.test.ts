@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { applyExtraction, createCase, currentFacts, factSourceLineageIssues, reviewFact } from "../lib/domain.ts";
-import { hasCurrentProjection, PAGE_PROJECTION_VERSION, prepareStoredReadReprojection, reprojectStoredPage, type StoredPageJobForReprojection, type StoredReadResult } from "../lib/reprojection.ts";
+import { hasBoundExtractionProvenance, hasCurrentProjection, PAGE_PROJECTION_VERSION, prepareStoredReadReprojection, reprojectStoredPage, requireReprojectionProvenance, type StoredPageJobForReprojection, type StoredReadResult } from "../lib/reprojection.ts";
 import { projectPage,type PageRead } from "../lib/extraction.ts";
 import { createSourceVerificationReceipts, sourceVerificationFieldLocation } from "../lib/source-verification.ts";
 
@@ -38,6 +38,26 @@ function proofFixture(){
   }
   return {...f,data,saved:{...f.saved,extractionRead:readCopy,read:readCopy,verifierPasses:[{kind:"verify"}],sourceReceiptCount:receipts.length},receipts};
 }
+
+test("legacy read remains inspectable but live reprojection requires bound extraction provenance",()=>{
+  const f=fixture();f.saved.sourceReceiptCount=99;
+  const prepared=f.prepare();
+  assert.equal(hasBoundExtractionProvenance(f.saved,f.job,prepared.provenance),false);
+  assert.throws(()=>requireReprojectionProvenance(f.saved,f.job,prepared.provenance),{status:409});
+  f.saved.extractionPasses=[{model:"gpt-6-luna",promptVersion:"historical-prompt-1.0",promptHash:"a".repeat(64),sourceHash:hash,baseImageHash:imageHash,verifiedAt:"2026-10-27T00:00:00.000Z"}];
+  assert.doesNotThrow(()=>requireReprojectionProvenance(f.saved,f.job,prepared.provenance));
+  const result=reprojectStoredPage(f.data,prepared);
+  assert.equal(result.newReceiptsCreated,0);assert.ok(currentFacts(result.data).every(f=>!f.sourceVerification));
+});
+
+test("a count, partial or mismatched provenance cannot authorize stored-read mutation",()=>{
+  const f=fixture(),provenance=f.prepare().provenance;
+  const pass={model:"gpt-6-luna",promptVersion:"historical-prompt-1.0",promptHash:"a".repeat(64),sourceHash:hash,baseImageHash:imageHash,verifiedAt:"2026-10-27T00:00:00.000Z"};
+  for(const change of [{model:"other-model"},{promptVersion:" "},{promptHash:"forged"},{sourceHash:"a".repeat(64)},{baseImageHash:"a".repeat(64)},{verifiedAt:"invalid"}]){
+    f.saved.extractionPasses=[{...pass,...change}];assert.throws(()=>requireReprojectionProvenance(f.saved,f.job,provenance),{status:409});
+  }
+  for(const value of [[],[pass,null],[pass,{}],99]){f.saved.extractionPasses=value;assert.throws(()=>requireReprojectionProvenance(f.saved,f.job,provenance),{status:409});}
+});
 
 test("stored historical read reprojects deterministically without a model call or new proof", () => {
   const f = fixture(), prepared = f.prepare(), result = reprojectStoredPage(f.data, prepared);

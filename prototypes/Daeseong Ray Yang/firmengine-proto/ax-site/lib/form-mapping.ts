@@ -111,13 +111,20 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   scalars.form_available_after_trustee = afterFee === null ? MISSING_FORM_VALUE : amount(afterFee.toString());
   scalars.form_total_available_after_trustee = afterFee === null || !Number.isSafeInteger(data.context.planMonths) || data.context.planMonths! <= 0 ? MISSING_FORM_VALUE : amount((afterFee * BigInt(data.context.planMonths!)).toString());
   const rows: FormBindings["rows"] = {};
-  const sourceText = (ids: string[], key: string): string => facts.filter((f) => ids.includes(f.id) && [key,...(aliases[key]??[])].map(normalizedKey).includes(normalizedKey(f.key))).flatMap((f) => f.refs.map((r) => `${r.documentId} ${r.page}쪽: ${r.quote}`)).join(" / ") || MISSING_FORM_VALUE;
+  const sourceText = (ids: string[], key: string): string => {
+    let candidates=facts.filter((f) => ids.includes(f.id) && [key,...(aliases[key]??[])].map(normalizedKey).includes(normalizedKey(f.key)));
+    if(key==="debt.principal"){
+      const current=candidates.filter(f=>["debt.principal_balance","debt.outstanding_principal"].includes(normalizedKey(f.key)));
+      if(current.length)candidates=current;
+    }
+    return candidates.flatMap((f) => f.refs.map((r) => `${r.documentId} ${r.page}쪽: ${r.quote}`)).join(" / ") || MISSING_FORM_VALUE;
+  };
   rows.creditor = calculation.debtRows.map((row, index) => {
     const debt = debtResolution.rows.find((d) => d.id === row.id)!;
     const base: Record<string, string> = {
       number: String(index + 1), entity: present(debt.creditor), contract_id: present(debt.contractId), period: present(debt.asOf),
       principal: amount(row.principalWon), interest: amount(row.interestWon), claim_type: present(claimLabels[debt.classification]),
-      principal_basis: sourceText(debt.factIds, "debt.principal"), interest_basis: sourceText(debt.factIds, "debt.interest"),
+      principal_basis: row.principalWon===null?MISSING_FORM_VALUE:sourceText(debt.factIds, "debt.principal"), interest_basis: sourceText(debt.factIds, "debt.interest"),
       total_payment: amount(calculation.allocations.find((a) => a.debtId === debt.id)?.totalWon),
       monthly_payment: MISSING_FORM_VALUE,
     };

@@ -9,7 +9,7 @@ const rules: RuleSet = { id: "synthetic-reviewed-rules", status: "source_verifie
 function fixture(): CaseData {
   const data = createCase("합성 회귀검증", "synthetic-case", "2026-10-27");
   data.documents = [{ id: "doc", name: "synthetic.pdf", sha256: "a".repeat(64), status: "active", pages: [1, 2, 3, 4] }];
-  data.pages = [1, 2, 3, 4].map((page) => ({ documentId: "doc", page, role: "evidence", text: "Synthetic evidence only" }));
+  data.pages = [1, 2, 3, 4].map((page) => ({ documentId: "doc", page, role: "evidence", text: "Synthetic evidence only. No creditor or commissioner objection." }));
   const fact = (id: string, subject: string, key: string): string => {
     data.facts.push({ id, logicalId: id, version: 1, subjectId: subject, key, value: "Synthetic evidence", state: "verified", recognition: "accepted", refs: [{ documentId: "doc", page: 1, quote: "Synthetic evidence" }], validation: [] });
     return id;
@@ -306,6 +306,7 @@ test("문자열 false나 1은 규칙·평가기준·현재가치·배분 승인 
 
 function finalizableFixture():CaseData {
   const data=fixture();
+  for (const [id,key] of [["f-objection-creditor","objections.creditor"],["f-objection-commissioner","objections.commissioner"]] as const) data.facts.push({id,logicalId:id,version:1,subjectId:"case",key,value:"no",state:"verified",recognition:"accepted",refs:[{documentId:"doc",page:1,quote:"No creditor or commissioner objection"}],validation:[]});
   for(const income of data.incomes.filter((s)=>s.id!="business")){income.periodStart="2025-01-01";income.periodEnd="2025-12-31";income.periodMonths=12;}
   data.context.filingPeriod={start:"2025-01-01",end:"2025-12-31"};data.context.incomePeriodReviewed=true;
   data.context.approvedMonthlyPayment=normalizeMoney("2500000");data.context.approvedPresentValue=normalizeMoney("85000000");return data;

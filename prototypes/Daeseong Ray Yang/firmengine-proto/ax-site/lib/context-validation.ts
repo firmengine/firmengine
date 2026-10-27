@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { currentFacts,normalizeMoney,type CaseData,type CaseContext,type Household,type NumericInput } from "./domain.ts";
+import { currentFacts,normalizeMoney,type CaseData,type CaseContext,type Household } from "./domain.ts";
 const date=z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(v=>!Number.isNaN(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v,"유효한 날짜가 필요합니다.");
 const tri=z.enum(["yes","no","unknown"]);
 const money=z.object({rawValue:z.union([z.string(),z.number(),z.null()]),amountWon:z.string().regex(/^-?\d+$/).nullable(),unit:z.string(),currency:z.string(),normalizationStatus:z.enum(["exact","missing","invalid","review_required"])}).strict().superRefine((v,ctx)=>{
@@ -32,6 +32,7 @@ export const CONTEXT_PATCH_SCHEMA=z.object({
   filingPeriod:z.object({start:date,end:date}).strict().refine(v=>v.start<=v.end,"기간 종료일이 시작일보다 앞섭니다.").nullable().optional(),incomePeriodReviewed:z.boolean().optional(),evidence_cutoff:date.optional(),
   inventoryComplete:z.object({income:tri,debt:tri,asset:tri}).strict().optional(),ruleApplicationReviewed:z.boolean().optional(),
   planMonths:z.number().int().min(1).max(60).nullable().optional(),exceptionalTermReviewed:z.boolean().optional(),
+  shortenedTermReview:z.object({months:z.number().int().min(1).max(35),ruleReleaseId:z.string().trim().min(1).max(120),reason:z.string().trim().min(1).max(2000),basisFingerprint:z.string().min(2).max(50000)}).strict().nullable().optional(),
   monthlyTrusteeFee:nullableMoney,monthlyPriorityPayment:nullableMoney,monthlyEstatePayment:nullableMoney,approvedMonthlyPayment:nullableMoney,approvedPresentValue:nullableMoney,
   presentValueBasis:z.string().max(2000).optional(),presentValueReviewed:z.boolean().optional(),assetValuationBasisReviewed:z.boolean().optional(),courtObjection:tri.optional(),
   allocationBasis:z.enum(["principal_then_interest_pro_rata","principal_only_pro_rata"]).optional(),allocationBasisReviewed:z.boolean().optional(),
