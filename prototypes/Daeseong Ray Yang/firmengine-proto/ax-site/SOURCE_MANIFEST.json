@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "ef1da70e9aab9c9a60f3cc7bfe8ffdf477043ea37fc7960eed6bfe9087607e37",
+  "source_digest": "de0f4c6d3b3371b2a6368ac4d219c22f50cde0613ab89f84a8bafdd3cf904721",
   "files": [
     {
       "path": ".gitignore",
@@ -607,8 +607,8 @@
     },
     {
       "path": "docs/audit-legal-exceptions.md",
-      "sha256": "30ae5a1c784a8513bb652015115746583960c51280d4e94376f8f4c5e59850c8",
-      "bytes": 17184,
+      "sha256": "ade49e782b6d4da9d2472fa628fc5a8678eac7761871300275bcc80fedc02bf3",
+      "bytes": 17985,
       "mode": "100644"
     },
     {
@@ -894,6 +894,12 @@
       "mode": "100644"
     },
     {
+      "path": "lib/legal-review-packet.ts",
+      "sha256": "75c9891ed1ef98beaaca829978216117874580c1f2366dfc9a9932b863bfae31",
+      "bytes": 23402,
+      "mode": "100644"
+    },
+    {
       "path": "lib/legal-rules.ts",
       "sha256": "687bd0220518243f07e07b8c36b993b6e39164a8095bc9abeefc441bc93c94a7",
       "bytes": 2084,
@@ -955,8 +961,8 @@
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "3218f480441a0480909ed9c65fabbd2b8bdd46c9308b95c0a750552df2d8cdf2",
-      "bytes": 59374,
+      "sha256": "262c0371f1a105fa6e1e2f01e64c2d44cad79a56edbf9ea6af035a62812b219d",
+      "bytes": 58228,
       "mode": "100644"
     },
     {
@@ -1291,8 +1297,8 @@
     },
     {
       "path": "scripts/run-synthetic-ocr-evaluation.py",
-      "sha256": "548da2ecc48541f7665cc66d14b5c0b2ea34522612fe96b68cb4a7348280472f",
-      "bytes": 19027,
+      "sha256": "a6b91998bb913387fc8a52be96735b66388b7ac1b4d920b0efb399c5fd512238",
+      "bytes": 19742,
       "mode": "100644"
     },
     {
@@ -1315,8 +1321,8 @@
     },
     {
       "path": "scripts/test-synthetic-ocr-runner.py",
-      "sha256": "1df35b342687eaad597a4b5c86fc21e95c5c9e0ee40f7d9aafdc92d48dbc258d",
-      "bytes": 4387,
+      "sha256": "42447774b174335fec72158916030382be2e7e87280dffa7cd231959287a3f34",
+      "bytes": 4758,
       "mode": "100644"
     },
     {
@@ -1446,6 +1452,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/legal-review-packet.test.ts",
+      "sha256": "7ac41397cc4cd94f18102ddfadd0abaf129d30fb571e5ef2560c06126a922a1d",
+      "bytes": 11418,
+      "mode": "100644"
+    },
+    {
       "path": "tests/luna-boundary.test.ts",
       "sha256": "0dd5481f096601877d91ed7356d1d934ac6c8d9bd31ac12e357e8f92fdd1ef41",
       "bytes": 2280,
@@ -1489,8 +1501,8 @@
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "3930335fd2aa5c1cd7ba7075c0faa58f3ea8bc0a8121ede1a491d0bb8ddd8c3d",
-      "bytes": 24158,
+      "sha256": "af5218e72a6c0248fb5cb49cb5d3aec637a7feb7765ed9e6ddbcd2c920921804",
+      "bytes": 24327,
       "mode": "100644"
     },
     {

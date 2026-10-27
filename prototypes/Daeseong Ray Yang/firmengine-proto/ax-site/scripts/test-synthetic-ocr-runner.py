@@ -60,3 +60,13 @@ with tempfile.TemporaryDirectory(prefix='synthetic-ocr-budget-') as td:
     except RuntimeError: pass
     else: raise AssertionError('no further process calls allowed')
 print('PASS: failed mutation consumes the shared global stage budget.')
+
+import concurrent.futures
+budget=runner.StageBudget(7)
+def attempt(_):
+    try: budget.consume(); return True
+    except RuntimeError: return False
+with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
+    outcomes=list(pool.map(attempt,range(40)))
+assert sum(outcomes)==7 and budget.used==7
+print('PASS: concurrent cases cannot exceed the shared budget.')

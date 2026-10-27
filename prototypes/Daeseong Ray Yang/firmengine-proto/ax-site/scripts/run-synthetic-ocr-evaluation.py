@@ -9,6 +9,8 @@ calls for the whole invocation. The Site's own secret OPENAI_API_KEY is used;
 this tool never accepts or reads one.
 """
 import argparse
+import concurrent.futures
+import threading
 import getpass
 import gzip
 import hashlib
@@ -34,10 +36,11 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         return None
 
 class StageBudget:
-    def __init__(self, limit, used=0): self.limit, self.used = limit, used
+    def __init__(self, limit, used=0): self.limit, self.used, self.lock = limit, used, threading.Lock()
     def consume(self):
-        if self.used >= self.limit: raise RuntimeError('Global process-stage budget exhausted')
-        self.used += 1
+        with self.lock:
+            if self.used >= self.limit: raise RuntimeError('Global process-stage budget exhausted')
+            self.used += 1
 
 class SiteClient:
     def __init__(self, origin, token):
@@ -259,6 +262,7 @@ def main():
     parser.add_argument('--reads-dir', required=True, type=Path, help='Private destination for saved read-fields JSON.')
     parser.add_argument('--origin', required=True, help='Verified private Site HTTPS origin, e.g. https://name.chatgpt.site')
     parser.add_argument('--max-steps', required=True, type=int, help='Global maximum number of /process stage actions; each is at most one model stage.')
+    parser.add_argument('--workers', type=int, choices=[1,2,3], default=1, help='Parallel isolated cases sharing one global stage budget.')
     parser.add_argument('--source-commit', required=True, help='Exact deployed source SHA for this evaluation.')
     parser.add_argument('--application-date', default='2026-10-27')
     args = parser.parse_args()
@@ -297,9 +301,10 @@ def main():
     connection = workspace.get('connection', {})
     if connection.get('model') != MODEL or not connection.get('apiKeyConfigured') or not connection.get('storageReady'):
         raise SystemExit('The private Site must have its gpt-6-luna model, private API key and storage configured.')
-    steps = 0
     budget = StageBudget(args.max_steps)
-    for index, pdf_path in enumerate(pdfs):
+    def execute_pdf(pdf_path):
+        steps = budget.used
+        started = time.monotonic()
         if steps >= args.max_steps:
             # Write explicit no-run records without creating extra Site cases.
             source_id, family, variant = request_metadata(pdf_path)
@@ -309,12 +314,12 @@ def main():
                 'provenance':{'source_case_id':source_id,'family':family,'variant':variant,
                     'source_sha256':digest,'source_page':1,'model':MODEL,
                     'status':'not_run_global_cost_cap','steps_used':steps,'max_steps':args.max_steps}})
-            continue
+            return
         try:
             path, steps = run_one(client, pdf_path, out_dir, args.max_steps, steps, args.application_date, budget, args.source_commit)
             print(json.dumps({'event':'pdf_finished','source_id':request_metadata(pdf_path)[0],
                               'status':json.loads(path.read_text())['provenance']['status'],
-                              'steps_used':steps,'max_steps':args.max_steps},ensure_ascii=False),flush=True)
+                              'steps_used':budget.used,'max_steps':args.max_steps,'elapsed_ms':round((time.monotonic()-started)*1000)},ensure_ascii=False),flush=True)
         except Exception as error:
             steps = budget.used
             source_id, family, variant = request_metadata(pdf_path)
@@ -327,6 +332,10 @@ def main():
                     'steps_used':steps,'max_steps':args.max_steps}})
             print(json.dumps({'event':'pdf_error','source_id':source_id,'error':str(error)[:300],
                               'steps_used':steps},ensure_ascii=False),flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
+        futures=[pool.submit(execute_pdf,path) for path in pdfs]
+        for future in concurrent.futures.as_completed(futures): future.result()
+    print(json.dumps({'event':'run_finished','process_steps':budget.used,'max_steps':budget.limit,'pdfs':len(pdfs),'workers':args.workers}),flush=True)
 
 if __name__ == '__main__':
     main()
