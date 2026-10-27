@@ -1,0 +1,605 @@
+/** Canonical, JSON-safe evidence ledger. Money arithmetic never uses floating point. */
+export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
+export type TriState = "yes" | "no" | "unknown";
+export type Money = string;
+export type FactState = "reported" | "extracted" | "verified" | "disputed" | "retracted";
+export type Recognition = "unreviewed" | "accepted" | "rejected";
+export type IncomeKind = "wage" | "business" | "rent" | "interest" | "dividend" | "pension" | "benefit" | "other";
+export type DebtClassification = "ordinary" | "secured" | "tax" | "estate" | "non_dischargeable" | "disputed" | "unknown";
+
+export interface NumericInput {
+  rawValue: string | number | null;
+  amountWon: Money | null;
+  unit: string;
+  currency: string;
+  normalizationStatus: "exact" | "missing" | "invalid" | "review_required";
+}
+export interface SourceRef {
+  documentId: string;
+  page: number;
+  bbox?: [number, number, number, number];
+  quote: string;
+  sourceHash?: string;
+}
+export interface EvidenceDocument {
+  id: string;
+  parentId?: string;
+  sha256: string;
+  name: string;
+  type?: string;
+  status: "active" | "deleted";
+  pages: number[];
+  uploadedAt?: string;
+  deletedAt?: string;
+  extractionStatus?: "pending" | "processing" | "completed" | "failed";
+}
+export interface EvidencePage {
+  documentId: string;
+  page: number;
+  role: "evidence" | "filed_form" | "administrative" | "unknown";
+  text?: string;
+  imageUrl?: string;
+  documentType?: string;
+}
+export interface Fact {
+  id: string;
+  logicalId: string;
+  version: number;
+  supersedes?: string;
+  subjectId: string;
+  key: string;
+  value: Json;
+  rawValue?: string;
+  numeric?: NumericInput;
+  periodStart?: string;
+  periodEnd?: string;
+  asOf?: string;
+  state: FactState;
+  recognition: Recognition;
+  refs: SourceRef[];
+  validation: { code: string; message: string; severity: "info" | "warning" | "error" }[];
+  reviewer?: string;
+  reviewReason?: string;
+  /** Server-authored independent OCR corroboration. Never implies legal acceptance or human review. */
+  sourceVerification?: {
+    method: "independent_luna_cross_read";
+    model: typeof AI_MODEL;
+    promptVersion: string;
+    verifiedAt: string;
+    source: { documentId: string; page: number; sha256: string };
+    field: { recordCategory: string; key: string; value: string; unit: string | null; quote: string };
+    extractionReading: { value: string; unit: string | null; quote: string };
+    verificationQuotes: string[];
+    fieldFingerprint: string;
+    proofReadIndexes: { pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }[];
+    proofReads: { pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string }[];
+    recognition: "unreviewed";
+    factBinding: { id: string; logicalId: string; version: number };
+  };
+  createdAt?: string;
+}
+export interface IncomeSource {
+  id: string;
+  kind: IncomeKind;
+  label: string;
+  employer?: string;
+  /** Source-backed legal payer identifier; names alone are not an identity key. */
+  payerIdentityId?: string;
+  aggregationTreatment?: "series_observation" | "independent_source" | "component" | "duplicate" | "unknown";
+  aggregationReviewed?: boolean;
+  aggregationReviewReason?: string;
+  gross?: NumericInput | null;
+  expenses?: NumericInput | null;
+  net?: NumericInput | null;
+  periodStart?: string;
+  periodEnd?: string;
+  periodMonths?: number | null;
+  amountBasis?: "monthly" | "period_total" | "unknown";
+  recurring?: TriState;
+  recognition?: Recognition;
+  factIds: string[];
+}
+export interface Debt {
+  id: string;
+  contractId?: string;
+  creditor: string;
+  principal?: NumericInput | null;
+  interest?: NumericInput | null;
+  secured: TriState;
+  classification: DebtClassification;
+  asOf?: string;
+  dueDate?: string;
+  priority?: "ordinary" | "priority" | "estate" | "unknown";
+  legalReview?: Recognition;
+  excludedByReview?: boolean;
+  exclusionReason?: string;
+  /** Explicit, reviewer-authored treatment for guarantee, contingent and overlapping claims. */
+  guaranteeDetails?: {
+    liabilityRole: "principal" | "guarantor" | "joint_and_several" | "unknown";
+    claimNature: "fixed" | "contingent" | "disputed" | "unknown";
+    underlyingDebtId?: string;
+    /** Source-stated amounts only; never treated as the applicant's own liability amount. */
+    sourceGuaranteeAmount?: NumericInput | null;
+    sourceGuaranteeLimit?: NumericInput | null;
+    recourseStatus: "not_applicable" | "unpaid" | "partially_paid" | "subrogated" | "unknown";
+    capTreatment: "include" | "exclude" | "unknown";
+    capTreatmentReviewed?: boolean;
+    reviewReason?: string;
+  };
+  factIds: string[];
+}
+export interface Asset {
+  id: string;
+  kind: "cash" | "deposit" | "insurance" | "vehicle" | "real_estate" | "lease_deposit" | "business" | "receivable" | "retirement" | "other";
+  label: string;
+  grossValue?: NumericInput | null;
+  securedPayoff?: NumericInput | null;
+  disposalCosts?: NumericInput | null;
+  protectedValue?: NumericInput | null;
+  ownershipBps?: number | null;
+  asOf?: string;
+  valuationBasis?: string;
+  recognition?: Recognition;
+  factIds: string[];
+}
+export interface Household {
+  reportedMembers?: number | null;
+  recognizedMembers?: number | null;
+  recognizedLivingCost?: NumericInput | null;
+  additionalLivingCost?: NumericInput | null;
+  livingCostIncludesAdditional?: boolean;
+  recognition?: Recognition;
+  factIds: string[];
+}
+export interface Transaction {
+  id: string;
+  date: string;
+  accountId?: string;
+  counterparty?: string;
+  kind: "income" | "expense" | "transfer" | "debt_payment" | "asset_disposal" | "tax" | "unknown";
+  direction: "in" | "out" | "unknown";
+  amount: NumericInput;
+  relatedObjectId?: string;
+  factIds: string[];
+}
+export interface CaseContext {
+  id: string;
+  caseName: string;
+  revision: number;
+  applicationDate: string;
+  asOf: string;
+  courtId: string;
+  filingPeriod?: { start: string; end: string } | null;
+  incomePeriodReviewed?: boolean;
+  evidence_cutoff?: string;
+  ruleReleaseId: string;
+  ruleApplicationReviewed: boolean;
+  inventoryComplete: { income: TriState; debt: TriState; asset: TriState };
+  planMonths?: number | null;
+  exceptionalTermReviewed?: boolean;
+  monthlyTrusteeFee?: NumericInput | null;
+  monthlyPriorityPayment?: NumericInput | null;
+  monthlyEstatePayment?: NumericInput | null;
+  approvedMonthlyPayment?: NumericInput | null;
+  approvedPresentValue?: NumericInput | null;
+  presentValueBasis?: string;
+  /** Explicit review that the entered PV follows the stated valuation method and date. */
+  presentValueReviewed?: boolean;
+  assetValuationBasisReviewed?: boolean;
+  courtObjection?: TriState;
+  allocationBasis?: "principal_then_interest_pro_rata" | "principal_only_pro_rata";
+  allocationBasisReviewed?: boolean;
+  eligibility?: { naturalPerson?: TriState; insolventOrRisk?: TriState; priorProceedingsReviewed?: TriState };
+  applicant?: { name?: string; address?: string; residentIdMasked?: string; statement?: string };
+  paymentSchedule?: {
+    reviewed: boolean;
+    reviewReason?: string;
+    expectedInstallments?: number | null;
+    phases: { id: string; firstInstallment: number; lastInstallment: number; firstPaymentDate?: string; monthlyAvailableWon: Money; allocations: { creditorId: string; principalWon: Money; interestWon: Money }[] }[];
+  };
+}
+export type ArtifactKind = "application" | "creditors" | "assets" | "income_expense" | "repayment_plan" | "statement" | "evidence_index" | "review_workbook" | "bank_accounts" | "leases" | "repayment_schedule";
+export interface ExportFile {
+  id: string;
+  kind: ArtifactKind | "print_html" | "rendered_json" | "package_zip";
+  name: string;
+  hash: string;
+  status: "current" | "archived" | "invalidated";
+}
+export interface ReviewRecord {
+  actor: string;
+  at: string;
+  caseRevision: number;
+  manifestFingerprint: string;
+}
+export interface ExportManifest {
+  caseRevision: number;
+  requiredKinds: ArtifactKind[];
+  files: ExportFile[];
+  reviews: { caseworker: ReviewRecord | null; lawyer: ReviewRecord | null };
+}
+export interface CaseData {
+  context: CaseContext;
+  documents: EvidenceDocument[];
+  pages: EvidencePage[];
+  facts: Fact[];
+  incomes: IncomeSource[];
+  debts: Debt[];
+  assets: Asset[];
+  household: Household;
+  transactions: Transaction[];
+  exportManifest?: ExportManifest;
+  extractionWarnings?: string[];
+  execution?: { model: typeof AI_MODEL; attempts: number; inputTokens: number; outputTokens: number; startedAt?: string; completedAt?: string; calls?: { agent: string; attempt: number; status: "completed" | "failed"; inputTokens: number; outputTokens: number; durationMs: number }[] };
+}
+export interface RuleSource {
+  id: string;
+  title: string;
+  url: string;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  reviewedAt?: string;
+}
+export interface RuleSet {
+  id: string;
+  status: "draft" | "source_verified" | "verified";
+  sources: RuleSource[];
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  courtIds?: string[];
+  debtCaps?: { unsecuredWon: Money; securedWon: Money; comparison: "lte" | "lt" };
+  term?: { ordinaryMonths: number; exceptionalMaxMonths?: number };
+  livingCostTable?: Record<string, Money>;
+}
+
+export const REQUIRED_ARTIFACT_KINDS: ArtifactKind[] = ["application", "creditors", "assets", "income_expense", "repayment_plan", "statement", "evidence_index"];
+export function requiredKindsForCase(data: Pick<CaseData, "documents" | "pages" | "facts">): ArtifactKind[] {
+  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
+  const source = JSON.stringify([data.documents.filter(d => d.status === "active").map(d => d.type ?? ""),data.pages.filter(p=>p.role==="evidence").map(p=>p.documentType??""),currentFacts(data).map(f => f.key)]).toLowerCase();
+  if (/bank.?account|계좌|예금|bank_account/.test(source)) kinds.push("bank_accounts");
+  if (/lease|임대차|임대계약/.test(source)) kinds.push("leases");
+  return [...new Set(kinds)];
+}
+export const AI_MODEL = "gpt-6-luna" as const;
+export const DRAFT_RULESET: RuleSet = { id: "kr-rehabilitation-draft", status: "draft", sources: [] };
+const ZERO = BigInt(0);
+const ONE = BigInt(1);
+
+export function createCase(caseName = "새 사건", id = crypto.randomUUID(), asOf = new Date().toISOString().slice(0, 10)): CaseData {
+  return {
+    context: { id, caseName, revision: 1, applicationDate: asOf, asOf, courtId: "seoul", ruleReleaseId: DRAFT_RULESET.id, ruleApplicationReviewed: false, inventoryComplete: { income: "unknown", debt: "unknown", asset: "unknown" } },
+    documents: [], pages: [], facts: [], incomes: [], debts: [], assets: [], household: { factIds: [] }, transactions: [],
+  };
+}
+
+/** Accept decimal source text, but only when its unit conversion yields exact integer KRW. */
+export function normalizeMoney(rawValue: string | number | null | undefined, unit = "KRW", currency = "KRW"): NumericInput {
+  const result: NumericInput = { rawValue: rawValue ?? null, amountWon: null, unit, currency, normalizationStatus: "missing" };
+  if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") return result;
+  if (currency.toUpperCase() !== "KRW") return { ...result, normalizationStatus: "review_required" };
+  if (typeof rawValue === "number" && !Number.isSafeInteger(rawValue)) return { ...result, normalizationStatus: "invalid" };
+  const text = String(rawValue).trim().replace(/,/g, "").replace(/\s*(?:원|KRW)\s*$/i, "");
+  const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text);
+  const units: Record<string, bigint> = { KRW: ONE, won: ONE, 원: ONE, thousand_won: BigInt(1000), 천원: BigInt(1000), ten_thousand_won: BigInt(10000), manwon: BigInt(10000), 만원: BigInt(10000), million_won: BigInt(1000000), 백만원: BigInt(1000000), 억원: BigInt(100000000) };
+  const scale = units[unit];
+  if (!match || !scale || text.length > 100) return { ...result, normalizationStatus: "invalid" };
+  const fraction = match[3] ?? "";
+  const denominator = BigInt(10) ** BigInt(fraction.length);
+  const signed = (match[1] === "-" ? -ONE : ONE) * BigInt(match[2] + fraction) * scale;
+  if (signed % denominator !== ZERO) return { ...result, normalizationStatus: "review_required" };
+  return { ...result, amountWon: (signed / denominator).toString(), normalizationStatus: "exact" };
+}
+
+export function moneyValue(input: NumericInput | null | undefined): bigint | null {
+  if (!input || input.normalizationStatus !== "exact" || input.currency.toUpperCase() !== "KRW" || !/^-?\d+$/.test(input.amountWon ?? "")) return null;
+  // A supplied normalized amount must agree with the preserved source value/unit.
+  const checked = normalizeMoney(input.rawValue, input.unit, input.currency);
+  return checked.amountWon === input.amountWon ? BigInt(input.amountWon!) : null;
+}
+
+export function formatWon(value: Money | null | undefined): string {
+  return value !== null && value !== undefined && /^-?\d+$/.test(value) ? BigInt(value).toLocaleString("ko-KR") + "원" : "확인 필요";
+}
+
+export function currentFacts(data: Pick<CaseData, "facts">): Fact[] {
+  const groups = new Map<string, Fact[]>();
+  for (const fact of data.facts) groups.set(fact.logicalId, [...(groups.get(fact.logicalId) ?? []), fact]);
+  return [...groups.values()].flatMap((items) => {
+    const version = Math.max(...items.map((f) => f.version));
+    // Concurrent same-version candidates stay visible so downstream checks can block them.
+    return items.filter((f) => f.version === version && f.state !== "retracted");
+  });
+}
+
+export function validSourceRef(data: CaseData, ref: SourceRef): boolean {
+  const document = data.documents.find((d) => d.id === ref.documentId && d.status === "active");
+  if (!document || !document.pages.includes(ref.page) || !ref.quote?.trim()) return false;
+  if (ref.sourceHash && ref.sourceHash !== document.sha256) return false;
+  const page = data.pages.find((p) => p.documentId === ref.documentId && p.page === ref.page);
+  if (!page || page.role !== "evidence") return false;
+  // Text-backed pages permit a deterministic quote check. Images remain explicit review inputs.
+  const canonical = (text: string) => text.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+  return !page.text?.trim() || canonical(page.text).includes(canonical(ref.quote));
+}
+
+export function factSourceLineageIssues(data: CaseData, ids: string[]): string[] {
+  if (!ids.length) return ["SOURCE_FACTS_MISSING"];
+  const active = new Map(currentFacts(data).map((f) => [f.id, f]));
+  const issues = new Set<string>();
+  for (const id of ids) {
+    const fact = active.get(id);
+    if (!fact) { issues.add("STALE_OR_RETRACTED_FACT"); continue; }
+    if (fact.state === "disputed" || fact.recognition === "rejected") issues.add("DISPUTED_OR_REJECTED_FACT");
+    if (!fact.refs.length || fact.refs.some((ref) => !validSourceRef(data, ref))) issues.add("SOURCE_REFERENCE_INVALID");
+    if (fact.state !== "verified") issues.add("SOURCE_VERIFICATION_REQUIRED");
+    const proof = fact.sourceVerification;
+    if (proof) {
+      const sourceDocumentId = typeof proof.source?.documentId === "string" ? proof.source.documentId : "";
+      const sourcePage = Number.isSafeInteger(proof.source?.page) ? proof.source.page : -1;
+      const sourceHash = typeof proof.source?.sha256 === "string" ? proof.source.sha256 : "";
+      const document = data.documents.find((d) => d.id === sourceDocumentId && d.status === "active");
+      const quote = typeof proof.field?.quote === "string" ? proof.field.quote : "";
+      const boundRef = !!quote && fact.refs.some((r) => r.documentId === sourceDocumentId && r.page === sourcePage && r.quote.normalize("NFKC").trim() === quote.normalize("NFKC").trim() && r.sourceHash === sourceHash);
+      const raw = fact.numeric?.rawValue ?? (typeof fact.value === "string" ? fact.value : null);
+      const validBinding = proof.factBinding?.id === fact.id && proof.factBinding.logicalId === fact.logicalId && proof.factBinding.version === fact.version;
+      const validProofReads = Array.isArray(proof.proofReads) && proof.proofReads.length > 0 && typeof proof.field?.value === "string" && proof.proofReads.every(p => p.model === AI_MODEL && typeof p.promptVersion === "string" && !!p.promptVersion.trim() && typeof p.promptHash === "string" && /^[a-f0-9]{64}$/i.test(p.promptHash) && Number.isFinite(Date.parse(p.verifiedAt)) && p.fieldIndex >= 0 && p.recordIndex >= 0 && ["agrees","corrected"].includes(p.status) && typeof p.value === "string" && p.value.normalize("NFKC").trim() === proof.field.value.normalize("NFKC").trim() && (p.unit===null?proof.field.unit===null:typeof proof.field.unit==="string"&&p.unit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim()) && typeof p.quote === "string" && !!p.quote.trim()) && Array.isArray(proof.proofReadIndexes) && proof.proofReads.length === proof.proofReadIndexes.length;
+      const validNumeric = !fact.numeric || fact.numeric.normalizationStatus === "exact" && fact.numeric.amountWon !== null && typeof proof.field?.unit === "string" && fact.numeric.unit.normalize("NFKC").trim() === proof.field.unit.normalize("NFKC").trim() && normalizeMoney(raw, proof.field.unit).amountWon === fact.numeric.amountWon;
+      const validProofIndexBinding = Array.isArray(proof.proofReadIndexes) && Array.isArray(proof.proofReads) && Array.isArray(proof.verificationQuotes) && proof.proofReads.every((p,i)=>p.pass===proof.proofReadIndexes[i]?.pass&&p.recordIndex===proof.proofReadIndexes[i]?.recordIndex&&p.fieldIndex===proof.proofReadIndexes[i]?.fieldIndex&&p.quote===proof.verificationQuotes[i]);
+      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") issues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
+    }
+  }
+  return [...issues];
+}
+
+/** Compatibility helper; source verification and normative recognition remain distinct checks. */
+export function factLineageIssues(data: CaseData, ids: string[]): string[] {
+  const issues = new Set(factSourceLineageIssues(data, ids));
+  const active = new Map(currentFacts(data).map((f) => [f.id, f]));
+  for (const id of ids) { const fact = active.get(id); if (fact && fact.recognition !== "accepted") issues.add("LEGAL_RECOGNITION_REQUIRED"); }
+  return [...issues];
+}
+
+function invalidateExports(data: CaseData): void {
+  if (!data.exportManifest) return;
+  data.exportManifest.files = data.exportManifest.files.map((f) => f.status === "current" ? { ...f, status: "invalidated" } : f);
+  data.exportManifest.reviews = { caseworker: null, lawyer: null };
+}
+
+export function touchCase(input: CaseData): CaseData {
+  const data = structuredClone(input);
+  data.context.revision += 1;
+  invalidateExports(data);
+  return data;
+}
+
+/** Source truth and legal recognition are separate, explicit review operations. */
+export function reviewFact(input: CaseData, id: string, review: { state?: FactState; recognition?: Recognition; value?: Json; numeric?: NumericInput; actor: string; reason: string }): CaseData {
+  if (!review.actor.trim() || !review.reason.trim()) throw new Error("확인자와 검토 사유가 필요합니다.");
+  const prior = currentFacts(input).find((f) => f.id === id);
+  if (!prior) throw new Error("현재 사실 버전이 아닙니다.");
+  const data = touchCase(input);
+  const changed = review.value !== undefined && JSON.stringify(review.value) !== JSON.stringify(prior.value) || review.numeric !== undefined && JSON.stringify(review.numeric) !== JSON.stringify(prior.numeric);
+  const next: Fact = { ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, reviewer: review.actor, reviewReason: review.reason, createdAt: new Date().toISOString(), state: review.state ?? (changed ? "reported" : prior.state), recognition: review.recognition ?? (changed ? "unreviewed" : prior.recognition) };
+  delete next.sourceVerification;
+  if (review.value !== undefined) next.value = review.value;
+  if (review.numeric !== undefined) next.numeric = review.numeric;
+  if (next.state === "verified" && (!next.refs.length || next.refs.some((r) => !validSourceRef(data, r)))) throw new Error("유효한 원문 근거 없이 원문 확인을 완료할 수 없습니다.");
+  if (next.recognition === "accepted" && next.state !== "verified") throw new Error("원문 확인을 완료한 사실만 인정 검토할 수 있습니다.");
+  // Resolve only warnings this reviewer explicitly closed. The prior fact version retains the
+  // original warning as history; unresolved conflicts and unit errors remain blocking.
+  if (next.state === "verified") {
+    const clearable = new Set(["USER_EDIT", "UNCERTAIN_READING", "VERIFY_DISAGREEMENT"]);
+    if (next.numeric && moneyValue(next.numeric) !== null) {
+      clearable.add("NORMALIZATION_REVIEW");
+      clearable.add("MONETARY_UNIT_MISSING");
+    }
+    const resolved = next.validation.filter((v) => clearable.has(v.code) && v.severity !== "info");
+    next.validation = next.validation.filter((v) => !clearable.has(v.code) || v.severity === "info");
+    next.validation.push(...resolved.map((v) => ({ code: "RESOLVED_" + v.code, message: `${v.message} · ${review.actor}: ${review.reason}`, severity: "info" as const })));
+  }
+  if (next.state === "retracted") next.recognition = "rejected";
+  data.facts.push(next);
+  // Same value/status reviews may advance the entity's evidence reference safely.
+  // Value changes intentionally invalidate object projection until the extractor/editor remaps it.
+  if (!changed) {
+    const remap = (ids: string[]) => ids.map((fid) => fid === prior.id ? next.id : fid);
+    for (const group of [data.incomes, data.debts, data.assets, data.transactions]) for (const item of group) item.factIds = remap(item.factIds);
+    data.household.factIds = remap(data.household.factIds);
+  }
+  return data;
+}
+
+/** Remove every descendant and withdraw all derived assertions, while retaining history. */
+export function retractDocument(input: CaseData, documentId: string): CaseData {
+  if (!input.documents.some((d) => d.id === documentId && d.status === "active")) throw new Error("현재 문서를 찾을 수 없습니다.");
+  const data = touchCase(input);
+  const ids = new Set([documentId]);
+  let count = -1;
+  while (count !== ids.size) {
+    count = ids.size;
+    for (const doc of data.documents) if (doc.parentId && ids.has(doc.parentId)) ids.add(doc.id);
+  }
+  const at = new Date().toISOString();
+  for (const doc of data.documents) if (ids.has(doc.id)) { doc.status = "deleted"; doc.deletedAt = at; }
+  for (const fact of currentFacts(data)) if (fact.refs.some((r) => ids.has(r.documentId))) {
+    data.facts.push({ ...fact, id: crypto.randomUUID(), version: fact.version + 1, supersedes: fact.id, state: "retracted", recognition: "rejected", reviewReason: "원본 또는 상위 묶음 문서 철회", createdAt: at });
+  }
+  data.context.inventoryComplete = { income: "unknown", debt: "unknown", asset: "unknown" };
+  return data;
+}
+
+export function extractionCacheKey(input: { documentId: string; documentHash: string; pages: number[]; mappingVersion: string; promptVersion: string; model: string; ruleReleaseId: string }): string {
+  // Deliberately includes identity as cache values carry document/page references.
+  return JSON.stringify([input.documentId, input.documentHash, [...input.pages].sort((a, b) => a - b), input.mappingVersion, input.promptVersion, input.model, input.ruleReleaseId]);
+}
+
+export interface ExtractionPayload {
+  facts?: Partial<Fact>[];
+  incomes?: IncomeSource[];
+  debts?: Debt[];
+  assets?: Asset[];
+  transactions?: Transaction[];
+  household?: Partial<Household>;
+  pages?: EvidencePage[];
+  /** Only a complete reread may withdraw prior automatic facts from these pages. */
+  replacesPages?: { documentId: string; page: number }[];
+  warnings?: string[];
+}
+
+/** Untrusted extraction never grants source verification or legal acceptance. */
+export function applyExtraction(input: CaseData, extraction: ExtractionPayload): CaseData {
+  const data = touchCase(input);
+  const idMap = new Map<string, string>();
+  const warnings = [...(extraction.warnings ?? [])];
+  for (const page of extraction.pages ?? []) {
+    if (!data.documents.some((d) => d.id === page.documentId && d.status === "active" && d.pages.includes(page.page))) { warnings.push("문서 범위 밖의 추출 페이지를 제외했습니다."); continue; }
+    const previous = data.pages.find((p) => p.documentId === page.documentId && p.page === page.page);
+    // A previously held-out or administrative page cannot be promoted by extraction.
+    if (previous && ["filed_form", "administrative"].includes(previous.role)) continue;
+    const index = data.pages.findIndex((p) => p.documentId === page.documentId && p.page === page.page);
+    // Native text and the original image are source data, never model output.
+    const merged = { ...previous, ...page, text: previous?.text, imageUrl: previous?.imageUrl };
+    if (index >= 0) data.pages[index] = merged; else data.pages.push(merged);
+  }
+  const scope = new Set((extraction.replacesPages ?? []).filter((p) => data.pages.some((existing) => existing.documentId === p.documentId && existing.page === p.page && existing.role === "evidence") && data.documents.some((d) => d.id === p.documentId && d.status === "active" && d.pages.includes(p.page))).map((p) => `${p.documentId}:${p.page}`));
+  const withdrawn = new Set<string>();
+  const at = new Date().toISOString();
+  for (const prior of currentFacts(data)) {
+    if (!prior.refs.length || !prior.refs.every((ref) => scope.has(`${ref.documentId}:${ref.page}`))) continue;
+    // Human-reviewed facts survive rereading. Machine cross-read facts are
+    // source/version-bound and must be re-issued against the new reread.
+    if (prior.reviewer || prior.state === "verified" && !prior.sourceVerification) continue;
+    data.facts.push({ ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, state: "retracted", recognition: "rejected", reviewReason: "완전한 페이지 재추출로 이전 자동 후보 철회", createdAt: at });
+    withdrawn.add(prior.id);
+  }
+  const reviewedObject = (item: { recognition?: Recognition; legalReview?: Recognition }) => item.recognition === "accepted" || item.recognition === "rejected" || item.legalReview === "accepted" || item.legalReview === "rejected";
+  const retain = <T extends { factIds: string[]; recognition?: Recognition; legalReview?: Recognition }>(items: T[]): T[] => items.filter((item) => !item.factIds.some((id) => withdrawn.has(id)) || reviewedObject(item));
+  data.incomes = retain(data.incomes); data.debts = retain(data.debts); data.assets = retain(data.assets); data.transactions = retain(data.transactions);
+  if (data.household.factIds.some((id) => withdrawn.has(id))) {
+    data.household.factIds = data.household.factIds.filter((id) => !withdrawn.has(id));
+    data.household.reportedMembers = null;
+    data.household.recognition = "unreviewed";
+  }
+  for (const raw of extraction.facts ?? []) {
+    if (!raw.key || !raw.subjectId || raw.value === undefined || !Array.isArray(raw.refs) || !raw.refs.length || raw.refs.some((r) => !validSourceRef(data, r))) { warnings.push("유효한 문서·페이지·원문 인용이 없는 사실 후보를 제외했습니다."); continue; }
+    let logicalId = raw.logicalId || [raw.subjectId, raw.key, raw.periodStart ?? "", raw.periodEnd ?? "", raw.refs[0].documentId].join(":");
+    // Include tombstones so a new extraction cannot restart at version 1 under an older version 2.
+    let prior: Fact | undefined = data.facts.filter((f) => f.logicalId === logicalId).sort((a, b) => b.version - a.version)[0];
+    if (prior && prior.state !== "retracted" && (prior.state === "verified" || prior.reviewer)) {
+      const sameSource = JSON.stringify(prior.refs.map(r => [r.documentId,r.page,r.quote,r.sourceHash])) === JSON.stringify((raw.refs ?? []).map(r => [r.documentId,r.page,r.quote,r.sourceHash]));
+      const sameReading = JSON.stringify(prior.value) === JSON.stringify(raw.value) && JSON.stringify(prior.numeric ?? null) === JSON.stringify(raw.numeric ?? null);
+      if (sameReading && (!prior.sourceVerification || sameSource)) { if (raw.id) idMap.set(raw.id, prior.id); continue; }
+      if (prior.sourceVerification && (!sameReading || !sameSource)) {
+        const tombstone:Fact={ ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, state: "retracted", recognition: "rejected", sourceVerification: undefined, reviewReason: "기계 교차판독 사실의 원문·값이 변경되어 증명을 무효화했습니다.", createdAt: at };
+        data.facts.push(tombstone);prior = tombstone;
+      } else {
+      logicalId += ":candidate:" + crypto.randomUUID();
+      warnings.push("검토 완료 사실과 다른 추출값을 별도 충돌 후보로 보존했습니다.");
+      prior = undefined;
+      }
+    }
+    const id = crypto.randomUUID();
+    if (raw.id) idMap.set(raw.id, id);
+    const validation = (Array.isArray(raw.validation) ? raw.validation : []).filter((v) => v && typeof v.code === "string" && typeof v.message === "string" && ["info", "warning", "error"].includes(v.severity)).map((v) => ({ code: v.code, message: v.message, severity: v.severity }));
+    const fact: Fact = { id, logicalId, version: (prior?.version ?? 0) + 1, supersedes: prior?.id, subjectId: raw.subjectId, key: raw.key, value: raw.value, rawValue: raw.rawValue, numeric: raw.numeric, periodStart: raw.periodStart, periodEnd: raw.periodEnd, asOf: raw.asOf, state: logicalId.includes(":candidate:") ? "disputed" : "extracted", recognition: "unreviewed", refs: raw.refs, validation, createdAt: at };
+    if (raw.numeric && moneyValue(raw.numeric) === null) fact.validation.push({ code: "NORMALIZATION_REVIEW", message: "원문 금액·통화·단위를 다시 확인하세요.", severity: "warning" });
+    data.facts.push(fact);
+  }
+  const active = new Set(currentFacts(data).map((f) => f.id));
+  function merge<T extends { id: string; factIds: string[]; recognition?: Recognition; legalReview?: Recognition }>(existing: T[], received: T[]): T[] {
+    const result = [...existing];
+    for (const raw of received) {
+      const ids = (raw.factIds ?? []).map((id) => idMap.get(id) ?? id);
+      if (!raw.id || !ids.length || ids.some((id) => !active.has(id))) { warnings.push("현재 사실 근거와 연결되지 않은 객체 후보를 제외했습니다."); continue; }
+      const item = { ...raw, factIds: ids };
+      if ("recognition" in item) item.recognition = "unreviewed";
+      if ("legalReview" in item) item.legalReview = "unreviewed";
+      if ("guaranteeDetails" in item && item.guaranteeDetails) {
+        const details = (item as typeof item & { guaranteeDetails?: Debt["guaranteeDetails"] }).guaranteeDetails!;
+        (item as typeof item & { guaranteeDetails?: Debt["guaranteeDetails"] }).guaranteeDetails = { ...details, capTreatment: "unknown", capTreatmentReviewed: false, reviewReason: undefined };
+      }
+      if ("aggregationTreatment" in item || "payerIdentityId" in item || "aggregationReviewed" in item || "aggregationReviewReason" in item) {
+        const income = item as typeof item & Pick<IncomeSource, "aggregationTreatment" | "aggregationReviewed" | "aggregationReviewReason">;
+        income.aggregationTreatment = "unknown";
+        income.aggregationReviewed = false;
+        income.aggregationReviewReason = undefined;
+      }
+      const index = result.findIndex((e) => e.id === item.id);
+      if (index >= 0 && reviewedObject(result[index])) { warnings.push("인정 검토한 객체는 자동 재추출로 덮어쓰지 않았습니다. 최신 근거와 대조하세요."); continue; }
+      if (index >= 0) result[index] = item; else result.push(item);
+    }
+    return result;
+  }
+  data.incomes = merge(data.incomes, extraction.incomes ?? []);
+  if (extraction.incomes?.length) data.context.incomePeriodReviewed = false;
+  data.debts = merge(data.debts, extraction.debts ?? []).map((d) => {
+    if (!(extraction.debts ?? []).some((e) => e.id === d.id) || reviewedObject(d)) return d;
+    return { ...d, legalReview: "unreviewed", excludedByReview: false, exclusionReason: undefined };
+  });
+  data.assets = merge(data.assets, extraction.assets ?? []);
+  data.transactions = merge(data.transactions, extraction.transactions ?? []);
+  // Reported household size may be extracted; recognized living costs are human/legal inputs.
+  if (extraction.household?.reportedMembers !== undefined) data.household.reportedMembers = extraction.household.reportedMembers;
+  if (extraction.household?.factIds) data.household.factIds = [...new Set([...data.household.factIds, ...extraction.household.factIds.map((id) => idMap.get(id) ?? id).filter((id) => active.has(id))])];
+  data.extractionWarnings = [...new Set([...(data.extractionWarnings ?? []), ...warnings])];
+  return data;
+}
+
+export function manifestFingerprint(manifest: ExportManifest): string {
+  return JSON.stringify([manifest.caseRevision, [...manifest.requiredKinds].sort(), manifest.files.filter((f) => f.status === "current").map((f) => [f.id, f.kind, f.hash]).sort((a, b) => a[0].localeCompare(b[0]))]);
+}
+export function manifestIssues(data: CaseData): string[] {
+  const m = data.exportManifest;
+  if (!m || m.caseRevision !== data.context.revision) return ["현재 사건 버전의 생성물이 없습니다."];
+  const current = m.files.filter((f) => f.status === "current" && !!f.hash);
+  return [...new Set([...requiredKindsForCase(data), ...m.requiredKinds])].filter((kind) => !current.some((f) => f.kind === kind)).map((kind) => `필수 생성물 누락: ${kind}`);
+}
+export function archiveExport(input: CaseData, id: string): CaseData {
+  const data = structuredClone(input);
+  const file = data.exportManifest?.files.find((f) => f.id === id && f.status === "current");
+  if (!file || !data.exportManifest) throw new Error("현재 생성물을 찾을 수 없습니다.");
+  file.status = "archived";
+  data.exportManifest.reviews = { caseworker: null, lawyer: null };
+  return data;
+}
+export function reviewExport(input: CaseData, role: "caseworker" | "lawyer", actor: string, expectedFingerprint: string): CaseData {
+  if (!actor.trim()) throw new Error("확인자가 필요합니다.");
+  const issues = manifestIssues(input);
+  if (issues.length) throw new Error(issues.join(" / "));
+  const data = structuredClone(input);
+  const manifest = data.exportManifest!;
+  const fingerprint = manifestFingerprint(manifest);
+  if (fingerprint !== expectedFingerprint) throw new Error("검토한 생성물 집합이 변경되었습니다.");
+  if (role === "lawyer" && manifest.reviews.caseworker?.manifestFingerprint !== fingerprint) throw new Error("현재 생성물 전체의 담당자 검수가 먼저 필요합니다.");
+  if (role === "caseworker") manifest.reviews.lawyer = null;
+  manifest.reviews[role] = { actor, at: new Date().toISOString(), caseRevision: data.context.revision, manifestFingerprint: fingerprint };
+  return data;
+}
+
+/** Machine-readable interface summary for model routing; response must still be validated. */
+export const EXTRACTION_SCHEMA = {
+  type: "object", additionalProperties: false,
+  properties: {
+    facts: {
+      type: "array",
+      items: {
+        type: "object", required: ["id", "subjectId", "key", "value", "refs"],
+        properties: {
+          id: { type: "string" }, subjectId: { type: "string" }, key: { type: "string" }, value: {},
+          refs: {
+            type: "array", minItems: 1,
+            items: {
+              type: "object", required: ["documentId", "page", "quote"],
+              properties: {
+                documentId: { type: "string" }, page: { type: "integer", minimum: 1 },
+                quote: { type: "string", minLength: 1 },
+                bbox: { type: "array", items: { type: "number" }, minItems: 4, maxItems: 4 },
+              },
+            },
+          },
+        },
+      },
+    },
+    incomes: { type: "array" }, debts: { type: "array" }, assets: { type: "array" }, household: { type: "object" }, transactions: { type: "array" }, pages: { type: "array" }, warnings: { type: "array", items: { type: "string" } },
+  }, required: ["facts"],
+} as const;

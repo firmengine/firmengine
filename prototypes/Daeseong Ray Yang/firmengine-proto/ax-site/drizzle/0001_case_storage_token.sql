@@ -1,0 +1,1 @@
+ALTER TABLE `cases` ADD `storage_token` text DEFAULT '' NOT NULL;
