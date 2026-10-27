@@ -27,7 +27,7 @@ function fixture(role: "evidence" | "filed_form" | "administrative" = "evidence"
 function proofFixture(){
   const f=fixture(),readCopy=structuredClone(read),promptVersion="synthetic-cross-read-1.0",verifiedAt="2026-10-27T00:00:00.000Z",promptHash="f".repeat(64);
   const payload=projectPage(readCopy,"doc-1",1,hash),data=applyExtraction(f.data,payload);
-  const checks=readCopy.records.flatMap((record,recordIndex)=>record.fields.map((field,fieldIndex)=>({recordIndex,fieldIndex,status:"agrees" as const,value:field.value,unit:field.unit,quote:field.quote})));
+  const checks=readCopy.records.flatMap((record,recordIndex)=>record.fields.map((field,fieldIndex)=>({recordIndex,fieldIndex,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:field.quote})));
   const receipts=createSourceVerificationReceipts({documentId:"doc-1",page:1,sourceHash:hash,promptVersion,verifiedAt,originalRead:readCopy,read:readCopy,passes:[{kind:"verify",checks,model:"gpt-6-luna",promptVersion,promptHash,verifiedAt}]});
   for(const receipt of receipts){
     const location=sourceVerificationFieldLocation(receipt,readCopy)!;
@@ -108,6 +108,20 @@ test("exact historical machine receipts survive trusted reprojection with only f
     assert.equal(newProof.fieldFingerprint,oldProof.fieldFingerprint);assert.deepEqual(newProof.field,oldProof.field);assert.deepEqual(newProof.verificationQuotes,oldProof.verificationQuotes);assert.deepEqual(newProof.proofReads,oldProof.proofReads);assert.deepEqual(newProof.proofReadIndexes,oldProof.proofReadIndexes);assert.deepEqual(newProof.extractionReading,oldProof.extractionReading);assert.deepEqual(newProof.source,oldProof.source);
     assert.deepEqual(newProof.factBinding,{id:next.id,logicalId:next.logicalId,version:next.version});
   }
+});
+
+test("historical value-unit-quote receipts stay explicitly legacy through reprojection",()=>{
+  const f=proofFixture();
+  for(const fact of currentFacts(f.data)){
+    const proof=fact.sourceVerification;if(!proof)continue;
+    delete proof.verificationScope;
+    for(const read of proof.proofReads)delete read.meaningStatus;
+    const norm=(value:string)=>value.normalize("NFKC").trim();
+    proof.fieldFingerprint=JSON.stringify([proof.source.sha256.toLowerCase(),proof.source.documentId,proof.source.page,norm(proof.field.recordCategory),proof.field.key,norm(proof.field.value),proof.field.unit===null?null:norm(proof.field.unit),norm(proof.field.quote),proof.verificationQuotes.map(norm),[norm(proof.extractionReading.value),proof.extractionReading.unit===null?null:norm(proof.extractionReading.unit),norm(proof.extractionReading.quote)]]);
+  }
+  const before=currentFacts(f.data).filter(fact=>fact.sourceVerification);assert.ok(before.length>0);assert.ok(before.every(fact=>fact.sourceVerification!.verificationScope===undefined));
+  const after=currentFacts(reprojectStoredPage(f.data,f.prepare()).data).filter(fact=>fact.sourceVerification);
+  assert.equal(after.length,before.length);assert.ok(after.every(fact=>fact.sourceVerification!.verificationScope===undefined));assert.ok(after.every(fact=>fact.sourceVerification!.proofReads.every(read=>read.meaningStatus===undefined)));
 });
 
 test("adding exact normalization of the same attested source value and unit preserves the original receipt",()=>{

@@ -7,7 +7,7 @@ export const SOURCE_VERIFICATION_MODEL = AI_MODEL;
 export interface ReadField { key: string; value: string | null; unit: string | null; quote: string | null; confidence: "clear" | "uncertain" | "unreadable" }
 export interface ReadRecord { category: string; fields: ReadField[] }
 export interface PageRead { documentType: string; complete: boolean; records: ReadRecord[] }
-export interface Check { recordIndex: number; fieldIndex: number; status: "agrees" | "corrected" | "unreadable" | "ambiguous"; value: string | null; unit: string | null; quote: string | null }
+export interface Check { recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected" | "unreadable" | "ambiguous"; value: string | null; unit: string | null; quote: string | null }
 export interface ReviewPass { kind: "verify" | "repair"; checks: readonly Check[]; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string }
 export interface FieldError { recordIndex: number; fieldIndex: number; code: string }
 export interface SourceVerificationInput {
@@ -16,11 +16,13 @@ export interface SourceVerificationInput {
 }
 export interface SourceVerificationReceipt {
   method: typeof SOURCE_VERIFICATION_METHOD; model: typeof AI_MODEL; promptVersion: string; verifiedAt: string;
+  /** Absent on historical value/unit/quote-only receipts. */
+  verificationScope?: "field_meaning_v1";
   source: { documentId: string; page: number; sha256: string };
   field: { recordCategory: string; key: string; value: string; unit: string | null; quote: string };
   extractionReading: { value: string; unit: string | null; quote: string };
   verificationQuotes: string[]; fieldFingerprint: string;
-  proofReads: Array<{ pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string }>;
+  proofReads: Array<{ pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string }>;
   proofReadIndexes: Array<{ pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }>;
   recognition: "unreviewed";
 }
@@ -35,7 +37,7 @@ const fieldKey = (f: ReadField) => canonicalKey(f.key);
 const isMonetary = (key: string,unit:string|null) => isSourceMoney(key,unit);
 const fieldAt = (read: PageRead, ri: number, fi: number) => read.records[ri]?.fields[fi];
 const checksAt = (pass: ReviewPass, ri: number, fi: number) => pass.checks.filter(c => c.recordIndex === ri && c.fieldIndex === fi);
-function matchingAgreement(check: Check, field: ReadField) { return check.status === "agrees" && check.value !== null && check.value === field.value && sameUnit(check.unit, field.unit) && nonempty(check.quote); }
+function matchingAgreement(check: Check, field: ReadField) { return check.meaningStatus === "supported" && check.status === "agrees" && check.value !== null && check.value === field.value && sameUnit(check.unit, field.unit) && nonempty(check.quote); }
 
 type ProofCheck = { pass: ReviewPass; check: Check };
 function proofFor(read: PageRead, passes: readonly ReviewPass[], ri: number, fi: number): ProofCheck[] | null {
@@ -57,12 +59,13 @@ function proofFor(read: PageRead, passes: readonly ReviewPass[], ri: number, fi:
   const seconds=checksAt(repairs[0],ri,fi);
   if(seconds.length!==1)return null;
   const second=seconds[0];
-  if(second.status!=="corrected"||first.value===null||first.value!==second.value||first.value!==field.value||!sameUnit(first.unit,second.unit)||!sameUnit(second.unit,field.unit)||!nonempty(first.quote)||!nonempty(second.quote))return null;
+  if(first.meaningStatus!=="supported"||second.meaningStatus!=="supported"||second.status!=="corrected"||first.value===null||first.value!==second.value||first.value!==field.value||!sameUnit(first.unit,second.unit)||!sameUnit(second.unit,field.unit)||!nonempty(first.quote)||!nonempty(second.quote))return null;
   return [{pass:verifies[0],check:first},{pass:repairs[0],check:second}];
 }
-function fingerprint(input: SourceVerificationInput, category: string, key: string, value: string, unit: string | null, quote: string, proofQuotes: string[], extractionReading:{value:string;unit:string|null;quote:string}) {
+function fingerprint(input: SourceVerificationInput, category: string, key: string, value: string, unit: string | null, quote: string, proofQuotes: string[], extractionReading:{value:string;unit:string|null;quote:string},verificationScope?:"field_meaning_v1") {
   // Content identity only; trusted persistence must authenticate this receipt separately.
-  return JSON.stringify([input.sourceHash.toLowerCase(),input.documentId,input.page,normalize(category),key,normalize(value),unit===null?null:normalize(unit),normalize(quote),proofQuotes.map(normalize),[normalize(extractionReading.value),extractionReading.unit===null?null:normalize(extractionReading.unit),normalize(extractionReading.quote)]]);
+  const content=[input.sourceHash.toLowerCase(),input.documentId,input.page,normalize(category),key,normalize(value),unit===null?null:normalize(unit),normalize(quote),proofQuotes.map(normalize),[normalize(extractionReading.value),extractionReading.unit===null?null:normalize(extractionReading.unit),normalize(extractionReading.quote)]];
+  return verificationScope?JSON.stringify([...content,verificationScope]):JSON.stringify(content);
 }
 
 /** Build server-only receipts. Page incompleteness leaves missing facts unproved but preserves proof for clear cited fields. */
@@ -77,7 +80,8 @@ export function createSourceVerificationReceipts(input: SourceVerificationInput)
     const extractionReading={value:normalize(originalField.value),unit:originalField.unit===null?null:normalize(originalField.unit),quote:normalize(originalField.quote)};
     const occurrenceCount=input.read.records.flatMap(r=>r.fields.map(f=>({r,f}))).filter(({r,f})=>normalize(r.category)===normalize(record.category)&&fieldKey(f)===key&&f.value!==null&&normalize(f.value)===value&&sameUnit(f.unit,unit)&&normalize(f.quote??"")===quote).length;
     if(occurrenceCount!==1)return;
-    drafts.push({method:SOURCE_VERIFICATION_METHOD,model:SOURCE_VERIFICATION_MODEL,promptVersion:input.promptVersion,verifiedAt:input.verifiedAt,source:{documentId:input.documentId,page:input.page,sha256:input.sourceHash.toLowerCase()},field:{recordCategory:record.category,key,value,unit,quote},extractionReading,verificationQuotes:proofQuotes,fieldFingerprint:fingerprint(input,record.category,key,value,unit,quote,proofQuotes,extractionReading),proofReadIndexes:proof.map(p=>({pass:p.pass.kind,recordIndex:ri,fieldIndex:fi})),proofReads:proof.map(p=>({pass:p.pass.kind,model:p.pass.model,promptVersion:p.pass.promptVersion,promptHash:p.pass.promptHash,verifiedAt:p.pass.verifiedAt,recordIndex:ri,fieldIndex:fi,status:p.check.status as "agrees"|"corrected",value:normalize(p.check.value!),unit:p.check.unit===null?null:normalize(p.check.unit),quote:normalize(p.check.quote!)})),recognition:"unreviewed"});
+    const verificationScope="field_meaning_v1" as const;
+    drafts.push({method:SOURCE_VERIFICATION_METHOD,model:SOURCE_VERIFICATION_MODEL,promptVersion:input.promptVersion,verifiedAt:input.verifiedAt,verificationScope,source:{documentId:input.documentId,page:input.page,sha256:input.sourceHash.toLowerCase()},field:{recordCategory:record.category,key,value,unit,quote},extractionReading,verificationQuotes:proofQuotes,fieldFingerprint:fingerprint(input,record.category,key,value,unit,quote,proofQuotes,extractionReading,verificationScope),proofReadIndexes:proof.map(p=>({pass:p.pass.kind,recordIndex:ri,fieldIndex:fi})),proofReads:proof.map(p=>({pass:p.pass.kind,model:p.pass.model,promptVersion:p.pass.promptVersion,promptHash:p.pass.promptHash,verifiedAt:p.pass.verifiedAt,recordIndex:ri,fieldIndex:fi,meaningStatus:p.check.meaningStatus,status:p.check.status as "agrees"|"corrected",value:normalize(p.check.value!),unit:p.check.unit===null?null:normalize(p.check.unit),quote:normalize(p.check.quote!)})),recognition:"unreviewed"});
   }));
   const counts=new Map<string,number>();for(const r of drafts)counts.set(r.fieldFingerprint,(counts.get(r.fieldFingerprint)??0)+1);
   return drafts.filter(r=>counts.get(r.fieldFingerprint)===1);
@@ -86,7 +90,12 @@ export function sourceVerificationReceiptMatches(receipt: SourceVerificationRece
   if(receipt.source.documentId!==input.documentId||receipt.source.page!==input.page||receipt.source.sha256!==input.sourceHash.toLowerCase()||!validHash(input.sourceHash))return false;
   const candidates=input.read.records.flatMap(r=>r.fields.map(f=>({r,f}))).filter(({r,f})=>normalize(r.category)===normalize(receipt.field.recordCategory)&&fieldKey(f)===receipt.field.key&&f.value!==null&&normalize(f.value)===receipt.field.value&&sameUnit(f.unit,receipt.field.unit)&&normalize(f.quote??"")===receipt.field.quote);
   if(candidates.length!==1||candidates[0].f.confidence!=="clear")return false;
-  return fingerprint({...input,originalRead:input.read,promptVersion:receipt.promptVersion,verifiedAt:receipt.verifiedAt,passes:[]},candidates[0].r.category,receipt.field.key,receipt.field.value,receipt.field.unit,receipt.field.quote,receipt.verificationQuotes,receipt.extractionReading)===receipt.fieldFingerprint;
+  const fingerprintHasMeaningScope=(()=>{try{const parsed=JSON.parse(receipt.fieldFingerprint);return Array.isArray(parsed)&&parsed.at(-1)==="field_meaning_v1";}catch{return false;}})();
+  if(!Array.isArray(receipt.proofReads))return false;
+  const hasMeaningReadMetadata=receipt.proofReads.some(proof=>Object.hasOwn(proof,"meaningStatus"));
+  if(receipt.verificationScope==="field_meaning_v1"){if(!fingerprintHasMeaningScope||!receipt.proofReads.length||receipt.proofReads.some(proof=>proof.meaningStatus!=="supported"))return false;}
+  else if(receipt.verificationScope!==undefined||fingerprintHasMeaningScope||hasMeaningReadMetadata)return false;
+  return fingerprint({...input,originalRead:input.read,promptVersion:receipt.promptVersion,verifiedAt:receipt.verifiedAt,passes:[]},candidates[0].r.category,receipt.field.key,receipt.field.value,receipt.field.unit,receipt.field.quote,receipt.verificationQuotes,receipt.extractionReading,receipt.verificationScope)===receipt.fieldFingerprint;
 }
 
 /** Locate a receipt's exact source field in a current read after safe array-index drift. */

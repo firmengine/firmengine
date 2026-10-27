@@ -49,7 +49,7 @@ test("날짜·수량·전화번호는 KRW 단위처럼 보이는 메타데이터
 
 test("source receipt and projection use the same monetary classification",()=>{
   const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("coverage_amount","25","천원","가입금액 25천원"),field("phone_number","01012345678",null,"연락처 01012345678")]}]};
-  const checks:Check[]=read.records[0].fields.map((f,fieldIndex)=>({recordIndex:0,fieldIndex,status:"agrees",value:f.value,unit:f.unit,quote:f.quote}));
+  const checks:Check[]=read.records[0].fields.map((f,fieldIndex)=>({recordIndex:0,fieldIndex,meaningStatus:"supported",status:"agrees",value:f.value,unit:f.unit,quote:f.quote}));
   const pass:ReviewPass={kind:"verify",checks,model:AI_MODEL,promptVersion:"luna-evidence-test",promptHash,verifiedAt:when};
   const receipts=createSourceVerificationReceipts({documentId:sourceId,page:1,sourceHash:hash,promptVersion:pass.promptVersion,verifiedAt:when,originalRead:read,read,passes:[pass]});
   assert.deepEqual(receipts.map(r=>r.field.key),["coverage_amount","phone_number"]);
@@ -58,11 +58,11 @@ test("source receipt and projection use the same monetary classification",()=>{
   assert.equal(p.facts?.find(f=>f.key==="asset.phone_number")?.numeric,undefined);
   for(const unit of [null,"USD"]){
     const unsupported:PageRead={documentType:"other",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("tax_amount","25",unit,"세금액 25")]}]};
-    const unsupportedPass:ReviewPass={...pass,checks:[{recordIndex:0,fieldIndex:0,status:"agrees",value:"25",unit,quote:"세금액 25"}]};
+    const unsupportedPass:ReviewPass={...pass,checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"25",unit,quote:"세금액 25"}]};
     assert.equal(createSourceVerificationReceipts({documentId:sourceId,page:1,sourceHash:hash,promptVersion:pass.promptVersion,verifiedAt:when,originalRead:unsupported,read:unsupported,passes:[unsupportedPass]}).length,0);
   }
   const foreign:PageRead={documentType:"other",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("misc_recovery_amount","25","USD","recovery amount 25 USD")]}]};
-  const foreignPass:ReviewPass={...pass,checks:[{recordIndex:0,fieldIndex:0,status:"agrees",value:"25",unit:"USD",quote:"recovery amount 25 USD"}]};
+  const foreignPass:ReviewPass={...pass,checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"25",unit:"USD",quote:"recovery amount 25 USD"}]};
   assert.equal(createSourceVerificationReceipts({documentId:sourceId,page:1,sourceHash:hash,promptVersion:pass.promptVersion,verifiedAt:when,originalRead:foreign,read:foreign,passes:[foreignPass]}).length,0);
 });
 
@@ -73,7 +73,7 @@ test("sourceUnit changes create a new fact version and invalidate the prior mach
   let saved=applyExtraction(data,{facts:[make("천원")]});
   let fact=currentFacts(saved)[0];
   const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("coverage_amount","25","천원",quote)]}]};
-  const pass:ReviewPass={kind:"verify",checks:[{recordIndex:0,fieldIndex:0,status:"agrees",value:"25",unit:"천원",quote}],model:AI_MODEL,promptVersion:"luna-evidence-test",promptHash,verifiedAt:when};
+  const pass:ReviewPass={kind:"verify",checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"25",unit:"천원",quote}],model:AI_MODEL,promptVersion:"luna-evidence-test",promptHash,verifiedAt:when};
   const [receipt]=createSourceVerificationReceipts({documentId:sourceId,page:1,sourceHash:hash,promptVersion:pass.promptVersion,verifiedAt:when,originalRead:read,read,passes:[pass]});
   fact.state="verified";fact.sourceVerification={...receipt,factBinding:{id:fact.id,logicalId:fact.logicalId,version:fact.version}};
   assert.deepEqual(factSourceLineageIssues(saved,[fact.id]),[]);

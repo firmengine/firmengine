@@ -52,7 +52,7 @@ test("보험 문서 family는 typed asset kind만 보완하고 원문 kind 불�
   assert.equal(projected.facts?.find(fact=>fact.key==="asset.coverage_amount")?.value,"149150000");
   assert.equal(projected.facts?.find(fact=>fact.key==="asset.monthly_premium")?.value,"184000");
 
-  const firstChecks:FieldReviewCheck[]=read.records[0].fields.map((field,fieldIndex)=>({recordIndex:0,fieldIndex,status:fieldIndex===0?"ambiguous":"agrees",value:fieldIndex===0?"insurance":field.value,unit:field.unit,quote:fieldIndex===0?"보험":field.quote,reason:fieldIndex===0?"불일치":"원문 일치"}));
+  const firstChecks:FieldReviewCheck[]=read.records[0].fields.map((field,fieldIndex)=>({recordIndex:0,fieldIndex,meaningStatus:fieldIndex===0?"unclear":"supported",status:fieldIndex===0?"ambiguous":"agrees",value:fieldIndex===0?"insurance":field.value,unit:field.unit,quote:fieldIndex===0?"보험":field.quote,reason:fieldIndex===0?"불일치":"원문 일치"}));
   const verified=applyFirstVerification(read,firstChecks);
   assert.equal(verified.targets.length,1,"kind source disagreement remains visible as a review target");
   const repaired=applyTargetedRepair(verified.read,firstChecks,[]);
@@ -183,8 +183,8 @@ test("lease facts without explicit applicant role do not become rent income or o
 test("alias source receipts attach by exact original field location after canonical projection",()=>{
   const field=f("debt.principal_balance","120","현재 원금잔액 120만원","만원");
   const read:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"힌트",fields:[f("debt.creditor_name","합성은행","채권자 합성은행"),field]}]};
-  const check={recordIndex:0,fieldIndex:1,status:"agrees" as const,value:field.value,unit:field.unit,quote:"원문에 현재 원금잔액 120만원",reason:"명시됨"};
-  const receipts=createSourceVerificationReceipts({documentId:"synthetic",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:read,read,passes:[{kind:"verify",checks:[{...check,recordIndex:0,fieldIndex:0,status:"agrees",value:"합성은행",unit:null,quote:"채권자 합성은행"},check],model:"gpt-6-luna",promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"}]});
+  const check={recordIndex:0,fieldIndex:1,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:"원문에 현재 원금잔액 120만원",reason:"명시됨"};
+  const receipts=createSourceVerificationReceipts({documentId:"synthetic",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:read,read,passes:[{kind:"verify",checks:[{...check,recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"합성은행",unit:null,quote:"채권자 합성은행"},check],model:"gpt-6-luna",promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"}]});
   const receipt=receipts.find(r=>r.field.key==="debt.principal_balance");assert.ok(receipt);
   assert.deepEqual(sourceVerificationFieldLocation(receipt!,read),{recordIndex:0,fieldIndex:1});
   const projected=projectPage(read,"synthetic",1,sha),raw=projected.facts?.find(x=>x.id==="synthetic:p1:debt:0:f1");

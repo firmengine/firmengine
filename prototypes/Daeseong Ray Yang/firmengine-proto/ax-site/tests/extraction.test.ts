@@ -237,6 +237,17 @@ test("bank account와 lease 원문 namespace의 금액은 단위가 있을 때�
   assert.ok(!p.facts?.some(x=>x.key==="bank_account.balance"));
 });
 
+test("bank transaction rows miscategorized as debt stay as flagged source facts and never become typed debts",()=>{
+  const r=read([{category:"debt",label:"synthetic transaction-like row",fields:[
+    field("creditor","Synthetic Counterparty",{quote:"counterparty Synthetic Counterparty"}),
+    field("principal","1234",{unit:"원",quote:"transaction amount 1234원"}),
+    field("interest","0",{unit:"원",quote:"balance 0원"}),
+  ]}]);r.documentType="bank_transactions";
+  const p=projectPage(r,"synthetic-bank-page",1,hash);
+  assert.equal(p.debts?.length,0);assert.ok(p.warnings?.some(w=>w.includes("typed 현재채무 생성은 보류")));
+  const facts=p.facts??[];assert.equal(facts.length,3);assert.ok(facts.every(f=>f.validation?.some(v=>v.code==="DOCUMENT_CATEGORY_MISMATCH"&&v.severity==="error")));
+});
+
 
 test("임대차 금액을 other 소득으로 분류해도 신청인 임대인 근거 없이는 수입을 만들지 않는다",()=>{
   for(const kind of ["rent","other","business",null]){

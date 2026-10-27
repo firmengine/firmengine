@@ -1,7 +1,7 @@
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
 import { isSourceMoney } from "./source-quantity.ts";
 import { documentFamily } from "./document-routing.ts";
-export const PROMPT_VERSION="luna-evidence-3.10.0";
+export const PROMPT_VERSION="luna-evidence-3.11.0";
 const APPLICANT_ROLE_EVIDENCE_RULE="person.role=applicant은 작성 주체가 문서에서 신청인 본인으로 명시되고, 같은 주체가 1인칭으로 개인회생 신청 의사를 직접 밝히며, 본인이 서명/날인한 근거가 각각 원문 quote로 확인되는 자필·본인 진술서에서만 source fact 후보로 기록한다. 세 근거가 모두 분명해야 하며 해당 role은 unreviewed 원문 후보이지 법적 승인이나 신원 자동확정이 아니다. 채무잔액증명서의 채무자/차주 표기, 가족증명서의 본인, 유일한 성명, 주소 일치, 타인의 대리/제3자 서명만으로 신청인을 추정하지 않는다.";
 export const DOC_FIELDS:Record<string,string>={
   debt_certificate:"채무잔액증명서/부채증명서(debt_certificate/debt_balance_certificate)의 현재 채무 정보. 문서 원문 제목은 document_title로 별도 인용하고 documentType은 debt_certificate로 설정한다. 채권기관, 채무자, 계좌/계약번호, 최초대출일, 원금잔액, 이자/연체이자, 합계, 잔액기준일, 담보여부/보증/양도, 청구종류. 이 문서 family에서 principal_balance/outstanding_principal은 원금 잔액(principal), total_claim은 합계(total), creditor_name은 creditor, as_of_date는 잔액 기준일(as_of)과 명백히 같은 열일 때만 alias로 사용한다. 발급일/작성일은 as_of가 아니다. overdue_interest는 별도 원문 fact이며 전체 interest와 합치지 않는다. original_principal은 최초/원래 원금이지 현재 잔액이 아니다. 채권기관의 사업자/법인 등록번호 등 완전한 식별자가 원문에 있으면 creditor_identity_id로 인용하고, 기관명에서 번호를 추정하지 않는다. 보증채무는 주채무/보증인/연대보증인 표시, 확정/조건부/다툼 상태, 주채무 식별자·채무자, 구상·대위 변제 상태, 별도 보증한도·청구액을 원문에 보이는 대로 별도 필드로 추출한다. 보증한도·보증청구액을 principal/interest로 옮기지 말고, 신청인의 법적 책임 범위나 채권 포함여부를 판정하지 않는다. 기관별·계약별 분리. 원금/이자 열을 교환하지 말 것. 같은 증명서의 요약행과 상세행을 중복 채권으로 만들지 말 것.",
@@ -45,18 +45,18 @@ const bboxSchema={anyOf:[{type:"array",items:{type:"number"},minItems:4,maxItems
 export const PAGE_SCHEMA=obj({documentType:{type:"string"},records:{type:"array",items:obj({category:{type:"string",enum:["person","income","debt","asset","transaction","household","business","statement","other"]},label:{type:"string"},fields:{type:"array",items:obj({key:{type:"string"},label:{type:"string"},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),confidence:{type:"string",enum:["clear","uncertain","unreadable"]},bbox:bboxSchema})}})},warnings:{type:"array",items:{type:"string"}},complete:{type:"boolean"}});
 export const CLASSIFY_SCHEMA=obj({role:{type:"string",enum:["evidence","filed_form","administrative","unknown"]},documentType:{type:"string"},confidence:{type:"string",enum:["high","low"]},reason:{type:"string"}});
 export const VERIFY_SCHEMA=obj({
-  checks:{type:"array",items:obj({recordIndex:{type:"integer"},fieldIndex:{type:"integer"},status:{type:"string",enum:["agrees","corrected","unreadable","ambiguous"]},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),bbox:bboxSchema,reason:{type:"string"}})},
+  checks:{type:"array",items:obj({recordIndex:{type:"integer"},fieldIndex:{type:"integer"},meaningStatus:{type:"string",enum:["supported","wrong_field","unclear"]},status:{type:"string",enum:["agrees","corrected","unreadable","ambiguous"]},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),bbox:bboxSchema,reason:{type:"string"}})},
   omittedRows:{type:"boolean"},warnings:{type:"array",items:{type:"string"}},
 });
 /** A correction needs a second matching value/unit reading, with a source quote from each pass. */
-export function applyConfirmedCorrection(field:ReadField,prior:{status:string;value:string|null;unit:string|null;quote:string|null}|undefined,current:{status:string;value:string|null;unit:string|null;quote:string|null}):boolean{
-  if(current.status!=="corrected"||prior?.status!=="corrected"||current.value===null||current.value!==prior.value||current.unit?.trim()!==prior.unit?.trim()||!current.quote?.trim()||!prior.quote?.trim())return false;
+export function applyConfirmedCorrection(field:ReadField,prior:{status:string;meaningStatus?:string;value:string|null;unit:string|null;quote:string|null}|undefined,current:{status:string;meaningStatus?:string;value:string|null;unit:string|null;quote:string|null}):boolean{
+  if(current.status!=="corrected"||current.meaningStatus!=="supported"||prior?.status!=="corrected"||prior.meaningStatus!=="supported"||current.value===null||current.value!==prior.value||current.unit?.trim()!==prior.unit?.trim()||!current.quote?.trim()||!prior.quote?.trim())return false;
   field.value=current.value;field.unit=current.unit;field.quote=current.quote;field.confidence="clear";return true;
 }
-export type FieldReviewCheck={recordIndex:number;fieldIndex:number;status:"agrees"|"corrected"|"unreadable"|"ambiguous";value:string|null;unit:string|null;quote:string|null;bbox?:number[]|null;reason:string};
+export type FieldReviewCheck={recordIndex:number;fieldIndex:number;meaningStatus?:string;status:"agrees"|"corrected"|"unreadable"|"ambiguous";value:string|null;unit:string|null;quote:string|null;bbox?:number[]|null;reason:string};
 export interface RepairTarget extends FieldReviewCheck {missingFirstCheck:boolean;bboxIssue?:boolean;bboxOnly?:boolean;}
 function checksFor(checks:readonly FieldReviewCheck[]|undefined,ri:number,fi:number){return (checks??[]).filter(c=>c.recordIndex===ri&&c.fieldIndex===fi);}
-function validAgreement(field:ReadField,check:FieldReviewCheck){return check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim();}
+function validAgreement(field:ReadField,check:FieldReviewCheck){return check.meaningStatus==="supported"&&check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim();}
 export function isValidSourceBBox(bbox:unknown):bbox is [number,number,number,number]{return Array.isArray(bbox)&&bbox.length===4&&bbox.every(v=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=1)&&bbox[0]<bbox[2]&&bbox[1]<bbox[3];}
 const INVALID_BBOX_WARNING="원문 bbox의 좌표 순서가 올바르지 않아 재확인이 필요합니다.";
 function refreshBBoxWarning(read:PageRead){
@@ -77,7 +77,7 @@ export function getRepairTargets(read:PageRead,checks:readonly FieldReviewCheck[
     const agreed=matches.length===1&&validAgreement(field,matches[0]);
     if(agreed&&!bboxIssue)return;
     const first=matches.length===1?matches[0]:undefined;
-    targets.push({...first??{recordIndex,fieldIndex,status:"ambiguous" as const,value:null,unit:null,quote:null,reason:matches.length>1?"검증 응답이 중복되었습니다.":"첫 검증에서 이 필드 응답이 누락되었습니다."},missingFirstCheck:matches.length!==1,bboxIssue,bboxOnly:bboxIssue&&agreed});
+    targets.push({...first??{recordIndex,fieldIndex,meaningStatus:"unclear" as const,status:"ambiguous" as const,value:null,unit:null,quote:null,reason:matches.length>1?"검증 응답이 중복되었습니다.":"첫 검증에서 이 필드 응답이 누락되었습니다."},missingFirstCheck:matches.length!==1,bboxIssue,bboxOnly:bboxIssue&&agreed});
   }));
   return targets;
 }
@@ -244,6 +244,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const validation:Fact["validation"]=[];
       if(f.confidence!=="clear")validation.push({code:"UNCERTAIN_READING",message:"재판독 필요: 계산 투영에서 제외한 값입니다.",severity:"warning"});
       if(fieldConflict)validation.push({code:"FIELD_CONFLICT",message:repeatableStatementText?"같은 원문 영역에서 상충하는 진술문 텍스트가 판독되었습니다.":"같은 필드에 상충하는 원문값이 있습니다.",severity:"error"});
+      if(r.category==="debt"&&["bank_transactions","bank_account"].includes(family))validation.push({code:"DOCUMENT_CATEGORY_MISMATCH",message:"은행 거래·계좌 문서의 이 행을 현재 채무로 분류할 원문 근거가 없습니다. 원문 사실만 보존하고 typed 채무 투영은 보류합니다.",severity:"error"});
       const monetary=isSourceMoney(key,f.unit);
       if(monetary&&!f.unit?.trim())validation.push({code:"MONETARY_UNIT_MISSING",message:"원문 금액 단위가 확인되지 않아 원화 정규화와 계산을 보류했습니다.",severity:"warning"});
       // Every projected value has its own source fact; uncertain facts cannot license a different amount.
@@ -261,6 +262,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       else {if(!value("label"))warnings.push(`${id}: 인용된 소득원명이 없어 확인이 필요합니다.`);incomes.push({id,kind:known(value("kind"),["wage","business","rent","interest","dividend","pension","benefit","other"],"other"),label:value("label")||"",employer:value("employer"),payerIdentityId:value("payer_identity_id"),aggregationTreatment:"unknown",aggregationReviewed:false,gross:num("gross"),expenses:num("expenses"),net:num("net"),periodStart:value("period_start"),periodEnd:value("period_end"),periodMonths:integer("period_months"),amountBasis:sourceAmountBasis(value("amount_basis")),recurring:tri(value("recurring")),recognition:"unreviewed",factIds:ids});}
     }
     if(r.category==="debt"){
+      if(["bank_transactions","bank_account"].includes(family)){warnings.push(`${id}: 은행 거래·계좌 문서에서 debt category가 판독되어 원문 사실은 보존했지만 typed 현재채무 생성은 보류했습니다.`);return;}
       const currentClaimBasis=["principal","interest","total","current_balance","claim_amount","amount_due","tax_arrears","arrears_amount","premium_arrears","late_charge","total_arrears"].some(key=>field(key));
       if(isCreditReport){warnings.push(`${id}: 신용정보조회서의 이력 금액은 현재 잔액이 아니므로 원문 fact로만 보존하고 typed 현재 채무에서 제외했습니다.`);return;}
       if(isHealthArrears){warnings.push(`${id}: 건강보험료 미납 항목은 법적 채무 분류 전 원문 사실로만 보존했습니다.`);return;}

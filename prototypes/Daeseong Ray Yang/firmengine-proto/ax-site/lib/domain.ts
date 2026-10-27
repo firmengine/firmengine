@@ -70,13 +70,15 @@ export interface Fact {
     model: typeof AI_MODEL;
     promptVersion: string;
     verifiedAt: string;
+    /** Missing means historical value/unit/quote corroboration only; never backfilled as field-semantic proof. */
+    verificationScope?: "field_meaning_v1";
     source: { documentId: string; page: number; sha256: string };
     field: { recordCategory: string; key: string; value: string; unit: string | null; quote: string };
     extractionReading: { value: string; unit: string | null; quote: string };
     verificationQuotes: string[];
     fieldFingerprint: string;
     proofReadIndexes: { pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }[];
-    proofReads: { pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string }[];
+    proofReads: { pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string }[];
     recognition: "unreviewed";
     factBinding: { id: string; logicalId: string; version: number };
   };
@@ -383,7 +385,10 @@ export function factSourceLineageIssues(data: CaseData, ids: string[], index?:Ca
       const validNumeric = !fact.numeric || fact.numeric.normalizationStatus === "exact" && fact.numeric.amountWon !== null && typeof proof.field?.unit === "string" && fact.numeric.unit.normalize("NFKC").trim() === proof.field.unit.normalize("NFKC").trim() && normalizeMoney(raw, proof.field.unit).amountWon === fact.numeric.amountWon;
       const validSourceUnit = !Object.hasOwn(fact,"sourceUnit") || (fact.sourceUnit===null ? proof.field?.unit===null : typeof fact.sourceUnit==="string" && typeof proof.field?.unit==="string" && fact.sourceUnit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim());
       const validProofIndexBinding = Array.isArray(proof.proofReadIndexes) && Array.isArray(proof.proofReads) && Array.isArray(proof.verificationQuotes) && proof.proofReads.every((p,i)=>p.pass===proof.proofReadIndexes[i]?.pass&&p.recordIndex===proof.proofReadIndexes[i]?.recordIndex&&p.fieldIndex===proof.proofReadIndexes[i]?.fieldIndex&&p.quote===proof.verificationQuotes[i]);
-      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
+      const fingerprintHasMeaningScope=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)&&parsed.at(-1)==="field_meaning_v1";}catch{return false;}})();
+      const hasMeaningReadMetadata=Array.isArray(proof.proofReads)&&proof.proofReads.some(p=>Object.hasOwn(p,"meaningStatus"));
+      const validFieldMeaning=proof.verificationScope==="field_meaning_v1"?fingerprintHasMeaningScope&&Array.isArray(proof.proofReads)&&proof.proofReads.length>0&&proof.proofReads.every(p=>p.meaningStatus==="supported"):proof.verificationScope===undefined&&!fingerprintHasMeaningScope&&!hasMeaningReadMetadata;
+      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || !validFieldMeaning || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
     }
     const normalized=[...factIssues];index?.lineageById.set(id,normalized);for(const issue of normalized)issues.add(issue);
   }
