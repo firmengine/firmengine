@@ -6,8 +6,12 @@ const observation:ClassificationRecoveryRead={role:"evidence",documentType:"payr
 test("classification recovery has a second-call budget, and suspected holdouts never enter rescue",()=>{
   assert.equal(canRecoverClassification({...observation,role:"unknown"},1),true);
   assert.equal(canRecoverClassification({...observation,confidence:"low"},1),true);
+  assert.equal(canRecoverClassification({...observation,legibility:"low"},1),true,"effective unknown from low legibility can be rescued even if raw role/confidence look strong");
+  assert.equal(canRecoverClassification({...observation,structureQuote:null},1),true,"missing source structure leaves the role unresolved and permits one bounded look");
   assert.equal(canRecoverClassification({...observation,role:"unknown"},2),false);
+  for(const attempts of [-1,0.5,Number.NaN,Number.POSITIVE_INFINITY])assert.equal(canRecoverClassification({...observation,role:"unknown"},attempts),false);
   for(const role of ["filed_form","administrative"] as const)assert.equal(canRecoverClassification({...observation,role,confidence:"low"},1),false);
+  assert.equal(canRecoverClassification({...observation,role:"administrative",legibility:"low"},1),false,"raw administrative classification remains excluded even when effective role is unknown");
 });
 test("evidence recovery requires explicit structural and title/issuer observations",()=>{
   assert.equal(recoveredClassificationRole(observation),"evidence");

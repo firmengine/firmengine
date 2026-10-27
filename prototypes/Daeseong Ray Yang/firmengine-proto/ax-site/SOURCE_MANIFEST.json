@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "76a48d6c418e0f97d8c83d0b67d78348f1577ed9eeba058ea996ccf8a9e60748",
+  "source_digest": "53f80fecd10c99411bb7213c36f7296302a8042269c0c50f3daec4fae9906881",
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "7a15e1119b33979a43adc44f6df9d2d61fcd9738cc3f6bfc7af7ed2ff713dab3",
-      "bytes": 5847,
+      "sha256": "ba70a6366ccf3996c66300146a6048fba0842742b92f7e1a6c08a6164e889a66",
+      "bytes": 6098,
       "mode": "100644"
     },
     {
@@ -625,8 +625,8 @@
     },
     {
       "path": "docs/audit-p0-recovery.md",
-      "sha256": "445cc888a84161007dd30b445cf0941b86f601ae2f25cf1ed7afa504d7e69dfb",
-      "bytes": 7880,
+      "sha256": "6e83c2a15640b14a1e442e37b2c51b90ef6d3593ec8ec12449b5e1b455ebdd36",
+      "bytes": 8957,
       "mode": "100644"
     },
     {
@@ -775,8 +775,8 @@
     },
     {
       "path": "lib/classification-recovery.ts",
-      "sha256": "b2e4cdbb260a7600908c7a46c3d41832392ba80c6213471cb3156b89afbefdd4",
-      "bytes": 7284,
+      "sha256": "8bf160551254e89934da55a4c452b86435d1858c6089e81034c544364984568f",
+      "bytes": 7680,
       "mode": "100644"
     },
     {
@@ -979,8 +979,8 @@
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "a76b0b77475271e44c6307f945ac89110a0ae5f2744c34c241b03350579865cd",
-      "bytes": 75963,
+      "sha256": "75e379482b396fc48286e1e43e59f645aec22a109708e2593b2f5209aad78e74",
+      "bytes": 76170,
       "mode": "100644"
     },
     {
@@ -1297,8 +1297,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "020d15d1efc7b6a12fec816be689d7adbe17839d1d214cb1f1cb1277e6f85060",
-      "bytes": 23364,
+      "sha256": "79308c8c52488266eeb80318be1c1bdba4e3a77ffe53500d0c39c3fb27e26d9f",
+      "bytes": 23615,
       "mode": "100644"
     },
     {
@@ -1369,8 +1369,8 @@
     },
     {
       "path": "scripts/run-synthetic-ocr-evaluation.py",
-      "sha256": "7aab3b7dd90c2cedb002c2648537d544cf9cf4daa88411c49ad70073d52f3d76",
-      "bytes": 23023,
+      "sha256": "af6d104f9cb3024281d6b1ee0194abb102214d70645fa5239937ae3ccc936acc",
+      "bytes": 31299,
       "mode": "100644"
     },
     {
@@ -1465,8 +1465,8 @@
     },
     {
       "path": "tests/classification-recovery.test.ts",
-      "sha256": "337efebdf55fbb58c1a8b4f792daf4352d792452fd9d220d0e0f5a88cc7ae86e",
-      "bytes": 5190,
+      "sha256": "bac4a9dde2b320ca5cedd4002a3216de0e15d7dbbc6e53371ed6e4bcd23a9618",
+      "bytes": 5892,
       "mode": "100644"
     },
     {
@@ -1615,8 +1615,8 @@
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "e0353cb6922576d7be27bd2a55fcbeaed25489da1bec79196f5cd3042696c079",
-      "bytes": 40401,
+      "sha256": "d188b268bd44bbc52c704fce3ceb960a0fecfb3e27b11eda1ba8a5f2799f6c3e",
+      "bytes": 41614,
       "mode": "100644"
     },
     {
@@ -1701,6 +1701,12 @@
       "path": "tests/test_source_export.py",
       "sha256": "b6c002adb785f1347b08a43e477fdda779edfcda4b47c6577ddd7fca5f52a5da",
       "bytes": 3460,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_synthetic_continuation.py",
+      "sha256": "b1a8e3997b6a140fb1ddb4a3f28af6d61dc8156382092475c696afc2b70a17fa",
+      "bytes": 8901,
       "mode": "100644"
     },
     {

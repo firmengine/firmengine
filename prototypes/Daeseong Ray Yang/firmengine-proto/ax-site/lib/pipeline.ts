@@ -165,14 +165,16 @@ export async function processNext(caseId:string){
     if(j.stage!=="commit"&&(!j.document_type||j.role==="unknown")){
       activeOperation="classify";
       const recovering=saved.rescuePlan?.reason==="classification_unknown";
-      const used=saved.classificationAttempts??(saved.classification?1:0);
-      if(used>=MAX_CLASSIFICATION_ATTEMPTS){
+      const hasPersistedAttempts=Object.hasOwn(saved,"classificationAttempts");
+      const used=hasPersistedAttempts?saved.classificationAttempts:(saved.classification?1:0);
+      const validUsed=typeof used==="number"&&Number.isSafeInteger(used)&&used>=0;
+      if(!validUsed||used>=MAX_CLASSIFICATION_ATTEMPTS){
         await db().prepare("UPDATE page_jobs SET status = 'review_required',stage = 'classify',lease_until = NULL,error = ?,updated_at = ? WHERE id = ? AND lease_until = ?").bind("문서 역할 재확인 한도에 도달했습니다. 해당 페이지의 용도를 확인해 주세요.",now(),j.id,lease).run();
         return {remaining:await remaining(caseId),stage:"classification_budget_exhausted",page:j.page};
       }
       // Persist the budget before calling Luna; a canceled HTTP request cannot
       // silently create an unbounded second-classification loop on resumption.
-      saved.classificationAttempts=used+1;
+      saved.classificationAttempts=(used as number)+1;
       const attempt=await db().prepare("UPDATE page_jobs SET result = ?,updated_at = ? WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(JSON.stringify(saved),now(),j.id,lease).run();
       if(!attempt.meta.changes)throw new HttpError(409,"분류 시도 기록을 저장하기 전에 처리 권한이 바뀌었습니다.");
       const {value,usage}=await callLuna<ClassificationRead|ClassificationRecoveryRead>({agent:recovering?"document_classifier_recovery":"document_classifier",instructions:recovering?CLASSIFICATION_RECOVERY_INSTRUCTIONS:CLASSIFICATION_INSTRUCTIONS,input:[{role:"user",content:[{type:"input_text",text:`유형: ${[...new Set([...Object.keys(DOC_FIELDS),...Object.keys(LEGACY_DOCUMENT_TYPES),...WORKFLOW_RULES.flatMap(r=>r.documents.map(d=>d.type))])].join(",")} / ${j.page}쪽${recovering?". 원본과 동일 페이지의 확대·회전 후보를 함께 보되, 원본의 전체 문맥과 용도를 우선한다.":""}`},img!,...(recovering?rescueImages.map(x=>x.content):[])]}],schema:recovering?CLASSIFICATION_RECOVERY_SCHEMA:CLASSIFICATION_SCHEMA,maxOutput:recovering?2200:2200});

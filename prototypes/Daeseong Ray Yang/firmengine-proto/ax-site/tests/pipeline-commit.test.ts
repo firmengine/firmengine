@@ -220,7 +220,7 @@ test("expired whole-page lease resumes with crops without paying for another ful
 
 test("unknown classification resumes via bounded crops then extracts without approving facts",async()=>{
   const f=fixture({initialStage:"waiting",initialRole:"unknown",classifications:[
-    {role:"unknown",confidence:"low",documentType:"unknown",reason:"Uncertain layout"},
+    {role:"evidence",confidence:"high",documentType:"payroll",reason:"Unclear scan",titleQuote:"임금명세서",issuerQuote:null,structureQuote:"지급 공제 실지급",evidenceRowsQuote:"기본급 3,000,000",administrativeStructureQuote:null,legibility:"low"},
     {role:"evidence",confidence:"high",documentType:"payroll",reason:"Visible columns",titleQuote:"임금명세서",issuerQuote:null,structureQuote:"지급 공제 실지급",evidenceRowsQuote:"기본급 3,000,000",administrativeStructureQuote:null,legibility:"clear"},
   ]});f.setSaveSuccess();
   const first=await f.processNext("case-synthetic");assert.equal(first.stage,"classification_rescue");assert.equal(f.job.status,"pending");assert.equal(f.job.role,"unknown");assert.equal(f.lunaCalls,1);
@@ -231,6 +231,21 @@ test("unknown classification resumes via bounded crops then extracts without app
   const routed=JSON.parse(f.job.result);assert.equal(routed.classificationAttempts,2);assert.equal(routed.rescuePlan,undefined);assert.equal(routed.classificationRecovery.imageHashes.length,2);
   assert.equal(f.caseData.facts.length,0,"routing must not mint source facts or verification receipts");
   const extracted=await f.processNext("case-synthetic");assert.equal(extracted.stage,"extracted");assert.equal(f.lunaCalls,3);assert.equal(JSON.parse(f.job.result).classificationAttempts,2);
+});
+
+test("malformed persisted classification budgets fail closed without a model call",async()=>{
+  for(const invalid of [null,"1",-1,0.5]){
+    const f=fixture({initialStage:"waiting",initialRole:"unknown"});f.setSaveSuccess();
+    const saved=JSON.parse(f.job.result);saved.classificationAttempts=invalid;f.job.result=JSON.stringify(saved);
+    const result=await f.processNext("case-synthetic");
+    assert.equal(result.stage,"classification_budget_exhausted",`invalid counter ${String(invalid)} must stop`);
+    assert.equal(f.job.status,"review_required");assert.equal(f.lunaCalls,0);
+  }
+  const legacy=fixture({initialStage:"waiting",initialRole:"unknown"});legacy.setSaveSuccess();
+  const saved=JSON.parse(legacy.job.result);delete saved.classificationAttempts;legacy.job.result=JSON.stringify(saved);
+  const result=await legacy.processNext("case-synthetic");
+  assert.equal(result.stage,"classification_rescue","an absent legacy counter retains the intentional initial-attempt fallback");
+  assert.equal(legacy.lunaCalls,1);
 });
 
 test("ambiguous recovery ends review-required and persisted budget prevents repeated paid calls",async()=>{

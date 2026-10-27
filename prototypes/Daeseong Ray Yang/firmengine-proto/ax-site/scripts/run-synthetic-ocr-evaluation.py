@@ -17,6 +17,7 @@ import hashlib
 from http.client import IncompleteRead, RemoteDisconnected
 import io
 import json
+import math
 from pathlib import Path
 import re
 import socket
@@ -40,7 +41,6 @@ def apply_luma_levels_v2(image):
     return gray.point(lut).convert('RGB')
 
 def rescue_specs(request):
-    import math
     reason=request['reason']
     valid=[b for b in request.get('boxes',[]) if isinstance(b,list) and len(b)==4 and all(isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(x) and 0<=x<=1 for x in b) and b[0]<b[2] and b[1]<b[3]][:4]
     boxes=[[0,.08,1,.96]] if reason=='omitted_rows' else valid or [[.03,.12,.97,.9]]
@@ -176,50 +176,151 @@ def flatten_read(read):
 def write_result(out_dir, case_id, family, variant, value):
     out_dir.mkdir(parents=True, exist_ok=True)
     path = out_dir / f'{case_id}--{variant}.json'
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+    write_json(path, value)
     return path
+
+def write_json(path, value):
+    temporary = path.with_suffix('.tmp')
+    temporary.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
+    temporary.replace(path)
+
+def load_continuation(previous_dir, pdfs, source_commit, max_steps):
+    """Bind the entire prior request set and keep every already charged stage."""
+    expected = {p.stem for p in pdfs}
+    if {p.stem for p in previous_dir.glob('*.json')} != expected:
+        raise ValueError('Continuation must retain exactly the previous request set')
+    contexts = {}
+    prior_global = 0
+    for pdf_path in pdfs:
+        result_path = previous_dir / (pdf_path.stem + '.json')
+        checkpoint_path = previous_dir / 'checkpoints' / result_path.name
+        result = json.loads(result_path.read_text())
+        context = json.loads(checkpoint_path.read_text())
+        prior = result['provenance']
+        source_id, family, variant = request_metadata(pdf_path)
+        binding = {'source_case_id':source_id, 'family':family, 'variant':variant,
+                   'source_sha256':source_hash(pdf_path), 'source_page':1,
+                   'source_commit':source_commit, 'model':MODEL, 'max_steps':max_steps}
+        for key, value in binding.items():
+            if context.get(key) != value or prior.get(key) != value:
+                raise ValueError('Continuation source, model, release or budget binding changed: ' + key)
+        for key in ('site_case_id', 'document_id'):
+            if not re.fullmatch(r'[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}', str(context.get(key, ''))) or prior.get(key) != context[key]:
+                raise ValueError('Continuation requires the exact saved case and document')
+        for value in (context.get('case_process_steps'), context.get('steps_used'), prior.get('steps_used')):
+            if type(value) is not int or not 0 <= value <= max_steps:
+                raise ValueError('Invalid persisted continuation stage budget')
+        prior_case_steps = prior.get('case_process_steps')
+        if type(prior_case_steps) is not int or not 0 <= prior_case_steps <= context['case_process_steps']:
+            raise ValueError('Result has an invalid or newer stage count than its durable checkpoint')
+        prior_global = max(prior_global, context['steps_used'], prior['steps_used'])
+        context['continuation'] = {
+            'previous_result_sha256':source_hash(result_path),
+            'previous_checkpoint_sha256':source_hash(checkpoint_path),
+            'previous_status':prior.get('status'),
+            'previous_safe_error':prior.get('safe_error'),
+            'previous_case_process_steps':context['case_process_steps'],
+            'driver_sha256':source_hash(Path(__file__)),
+            'history':prior.get('continuation'),
+        }
+        contexts[pdf_path.stem] = context
+    used = max(prior_global, sum(c['case_process_steps'] for c in contexts.values()))
+    if used > max_steps:
+        raise ValueError('Persisted stages exceed the unchanged global budget')
+    for context in contexts.values():
+        context['continuation']['previous_global_process_steps'] = used
+    return contexts, used
+
+def seed_continuation(out_dir, contexts):
+    """Retain even not-yet-started cases if a continuation is interrupted."""
+    (out_dir/'checkpoints').mkdir(parents=True, exist_ok=True)
+    for name, context in contexts.items():
+        write_json(out_dir/'checkpoints'/(name+'.json'), context)
+        write_json(out_dir/(name+'.json'), {'schema_version':'synthetic-ocr-read-v1',
+            'fields':[], 'read':None, 'provenance':{**context, 'status':'continuation_pending'}})
+
+def validate_resumed_case(snapshot, context, digest):
+    case = snapshot.get('case') or {}
+    case_id, document_id = context['site_case_id'], context['document_id']
+    docs = [d for d in case.get('documents', []) if d.get('status') == 'active']
+    rows = [j for j in snapshot.get('jobs', []) if j.get('documentId') == document_id and j.get('page') == 1]
+    pages = [p for p in case.get('pages', []) if p.get('documentId') == document_id and p.get('page') == 1]
+    if case.get('context', {}).get('id') != case_id or len(docs) != 1 or docs[0].get('id') != document_id or docs[0].get('sha256') != digest or docs[0].get('pages') != [1]:
+        raise ValueError('Saved case no longer contains the exact original one-page document')
+    if len(rows) != 1 or len(snapshot.get('jobs', [])) != 1 or len(pages) != 1 or rows[0].get('role') != pages[0].get('role'):
+        raise ValueError('Saved page/job membership or role changed')
+    if (case.get('execution') or {}).get('model') != MODEL:
+        raise ValueError('Saved case model changed')
+    if rows[0].get('status') in ('processing', 'awaiting_upload'):
+        raise ValueError('Case is busy or upload is incomplete; no mutation was replayed')
+    if any(i.get('code') in ('ORIGINAL_UPLOAD_INCOMPLETE', 'PAGE_UPLOAD_INCOMPLETE') for i in snapshot.get('processingReadiness', {}).get('issues', [])):
+        raise ValueError('Persisted original or page upload is incomplete')
+    return rows[0]
 
 def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=None, source_commit=None, resume_context=None):
     budget = budget or StageBudget(max_steps, steps_used)
     case_id_from_source, family, variant = request_metadata(pdf_path)
     digest = source_hash(pdf_path)
     resume_context = resume_context if resume_context is not None else {}
+    resuming = bool(resume_context.get('site_case_id'))
+    if resuming and (resume_context.get('source_sha256') != digest or resume_context.get('source_commit') != source_commit):
+        raise ValueError('Continuation source or deployed release changed')
     resume_context.update({'source_case_id':case_id_from_source, 'family':family, 'variant':variant,
                            'source_sha256':digest, 'source_page':1, 'model':MODEL,
-                           'source_commit':source_commit, 'case_process_steps':0})
+                           'source_commit':source_commit, 'case_process_steps':resume_context.get('case_process_steps', 0)})
     def checkpoint(stage, **values):
         resume_context.update(values)
         resume_context.update({'last_attempted_stage':stage, 'steps_used':budget.used, 'max_steps':max_steps})
         directory = out_dir / 'checkpoints'
         directory.mkdir(parents=True, exist_ok=True)
-        (directory / f'{case_id_from_source}--{variant}.json').write_text(json.dumps(resume_context, ensure_ascii=False, indent=2), encoding='utf-8')
+        write_json(directory / f'{case_id_from_source}--{variant}.json', resume_context)
+        if resuming:
+            write_result(out_dir, case_id_from_source, family, variant, {
+                'schema_version':'synthetic-ocr-read-v1', 'fields':[], 'read':None,
+                'provenance':{**resume_context, 'status':'continuation_in_progress'}})
     if pdf_path.stat().st_size > MAX_PDF_BYTES:
         raise ValueError(f'PDF exceeds the Site 100 MB limit: {pdf_path.name}')
     page_bytes = render_single_page(pdf_path)
-    created = client.call('/api/cases', 'POST', {'name': '합성 OCR 평가', 'applicationDate': app_date, 'courtId': 'seoul'})
-    case_id = created['case']['context']['id']
-    checkpoint('case_created', site_case_id=case_id)
-    registered = client.call(f'/api/cases/{case_id}/documents', 'POST', {
-        'name': f'synthetic-{digest[:12]}.pdf', 'sha256': digest, 'pageCount': 1,
-    })
-    document_id = registered['documentId']
-    checkpoint('document_registered', document_id=document_id)
-    roles = {int(item['page']): item['role'] for item in registered.get('pageRoles', [])}
-    # Preserve immutable filed-form/administrative holdouts if a request ever
-    # resolves to one of those known source hashes; never upload its page image.
-    if roles.get(1) in ('filed_form', 'administrative'):
-        value = result_shell(case_id_from_source, family, variant, digest, case_id, document_id,
-                             'held_out_by_site', steps_used, client)
-        return write_result(out_dir, case_id_from_source, family, variant, value), steps_used
-    client.call(f'/api/cases/{case_id}/documents/{document_id}?kind=original', 'PUT',
-                data=pdf_path.read_bytes(), mime='application/pdf', timeout=240)
-    client.call(f'/api/cases/{case_id}/documents/{document_id}?kind=page&page=1', 'PUT',
-                data=page_bytes, mime='image/jpeg', timeout=180)
-
     status = 'uploaded_cost_cap'
     prepared_plans = set()
     progress = {}
-    while budget.used < budget.limit:
+    resumable = True
+    if resuming:
+        case_id, document_id = resume_context['site_case_id'], resume_context['document_id']
+        snapshot = client.call(f'/api/cases/{case_id}')
+        job = validate_resumed_case(snapshot, resume_context, digest)
+        diagnostic = client.call(f'/api/cases/{case_id}/process?jobId={quote(document_id + ":1", safe="")}&view=classification')
+        if diagnostic.get('source') != {'sha256':digest, 'imageHash':hashlib.sha256(page_bytes).hexdigest()} or diagnostic.get('job', {}).get('documentId') != document_id or diagnostic.get('job', {}).get('page') != 1 or diagnostic.get('job', {}).get('role') != job.get('role'):
+            raise ValueError('Saved immutable page image or role no longer matches this source raster')
+        resumable = job.get('status') == 'pending' and job.get('role') not in ('filed_form', 'administrative')
+        checkpoint('continuation_validated')
+        if resumable:
+            progress = client.call(f'/api/cases/{case_id}/process')
+            if progress.get('rescue'):
+                checkpoint('rescue_prepare', rescue_plan=progress['rescue'])
+                prepare_rescue(client, pdf_path, case_id, document_id, digest, hashlib.sha256(page_bytes).hexdigest(), progress['rescue'], prepared_plans)
+                checkpoint('rescue_uploaded')
+    else:
+        created = client.call('/api/cases', 'POST', {'name': '합성 OCR 평가', 'applicationDate': app_date, 'courtId': 'seoul'})
+        case_id = created['case']['context']['id']
+        checkpoint('case_created', site_case_id=case_id)
+        registered = client.call(f'/api/cases/{case_id}/documents', 'POST', {
+            'name': f'synthetic-{digest[:12]}.pdf', 'sha256': digest, 'pageCount': 1,
+        })
+        document_id = registered['documentId']
+        checkpoint('document_registered', document_id=document_id)
+        roles = {int(item['page']): item['role'] for item in registered.get('pageRoles', [])}
+        # Holdout roles never receive page uploads or model calls.
+        if roles.get(1) in ('filed_form', 'administrative'):
+            value = result_shell(case_id_from_source, family, variant, digest, case_id, document_id,
+                                 'held_out_by_site', steps_used, client)
+            return write_result(out_dir, case_id_from_source, family, variant, value), steps_used
+        client.call(f'/api/cases/{case_id}/documents/{document_id}?kind=original', 'PUT',
+                    data=pdf_path.read_bytes(), mime='application/pdf', timeout=240)
+        client.call(f'/api/cases/{case_id}/documents/{document_id}?kind=page&page=1', 'PUT',
+                    data=page_bytes, mime='image/jpeg', timeout=180)
+        checkpoint('page_uploaded', base_image_sha256=hashlib.sha256(page_bytes).hexdigest())
+    while resumable and budget.used < budget.limit:
         # Charge the budget before sending: a timed-out mutation may still have
         # reached the Site and must not be treated as free on the next run.
         budget.consume()
@@ -227,7 +328,9 @@ def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=N
         checkpoint('process_request', case_process_steps=resume_context['case_process_steps'] + 1)
         progress = client.call(f'/api/cases/{case_id}/process', 'POST', {'action': 'next'}, timeout=240)
         if progress.get('rescue'):
+            checkpoint('rescue_prepare', rescue_plan=progress['rescue'])
             prepare_rescue(client, pdf_path, case_id, document_id, digest, hashlib.sha256(page_bytes).hexdigest(), progress['rescue'], prepared_plans)
+            checkpoint('rescue_uploaded')
         if progress.get('error'):
             status = 'processing_error'; break
         if int(progress.get('remaining', 0)) <= 0:
@@ -257,6 +360,8 @@ def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=N
             'case_process_steps': resume_context['case_process_steps'],
             'api_model': (snapshot.get('case') or {}).get('execution', {}).get('model'),
             'source_commit': source_commit,
+            'driver_sha256':source_hash(Path(__file__)),
+            'continuation':resume_context.get('continuation'),
             'historical_provenance': inspection.get('historicalProvenance') if read is not None else None,
         },
     }
@@ -307,6 +412,7 @@ def main():
     parser.add_argument('--max-steps', required=True, type=int, help='Global maximum number of /process stage actions; each is at most one model stage.')
     parser.add_argument('--workers', type=int, choices=[1,2,3], default=1, help='Parallel isolated cases sharing one global stage budget.')
     parser.add_argument('--source-commit', required=True, help='Exact deployed source SHA for this evaluation.')
+    parser.add_argument('--resume-reads-dir', type=Path, help='Prior run to continue using the same cases, source release and cumulative budget. Never overwrites it.')
     parser.add_argument('--application-date', default='2026-10-27')
     args = parser.parse_args()
     request_dir = args.request_dir.resolve()
@@ -336,6 +442,13 @@ def main():
         request_metadata(path)
         if path.stat().st_size > MAX_PDF_BYTES:
             raise SystemExit(f'PDF exceeds the Site 100 MB limit: {path.name}')
+    contexts, prior_steps = ({}, 0)
+    if args.resume_reads_dir:
+        previous = args.resume_reads_dir.resolve()
+        if previous == out_dir or 'gold' in previous.parts:
+            raise SystemExit('Continuation input must be a separate private reads directory.')
+        contexts, prior_steps = load_continuation(previous, pdfs, args.source_commit, args.max_steps)
+        seed_continuation(out_dir, contexts)
     token = getpass.getpass('Ready for private Site session credential (input hidden): ')
     if not token:
         raise SystemExit('Site session credential is required.')
@@ -344,12 +457,12 @@ def main():
     connection = workspace.get('connection', {})
     if connection.get('model') != MODEL or not connection.get('apiKeyConfigured') or not connection.get('storageReady'):
         raise SystemExit('The private Site must have its gpt-6-luna model, private API key and storage configured.')
-    budget = StageBudget(args.max_steps)
+    budget = StageBudget(args.max_steps, prior_steps)
     def execute_pdf(pdf_path):
         steps = budget.used
         started = time.monotonic()
-        resume_context = {}
-        if steps >= args.max_steps:
+        resume_context = contexts.get(pdf_path.stem, {})
+        if steps >= args.max_steps and not resume_context:
             # Write explicit no-run records without creating extra Site cases.
             source_id, family, variant = request_metadata(pdf_path)
             digest = source_hash(pdf_path)
@@ -380,6 +493,12 @@ def main():
     with concurrent.futures.ThreadPoolExecutor(max_workers=args.workers) as pool:
         futures=[pool.submit(execute_pdf,path) for path in pdfs]
         for future in concurrent.futures.as_completed(futures): future.result()
+    metadata = out_dir / 'metadata'
+    metadata.mkdir(parents=True, exist_ok=True)
+    (metadata/'run-summary.json').write_text(json.dumps({'source_commit':args.source_commit,
+        'driver_sha256':source_hash(Path(__file__)), 'previous_process_steps':prior_steps,
+        'process_steps':budget.used, 'new_process_steps':budget.used-prior_steps,
+        'max_steps':budget.limit, 'pdfs':len(pdfs), 'continuation':bool(contexts)}, indent=2))
     print(json.dumps({'event':'run_finished','process_steps':budget.used,'max_steps':budget.limit,'pdfs':len(pdfs),'workers':args.workers}),flush=True)
 
 if __name__ == '__main__':

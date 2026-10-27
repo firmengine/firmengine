@@ -22,9 +22,15 @@ export interface ClassificationRecoveryRead extends ClassificationRead {
   legibility: "clear" | "low";
 }
 export function canRecoverClassification(read: ClassificationRead, attempts: number): boolean {
-  return attempts < MAX_CLASSIFICATION_ATTEMPTS
+  // The classifier's raw role is only an observation. Recovery is appropriate
+  // whenever the stricter source-observation boundary cannot establish a role,
+  // including high-confidence evidence labels with low legibility or missing
+  // structural quotes. Preserve the conservative filed-form/admin exclusions.
+  return Number.isSafeInteger(attempts)
+    && attempts >= 0
+    && attempts < MAX_CLASSIFICATION_ATTEMPTS
     && !["filed_form", "administrative"].includes(read.role)
-    && (read.role === "unknown" || read.confidence === "low");
+    && (read.role === "unknown" || observedClassificationRole(read) === "unknown");
 }
 export function recoveredClassificationRole(read: ClassificationRecoveryRead): ClassificationRead["role"] {
   return observedClassificationRole(read);
