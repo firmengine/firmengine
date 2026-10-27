@@ -64,11 +64,19 @@ def aliases(field): return {key_norm(field),*(key_norm(v) for v in ALIASES.get(f
 def boxes_overlap(a,b):
     if not isinstance(a,list) or not isinstance(b,list) or len(a)!=4 or len(b)!=4: return False
     return max(a[0],b[0])<min(a[2],b[2]) and max(a[1],b[1])<min(a[3],b[3])
-def matched(expected, observed, used_occurrences, variant):
+def normalized_unit(value):
+    unit=key_norm(value)
+    return {'원':'krw','krw':'krw','₩':'krw'}.get(unit,unit)
+def matched(expected, observed, used_occurrences, variant, version='v1'):
     expected_value=norm(expected['expected']); valid=[]
     for index,actual in enumerate(observed):
         if actual.get('confidence')!='clear' or not actual.get('quote'): continue
-        if expected['field'] in MONEY_FIELDS and key_norm(actual.get('unit')) not in ('krw','원','₩'): continue
+        if expected['field'] in MONEY_FIELDS:
+            actual_unit=normalized_unit(actual.get('unit'))
+            if version=='v2':
+                expected_unit=normalized_unit(expected.get('expected_unit'))
+                if not expected_unit or actual_unit!=expected_unit: continue
+            elif actual_unit not in ('krw','원','₩'): continue
         if key_norm(actual['key']) not in aliases(expected['field']) or norm(actual['value'])!=expected_value: continue
         if expected['field'] in ROW_OCCURRENCE_FIELDS and index in used_occurrences: continue
         expected_box=expected.get('source_bbox_by_variant',{}).get(variant,expected.get('source_bbox'))
@@ -78,6 +86,17 @@ def matched(expected, observed, used_occurrences, variant):
     index,_=valid[0]
     if expected['field'] in ROW_OCCURRENCE_FIELDS: used_occurrences.add(index)
     return True
+def unitless_blocking(gold, observed, read, source_bound, variant):
+    """Separate safety metric for an explicitly unitless source variant."""
+    if not source_bound: return False
+    for expected in gold.get('fields',[]):
+        if expected['field'] not in MONEY_FIELDS: continue
+        if expected.get('expected_unit_by_variant',{}).get(variant,'not-declared') is not None: return False
+        value=norm(expected['expected']); keyset=aliases(expected['field'])
+        matches=[actual for actual in observed if key_norm(actual['key']) in keyset and norm(actual['value'])==value and actual.get('confidence')=='clear' and actual.get('quote')]
+        if not matches or any(actual.get('unit') is not None and str(actual.get('unit')).strip() for actual in matches): return False
+    provenance=read.get('provenance',{})
+    return provenance.get('job_status')=='review_required' or provenance.get('status')=='review_required'
 def main():
     p=argparse.ArgumentParser(); p.add_argument('--gold-dir',type=Path,required=True); p.add_argument('--reads-dir',type=Path,required=True); p.add_argument('--out',type=Path,required=True); a=p.parse_args()
     manifest=json.loads((a.gold_dir/'manifest.json').read_text()); cases={}
@@ -87,16 +106,24 @@ def main():
         source_bound=bool(page.get('sha256')) and read.get('provenance',{}).get('source_sha256')==page['sha256']
         g=json.loads((a.gold_dir/f"{page['case_id']}.json").read_text())
         case=cases.setdefault(page['case_id'],{'family':page['family'],'variant_results':{}})
-        scores=[]; observed=candidates(read) if source_bound else []; used_occurrences=set()
+        scores=[]; observed=candidates(read) if source_bound else []; used_occurrences=set(); version=manifest.get('version','v1')
         for f in g['fields']:
-            hit=matched(f,observed,used_occurrences,page['variant'])
+            variant_expected={**f,'expected_unit':f.get('expected_unit_by_variant',{}).get(page['variant'],f.get('expected_unit'))}
+            hit=matched(variant_expected,observed,used_occurrences,page['variant'],version)
             scores.append({'field':f['field'],'expected':f['expected'],'matched':hit,'critical':f['row_critical']})
-        case['variant_results'][page['variant']]={'field_count':len(scores),'correct':sum(x['matched'] for x in scores),'scores':scores,'read_present':has_read,'source_bound':source_bound,'page_correct':all(x['matched'] for x in scores) and bool(scores) and read.get('provenance',{}).get('job_status')=='completed' and read.get('provenance',{}).get('api_model')=='gpt-6-luna' and (read.get('read') or {}).get('complete') is True}
-    results={'scorer_version':'source-bound-clear-field-v2','independent_case_denominator':manifest['independent_cases'],'variants':{},'cases':cases}
-    for variant in manifest['variants_per_case']:
+        positive=page['variant'] in manifest.get('positive_variants',manifest['variants_per_case'])
+        safety_pass=unitless_blocking(g,observed,read,source_bound,page['variant']) if page['variant'] in manifest.get('safety_variants',[]) else None
+        case['variant_results'][page['variant']]={'field_count':len(scores),'correct':sum(x['matched'] for x in scores),'scores':scores,'read_present':has_read,'source_bound':source_bound,'page_correct':positive and all(x['matched'] for x in scores) and bool(scores) and read.get('provenance',{}).get('job_status')=='completed' and read.get('provenance',{}).get('api_model')=='gpt-6-luna' and (read.get('read') or {}).get('complete') is True,'unitless_safety_pass':safety_pass}
+    results={'scorer_version':'source-bound-clear-field-v3' if manifest.get('version')=='v2' else 'source-bound-clear-field-v2','independent_case_denominator':manifest['independent_cases'],'variants':{},'cases':cases}
+    for variant in manifest.get('positive_variants',manifest['variants_per_case']):
         included=[c['variant_results'][variant] for c in cases.values() if variant in c['variant_results']]
         n=sum(r['field_count'] for r in included); correct=sum(r['correct'] for r in included)
         critical_n=sum(sum(s['critical'] for s in r['scores']) for r in included); critical_correct=sum(sum(s['critical'] and s['matched'] for s in r['scores']) for r in included)
         results['variants'][variant]={'independent_cases_expected':manifest['independent_cases'],'independent_cases_scored':sum(r['read_present'] for r in included),'independent_cases_evaluated':len(included),'exact_pages':sum(r['page_correct'] for r in included),'page_exact_accuracy':sum(r['page_correct'] for r in included)/manifest['independent_cases'],'fields':n,'correct':correct,'exact_match_accuracy':correct/n if n else None,'critical_fields':critical_n,'critical_correct':critical_correct,'critical_exact_match_accuracy':critical_correct/critical_n if critical_n else None}
+    if manifest.get('safety_variants'):
+        results['unitless_safety']={}
+        for variant in manifest['safety_variants']:
+            included=[c['variant_results'][variant] for c in cases.values() if variant in c['variant_results']]
+            results['unitless_safety'][variant]={'independent_cases_expected':manifest['independent_cases'],'independent_cases_evaluated':len(included),'blocked_as_review_required':sum(r['unitless_safety_pass'] is True for r in included),'all_cases_blocked':len(included)==manifest['independent_cases'] and all(r['unitless_safety_pass'] is True for r in included)}
     a.out.parent.mkdir(parents=True,exist_ok=True); a.out.write_text(json.dumps(results,ensure_ascii=False,indent=2)); print(json.dumps(results['variants'],ensure_ascii=False))
 if __name__=='__main__': main()

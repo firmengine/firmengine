@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "de0f4c6d3b3371b2a6368ac4d219c22f50cde0613ab89f84a8bafdd3cf904721",
+  "source_digest": "4fc6524532d1d5292a63324f91afbfaade9d16cab9c7741ff6c67577ea1c032a",
   "files": [
     {
       "path": ".gitignore",
@@ -43,8 +43,8 @@
     },
     {
       "path": "app/api/cases/[id]/export/route.ts",
-      "sha256": "c04c5659a04cf0ef5e4f65e0a6172c5fc1c6fd00adf1cfb4d9ac4ce6e51fd7ad",
-      "bytes": 3284,
+      "sha256": "f44500f88d7707162b00ffc0ca8d3ee3b9977904e0312b29ab3f0dd2610120ce",
+      "bytes": 3438,
       "mode": "100644"
     },
     {
@@ -937,8 +937,8 @@
     },
     {
       "path": "lib/office-writer.ts",
-      "sha256": "6d01ef7b3d245cf825e95e52f1a9c8844c613ca0b8c6b7ba8cab21734ef856d9",
-      "bytes": 19956,
+      "sha256": "e6a546daf217dbf6fc95095172248f4329cc709b2a234a3a04641cc029ef7064",
+      "bytes": 20150,
       "mode": "100644"
     },
     {
@@ -1200,6 +1200,12 @@
       "mode": "100644"
     },
     {
+      "path": "scripts/SYNTHETIC-OCR-V2.md",
+      "sha256": "401b1975f4ea642e113d8dad266cfd4a987c5260433b78fac198eaf7701e2043",
+      "bytes": 2111,
+      "mode": "100644"
+    },
+    {
       "path": "scripts/benchmark-workflow.ts",
       "sha256": "5f907ff190fbb46e2afe782f58caebafd36e110f0c26a67d7147f69c716e49be",
       "bytes": 4115,
@@ -1249,8 +1255,8 @@
     },
     {
       "path": "scripts/generate-synthetic-ocr.py",
-      "sha256": "7b73ce5fcc8524342b2458ffd2598a5c07fd69a4ab1e65f3015194cb0b25a769",
-      "bytes": 9880,
+      "sha256": "4e6ca53cec6f143b7d55059e462c0fde3292b4b4cc68ef3b695665eb2576057d",
+      "bytes": 13250,
       "mode": "100644"
     },
     {
@@ -1290,6 +1296,24 @@
       "mode": "100644"
     },
     {
+      "path": "scripts/quality/SCHEMA.md",
+      "sha256": "ab673479ba0791066ca4e4d62bd16eda48e6c3df8e444aed22ab125003586859",
+      "bytes": 5729,
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/quality/evaluate_complete_rubric.py",
+      "sha256": "c86db0a35a210ebf7e25369d1dbf3ac24be148ba1072848f8fb6617ccd357f20",
+      "bytes": 13620,
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/quality/test_evaluate_complete_rubric.py",
+      "sha256": "398163abcc6059e9a9df1b843da65478ae50b85dda96de870ce67d322d995e0d",
+      "bytes": 6238,
+      "mode": "100644"
+    },
+    {
       "path": "scripts/run-framework.mjs",
       "sha256": "9bf9f41a29314cabe0238b8e9c540ec3f7b5a6adafc7c8fb6c3940722d061dca",
       "bytes": 993,
@@ -1303,8 +1327,8 @@
     },
     {
       "path": "scripts/score-synthetic-ocr.py",
-      "sha256": "77b6b2dab1341f9832e86e6d6c68a693a11f838ac1f4b7eb42f2dbc882313310",
-      "bytes": 8931,
+      "sha256": "473644e0c8e443544be6c9e6d0f0440eaabd26d940be6db8e62639e753bebe8a",
+      "bytes": 11434,
       "mode": "100644"
     },
     {
@@ -1326,9 +1350,15 @@
       "mode": "100644"
     },
     {
+      "path": "scripts/test-synthetic-ocr-v2.py",
+      "sha256": "cd8d91dca3120e671639f8fd9d2b323d6085ec59dbdfbba314b6ea4b510bd840",
+      "bytes": 6673,
+      "mode": "100644"
+    },
+    {
       "path": "scripts/test-synthetic-ocr.py",
-      "sha256": "5c801b6627c1c17ecfe66471e07f087ae1a40386358b3078fd87c4f012f4e622",
-      "bytes": 4270,
+      "sha256": "562e281947f25c19cb40231e1ccca986422de8b42e55076d49521befc084a968",
+      "bytes": 4760,
       "mode": "100644"
     },
     {
@@ -1407,6 +1437,12 @@
       "path": "tests/domain.test.ts",
       "sha256": "c93ee48b9b5b609116d7b9ea17c8cf46b64e19cdeec688795caeb0155e0d1056",
       "bytes": 28012,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/export-memory-regression.test.ts",
+      "sha256": "65f74da453414281637609bafd6025d19f7aaf34ae15cb42e26fbd636cd412ba",
+      "bytes": 1734,
       "mode": "100644"
     },
     {
@@ -1563,6 +1599,12 @@
       "path": "tests/source-verification.test.ts",
       "sha256": "789566d085c9a357d2634d244a6cffda2d59d85bc45b04bb79e0e714a5dd6042",
       "bytes": 11316,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/test_export_receipt_projection.py",
+      "sha256": "6d71ecf81454a6c5bdd71629738b428f9044ab0748feb3f512de43ca17ed8dc5",
+      "bytes": 1824,
       "mode": "100644"
     },
     {

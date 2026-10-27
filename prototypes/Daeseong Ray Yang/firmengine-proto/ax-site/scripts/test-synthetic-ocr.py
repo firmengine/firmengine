@@ -9,7 +9,7 @@ font=next((x for x in font_candidates if x.is_file()),None)
 if font is None: raise SystemExit('Install Nanum Gothic and pass its TTF path to the generator before running this test.')
 with tempfile.TemporaryDirectory(prefix='synthetic-ocr-test-') as td:
     root=Path(td)
-    subprocess.run([sys.executable,str(HERE/'generate-synthetic-ocr.py'),'--seed','7319','--out-root',str(root),'--font',str(font)],check=True,capture_output=True,text=True)
+    subprocess.run([sys.executable,str(HERE/'generate-synthetic-ocr.py'),'--version','v1','--seed','7319','--out-root',str(root),'--font',str(font)],check=True,capture_output=True,text=True)
     req=root/'request-only'; gold=root/'gold'; manifest=json.loads((gold/'manifest.json').read_text())
     assert manifest['seed']==7319
     assert manifest['independent_cases']==4
@@ -30,12 +30,14 @@ with tempfile.TemporaryDirectory(prefix='synthetic-ocr-test-') as td:
 
         for page in manifest['pages']:
             if page['case_id']==payload['case_id']:
-                (reads/f"{page['case_id']}--{page['variant']}.json").write_text(json.dumps({'provenance':{'source_sha256':page['sha256']},'fields':[{'field':f['field'],'value':f['expected'],'unit':'KRW','confidence':'clear','quote':'synthetic source '+str(f['expected']),'bbox':f['source_bbox_by_variant'][page['variant']]} for f in payload['fields']]},ensure_ascii=False))
+                (reads/f"{page['case_id']}--{page['variant']}.json").write_text(json.dumps({'provenance':{'source_sha256':page['sha256'],'job_status':'review_required','status':'review_required','api_model':'gpt-6-luna'},'read':{'complete':False},'fields':[{'field':f['field'],'value':f['expected'],'unit':None,'confidence':'clear','quote':'synthetic source '+str(f['expected']),'bbox':f['source_bbox_by_variant'][page['variant']]} for f in payload['fields']]},ensure_ascii=False))
     result=root/'score.json'
     subprocess.run([sys.executable,str(HERE/'score-synthetic-ocr.py'),'--gold-dir',str(gold),'--reads-dir',str(reads),'--out',str(result)],check=True,capture_output=True,text=True)
     scored=json.loads(result.read_text())
     assert scored['independent_case_denominator']==4
-    assert all(x['independent_cases_expected']==4 and x['independent_cases_scored']==4 and x['exact_match_accuracy']==1 for x in scored['variants'].values())
+    assert all(x['independent_cases_expected']==4 and x['independent_cases_scored']==4 and x['page_exact_accuracy']==0 for x in scored['variants'].values())
+    money_fields={'gross_pay','deductions','net_pay','principal','interest','surrender_value','premium','coverage_amount','repeated_transaction_row','transaction_row','subtotal'}
+    assert all(not score['matched'] for case in scored['cases'].values() for variant in case['variant_results'].values() for score in variant['scores'] if score['field'] in money_fields)
     removed=next(reads.glob('*--clean.json')); removed.unlink()
     subprocess.run([sys.executable,str(HERE/'score-synthetic-ocr.py'),'--gold-dir',str(gold),'--reads-dir',str(reads),'--out',str(result)],check=True,capture_output=True,text=True)
     partial=json.loads(result.read_text())['variants']['clean']

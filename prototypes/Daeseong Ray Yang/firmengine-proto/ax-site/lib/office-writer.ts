@@ -56,6 +56,11 @@ export interface RenderedOffice {
   artifacts: { kind: string; name: string; sha256: string }[];
 }
 
+/** Serialize the complete audit payload without indentation-only bytes. */
+export function serializeRenderedOffice(rendered: RenderedOffice): Uint8Array {
+  return strToU8(JSON.stringify(rendered));
+}
+
 const FONT = { ascii: "Malgun Gothic", hAnsi: "Malgun Gothic", eastAsia: "맑은 고딕", cs: "Malgun Gothic" };
 const modeLabel = (mode: OfficeMode) => mode === "final" ? "최종 검토본 · 서명·제출 승인 전" : "검토용 초안";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -245,7 +250,7 @@ export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet
   const html = renderedPrintableHtml(rendered);
   artifacts.push(await artifact("print_html", "09_printable.html", "text/html; charset=utf-8", strToU8(html)));
   rendered.artifacts = artifacts.map((a) => ({ kind: a.kind, name: a.name, sha256: a.sha256 }));
-  artifacts.push(await artifact("rendered_json", "rendered.json", "application/json; charset=utf-8", strToU8(JSON.stringify(rendered, null, 2))));
+  artifacts.push(await artifact("rendered_json", "rendered.json", "application/json; charset=utf-8", serializeRenderedOffice(rendered)));
   const zip = zipSync(Object.fromEntries(artifacts.map((a) => [a.name, a.bytes])), { level: 6 });
   artifacts.push(await artifact("package_zip", "firmengine_court_package.zip", "application/zip", zip));
   return artifacts;
