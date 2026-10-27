@@ -145,7 +145,9 @@ export function liquidationContribution(asset: Asset, payoffScopeSourceLinked=fa
     if(asset.securedPayoffScope!=="applicant_interest")reasons.push("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_UNRESOLVED");
     else if(!payoffScopeSourceLinked)reasons.push("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_SOURCE_REQUIRED");
   }
-  if (!asset.asOf || !asset.valuationBasis?.trim()) reasons.push("ASSET_VALUATION_BASIS_MISSING");
+  if (!asset.asOf) reasons.push("ASSET_VALUATION_DATE_MISSING");
+  else if (monthIndex(asset.asOf) === null) reasons.push("ASSET_VALUATION_DATE_INVALID");
+  if (!asset.valuationBasis?.trim()) reasons.push("ASSET_VALUATION_BASIS_MISSING");
   if (reasons.length) return { value: null, reasons };
   const owned = ceilDivide(gross! * BigInt(asset.ownershipBps!), BPS);
   const residual = owned - payoff! - costs! - protectedValue!;
@@ -348,10 +350,10 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     const scopeKey="asset.secured_payoff_scope",scopeFact=asset.factIds.map(id=>index.byId.get(id)).find(fact=>fact?.subjectId===asset.id&&fact.key===scopeKey&&fact.value===asset.securedPayoffScope),scopeSourceLinked=!!scopeFact&&!invalidLineage(data,[scopeFact.id],index).length,scopeSourceReviewed=!!scopeFact&&scopeFact.state==="verified"&&scopeFact.recognition==="accepted";
     const contribution = liquidationContribution(asset,scopeSourceLinked,scopeSourceReviewed), lineage = invalidLineage(data, asset.factIds,index);
     const value = lineage.length || asset.recognition === "rejected" || conflictedAssets.has(asset.id) ? null : contribution.value;
-    const reasons = [...contribution.reasons, ...lineage, ...(asset.recognition === "rejected" ? ["ASSET_RECOGNITION_REJECTED"] : []), ...(conflictedAssets.has(asset.id) ? ["ASSET_IDENTITY_CONFLICT_REQUIRES_REVIEW"] : [])];
+    const reasons = [...contribution.reasons, ...(monthIndex(asset.asOf) !== null && asset.asOf !== data.context.asOf ? ["ASSET_AS_OF_RECONCILIATION_REQUIRED"] : []), ...lineage, ...(asset.recognition === "rejected" ? ["ASSET_RECOGNITION_REJECTED"] : []), ...(conflictedAssets.has(asset.id) ? ["ASSET_IDENTITY_CONFLICT_REQUIRES_REVIEW"] : [])];
     issues.push(...reasons.map((r) => r + ":" + asset.id));
-    const scopeReview=reasons.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED");
-    traces.push({ id: "asset:" + asset.id, title: asset.label + " 청산가치 검토", formula: "max(0, 평가액 × 소유지분 − 신청인 지분 귀속 담보상환액 − 처분비용 − 검토 면제액)", inputs: [{ label: "평가액", value: asset.grossValue?.amountWon ?? null, factIds: asset.factIds }, { label: "소유지분 (1/10,000)", value: asset.ownershipBps?.toString() ?? null, factIds: asset.factIds }, { label: "담보상환액의 귀속 범위", value: asset.securedPayoffScope ?? null, factIds: scopeFact?[scopeFact.id]:[] }, { label: "담보상환액", value: asset.securedPayoff?.amountWon ?? null, factIds: asset.factIds }, { label: "처분비용", value: asset.disposalCosts?.amountWon ?? null, factIds: asset.factIds }, { label: "검토 면제액", value: asset.protectedValue?.amountWon ?? null, factIds: asset.factIds }], resultWon: asMoney(value), status: value === null ? "blocked" : scopeReview || asset.recognition !== "accepted" || factSourceLineageIssues(data, asset.factIds,index).length ? "provisional" : "calculated", reasons });
+    const scopeReview=reasons.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED")||reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED");
+    traces.push({ id: "asset:" + asset.id, title: asset.label + " 청산가치 검토", formula: "max(0, 평가액 × 소유지분 − 신청인 지분 귀속 담보상환액 − 처분비용 − 검토 면제액)", inputs: [{ label: "평가액", value: asset.grossValue?.amountWon ?? null, factIds: asset.factIds }, { label: "소유지분 (1/10,000)", value: asset.ownershipBps?.toString() ?? null, factIds: asset.factIds }, { label: "담보상환액의 귀속 범위", value: asset.securedPayoffScope ?? null, factIds: scopeFact?[scopeFact.id]:[] }, { label: "담보상환액", value: asset.securedPayoff?.amountWon ?? null, factIds: asset.factIds }, { label: "처분비용", value: asset.disposalCosts?.amountWon ?? null, factIds: asset.factIds }, { label: "검토 면제액", value: asset.protectedValue?.amountWon ?? null, factIds: asset.factIds }], resultWon: asMoney(value), status: value === null ? "blocked" : scopeReview || reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED") || asset.recognition !== "accepted" || factSourceLineageIssues(data, asset.factIds,index).length ? "provisional" : "calculated", reasons });
     return { id: asset.id, label: asset.label, liquidationWon: asMoney(value), reasons };
   });
   const liquidation = sumKnown(assetRows.map((a) => a.liquidationWon === null ? null : BigInt(a.liquidationWon)), data.context.inventoryComplete.asset === "yes");
@@ -377,8 +379,9 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   const planTotal = payment === null || !termValid ? null : payment * BigInt(months!);
   // Present value is never replaced by the undiscounted sum of installments.
   const presentValue = data.context.presentValueBasis?.trim() ? nonnegative(data.context.approvedPresentValue) : null;
-  const liquidationComparison = liquidation === null || presentValue === null ? "unknown" : presentValue >= liquidation ? "met" : "not_met";
-  traces.push({ id: "liquidation_comparison", title: "청산가치 보장 비교", formula: "검토된 변제액 현재가치 ≥ 청산가치 (명목 총변제액과 구별)", inputs: [{ label: "현재가치", value: asMoney(presentValue), factIds: [] }, { label: "청산가치", value: asMoney(liquidation), factIds: data.assets.flatMap((a) => a.factIds) }], resultWon: presentValue === null || liquidation === null ? null : (presentValue - liquidation).toString(), status: presentValue === null || liquidation === null ? "blocked" : data.context.assetValuationBasisReviewed === true && data.context.presentValueReviewed === true ? "calculated" : "provisional", reasons: presentValue === null ? ["PRESENT_VALUE_BASIS_MISSING"] : data.context.presentValueReviewed !== true ? ["PRESENT_VALUE_REVIEW_REQUIRED"] : [] });
+  const assetDateReconciliation=issues.filter(issue=>issue.startsWith("ASSET_AS_OF_RECONCILIATION_REQUIRED:"));
+  const liquidationComparison = liquidation === null || presentValue === null || assetDateReconciliation.length > 0 ? "unknown" : presentValue >= liquidation ? "met" : "not_met";
+  traces.push({ id: "liquidation_comparison", title: "청산가치 보장 비교", formula: "검토된 변제액 현재가치 ≥ 청산가치 (명목 총변제액과 구별)", inputs: [{ label: "현재가치", value: asMoney(presentValue), factIds: [] }, { label: "청산가치", value: asMoney(liquidation), factIds: data.assets.flatMap((a) => a.factIds) }], resultWon: presentValue === null || liquidation === null ? null : (presentValue - liquidation).toString(), status: presentValue === null || liquidation === null ? "blocked" : data.context.assetValuationBasisReviewed === true && data.context.presentValueReviewed === true && assetDateReconciliation.length === 0 ? "calculated" : "provisional", reasons: [...assetDateReconciliation, ...(presentValue === null ? ["PRESENT_VALUE_BASIS_MISSING"] : data.context.presentValueReviewed !== true ? ["PRESENT_VALUE_REVIEW_REQUIRED"] : [])] });
   const allocations: Allocation[] = [];
   const ordinary = deduped.rows.filter((d) => d.classification === "ordinary" && d.secured === "no" && d.priority === "ordinary" && !(d.excludedByReview && d.legalReview === "accepted" && d.exclusionReason?.trim()) && (!d.guaranteeDetails || d.guaranteeDetails.capTreatment === "include" && d.guaranteeDetails.capTreatmentReviewed === true && !!d.guaranteeDetails.reviewReason?.trim() && !(d.guaranteeDetails.underlyingDebtId && deduped.rows.some((candidate) => (candidate.id === d.guaranteeDetails!.underlyingDebtId || candidate.contractId === d.guaranteeDetails!.underlyingDebtId) && !(candidate.excludedByReview && candidate.legalReview === "accepted" && candidate.exclusionReason?.trim())))));
   if (planTotal !== null && debtComplete && ["principal_then_interest_pro_rata", "principal_only_pro_rata"].includes(data.context.allocationBasis ?? "") && ordinary.every((d) => nonnegative(d.principal) !== null && nonnegative(d.interest) !== null && !invalidLineage(data, d.factIds,index).length)) {
@@ -469,6 +472,9 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
 
 function issueTitle(code: string): string {
   if (code.startsWith("DEBT_PRIORITY_TREATMENT_REQUIRED:")) return "채권별 우선·재단 처리 분류";
+  if (code.includes("ASSET_AS_OF_RECONCILIATION")) return "재산 평가 기준일 대조";
+  if (code.includes("ASSET_VALUATION_DATE_MISSING")) return "재산 평가 기준일 입력";
+  if (code.includes("ASSET_VALUATION_DATE_INVALID")) return "재산 평가 기준일 확인";
   if (code === "PRIORITY_CLAIM_SCHEDULE_COVERAGE_REQUIRED") return "채권별 우선·재단 변제 일정 확인";
   if (code.includes("INCOME_PAYER_IDENTITY")) return "소득 지급자 식별 확인";
   if (code.includes("INCOME_OVERLAPPING") || code.includes("INCOME_COMPONENT") || code.includes("INCOME_DUPLICATE")) return "같은 기간 소득 관측 중복·구성 확인";
@@ -516,6 +522,9 @@ function issueExplanation(code: string): string {
   if (code.includes("CONTRACT_CONFLICT")) return "동일 계약에서 원금·이자·기준일 또는 채권자 정보가 충돌해 중복 합산을 보류했습니다.";
   if (code.includes("INTEREST_MISSING")) return "이자 미기재를 0원으로 바꾸지 않았습니다. 원금과 이자를 각각 확인해야 합니다.";
   if (code.includes("STALE_OR_RETRACTED")) return "객체가 최신 사실 버전이 아닌 과거 또는 철회된 사실을 참조합니다.";
+  if (code.includes("ASSET_AS_OF_RECONCILIATION")) return "재산 평가 기준일과 사건 산정기준일이 달라 현재 평가액의 적용 여부를 대조해야 합니다.";
+  if (code.includes("ASSET_VALUATION_DATE_MISSING")) return "재산 평가 기준일이 없어 평가액을 사건 기준과 대조할 수 없습니다.";
+  if (code.includes("ASSET_VALUATION_DATE_INVALID")) return "재산 평가 기준일이 실제 날짜가 아니어서 평가액을 계산할 수 없습니다.";
   if (code.includes("AS_OF_RECONCILIATION")) return "채권 증빙의 금액 기준일과 사건 산정기준일이 달라 대조가 필요합니다.";
   if (code.includes("ALLOCATION_BUDGET_UNRECONCILED")) return "계획의 명목 총변제액과 채권별 배분 합계가 다릅니다. 월액·기간·완제 시점 또는 별도 변제 대상을 조정·검토해야 합니다.";
   if (code.includes("ALLOCATION")) return "일반채권 원금·이자 배분 가정이 승인되지 않았습니다. 조세·재단채권·담보부족액을 자동 혼합하지 않습니다.";
@@ -523,6 +532,9 @@ function issueExplanation(code: string): string {
   return "미확인 값·분류·목록 완전성을 0 또는 비해당으로 대체하지 않았습니다. 확인 항목: " + code.split(":")[0];
 }
 function issueAction(code: string): string {
+  if(code.includes("ASSET_AS_OF_RECONCILIATION"))return "재산 평가 기준일과 사건 산정기준일을 대조하고, 현재 사건 기준으로 적용 가능한 평가 자료를 확인하세요.";
+  if(code.includes("ASSET_VALUATION_DATE_MISSING"))return "원문에서 재산 평가 기준일을 확인해 입력하세요.";
+  if(code.includes("ASSET_VALUATION_DATE_INVALID"))return "원문에서 재산 평가 기준일을 확인하고 실제 날짜로 수정하세요.";
   if(code.includes("DEBT_PRIORITY_TREATMENT_REQUIRED"))return "별도 채무 CRUD에서 이 채권의 우선·재단 처리 항목을 원문과 사건별 검토에 따라 선택하고, 변경 사유를 남기세요.";
   if(code.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED"))return "담보잔액의 범위와 지분 귀속 근거를 원문에 대조하고 사건별 청산가치 반영을 검토하세요.";
   if(code.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE"))return "최신 담보잔액 증빙에서 전체 담보물 잔액과 신청인 지분 귀속액을 구분해 연결하거나, 범위가 명시된 신청인 지분 귀속액을 원문 인용과 함께 별도 기록하세요. 원문에 귀속 범위가 없으면 값을 추정하지 마세요.";

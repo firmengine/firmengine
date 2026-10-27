@@ -225,6 +225,7 @@ def prepare_rescue(client, pdf_path, case_id, document_id, source_digest, base_i
     boxes = [b for b in request.get('boxes', []) if isinstance(b, list) and len(b) == 4 and all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and 0 <= x <= 1 for x in b) and b[0] < b[2] and b[1] < b[3]][:4]
     def expand(b): return [max(0,b[0]-.035),max(0,b[1]-.035),min(1,b[2]+.035),min(1,b[3]+.035)]
     if reason == 'incomplete_extraction': specs = [([0,i*.25,1,min(1,(i+1)*.25+.025)],0) for i in range(4)]
+    elif reason == 'classification_unknown': specs = [([0,0,1,.45],0),([0,0,1,1],90)]
     elif reason == 'unreadable': specs = [(expand(boxes[0] if boxes else [.03,.12,.97,.9]),r) for r in (0,90,180,-90)]
     elif reason in ('omitted_rows','field_disagreement'):
         if reason == 'omitted_rows': boxes = [[0,.08,1,.96]]

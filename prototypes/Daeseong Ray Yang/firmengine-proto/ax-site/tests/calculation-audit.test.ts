@@ -16,6 +16,44 @@ function incomeFixture(rows: { id: string; employer?: string; payerIdentityId?: 
   return data;
 }
 
+function assetDateFixture(assetDate: string): ReturnType<typeof createCase> {
+  const data = createCase("합성 평가일", "synthetic-asset-date", "2026-10-27");
+  data.documents = [{ id: "asset-doc", name: "synthetic-asset.pdf", sha256: "8".repeat(64), status: "active", pages: [1] }];
+  data.pages = [{ documentId: "asset-doc", page: 1, role: "evidence", text: "Synthetic asset valuation" }];
+  data.facts = [{ id: "asset-fact", logicalId: "asset-fact", version: 1, subjectId: "asset", key: "asset.value", value: "Synthetic asset valuation", state: "verified", recognition: "accepted", refs: [{ documentId: "asset-doc", page: 1, quote: "Synthetic asset valuation" }], validation: [] }];
+  data.assets = [{ id: "asset", kind: "deposit", label: "합성 예금", grossValue: normalizeMoney("1000000"), securedPayoff: normalizeMoney("0"), disposalCosts: normalizeMoney("0"), protectedValue: normalizeMoney("0"), ownershipBps: 10000, asOf: assetDate, valuationBasis: "합성 평가서", recognition: "accepted", factIds: ["asset-fact"] }];
+  data.context.inventoryComplete.asset = "yes";
+  return data;
+}
+
+test("재산 평가일의 누락·오류·사건 기준일 불일치를 별도 계산 이슈로 보존한다", () => {
+  const rules = { id: "synthetic", status: "source_verified" as const, sources: [] };
+  for (const date of ["2019-01-01", "2027-01-01"]) {
+    const data = assetDateFixture(date);
+    data.context.assetValuationBasisReviewed = true;data.context.presentValueReviewed = true;data.context.presentValueBasis = "Synthetic reviewed basis";data.context.approvedPresentValue = normalizeMoney("2000000");
+    const result = calculateCase(data, rules);
+    assert.equal(result.assetRows[0].liquidationWon, "1000000"); // Arithmetic is retained as a clearly review-blocked preview.
+    assert.ok(result.issues.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED:asset"));
+    assert.equal(result.traces.find(trace => trace.id === "asset:asset")?.status, "provisional");
+    assert.equal(result.traces.find(trace => trace.id === "liquidation_comparison")?.status, "provisional");
+    assert.equal(result.liquidationComparison, "unknown");
+    assert.equal(assessCase(data, rules).generationGate.canFinalize, false);
+    assert.ok(assessCase(data, rules).findings.some(finding => finding.id === "calc_ASSET_AS_OF_RECONCILIATION_REQUIRED:asset"));
+  }
+
+  const missing = calculateCase(assetDateFixture(""), rules);
+  assert.equal(missing.assetRows[0].liquidationWon, null);
+  assert.ok(missing.issues.includes("ASSET_VALUATION_DATE_MISSING:asset"));
+
+  const malformed = calculateCase(assetDateFixture("2026-02-30"), rules);
+  assert.equal(malformed.assetRows[0].liquidationWon, null);
+  assert.ok(malformed.issues.includes("ASSET_VALUATION_DATE_INVALID:asset"));
+
+  const matching = calculateCase(assetDateFixture("2026-10-27"), rules);
+  assert.equal(matching.assetRows[0].liquidationWon, "1000000");
+  assert.ok(!matching.issues.some(issue => issue.includes("ASSET_AS_OF_RECONCILIATION") || issue.includes("ASSET_VALUATION_DATE_INVALID") || issue.includes("ASSET_VALUATION_DATE_MISSING")));
+});
+
 test("음수 소득원은 다른 소득을 자동 상계하지 않고 검토 대상으로 막는다", () => {
   const result = monthlyIncome({
     id: "synthetic-loss", kind: "business", label: "합성 사업 손실",

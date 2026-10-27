@@ -1,7 +1,7 @@
 /** Deterministic, non-generative scan rescue helpers. Quality hints can request
  * another look, but never mark evidence as readable or correct. */
 export type NormalizedBox=[number,number,number,number];
-export type RescueReason="field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction";
+export type RescueReason="field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";
 export interface RescueSpec {reason:RescueReason;variant:string;bbox:NormalizedBox;rotation:number;contrast:number;sourceHash:string;baseImageHash:string;}
 export const MAX_RESCUE_VARIANTS=4;
 export function validBox(value:unknown):value is NormalizedBox {
@@ -16,6 +16,10 @@ export function rescueSpecs(args:{reason:RescueReason;boxes:unknown[];sourceHash
   // deliberately conservative because field boxes cannot identify missing rows.
   const boxes:NormalizedBox[]=args.reason==="omitted_rows"?[[0,.08,1,.96]]:valid.length?valid:[[.03,.12,.97,.9]];
   if(args.reason==="incomplete_extraction")return [0,1,2,3].map(index=>({reason:args.reason,variant:`rescue-${args.reason}-${index+1}`,bbox:[0,index*.25,1,Math.min(1,(index+1)*.25+.025)] as NormalizedBox,rotation:0,contrast:1,sourceHash:args.sourceHash,baseImageHash:args.baseImageHash}));
+  if(args.reason==="classification_unknown")return [
+    {bbox:[0,0,1,.45] as NormalizedBox,rotation:0},
+    {bbox:[0,0,1,1] as NormalizedBox,rotation:90},
+  ].map((spec,index)=>({...spec,reason:args.reason,variant:`rescue-${args.reason}-${index+1}`,contrast:1,sourceHash:args.sourceHash,baseImageHash:args.baseImageHash}));
   if(args.reason==="unreadable"){
     // Keep every candidate inside the upload API's [-180, 180] contract.
     const box=expandBox(boxes[0]);return [0,90,180,-90].map((rotation,index)=>({reason:args.reason,variant:`rescue-${args.reason}-${index+1}`,bbox:box,rotation,contrast:1,sourceHash:args.sourceHash,baseImageHash:args.baseImageHash}));

@@ -1,5 +1,6 @@
 /** Document identity is a routing hint, never a source of monetary or legal facts. */
 export const DOCUMENT_FAMILY_ALIASES: Record<string, readonly string[]> = {
+  payroll: ["payslip", "pay_slip", "payroll_statement", "salary_statement", "employer_signed_salary_statement", "급여명세서", "임금명세서", "급료명세서", "급여지급명세서"],
   debt_certificate: ["debt_balance_certificate", "debt_balance", "debt_statement", "채무잔액증명서", "채무잔액확인서", "부채증명서", "채무확인서"],
   credit_report: ["credit_information_report", "creditor_change_report", "creditor_change_history", "debt_assignment_history", "sold_claim_history", "신용정보조회서", "채권자변동정보조회서"],
   health_insurance_arrears: ["health_insurance_premium_arrears", "insurance_premium_arrears", "건강보험료미납내역서", "건강보험료체납내역서", "보험료미납내역서"],
@@ -39,6 +40,7 @@ export function documentFamily(label: string): string {
   const direct = byAlias.get(normalized(label));
   if (direct) return direct;
   const text = label.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
+  if (/(?:급여|급료|임금)(?:지급)?명세서/.test(text)) return "payroll";
   if (/신용정보조회서|채권자변동정보|미보유채권|매각당시.*(?:정보|이력)/.test(text)) return "credit_report";
   if (/건강보험료(?:미납|체납)(?:내역|증명)|보험료미납내역서/.test(text)) return "health_insurance_arrears";
   if (/건강보험료납부(?:내역|확인|증명)/.test(text)) return "health_insurance_payment";

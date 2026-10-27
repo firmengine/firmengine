@@ -10,6 +10,7 @@ import ts from "typescript";
 import * as domain from "../lib/domain.ts";
 import * as processingReadiness from "../lib/processing-readiness.ts";
 import * as jsonResponses from "../lib/json-response.ts";
+import * as classificationRecovery from "../lib/classification-recovery.ts";
 import * as scanQuality from "../lib/scan-quality.ts";
 import type { CaseData, ExportManifest } from "../lib/domain.ts";
 
@@ -124,12 +125,12 @@ function documentSetup(ready:boolean){
   h.sqlite.prepare("UPDATE cases SET payload = ? WHERE id = ?").run(JSON.stringify(h.data),h.data.context.id);
   h.sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,original_key,ready,created_at) VALUES (?,?,?,?,?,?,?,?)").run(doc,h.data.context.id,"synthetic.pdf",hash,1,ready?originalKey:null,ready?1:0,"synthetic");
   if(ready)h.objects.set(originalKey,{bytes,mime:"application/pdf"});
-  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
+  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/classification-recovery":classificationRecovery,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
   const put=(body:Uint8Array)=>route.PUT(new Request(`https://synthetic.invalid/api/cases/${h.data.context.id}/documents/${doc}?kind=original`,{method:"PUT",headers:{"Content-Type":"application/pdf","Content-Length":String(body.byteLength)},body:new Uint8Array(body)}),{params:Promise.resolve({id:h.data.context.id,doc})});
   return {...h,bytes,doc,originalKey,put};
 }
 
-function derivativeSetup(options:{changePlanAtInsert?:boolean}={}){
+function derivativeSetup(options:{changePlanAtInsert?:boolean;classification?:boolean;role?:string}={}){
   const h=setup(options.changePlanAtInsert?(sqlite)=>{
     const row=sqlite.prepare("SELECT result FROM page_jobs WHERE id = ?").get("synthetic-doc:1") as {result:string};
     const result=JSON.parse(row.result);result.rescuePlan.planId="stale-plan";
@@ -137,15 +138,16 @@ function derivativeSetup(options:{changePlanAtInsert?:boolean}={}){
   }:undefined);
   h.sqlite.exec(readFileSync(root+"drizzle/0002_page_derivatives.sql","utf8"));
   h.sqlite.exec(readFileSync(root+"drizzle/0003_derivative_plan_id.sql","utf8"));
+  const reason=options.classification?"classification_unknown":"incomplete_extraction",role=options.role??"evidence";
   const bytes=new TextEncoder().encode("Synthetic immutable original"),sourceHash=digest(bytes),doc="synthetic-doc",page=1,planId="plan-current",baseHash=digest(new TextEncoder().encode("Synthetic page image")),boxes:[[number,number,number,number]]=[[0,0,1,1]];
-  h.data.documents=[{id:doc,name:"synthetic.pdf",sha256:sourceHash,status:"active",pages:[page]}];h.data.pages=[{documentId:doc,page,role:"evidence"}];
+  h.data.documents=[{id:doc,name:"synthetic.pdf",sha256:sourceHash,status:"active",pages:[page]}];h.data.pages=[{documentId:doc,page,role:role as any}];
   h.sqlite.prepare("UPDATE cases SET payload = ? WHERE id = ?").run(JSON.stringify(h.data),h.data.context.id);
   h.sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,original_key,ready,created_at) VALUES (?,?,?,?,?,?,?,?)").run(doc,h.data.context.id,"synthetic.pdf",sourceHash,1,"synthetic-original",1,"synthetic");
   h.objects.set("synthetic-original",{bytes,mime:"application/pdf"});
-  h.sqlite.prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,image_key,image_hash,status,stage,attempts,lease_until,cache_key,result,error,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(`${doc}:${page}`,h.data.context.id,doc,page,"evidence","debt_certificate","synthetic-page",baseHash,"pending","extract",0,null,null,JSON.stringify({rescuePlan:{planId,documentId:doc,page,sourceHash,baseImageHash:baseHash,reason:"incomplete_extraction",boxes}}),null,"synthetic");
-  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
+  h.sqlite.prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,image_key,image_hash,status,stage,attempts,lease_until,cache_key,result,error,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(`${doc}:${page}`,h.data.context.id,doc,page,role,"debt_certificate","synthetic-page",baseHash,"pending","extract",0,null,null,JSON.stringify({rescuePlan:{planId,documentId:doc,page,sourceHash,baseImageHash:baseHash,reason,boxes}}),null,"synthetic");
+  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/classification-recovery":classificationRecovery,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
   const upload=(variant:string,image:Uint8Array,overrides:Record<string,string>={})=>{
-    const spec=scanQuality.rescueSpecs({reason:"incomplete_extraction",boxes,sourceHash,baseImageHash:baseHash}).find(item=>item.variant===variant)!;
+    const spec=scanQuality.rescueSpecs({reason,boxes,sourceHash,baseImageHash:baseHash}).find(item=>item.variant===variant)!;
     const request=new Request(`https://synthetic.invalid/api/cases/${h.data.context.id}/documents/${doc}?kind=variant&page=${page}`,{method:"PUT",headers:{"Content-Type":"image/jpeg","x-rescue-plan-id":planId,"x-source-hash":sourceHash,"x-base-image-hash":baseHash,"x-variant":variant,"x-source-bbox":JSON.stringify(spec.bbox),"x-transform":JSON.stringify({method:"canvas-crop-v1",rotation:spec.rotation,contrast:spec.contrast}),...overrides},body:new Uint8Array(image)});
     return route.PUT(request,{params:Promise.resolve({id:h.data.context.id,doc})});
   };
@@ -213,4 +215,24 @@ test("R2 저장 뒤 INSERT 전 rescue plan이 바뀌면 stale derivative를 등�
   assert.equal(response.status,409);assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,0);assert.equal(h.objects.size,1);
   const job=h.sqlite.prepare("SELECT json_extract(result,'$.rescuePlan.planId') AS plan FROM page_jobs WHERE id = ?").get("synthetic-doc:1") as {plan:string};assert.equal(job.plan,"stale-plan");
   h.sqlite.close();
+});
+
+test("unknown page can upload only a saved classification rescue candidate",async()=>{
+  const h=derivativeSetup({classification:true,role:"unknown"}),image=new TextEncoder().encode("synthetic classification crop");
+  assert.equal((await h.upload("rescue-classification_unknown-1",image)).status,200);
+  assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,1);
+  h.sqlite.close();
+});
+
+test("unknown role cannot upload ordinary extraction rescue candidates",async()=>{
+  const h=derivativeSetup({role:"unknown"}),image=new TextEncoder().encode("synthetic candidate");
+  assert.equal((await h.upload("rescue-incomplete_extraction-1",image)).status,409);
+  assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,0);h.sqlite.close();
+});
+
+test("filed-form role never enters classification rescue storage",async()=>{
+  const h=derivativeSetup({classification:true,role:"filed_form"}),image=new TextEncoder().encode("synthetic held form");
+  const response=await h.upload("rescue-classification_unknown-1",image);
+  assert.equal((await response.json() as {heldOut?:boolean}).heldOut,true);
+  assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,0);h.sqlite.close();
 });

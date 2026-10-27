@@ -13,7 +13,7 @@ export async function caseResponse(data:CaseData|string){
   return {case:{...c,documents,execution:extras.execution??c.execution},assessment:applyProcessingGate(assessment,extras.processingReadiness),...extras,workflow:evaluateWorkflow(c,assessment),transactionReview:scanTransactions(c),rules:CURRENT_RULESET,legalCatalog:LEGAL_CATALOG,riskCatalog:RISK_CATALOG};
 }
 
-export async function caseProgress(caseId:string,result:{remaining?:number;stage?:string;page?:number;error?:string;warnings?:unknown[];checks?:{status?:string}[];disagreements?:number;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction";boxes:unknown[]}}){
+export async function caseProgress(caseId:string,result:{remaining?:number;stage?:string;page?:number;error?:string;warnings?:unknown[];checks?:{status?:string}[];disagreements?:number;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[]}}){
   const [c,rows,rescuePlans]=await Promise.all([getCase(caseId),jobs(caseId),persistedRescuePlans(caseId)]);
   const jobsByStatus:Record<string,number>={};
   for(const row of rows)jobsByStatus[String(row.status)]=(jobsByStatus[String(row.status)]??0)+1;
