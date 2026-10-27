@@ -6,9 +6,10 @@ import type { CalculationResult } from "./assessment.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { applicantIdentityValue } from "./applicant-identity.ts";
+import { applicantStatementForForm } from "./statement-paragraphs.ts";
 import { PUBLIC_FORM_BASE64, PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
-export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.1";
+export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.2";
 export const MISSING_FORM_VALUE = "[확인 필요]";
 export const BASIC_FORM_CODES: Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>> = {
   application: "D5100", creditors: "D5106", assets: "D5101", income_expense: "D5103",
@@ -90,7 +91,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     registered_address: applicantIdentityValue(data,"registered_address",index),
     court_name: pick("court_name") !== MISSING_FORM_VALUE ? pick("court_name") : data.context.courtId === "seoul" ? "서울회생법원" : MISSING_FORM_VALUE,
     application_date: present(data.context.applicationDate), debt_as_of: present(data.context.asOf),
-    statement: present(data.context.applicant?.statement || (pick("statement") !== MISSING_FORM_VALUE ? pick("statement") : undefined)),
+    statement: present(applicantStatementForForm(data,index)),
     total_principal: amount(calculation.debtPrincipalWon), total_interest: amount(calculation.debtInterestWon),
     secured_debt_total: amount(calculation.securedDebtWon), unsecured_debt_total: amount(calculation.unsecuredDebtWon),
     monthly_income: amount(calculation.monthlyIncomeWon), recognized_living_cost: amount(calculation.recognizedLivingCostWon),

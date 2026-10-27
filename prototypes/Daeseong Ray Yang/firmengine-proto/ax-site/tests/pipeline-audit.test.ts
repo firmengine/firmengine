@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyConfirmedCorrection,applyFirstVerification,applyTargetedRepair,getRepairTargets,preserveAgreedFieldsAfterOmission,projectPage,PAGE_COMPLETENESS_INSTRUCTIONS,PROMPT_VERSION,VERIFY_SCHEMA } from "../lib/extraction.ts";
-import { extractionCacheKey } from "../lib/domain.ts";
+import { applyConfirmedCorrection,applyFirstVerification,applyTargetedRepair,DOC_FIELDS,getRepairTargets,isValidSourceBBox,preserveAgreedFieldsAfterOmission,projectPage,validatePageRead,EXTRACT_INSTRUCTIONS,PAGE_COMPLETENESS_INSTRUCTIONS,PROMPT_VERSION,VERIFY_SCHEMA } from "../lib/extraction.ts";
+import { applyExtraction,createCase,currentFacts,extractionCacheKey } from "../lib/domain.ts";
+import { observedSourceDetails } from "../lib/observed-source-details.ts";
 import type { PageRead,ReadField } from "../lib/extraction.ts";
 
 const reading=(value:string,unit:string|null,quote:string)=>({status:"corrected",value,unit,quote});
@@ -28,6 +29,89 @@ test("독립 재판독이 값·단위·인용을 모두 반복해야 금액 단�
 test("검증 응답 스키마가 단위 판독을 명시적으로 수집한다",()=>{
   const properties=(VERIFY_SCHEMA.properties as {checks:{items:{properties:Record<string,unknown>}}}).checks.items.properties;
   assert.ok("unit" in properties);
+  assert.ok("bbox" in properties);
+});
+
+test("bbox는 좌상단 원점의 유효한 모서리 좌표만 허용하고 추출 지침에 width/height가 아님을 명시한다",()=>{
+  assert.equal(isValidSourceBBox([.1,.2,.3,.4]),true);
+  for(const bad of [[.2,.2,.1,.4],[.1,.4,.3,.2],[.1,.2,.1,.4],[-.1,.2,.3,.4],[.1,.2,1.1,.4],[.1,.2,Number.NaN,.4]])assert.equal(isValidSourceBBox(bad),false);
+  assert.match(EXTRACT_INSTRUCTIONS,/left, top, right, bottom/);assert.match(EXTRACT_INSTRUCTIONS,/좌표 끝점이지 x\/y\/너비\/높이가 아니다/);
+});
+
+test("잘못된 bbox는 자동변환하지 않고 bbox 전용 재확인으로 보내며 인용된 명확한 값을 보존한다",()=>{
+  const field:ReadField={key:"coverage_amount",label:"가입금액",value:"synthetic",unit:"원",quote:"synthetic quoted amount",confidence:"clear",bbox:[.5,.4,.2,.6]};
+  const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field]}]};
+  const validated=validatePageRead(read);assert.deepEqual(validated.records[0].fields[0].bbox,[.5,.4,.2,.6]);assert.ok(validated.warnings.length);
+  const projection=projectPage(validated,"synthetic-bbox",1,"a".repeat(64));assert.equal(projection.facts?.[0].refs?.[0].bbox,undefined,"malformed geometry never reaches source references");
+  const first=[{recordIndex:0,fieldIndex:0,status:"agrees" as const,value:"synthetic",unit:"원",quote:"synthetic quote",reason:"값 확인"}];
+  const checked=applyFirstVerification(validated,first);assert.equal(checked.read.records[0].fields[0].value,"synthetic");assert.equal(checked.read.records[0].fields[0].confidence,"clear");assert.equal(checked.targets[0]?.bboxOnly,true);assert.equal(checked.targets[0]?.bboxIssue,true);
+  const repaired=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.1,.2,.3,.4]}]);
+  assert.equal(repaired.disagreements,0);assert.equal(repaired.read.records[0].fields[0].value,"synthetic");assert.equal(repaired.read.records[0].fields[0].confidence,"clear");assert.deepEqual(repaired.read.records[0].fields[0].bbox,[.1,.2,.3,.4]);assert.equal(repaired.read.warnings.some(w=>w.includes("bbox")),false);
+});
+
+test("bbox-only repair null은 허용하고 잘못된 수리 좌표는 값을 살린 채 review 상태로 남긴다",()=>{
+  const f:ReadField={key:"coverage_amount",label:"가입금액",value:"synthetic",unit:"원",quote:"synthetic quote",confidence:"clear",bbox:[.6,.4,.2,.7]};
+  const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[f]}]};
+  const first=[{recordIndex:0,fieldIndex:0,status:"agrees" as const,value:"synthetic",unit:"원",quote:"synthetic quote",reason:"값 확인"}];
+  const checked=applyFirstVerification(read,first);
+  const noBox=applyTargetedRepair(checked.read,first,[{...first[0],bbox:null}]);assert.equal(noBox.disagreements,0);assert.equal(noBox.read.records[0].fields[0].bbox,null);assert.equal(noBox.read.records[0].fields[0].value,"synthetic");assert.equal(noBox.read.records[0].fields[0].confidence,"clear");
+  const invalid=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.6,.4,.2,.7]}]);assert.equal(invalid.disagreements,1);assert.equal(invalid.read.records[0].fields[0].bbox,null);assert.equal(invalid.read.records[0].fields[0].value,"synthetic");assert.equal(invalid.read.records[0].fields[0].confidence,"clear");assert.ok(invalid.read.warnings.some(w=>w.includes("bbox")&&w.includes("보존")));
+});
+
+test("bbox 문제와 값 문제를 함께 가진 대상은 정상 이중 교정을 허용하되 잘못된 좌표는 계속 review로 남긴다",()=>{
+  const f:ReadField={key:"text",label:"synthetic",value:"old reading",unit:null,quote:"old quote",confidence:"clear",bbox:[.5,.6,.2,.8]};
+  const read:PageRead={documentType:"statement",complete:true,warnings:[],records:[{category:"statement",label:"synthetic",fields:[f]}]};
+  const first=[{recordIndex:0,fieldIndex:0,status:"corrected" as const,value:"corrected text",unit:null,quote:"source quote pass one",reason:"값과 단위 확인"}];
+  const checked=applyFirstVerification(read,first);assert.equal(checked.targets[0]?.bboxIssue,true);assert.equal(checked.targets[0]?.bboxOnly,false);
+  const fixed=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.1,.2,.3,.4]}]);assert.equal(fixed.disagreements,0);assert.equal(fixed.read.records[0].fields[0].value,"corrected text");assert.equal(fixed.read.records[0].fields[0].confidence,"clear");assert.deepEqual(fixed.read.records[0].fields[0].bbox,[.1,.2,.3,.4]);
+  const unresolved=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.6,.8,.2,.3]}]);assert.equal(unresolved.disagreements,1);assert.equal(unresolved.read.records[0].fields[0].value,"corrected text");assert.equal(unresolved.read.records[0].fields[0].confidence,"clear");assert.equal(unresolved.read.records[0].fields[0].bbox,null);assert.ok(unresolved.read.warnings.some(w=>w.includes("좌표")));
+});
+
+test("statement.text는 서로 다른 원문 bbox를 가진 문단마다 독립 fact로 보존한다",()=>{
+  const text=(value:string,quote:string,bbox:number[]|null):ReadField=>({key:"text",label:"statement text",value,unit:null,quote,confidence:"clear",bbox});
+  const fields=[text("opening paragraph","opening paragraph citation",[.1,.1,.8,.2]),text("closing paragraph","closing paragraph citation",[.1,.3,.8,.4])];
+  const read:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"statement record",fields}]};
+  const payload=projectPage(read,"synthetic-statement",1,"a".repeat(64));const facts=payload.facts?.filter(f=>f.key==="statement.text")??[];
+  assert.deepEqual(facts.map(f=>f.value),["opening paragraph","closing paragraph"]);assert.equal(new Set(facts.map(f=>f.logicalId)).size,2);assert.ok(facts.every(f=>!f.validation?.some(v=>v.code==="FIELD_CONFLICT")));assert.deepEqual(facts.map(f=>f.refs?.[0].bbox),[[.1,.1,.8,.2],[.1,.3,.8,.4]]);
+  const data=createCase("synthetic","synthetic","2026-10-27");data.documents=[{id:"synthetic-statement",name:"statement",sha256:"a".repeat(64),status:"active",pages:[1]}];data.pages=[{documentId:"synthetic-statement",page:1,role:"evidence"}];const applied=applyExtraction(data,payload),details=observedSourceDetails(applied,["statement.text"]);
+  assert.equal(details.rows.length,2);assert.ok(details.rows.every(row=>row[7]==="원문 관측; 법적 인정 아님"));assert.ok(details.rows.every(row=>String(row[3]).startsWith("box-")));
+});
+
+test("statement.text without bbox keeps paragraph order in logical identity; exact text repeats remain distinct when no location proves duplication",()=>{
+  const text=(value:string,index:number):ReadField=>({key:"statement.text",label:"paragraph",value,unit:null,quote:`quote ${index} for ${value}`,confidence:"clear",bbox:null});
+  const read:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"statement record",fields:[text("repeated paragraph",1),text("middle paragraph",2),text("repeated paragraph",3)]}]};
+  const facts=projectPage(read,"synthetic-statement",1,"b".repeat(64)).facts?.filter(f=>f.key==="statement.text")??[];
+  assert.deepEqual(facts.map(f=>f.value),["repeated paragraph","middle paragraph","repeated paragraph"]);assert.deepEqual(facts.map(f=>f.logicalId?.match(/paragraph:ordinal-\d+/)?.[0]),["paragraph:ordinal-1","paragraph:ordinal-2","paragraph:ordinal-3"]);assert.ok(facts.every(f=>!f.validation?.some(v=>v.code==="FIELD_CONFLICT")));
+});
+
+test("statement.text without bbox carries an explicitly quoted section anchor",()=>{
+  const anchor:ReadField={key:"section_anchor",label:"section",value:"Background",unit:null,quote:"Section: Background",confidence:"clear",bbox:null};
+  const paragraph:ReadField={key:"text",label:"statement text",value:"paragraph under heading",unit:null,quote:"paragraph under heading",confidence:"clear",bbox:null};
+  const read:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"statement record",fields:[anchor,paragraph]}]};
+  const fact=projectPage(read,"synthetic-statement",1,"f".repeat(64)).facts?.find(f=>f.key==="statement.text");
+  assert.ok(fact?.logicalId?.includes(":paragraph:section-"));assert.ok(fact?.logicalId?.endsWith("-ordinal-1"));
+});
+
+test("statement.text duplicates at the same bbox dedupe, but conflicting text at one bbox remains disputed",()=>{
+  const text=(value:string,quote:string):ReadField=>({key:"text",label:"paragraph",value,unit:null,quote,confidence:"clear",bbox:[.2,.2,.8,.4]});
+  const same:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"statement record",fields:[text("same paragraph","same source quote"),text("same paragraph","same source quote")]}]};
+  assert.equal(projectPage(same,"synthetic-statement",1,"c".repeat(64)).facts?.filter(f=>f.key==="statement.text").length,1);
+  const conflict:PageRead={...same,records:[{...same.records[0],fields:[text("first reading","same region quote"),text("different reading","same region quote")]}]};
+  const payload=projectPage(conflict,"synthetic-statement",1,"d".repeat(64)),candidates=payload.facts?.filter(f=>f.key==="statement.text")??[];
+  assert.equal(candidates.length,2);assert.ok(candidates.every(f=>f.validation?.some(v=>v.code==="FIELD_CONFLICT")));assert.ok(candidates.every(f=>f.logicalId?.includes(":candidate:")));
+  const data=createCase("synthetic","synthetic","2026-10-27");data.documents=[{id:"synthetic-statement",name:"statement",sha256:"d".repeat(64),status:"active",pages:[1]}];data.pages=[{documentId:"synthetic-statement",page:1,role:"evidence"}];
+  const applied=applyExtraction(data,payload);assert.equal(currentFacts(applied).filter(f=>f.key==="statement.text").length,2);assert.ok(currentFacts(applied).filter(f=>f.key==="statement.text").every(f=>f.state==="disputed"));
+});
+
+test("source-only encumbrance, lease property, and insurance policy identifiers retain their namespaces",()=>{
+  const quote=(key:string,value:string):ReadField=>({key,label:key,value,unit:null,quote:`${key}: ${value}`,confidence:"clear",bbox:null});
+  const cases:[string,ReadField[],string[]][]=[
+    ["bank_account",[quote("bank_account.seizure_status","확인중"),quote("bank_account.pledge_status","기재")],["bank_account.seizure_status","bank_account.pledge_status"]],
+    ["lease",[quote("lease.property_address","masked address"),quote("lease.property_reference","unit reference")],["lease.property_address","lease.property_reference"]],
+    ["insurance",[quote("insurance.policy_number","**-masked")],["insurance.policy_number"]],
+  ];
+  for(const [documentType,fields,expected] of cases){const read:PageRead={documentType,complete:true,warnings:[],records:[{category:"other",label:"source-only details",fields}]};const keys=projectPage(read,"synthetic-detail",1,"e".repeat(64)).facts?.map(f=>f.key)??[];assert.deepEqual(keys,expected);}
+  assert.match(DOC_FIELDS.bank_account,/seizure_status/);assert.match(DOC_FIELDS.lease,/property_address/);assert.match(DOC_FIELDS.insurance,/policy_number/);
 });
 
 test("인용 없는 record label은 채권자·소득원·재산명으로 승격되지 않는다",()=>{

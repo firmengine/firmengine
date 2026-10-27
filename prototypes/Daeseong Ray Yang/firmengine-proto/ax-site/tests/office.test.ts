@@ -129,8 +129,8 @@ test("large source appendix writes and reopens every synthetic row", async () =>
   const files = await writeOfficePackage({ data, rules: DRAFT_RULESET, mode: "draft" });
   const rendered = JSON.parse(strFromU8(files.find((file) => file.kind === "rendered_json")!.bytes)) as RenderedOffice;
   const appendix = rendered.documents.find((document) => document.kind === "application")!;
-const observed = appendix.tables.find((table) => table.title.includes("출처 기반 원문 관측"))!;
+  const observed = appendix.tables.find((table) => table.title.includes("출처 기반 원문 관측"))!;
   assert.equal(observed.rows.length, 5_200);
-  assert.equal(observed.rows[5_199][2], "Synthetic observation 5199 & <xml>\ncontinued");
-  assert.equal(observed.rows[5_199][7], "synthetic-only.pdf, p.1: “Synthetic citation 5199 & <xml>\ncontinued”");
+  assert.equal(observed.rows[5_199][observed.headers.indexOf("관측값·단위")], "Synthetic observation 5199 & <xml>\ncontinued");
+  assert.equal(observed.rows[5_199][observed.headers.indexOf("인용")], "synthetic-only.pdf, p.1: “Synthetic citation 5199 & <xml>\ncontinued”");
 });

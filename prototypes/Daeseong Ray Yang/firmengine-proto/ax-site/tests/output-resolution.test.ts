@@ -154,7 +154,7 @@ test("채무 우선·보증·양도 충돌은 채권자 초안의 원문관측 �
   const pack=buildCourtPackage(data,DRAFT_RULESET);
   const table=pack.documents.find(doc=>doc.kind==="creditors")?.tables.find(item=>item.title.includes("원문 관측"));
   assert.ok(table);
-  assert.ok(table.rows.some(row=>row[1]==="debt.priority_basis"&&row[6].includes("상충")));
+  assert.ok(table.rows.some(row=>row[1]==="debt.priority_basis"&&row[7].includes("상충")));
   assert.ok(table.rows.some(row=>row[1]==="debt.liability_role"&&row[2]==="guarantor"));
   assert.ok(table.rows.some(row=>row[1]==="debt.assignment_order"&&row[2]==="assigned"));
 });
@@ -182,6 +182,10 @@ test("차량·보험 세부 행은 각 자산 ID의 명시 fact만 연결하고 
   assert.equal(insurance[6],"OWNER-2002");
   assert.equal(insurance[9],"합성 보험사");
   assert.ok(insurance[10].includes("4000"));
+  const policyColumn=table.headers.indexOf("보험 증권번호(원문 마스킹 보존)");
+  assert.ok(policyColumn>=0);
+  assert.equal(insurance[policyColumn],"SYNTHETIC-POLICY-1234");
+  assert.equal(vehicle[policyColumn],"[해당 없음]");
 });
 
 test("조건부 공식 서식은 명시 단서와 미확인 사유를 보여주되 증빙만으로 자동 선택하지 않는다",()=>{

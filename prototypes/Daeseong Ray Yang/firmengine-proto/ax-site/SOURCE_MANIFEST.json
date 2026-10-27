@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "85fbf353ce7404e76a3b8e8d332f5e65ea8a2194d73310a53df934d79b61f526",
+  "source_digest": "6c27c4de3d6a1f7144b3e23ce1c05d84cfe632407f0d61186d215edd7acc1b65",
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "c2e8d2d17e312d1a7e7cd55b068dd039b8606f91d9a9ec1150d533cc1bbfe00e",
-      "bytes": 3610,
+      "sha256": "e96a09cc4f83621008249b786a99fe641ed0aa1fe1b28a96f448d639de3f7a37",
+      "bytes": 4305,
       "mode": "100644"
     },
     {
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/api/cases/[id]/route.ts",
-      "sha256": "ba2ab4940a806c32b90ae908fd551acd01487f7cb61fd7f726fa98f12d687c61",
-      "bytes": 6974,
+      "sha256": "b1e40869120d8f61f86e369e7cdcff7d139d588edade262afb59c50a5095db9b",
+      "bytes": 7241,
       "mode": "100644"
     },
     {
@@ -577,8 +577,8 @@
     },
     {
       "path": "components/workspace.tsx",
-      "sha256": "1c4d424d333565c56cc10f1165494ea87cb5b18fc0dcbe94505c19e1c3517b3a",
-      "bytes": 101441,
+      "sha256": "4b4eda6ec33fae4a440cf0191cde0b7672e20c96924bbdf0d450e03f47362614",
+      "bytes": 102160,
       "mode": "100644"
     },
     {
@@ -805,8 +805,8 @@
     },
     {
       "path": "lib/document-annexes.ts",
-      "sha256": "e2dd3045d6dfaf7059037b310ea96f135daca4c6690450248e43ff69cd8c00e7",
-      "bytes": 20138,
+      "sha256": "fc547ce8183ef7dc9b53fa539dd260987ba9487cbf4bdac6f189cbea824b02b2",
+      "bytes": 20903,
       "mode": "100644"
     },
     {
@@ -823,8 +823,8 @@
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "fa3171f48b0d9ac2a125d0787503cf34ecc8c1d4a26e3508484a52a02a57e785",
-      "bytes": 41133,
+      "sha256": "9bf2d1eeee816e136aec4222f95ae532573eaf20b8efc81b58e6d1b905cc8051",
+      "bytes": 43080,
       "mode": "100644"
     },
     {
@@ -835,20 +835,20 @@
     },
     {
       "path": "lib/exports.ts",
-      "sha256": "7e6d7e153e8b598979e77cae2d4da569c08fbae16a65d37e84514bf3b31a3508",
-      "bytes": 33582,
+      "sha256": "6e0ad72eb4d9cd0371605eb32cc278581d71251d6ce07b81087c5901d987d352",
+      "bytes": 33975,
       "mode": "100644"
     },
     {
       "path": "lib/extraction.ts",
-      "sha256": "81060829e316173f7afbccded99da25d494b14a0ead55408137f9ce24c67b6a8",
-      "bytes": 45698,
+      "sha256": "1926f8b7b0641581a41a1a133f2ba6c08ca509b2dec9f2ed13488711fc347f4f",
+      "bytes": 54132,
       "mode": "100644"
     },
     {
       "path": "lib/form-mapping.ts",
-      "sha256": "4ffabeb742eadbe0407ac6a29b341091845cb311081b5f98df87fad8719f69e4",
-      "bytes": 26303,
+      "sha256": "653f356eaecf071de354cee8472b88ff2ec520c4a50b6b910f02354ef8399d84",
+      "bytes": 26300,
       "mode": "100644"
     },
     {
@@ -931,8 +931,8 @@
     },
     {
       "path": "lib/observed-source-details.ts",
-      "sha256": "35ec5cc3c0d2d4a83f6edf3ae60d1c53a447d3caaca60472c6cfddf079fbbbdf",
-      "bytes": 3060,
+      "sha256": "c2990f255e8935472b54a6d252b78b2ab21c98f375a06931cae4678a28457eab",
+      "bytes": 3727,
       "mode": "100644"
     },
     {
@@ -961,8 +961,8 @@
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "262c0371f1a105fa6e1e2f01e64c2d44cad79a56edbf9ea6af035a62812b219d",
-      "bytes": 58228,
+      "sha256": "7a63179b10f5818742e7a06ef1e909c167643a119277a708ad349d60f4a26e79",
+      "bytes": 58796,
       "mode": "100644"
     },
     {
@@ -973,8 +973,8 @@
     },
     {
       "path": "lib/reprojection.ts",
-      "sha256": "5b649b5de1cfbd32cd9ff6e097a513a0cd2a04777c4cbd32b7b2c93c923b5649",
-      "bytes": 11501,
+      "sha256": "4d0bd66c5564d2cea075fb7c87f84c1bbd929947a55be6c23ea7d0bef6c82d93",
+      "bytes": 13045,
       "mode": "100644"
     },
     {
@@ -1023,6 +1023,12 @@
       "path": "lib/source-verification.ts",
       "sha256": "f6d482ec69994e5bf9d77689eb50de405e85c89db3589890ac2536f972825700",
       "bytes": 11266,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/statement-paragraphs.ts",
+      "sha256": "6c3cee29dca6769375190ddf80bc45fbae690cfdc1fef971b552d27f96770192",
+      "bytes": 3867,
       "mode": "100644"
     },
     {
@@ -1201,14 +1207,20 @@
     },
     {
       "path": "scripts/SYNTHETIC-OCR-EVALUATION.md",
-      "sha256": "6396e8dcdf2efc9f67e7dee2a2d1a1d61790aa9b83a33d91826581d44606c5c9",
-      "bytes": 4207,
+      "sha256": "cc40f30ef0868d630bfba4bafcdb0bc362a4a12d5da4ab6a5387a0b60cc4254b",
+      "bytes": 4802,
       "mode": "100644"
     },
     {
       "path": "scripts/SYNTHETIC-OCR-V2.md",
-      "sha256": "401b1975f4ea642e113d8dad266cfd4a987c5260433b78fac198eaf7701e2043",
-      "bytes": 2111,
+      "sha256": "c8559d0fa595ef793dfe5090c74bd60dc8e8eea235b6a1010d5fedcfbe07df6d",
+      "bytes": 2383,
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/SYNTHETIC-OCR-V3.md",
+      "sha256": "77cbb5e56090ea130cfe40ace987a0ee66284357b8fa44c52e60360a4b8c5965",
+      "bytes": 3296,
       "mode": "100644"
     },
     {
@@ -1255,14 +1267,14 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "2cf3037960ddb216b040bb2957ed450a4d569596c90e9ad566fe80ae0e0dd16c",
-      "bytes": 21127,
+      "sha256": "59fe125730ffc34873cf045b4275b9e9c2b77ddfe45d83bd8dc23bac9da5e01c",
+      "bytes": 21822,
       "mode": "100644"
     },
     {
       "path": "scripts/generate-synthetic-ocr.py",
-      "sha256": "4e6ca53cec6f143b7d55059e462c0fde3292b4b4cc68ef3b695665eb2576057d",
-      "bytes": 13250,
+      "sha256": "8cde90715d6ebc9ddb46bf934bbc33a39ca3daa3da5d9d764df008430a6a530c",
+      "bytes": 16290,
       "mode": "100644"
     },
     {
@@ -1333,8 +1345,8 @@
     },
     {
       "path": "scripts/score-synthetic-ocr.py",
-      "sha256": "473644e0c8e443544be6c9e6d0f0440eaabd26d940be6db8e62639e753bebe8a",
-      "bytes": 11434,
+      "sha256": "28c65128940783fa296ee7843b28c925bb1c8df1c92af2380e0dc14a4c67a152",
+      "bytes": 17456,
       "mode": "100644"
     },
     {
@@ -1359,6 +1371,12 @@
       "path": "scripts/test-synthetic-ocr-v2.py",
       "sha256": "cd8d91dca3120e671639f8fd9d2b323d6085ec59dbdfbba314b6ea4b510bd840",
       "bytes": 6673,
+      "mode": "100644"
+    },
+    {
+      "path": "scripts/test-synthetic-ocr-v3.py",
+      "sha256": "26625558d0c2f2b1a25e93117687548900356cf768d36bdc9d6c997bd9ea5476",
+      "bytes": 13309,
       "mode": "100644"
     },
     {
@@ -1393,8 +1411,8 @@
     },
     {
       "path": "tests/annex.test.ts",
-      "sha256": "4ab3431f8a9dce07e6eff674b3883b0040dfab84a4a4ec36d34f50714e11e8a2",
-      "bytes": 9744,
+      "sha256": "ae211218dd91b56f14f34608243b6f3d6a2d27489ea47a4f6770d8b85703a8c6",
+      "bytes": 11601,
       "mode": "100644"
     },
     {
@@ -1464,6 +1482,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/fact-review-units.test.ts",
+      "sha256": "dae55ca0ff92f90ad4e9641e627e87ae9abdde911999a7e577c7277fbb638313",
+      "bytes": 4673,
+      "mode": "100644"
+    },
+    {
       "path": "tests/income-resolution.test.ts",
       "sha256": "d1a445141eb39cff02344f5a3ba686db9e017b009a76f48368bf208a01ece7c7",
       "bytes": 7542,
@@ -1513,14 +1537,14 @@
     },
     {
       "path": "tests/office.test.ts",
-      "sha256": "12a98cb3109093cfa4a8a9f19daa3b8d2ebe7887fa18b25569fc4d61af24fab4",
-      "bytes": 11717,
+      "sha256": "b846f4d550b0ac92d5244d80dde1acf0df9732580a68ad64acf49e1bb1699da2",
+      "bytes": 11796,
       "mode": "100644"
     },
     {
       "path": "tests/output-resolution.test.ts",
-      "sha256": "9d805a219cf255a3b60757123cc3dfdae1318a4771d1021ae7908219f351bfa6",
-      "bytes": 16944,
+      "sha256": "0c7c576049d4d00089d775cc256bb2e9af1ef7036bfab835321a27427d797844",
+      "bytes": 17188,
       "mode": "100644"
     },
     {
@@ -1537,14 +1561,14 @@
     },
     {
       "path": "tests/pipeline-audit.test.ts",
-      "sha256": "1a72e67b0d2a9788b85e739d39191c0650223054237d5777eb08b943527feca6",
-      "bytes": 10944,
+      "sha256": "063edc1a2037dc26db9a53d25e1417a2678076d067670c5e6b0734bc75451e68",
+      "bytes": 22291,
       "mode": "100644"
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "af5218e72a6c0248fb5cb49cb5d3aec637a7feb7765ed9e6ddbcd2c920921804",
-      "bytes": 24327,
+      "sha256": "a658a259ee2687e5c3b4be008b9dc5b92e41f25c93a7f178f5f9b11cad858d75",
+      "bytes": 24782,
       "mode": "100644"
     },
     {
@@ -1573,8 +1597,8 @@
     },
     {
       "path": "tests/reprojection.test.ts",
-      "sha256": "c9e71ce6a3a5d9a20f0513347ab98f7780ff60673d5ebf17ce3ff4a967ffa09b",
-      "bytes": 16262,
+      "sha256": "ecb22f201f1070d5acb540f9c0d017af8e974aba0ac85904ab6c6f3ae0db47e5",
+      "bytes": 18418,
       "mode": "100644"
     },
     {
@@ -1611,6 +1635,12 @@
       "path": "tests/source-verification.test.ts",
       "sha256": "789566d085c9a357d2634d244a6cffda2d59d85bc45b04bb79e0e714a5dd6042",
       "bytes": 11316,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/statement-paragraphs.test.ts",
+      "sha256": "4c4eecb14a2c4824d7b860e71b21736b55441b82e21cc9c065ea732c22db26d8",
+      "bytes": 6434,
       "mode": "100644"
     },
     {

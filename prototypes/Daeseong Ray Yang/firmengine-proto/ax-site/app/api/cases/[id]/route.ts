@@ -27,7 +27,8 @@ export async function PATCH(request:Request,{params}:Context){try{
   }else if(body.action==="review_fact"){
     if(body.state&&!(["reported","extracted","verified","disputed","retracted"] as FactState[]).includes(body.state))throw new HttpError(400,"확인 상태가 올바르지 않습니다.");
     if(body.recognition&&!(["unreviewed","accepted","rejected"] as Recognition[]).includes(body.recognition))throw new HttpError(400,"법적 반영 상태가 올바르지 않습니다.");
-    next=reviewFact(previous,body.factId,{state:body.state,recognition:body.recognition,...(body.value!==undefined?{value:body.value}:{}),actor:await actor(),reason:String(body.reason||"원문 대조 후 확인")});
+    if(Object.hasOwn(body,"sourceUnit")&&body.sourceUnit!==null&&(typeof body.sourceUnit!=="string"||body.sourceUnit.length>64))throw new HttpError(400,"원문 단위 형식을 확인하세요.");
+    next=reviewFact(previous,body.factId,{state:body.state,recognition:body.recognition,...(body.value!==undefined?{value:body.value}:{}),...(Object.hasOwn(body,"sourceUnit")?{sourceUnit:body.sourceUnit}:{}),actor:await actor(),reason:String(body.reason||"원문 대조 후 확인")});
   }else if(body.action==="retract_document"){
     next=retractDocument(previous,body.documentId);
     for(const doc of next.documents.filter(d=>d.status==="deleted"))jobMutations.push(db().prepare("UPDATE page_jobs SET status = 'withdrawn',lease_until = NULL WHERE document_id = ? AND case_id = ?").bind(doc.id,id));

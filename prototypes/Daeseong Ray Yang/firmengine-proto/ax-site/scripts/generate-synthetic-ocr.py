@@ -18,14 +18,32 @@ import io
 
 DEFAULT_ROOT = Path('/tmp/firmengine-synthetic-ocr-private')
 DEFAULT_V2_ROOT = Path('/tmp/firmengine-synthetic-ocr-v2-private')
+DEFAULT_V3_ROOT = Path('/tmp/firmengine-synthetic-ocr-v3-private')
 FAMILIES = ('payroll','debt_balance','insurance','transactions')
 VARIANTS = ('clean','layout','degraded')
 INSTITUTIONS = ('한빛가상급여센터','푸른가상채권관리','다온가상보험연구소','모아가상거래은행','누리가상정산원','새봄가상금융지원','이음가상보험센터','바다가상채무관리')
+V3_POLICY = {
+    'version': 'v3',
+    'layout_bbox': 'complete_layout_card_edges',
+    'debt_interest_key': 'overdue_interest',
+    'debt_interest_label': '연체 이자',
+    'insurance_coverage_alias_scope': 'insurance_family_only',
+    'transaction_subtotal_alias_scope': 'transactions_family_only',
+    'transaction_date_precision': 'iso_calendar_date_without_timezone_conversion',
+    'transaction_date_rows_required': 3,
+    'transaction_date_key_alias_required': True,
+    'transaction_date_record_conflict_policy': 'reject_record_if_invalid_or_multiple_distinct_explicit_dates',
+    'transaction_occurrence_dedup': 'source_observation_identity_without_record_index',
+    'legacy_candidate_dedup': 'preserve_v1_v2_contract',
+    'scorer_version': 'source-bound-clear-field-v4',
+    'page_success': 'all_fields_match_and_job_completed_and_read_complete',
+    'field_metric': 'field_match_accuracy',
+}
 
 def won(rng, low=150_000, high=8_000_000, step=1000):
     return rng.randrange(low//step, high//step)*step
 
-def base_case(rng, family, case_index):
+def base_case(rng, family, case_index, version='v2'):
     inst=rng.choice(INSTITUTIONS)
     rid=f'SYN-{rng.randrange(10**8,10**9)}-{case_index:02d}'
     day=f'2025-{rng.randrange(1,13):02d}-{rng.randrange(1,28):02d}'
@@ -36,8 +54,13 @@ def base_case(rng, family, case_index):
         fields={'gross_pay':f'{gross:,}','deductions':f'{tax+other:,}','net_pay':f'{net:,}','period':period}
         rows=[('총급여',fields['gross_pay']),('공제합계',fields['deductions']),('실수령액',fields['net_pay']),('명시 급여기간',fields['period'])]
     elif family=='debt_balance':
-        principal=won(rng,3_000_000,42_000_000); interest=won(rng,30_000,1_800_000,1000); fields={'principal':f'{principal:,}','interest':f'{interest:,}','as_of_date':day}
-        rows=[('잔여 원금',fields['principal']),('미납 이자',fields['interest']),('잔액 기준일',fields['as_of_date'])]
+        principal=won(rng,3_000_000,42_000_000); interest=won(rng,30_000,1_800_000,1000)
+        if version=='v3':
+            fields={'principal':f'{principal:,}','overdue_interest':f'{interest:,}','as_of_date':day}
+            rows=[('잔여 원금',fields['principal']),('연체 이자',fields['overdue_interest']),('잔액 기준일',fields['as_of_date'])]
+        else:
+            fields={'principal':f'{principal:,}','interest':f'{interest:,}','as_of_date':day}
+            rows=[('잔여 원금',fields['principal']),('미납 이자',fields['interest']),('잔액 기준일',fields['as_of_date'])]
     elif family=='insurance':
         refund=won(rng,250_000,12_000_000); premium=won(rng,35_000,240_000,1000); coverage=won(rng,10_000_000,150_000_000,10000)
         fields={'surrender_value':f'{refund:,}','premium':f'{premium:,}','coverage_amount':f'{coverage:,}'}
@@ -77,7 +100,7 @@ def draw_page(path, item, variant, font_path):
     c.setFillColor(colors.HexColor('#617782')); c.setFont(f,8); c.drawString(42,54,'합성 자료입니다. 금액·날짜·기록번호는 재현 가능한 난수로 생성되었습니다.')
     c.showPage(); c.save()
     raw=buf.getvalue()
-    if item.get('version')=='v2':
+    if item.get('version') in ('v2','v3'):
         # Verify that the exact text drawing used for every rendering contains
         # the schema-declared source unit for each money row.
         import fitz
@@ -100,26 +123,27 @@ def draw_page(path, item, variant, font_path):
     else: Path(path).write_bytes(raw)
 
 def main():
-    p=argparse.ArgumentParser(); p.add_argument('--version',choices=('v1','v2'),default='v2'); p.add_argument('--seed',type=int); p.add_argument('--out-root',type=Path); p.add_argument('--include-missing-unit',action='store_true',help='Add an explicitly unitless safety variant, scored separately from positive accuracy.'); p.add_argument('--font',type=Path,default=Path('/usr/share/fonts/truetype/nanum/NanumGothic.ttf'),help='Installable Korean TTF font; embed in every PDF for portable rendering.'); args=p.parse_args()
-    seed=args.seed if args.seed is not None else (20261028 if args.version=='v2' else 20261027)
-    out_root=args.out_root or (DEFAULT_V2_ROOT if args.version=='v2' else DEFAULT_ROOT)
+    p=argparse.ArgumentParser(); p.add_argument('--version',choices=('v1','v2','v3'),default='v3'); p.add_argument('--seed',type=int); p.add_argument('--out-root',type=Path); p.add_argument('--include-missing-unit',action='store_true',help='Add an explicitly unitless safety variant, scored separately from positive accuracy (v2 only).'); p.add_argument('--font',type=Path,default=Path('/usr/share/fonts/truetype/nanum/NanumGothic.ttf'),help='Installable Korean TTF font; embed in every PDF for portable rendering.'); args=p.parse_args()
+    seed=args.seed if args.seed is not None else ({'v1':20261027,'v2':20261028,'v3':20261029}[args.version])
+    out_root=args.out_root or ({'v1':DEFAULT_ROOT,'v2':DEFAULT_V2_ROOT,'v3':DEFAULT_V3_ROOT}[args.version])
     if not args.font.is_file(): raise SystemExit('Korean font file is required; pass --font /path/to/NotoSansCJKkr-Regular.otf')
     req=out_root/'request-only'; gold=out_root/'gold'; req.mkdir(parents=True,exist_ok=True); gold.mkdir(parents=True,exist_ok=True)
     # Existing sources and gold may already bind a completed or running trial.
     # A new corpus needs a new directory; never rewrite a prior trial in place.
     if any(req.iterdir()) or any(gold.iterdir()):
         raise SystemExit('Output request-only/gold directories must be empty. Choose a new --out-root to preserve prior source hashes and evaluations.')
+    if args.include_missing_unit and args.version!='v2': raise SystemExit('--include-missing-unit is supported only by v2')
     rng=random.Random(seed); pages=[]; variants=list(VARIANTS)+(['missing_unit'] if args.version=='v2' and args.include_missing_unit else [])
     for i,fam in enumerate(FAMILIES,1):
-        item=base_case(rng,fam,i); item['seed']=seed; item['version']=args.version
-        item['field_units']={key:('원' if key in {'gross_pay','deductions','net_pay','principal','interest','surrender_value','premium','coverage_amount'} else None) for key in item['fields']}
+        item=base_case(rng,fam,i,args.version); item['seed']=seed; item['version']=args.version
+        item['field_units']={key:('원' if key in {'gross_pay','deductions','net_pay','principal','interest','overdue_interest','surrender_value','premium','coverage_amount'} else None) for key in item['fields']}
         if fam=='transactions':
             item['field_units'].update({'repeated_transaction_row':'원','transaction_row':'원','subtotal':'원'})
         money_row_indexes={'payroll':{0,1,2},'debt_balance':{0,1},'insurance':{0,1,2},'transactions':{0,1,2,3}}[fam]
         for variant in variants:
-            variant_item={**item,'rows':list(item['rows']),'variant':variant,'expected_unit':'원' if args.version=='v2' and variant!='missing_unit' else None}
+            variant_item={**item,'rows':list(item['rows']),'variant':variant,'expected_unit':'원' if args.version in ('v2','v3') and variant!='missing_unit' else None}
             variant_item['money_row']={label:True for row_index,(label,_) in enumerate(item['rows']) if row_index in money_row_indexes}
-            if args.version=='v2' and variant!='missing_unit':
+            if args.version in ('v2','v3') and variant!='missing_unit':
                 for row_index,(label,value) in enumerate(variant_item['rows']):
                     if row_index not in money_row_indexes: continue
                     if fam=='transactions' and row_index<3:
@@ -128,34 +152,49 @@ def main():
                     else: value=f'{value}원'
                     variant_item['rows'][row_index]=(label,value)
             name=f"{item['case_id']}--{variant}.pdf"; draw_page(req/name,variant_item,variant,args.font)
-            pages.append({'case_id':item['case_id'],'family':fam,'variant':variant,'path':name,'sha256':hashlib.sha256((req/name).read_bytes()).hexdigest(),'is_independent_case':variant=='clean','seed':seed,'expected_money_unit':'원' if args.version=='v2' and variant!='missing_unit' else None,'safety_variant':variant=='missing_unit'})
+            pages.append({'case_id':item['case_id'],'family':fam,'variant':variant,'path':name,'sha256':hashlib.sha256((req/name).read_bytes()).hexdigest(),'is_independent_case':variant=='clean','seed':seed,'expected_money_unit':'원' if args.version in ('v2','v3') and variant!='missing_unit' else None,'safety_variant':variant=='missing_unit'})
         # Gold has field labels/expected values and per-layout normalized source boxes.
         # It never enters request-only. Boxes enclose the row containing each value.
         def box(row,variant):
             w,h=A4; y=h-224-(row//2*90 if variant=='layout' else row*58)
             x=42+(row%2)*260 if variant=='layout' else 42
             right=x+238 if variant=='layout' else w-42
+            if args.version=='v3' and variant=='layout':
+                # V3 binds the gold box to the full drawn card: x..x+238,
+                # y-52..y+16 points, including all card text and padding.
+                return [round(x/w,4),round(1-(y+16)/h,4),round(right/w,4),round(1-(y-52)/h,4)]
             return [round((x+6)/w,4),round(1-(y+16)/h,4),round((right-6)/w,4),round(1-(y-18)/h,4)]
         expected=[]
         row_for={key:n for n,key in enumerate(item['fields'])}
         def unit_meta(key):
-            if args.version!='v2': return {}
+            if args.version not in ('v2','v3'): return {}
             return {'expected_unit':item['field_units'].get(key),'expected_unit_by_variant':{v:(item['field_units'].get(key) if v!='missing_unit' else None) for v in variants},'safety_unitless':args.include_missing_unit}
         for key,value in item['fields'].items():
             row=row_for[key]
             entry={'field':key,'expected':value,'source_bbox':box(row,'clean'),'source_bbox_by_variant':{v:box(row,v) for v in variants}, 'row_critical':True,'row_index':row}
+            if args.version=='v3' and key=='repeat_date':
+                entry.update({'comparison':'iso_calendar_date_no_timezone_conversion','transaction_row_index':row})
             entry.update(unit_meta(key))
             expected.append(entry)
         if fam=='transactions':
             repeated=item['rows'][0][1].split()[-1]
+            if args.version=='v3':
+                # Date is an independently required value on every transaction
+                # row; a page/query-period date or subtotal cannot substitute.
+                expected=[f for f in expected if f['field']!='repeat_date']
+                for row_index in range(3):
+                    expected.append({'field':'repeat_date','expected':item['fields']['repeat_date'],'comparison':'iso_calendar_date_no_timezone_conversion','source_bbox':box(row_index,'clean'),'source_bbox_by_variant':{v:box(row_index,v) for v in variants},'row_critical':True,'row_index':row_index,'transaction_row_index':row_index})
             for field,value,row_index in [('repeated_transaction_row',repeated,0),('repeated_transaction_row',repeated,1),('transaction_row',item['rows'][2][1].split()[-1],2),('subtotal',item['rows'][3][1],3)]:
                 entry={'field':field,'expected':value.removesuffix('원'),'source_bbox':box(row_index,'clean'),'source_bbox_by_variant':{v:box(row_index,v) for v in variants},'row_critical':True,'row_index':row_index}
                 entry.update(unit_meta(field)); expected.append(entry)
         gold_case={'case_id':item['case_id'],'family':fam,'seed':seed,'institution':item['institution'],'record_id':item['record_id'],'fields':expected}
-        if args.version=='v2': gold_case.update({'version':'v2','currency_unit_source':'generation_schema'})
+        if args.version in ('v2','v3'): gold_case.update({'version':args.version,'currency_unit_source':'generation_schema'})
         (gold/f"{item['case_id']}.json").write_text(json.dumps(gold_case,ensure_ascii=False,indent=2),encoding='utf-8')
     manifest={'seed':seed,'independent_cases':len(FAMILIES),'pages':pages,'variants_per_case':variants}
     if args.version=='v2': manifest.update({'version':'v2','positive_variants':list(VARIANTS),'safety_variants':['missing_unit'] if 'missing_unit' in variants else [],'money_unit_source':'generation_schema'})
+    if args.version=='v3':
+        policy_hash=hashlib.sha256(json.dumps(V3_POLICY,ensure_ascii=False,sort_keys=True,separators=(',',':')).encode('utf-8')).hexdigest()
+        manifest.update({'version':'v3','positive_variants':list(VARIANTS),'safety_variants':[],'money_unit_source':'generation_schema','v3_policy':V3_POLICY,'v3_policy_sha256':policy_hash})
     (gold/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2),encoding='utf-8')
     print(json.dumps({'version':args.version,'seed':seed,'independent_cases':len(FAMILIES),'pages':len(pages),'request_dir':str(req),'gold_dir':str(gold)},ensure_ascii=False))
 if __name__=='__main__': main()

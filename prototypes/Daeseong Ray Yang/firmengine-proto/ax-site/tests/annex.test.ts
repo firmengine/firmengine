@@ -19,3 +19,25 @@ test("unknown dates, gaps, duplicate IDs/creditors, and bad budget block schedul
 test("context validation caps installments, enforces monthly budget and contiguous dates",()=>{assert.throws(()=>CONTEXT_PATCH_SCHEMA.parse({paymentSchedule:{reviewed:false,expectedInstallments:61,phases:[]}}));assert.throws(()=>CONTEXT_PATCH_SCHEMA.parse({paymentSchedule:{reviewed:false,phases:[{...phases[0],monthlyAvailableWon:"100"}]}}));assert.throws(()=>CONTEXT_PATCH_SCHEMA.parse({paymentSchedule:{reviewed:false,phases:[phases[0],{...phases[1],firstPaymentDate:"2026-04-01"}]}}));});
 test("schedule edits reset review and require a new reason for a changed reviewed schedule",()=>{const context=createCase("synthetic","00000000-0000-4000-8000-000000000002","2026-10-27").context;context.paymentSchedule={reviewed:true,reviewReason:"old review",expectedInstallments:3,phases};const changed={...context.paymentSchedule,phases:[{...phases[0],allocations:[{...phases[0].allocations[0],principalWon:"79"},phases[0].allocations[1]]},phases[1]]};assert.throws(()=>parseContextPatch({paymentSchedule:{...changed,reviewed:true,reviewReason:"old review"}},context));assert.equal(parseContextPatch({paymentSchedule:{...changed,reviewed:true,reviewReason:"new review"}},context).paymentSchedule?.reviewed,true);});
 test("native office package writes seven base documents plus three annex DOCX files",async()=>{const d=fixture();d.documents[0].type="bank_account_and_lease";d.pages[0].documentType="bank_account and lease";d.context.paymentSchedule={reviewed:false,expectedInstallments:3,phases};const files=await writeOfficePackage({data:d,rules:DRAFT_RULESET});const docs=files.filter(f=>f.mime==="application/vnd.openxmlformats-officedocument.wordprocessingml.document");assert.equal(docs.length,10);assert.ok(docs.some(f=>f.kind==="bank_accounts"));assert.ok(docs.some(f=>f.kind==="leases"));assert.ok(docs.some(f=>f.kind==="repayment_schedule"));const bank=docs.find(f=>f.kind==="bank_accounts")!;const xml=strFromU8(unzipSync(bank.bytes)["word/document.xml"]);assert.ok(xml.includes("12**"));assert.ok(xml.includes("계좌번호(원문 마스킹 보존)"));});
+
+
+test("account restrictions and lease premises stay tied to the same source subject",()=>{
+  const d=fixture();
+  const add=(id:string,subjectId:string,key:string,value:string)=>d.facts.push({...d.facts[0],id,logicalId:id,subjectId,key,value});
+  add("attach","source:p1:other:0","bank_account.attachment_status","압류 있음");
+  add("pledge","source:p1:other:0","bank_account.pledge_status","질권 없음");
+  add("lease-address","source:p1:other:2","lease.property_address","합성 목적물 주소 **");
+  add("lessor-address","source:p1:other:2","lease.landlord_address","다른 당사자 주소");
+  add("property-reference","source:p1:other:2","lease.property_reference","합성 목적물 A");
+  const bank=bankAccountsAnnex(d),lease=leasesAnnex(d);
+  assert.equal(bank.rows[0][bank.headers.indexOf("압류 여부(원문)")],"압류 있음");
+  assert.equal(bank.rows[0][bank.headers.indexOf("담보·질권 여부(원문)")],"질권 없음");
+  assert.equal(bank.rows[0][bank.headers.indexOf("압류·담보 상태(통합 원문)")],"[확인 필요]");
+  assert.equal(bank.rows[1][bank.headers.indexOf("압류 여부(원문)")],"[확인 필요]");
+  assert.equal(lease.rows[0][lease.headers.indexOf("임대차 목적물 주소(원문)")],"합성 목적물 주소 **");
+  assert.equal(lease.rows[0][lease.headers.indexOf("목적물 식별정보(원문)")],"합성 목적물 A");
+  d.facts=d.facts.filter(f=>f.id!=="lease-address");
+  assert.equal(leasesAnnex(d).rows[0][lease.headers.indexOf("임대차 목적물 주소(원문)")],"[확인 필요]","a party address never substitutes for the premises");
+  add("conflicting-attach","source:p1:other:0","bank_account.seizure_status","압류 없음");
+  const conflict=bankAccountsAnnex(d);assert.equal(conflict.rows[0][bank.headers.indexOf("압류 여부(원문)")],"[상충·선택 보류]");
+});

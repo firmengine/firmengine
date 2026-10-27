@@ -77,6 +77,7 @@ function assetTypeDetails(data:CaseData,assets:ReturnType<typeof resolveAssetRow
     insurance_owner:["insurance.policy_holder_name","asset.policy_holder_name","asset.owner_name","asset.current_owner_name"],
     insurance_owner_id:["asset.owner_identity_id","asset.owner_id","asset.policy_holder_identity_id","insurance.policy_holder_identity_id"],
     insurance_surrender_value:["insurance.surrender_value","asset.refund_value","asset.gross_value"],
+    insurance_policy_number:["insurance.policy_number","asset.policy_number","insurance.policy_id","asset.policy_id","insurance.contract_number","asset.contract_number"],
   } as const;
   const format=(fact:Fact)=>fact.numeric
     ?`${String(fact.numeric.rawValue??"[값 없음]")} ${fact.numeric.unit||"[단위 미확인]"}`.trim()
@@ -99,8 +100,9 @@ function assetTypeDetails(data:CaseData,assets:ReturnType<typeof resolveAssetRow
     asset.kind==="insurance"?get(asset.id,aliases.insurance_company):"[해당 없음]",
     asset.kind==="insurance"?get(asset.id,aliases.insurance_surrender_value,fact=>/(?:해약|해지|환급금|surrender|cash value)/iu.test(fact.refs.map(ref=>ref.quote).join(" "))):"[해당 없음]",
     refsFor(asset.id),
+    asset.kind==="insurance"?get(asset.id,aliases.insurance_policy_number):"[해당 없음]",
   ]);
-  return {title:"차량·보험 세부 원문 관측 (자산 ID 연결)",headers:["자산 ID","유형","자산명","차종·분류(원문)","시장가액(원문)","명의·소유자명(원문)","소유자 식별자(원문)","담보잔액(원문)","연식(원문)","보험사(원문)","해약환급금(원문)","연결 인용"],rows};
+  return {title:"차량·보험 세부 원문 관측 (자산 ID 연결)",headers:["자산 ID","유형","자산명","차종·분류(원문)","시장가액(원문)","명의·소유자명(원문)","소유자 식별자(원문)","담보잔액(원문)","연식(원문)","보험사(원문)","해약환급금(원문)","연결 인용","보험 증권번호(원문 마스킹 보존)"],rows};
 }
 function textSheet(name: string, rows: (string | null | undefined)[][]): WorkbookSheet {
   return { name, rows: rows.map((row) => row.map((value) => ({ value: readable(value), type: "text" as const }))) };
@@ -213,7 +215,7 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
     textSheet("소득기간 집계", [["집계 ID","소득원","연결 관측 ID","기간 시작","기간 종료","증빙 개월","기간가중 월평균(원)","확인 사항"],...c.incomeGroups.map(g=>[g.id,g.label,g.sourceIds.join("; "),g.selectedPeriod?.start,g.selectedPeriod?.end,String(g.observedMonths),g.monthlyObservedAverageWon,g.reasons.join("; ")])]),
     textSheet("재산청산가치", [["ID", "재산", "평가액(원)", "지분(1/10000)", "담보상환(원)", "담보상환 범위", "비용(원)", "면제(원)", "청산기여(원)", "평가일", "평가근거"], ...resolvedAssets.map((a) => [a.id, a.label, a.grossValue?.amountWon, a.ownershipBps?.toString(), a.securedPayoff?.amountWon, a.securedPayoffScope??"unknown", a.disposalCosts?.amountWon, a.protectedValue?.amountWon, c.assetRows.find((r) => r.id === a.id)?.liquidationWon, a.asOf, a.valuationBasis])]),
     textSheet("산식대조", [["계산 ID", "제목", "산식", "입력", "결과(원)", "상태", "확인 사항"], ...c.traces.map((t) => [t.id, t.title, t.formula, t.inputs.map((i) => i.label + "=" + (i.value ?? "미확인")).join("; "), t.resultWon, t.status, t.reasons.join("; ")])]),
-    textSheet("사실과인정", [["사실 ID", "논리 ID", "버전", "대상", "피처", "원문값", "값", "정규화 원화", "원문 검증", "법적 인정", "문서·페이지", "인용"], ...facts.map((f) => [f.id, f.logicalId, f.version.toString(), f.subjectId, f.key, f.rawValue ?? readable(f.numeric?.rawValue), readable(f.value), f.numeric?.amountWon, f.state, f.recognition, refs(data, [f.id],sourceIndex), f.refs.map((r) => r.quote).join(" / ")])]),
+    textSheet("사실과인정", [["사실 ID", "논리 ID", "버전", "대상", "피처", "원문값", "값", "원문 단위", "정규화 원화", "원문 검증", "법적 인정", "문서·페이지", "인용"], ...facts.map((f) => [f.id, f.logicalId, f.version.toString(), f.subjectId, f.key, f.rawValue ?? readable(f.numeric?.rawValue), readable(f.value), Object.hasOwn(f,"sourceUnit") ? f.sourceUnit : f.numeric?.unit, f.numeric?.amountWon, f.state, f.recognition, refs(data, [f.id],sourceIndex), f.refs.map((r) => r.quote).join(" / ")])]),
     textSheet("보완검토", [["점검 ID", "항목", "구분", "결과", "내용", "다음 조치"], ...assessment.findings.map((f) => [f.id, f.title, f.category, f.outcome, f.detail, f.nextAction])]),
     textSheet("평가범위", [["항목", "내용"], ["결과", assessment.label], ["범위", assessment.scope], ["지표 안내", assessment.quality.note], ["현재 사실", String(facts.length)], ["원문 검증 완료", String(assessment.quality.sourceVerified)], ["인정 검토 완료", String(assessment.quality.legallyAccepted)]]),
   ];

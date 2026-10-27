@@ -1,3 +1,5 @@
+import { isSourceMoney } from "./source-quantity.ts";
+
 /** Canonical, JSON-safe evidence ledger. Money arithmetic never uses floating point. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 export type TriState = "yes" | "no" | "unknown";
@@ -410,16 +412,34 @@ export function touchCase(input: CaseData): CaseData {
 }
 
 /** Source truth and legal recognition are separate, explicit review operations. */
-export function reviewFact(input: CaseData, id: string, review: { state?: FactState; recognition?: Recognition; value?: Json; numeric?: NumericInput; actor: string; reason: string }): CaseData {
+export function reviewFact(input: CaseData, id: string, review: { state?: FactState; recognition?: Recognition; value?: Json; numeric?: NumericInput; sourceUnit?: string | null; actor: string; reason: string }): CaseData {
   if (!review.actor.trim() || !review.reason.trim()) throw new Error("확인자와 검토 사유가 필요합니다.");
   const prior = currentFacts(input).find((f) => f.id === id);
   if (!prior) throw new Error("현재 사실 버전이 아닙니다.");
+  const unitProvided=Object.hasOwn(review,"sourceUnit");
+  if(unitProvided&&review.sourceUnit!==null&&(typeof review.sourceUnit!=="string"||review.sourceUnit.length>64))throw new Error("원문 단위는 64자 이내 문자열 또는 미확인이어야 합니다.");
+  const priorUnit=Object.hasOwn(prior,"sourceUnit")?prior.sourceUnit:prior.numeric?.unit??prior.sourceVerification?.field.unit??null;
+  const sourceUnit=unitProvided?review.sourceUnit?.trim()||null:priorUnit;
+  const value=review.value!==undefined?review.value:prior.value;
+  const valueChanged=JSON.stringify(value)!==JSON.stringify(prior.value);
+  const unitChanged=unitProvided&&(sourceUnit??null)!==(priorUnit??null);
+  let numeric=review.numeric;
+  // A ledger correction must never retain an amount normalized from the old value or scale.
+  // Missing/foreign units stay blocked; the dedicated object editor still owns remapping.
+  if(numeric===undefined&&(valueChanged||unitChanged)&&(prior.numeric||isSourceMoney(prior.key,sourceUnit))){
+    if(value!==null&&typeof value!=="string"&&typeof value!=="number")throw new Error("금액 정정에는 숫자 또는 원문 문자열이 필요합니다.");
+    numeric=sourceUnit?normalizeMoney(value,sourceUnit):{...normalizeMoney(value,"unknown"),normalizationStatus:"review_required"};
+  }
+  if(unitProvided&&numeric&&numeric.unit!==(sourceUnit??"unknown"))throw new Error("정정한 원문 단위와 정규화 단위가 일치하지 않습니다.");
   const data = touchCase(input);
-  const changed = review.value !== undefined && JSON.stringify(review.value) !== JSON.stringify(prior.value) || review.numeric !== undefined && JSON.stringify(review.numeric) !== JSON.stringify(prior.numeric);
+  const changed = valueChanged || unitChanged || numeric !== undefined && JSON.stringify(numeric) !== JSON.stringify(prior.numeric);
   const next: Fact = { ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, reviewer: review.actor, reviewReason: review.reason, createdAt: new Date().toISOString(), state: review.state ?? (changed ? "reported" : prior.state), recognition: review.recognition ?? (changed ? "unreviewed" : prior.recognition) };
   delete next.sourceVerification;
-  if (review.value !== undefined) next.value = review.value;
-  if (review.numeric !== undefined) next.numeric = review.numeric;
+  if (review.value !== undefined) { next.value = value; if(valueChanged) next.rawValue=typeof value==="string"||typeof value==="number"?String(value):undefined; }
+  if (numeric !== undefined) next.numeric = numeric;
+  if (unitProvided) next.sourceUnit=sourceUnit??null;
+  else if(review.numeric)next.sourceUnit=review.numeric.unit;
+  if(numeric&&moneyValue(numeric)===null&&!next.validation.some(v=>v.code==="NORMALIZATION_REVIEW"))next.validation=[...next.validation,{code:"NORMALIZATION_REVIEW",message:"정정한 금액의 원문·통화·단위를 다시 확인하세요.",severity:"warning"}];
   if (next.state === "verified" && (!next.refs.length || next.refs.some((r) => !validSourceRef(data, r)))) throw new Error("유효한 원문 근거 없이 원문 확인을 완료할 수 없습니다.");
   if (next.recognition === "accepted" && next.state !== "verified") throw new Error("원문 확인을 완료한 사실만 인정 검토할 수 있습니다.");
   // Resolve only warnings this reviewer explicitly closed. The prior fact version retains the

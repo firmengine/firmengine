@@ -110,6 +110,31 @@ test("exact historical machine receipts survive trusted reprojection with only f
   }
 });
 
+test("adding exact normalization of the same attested source value and unit preserves the original receipt",()=>{
+  const f=proofFixture(),prior=currentFacts(f.data).find(fact=>fact.key==="income.net")!;
+  const oldProof=structuredClone(prior.sourceVerification!);delete prior.numeric;
+  assert.deepEqual(factSourceLineageIssues(f.data,[prior.id]),[]);
+  const result=reprojectStoredPage(f.data,f.prepare({data:f.data})),next=currentFacts(result.data).find(fact=>fact.key==="income.net")!;
+  assert.equal(next.numeric?.amountWon,"3000000");assert.equal(next.state,"verified");assert.equal(result.newReceiptsCreated,0);
+  assert.notEqual(next.id,prior.id);assert.deepEqual(factSourceLineageIssues(result.data,[next.id]),[]);
+  const {factBinding:oldBinding,...original}=oldProof,{factBinding:newBinding,...retained}=next.sourceVerification!;
+  assert.deepEqual(retained,original);assert.notEqual(newBinding.id,oldBinding.id);
+  // A migration already applied without a proof can recover that same receipt
+  // from valid history; it cannot mint a new timestamp or verification pass.
+  const lost=applyExtraction(f.data,projectPage(read,"doc-1",1,hash));
+  const recovered=reprojectStoredPage(lost,f.prepare({data:lost}));
+  assert.equal(currentFacts(recovered.data).find(fact=>fact.key==="income.net")?.sourceVerification?.verifiedAt,oldProof.verifiedAt);
+});
+
+test("normalization enrichment cannot reuse a changed-scale or invalid numeric receipt",()=>{
+  const changed=proofFixture(),prior=currentFacts(changed.data).find(fact=>fact.key==="income.net")!;delete prior.numeric;
+  const prepared=changed.prepare({data:changed.data});prepared.read.records[0].fields[2].unit="천원";
+  assert.equal(currentFacts(reprojectStoredPage(changed.data,prepared).data).find(fact=>fact.key==="income.net")?.sourceVerification,undefined);
+  const invalid=proofFixture(),bad=currentFacts(invalid.data).find(fact=>fact.key==="income.net")!;bad.numeric!.amountWon="999";
+  const result=reprojectStoredPage(invalid.data,invalid.prepare({data:invalid.data}));
+  assert.equal(currentFacts(result.data).find(fact=>fact.key==="income.net")?.sourceVerification,undefined);
+});
+
 test("a later reprojection can recover a valid historical proof after the current field was already downgraded",()=>{
   const f=proofFixture(),lost=applyExtraction(f.data,projectPage(read,"doc-1",1,hash));
   assert.ok(currentFacts(lost).every(fact=>fact.state==="extracted"&&!fact.sourceVerification));

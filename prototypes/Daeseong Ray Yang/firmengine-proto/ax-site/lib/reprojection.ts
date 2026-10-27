@@ -1,4 +1,4 @@
-import { applyExtraction, currentFacts, factSourceLineageIssues, type CaseData, type ExtractionPayload, type Fact } from "./domain.ts";
+import { applyExtraction, currentFacts, factSourceLineageIssues, moneyValue, normalizeMoney, type CaseData, type ExtractionPayload, type Fact } from "./domain.ts";
 import { projectPage, validatePageRead, type PageRead } from "./extraction.ts";
 import { samplePageRole } from "./sample-manifest.ts";
 import { sourceVerificationFieldLocation, sourceVerificationReceiptMatches, type SourceVerificationReceipt } from "./source-verification.ts";
@@ -7,7 +7,7 @@ export class ReprojectionError extends Error { readonly status = 409; }
 const conflict = (message: string) => new ReprojectionError(message);
 
 /** Bump whenever source-to-fact projection semantics change. This is not a model prompt version. */
-export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.9";
+export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.10";
 
 export interface StoredPageJobForReprojection {
   id: string;
@@ -92,12 +92,23 @@ function sameRefs(a:Fact["refs"],b:NonNullable<ExtractionPayload["facts"]>[numbe
   const refs=(items:typeof a)=>items.map(ref=>[ref.documentId,ref.page,ref.quote,ref.sourceHash??null]).sort((left,right)=>JSON.stringify(left).localeCompare(JSON.stringify(right)));
   return JSON.stringify(refs(a))===JSON.stringify(refs(b as Fact["refs"]));
 }
+function sameOrNewExactNormalization(prior:Fact,raw:NonNullable<ExtractionPayload["facts"]>[number]):boolean{
+  if(JSON.stringify(prior.numeric??null)===JSON.stringify(raw.numeric??null))return true;
+  const numeric=raw.numeric,proof=prior.sourceVerification;
+  // A receipt attests to the read value and source unit. Adding its exact
+  // deterministic won normalization does not require another model reading.
+  // Changing an existing normalization, scale or amount never takes this path.
+  if(prior.numeric||!numeric||!proof||typeof proof.field.unit!=="string"||!proof.field.unit.trim()||typeof raw.sourceUnit!=="string"||normalized(raw.sourceUnit)!==normalized(proof.field.unit)||normalized(numeric.unit)!==normalized(proof.field.unit)||numeric.currency!=="KRW"||moneyValue(numeric)===null)return false;
+  if(raw.value===null||raw.value===undefined||normalized(String(numeric.rawValue))!==normalized(String(raw.value)))return false;
+  return normalizeMoney(proof.field.value,proof.field.unit).amountWon===numeric.amountWon;
+}
 function historicalProofIsCurrent(data:CaseData,prior:Fact,raw:NonNullable<ExtractionPayload["facts"]>[number],prepared:ReturnType<typeof prepareStoredReadReprojection>):boolean{
   const proof=prior.sourceVerification;
   if(!proof||prior.state!=="verified"||prior.recognition!=="unreviewed"||prior.reviewer)return false;
   if(data.facts.some(fact=>fact.logicalId===prior.logicalId&&fact.version>prior.version&&(!!fact.reviewer||fact.state==="reported"||fact.state!=="retracted"&&fact.recognition!=="unreviewed")))return false;
   if(proof.factBinding?.id!==prior.id||proof.factBinding.logicalId!==prior.logicalId||proof.factBinding.version!==prior.version)return false;
-  if(prior.key!==raw.key||JSON.stringify(prior.value)!==JSON.stringify(raw.value)||prior.rawValue!==raw.rawValue||JSON.stringify(prior.numeric??null)!==JSON.stringify(raw.numeric??null)||prior.periodStart!==raw.periodStart||prior.periodEnd!==raw.periodEnd||prior.asOf!==raw.asOf||!raw.refs?.length||!sameRefs(prior.refs,raw.refs))return false;
+  if(prior.key!==raw.key||JSON.stringify(prior.value)!==JSON.stringify(raw.value)||prior.rawValue!==raw.rawValue||!sameOrNewExactNormalization(prior,raw)||prior.periodStart!==raw.periodStart||prior.periodEnd!==raw.periodEnd||prior.asOf!==raw.asOf||!raw.refs?.length||!sameRefs(prior.refs,raw.refs))return false;
+  if(Object.hasOwn(raw,"sourceUnit")&&(raw.sourceUnit===null?proof.field.unit!==null:typeof raw.sourceUnit!=="string"||typeof proof.field.unit!=="string"||normalized(raw.sourceUnit)!==normalized(proof.field.unit)))return false;
   if(proof.source.documentId!==prepared.document.id||proof.source.page!==prepared.page.page||proof.source.sha256!==prepared.document.sha256)return false;
   const receipt=proof as unknown as SourceVerificationReceipt;
   if(!sourceVerificationReceiptMatches(receipt,{documentId:prepared.document.id,page:prepared.page.page,sourceHash:prepared.document.sha256,read:prepared.read}))return false;
@@ -117,7 +128,8 @@ function historicalProofIsCurrent(data:CaseData,prior:Fact,raw:NonNullable<Extra
   return issues.length===0;
 }
 function sameFactProjection(fact:Fact,raw:NonNullable<ExtractionPayload["facts"]>[number]):boolean{
-  return !!raw.logicalId&&fact.logicalId===raw.logicalId&&fact.key===raw.key&&fact.subjectId===raw.subjectId&&JSON.stringify(fact.value)===JSON.stringify(raw.value)&&fact.rawValue===raw.rawValue&&JSON.stringify(fact.numeric??null)===JSON.stringify(raw.numeric??null)&&fact.periodStart===raw.periodStart&&fact.periodEnd===raw.periodEnd&&fact.asOf===raw.asOf&&!!raw.refs?.length&&sameRefs(fact.refs,raw.refs);
+  const sourceUnitMatches=!Object.hasOwn(raw,"sourceUnit")||!Object.hasOwn(fact,"sourceUnit")||(fact.sourceUnit==null&&raw.sourceUnit==null||typeof fact.sourceUnit==="string"&&typeof raw.sourceUnit==="string"&&normalized(fact.sourceUnit)===normalized(raw.sourceUnit));
+  return sourceUnitMatches&&!!raw.logicalId&&fact.logicalId===raw.logicalId&&fact.key===raw.key&&fact.subjectId===raw.subjectId&&JSON.stringify(fact.value)===JSON.stringify(raw.value)&&fact.rawValue===raw.rawValue&&JSON.stringify(fact.numeric??null)===JSON.stringify(raw.numeric??null)&&fact.periodStart===raw.periodStart&&fact.periodEnd===raw.periodEnd&&fact.asOf===raw.asOf&&!!raw.refs?.length&&sameRefs(fact.refs,raw.refs);
 }
 /** Pure projection stage: no model call, no receipt creation, no review-state promotion. */
 export function reprojectStoredPage(data: CaseData, prepared: ReturnType<typeof prepareStoredReadReprojection>) {

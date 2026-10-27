@@ -1,4 +1,6 @@
-# Synthetic OCR v2 unit-consistency corpus
+# Synthetic OCR v2 unit-consistency corpus (legacy version)
+
+V2 generation and scoring remain available unchanged for reproducibility. The generator now defaults to V3; pass `--version v2` and use a fresh `--out-root` to create another V2 trial. The original V2 seed, schema, safety variant, and existing trial outputs are preserved.
 
 The v1 corpus remains unchanged and is useful as a unit-omission safety input. Its monetary rows have no printed currency unit. A typed amount or a positive accuracy match for those rows is invalid; the expected behavior is a raw reading with `unit: null` and a review-blocked page. Do not score v1 as a positive complete-document money extraction benchmark.
 
@@ -14,7 +16,7 @@ python3 scripts/generate-synthetic-ocr.py \
   --font /usr/share/fonts/truetype/nanum/NanumGothic.ttf
 ```
 
-Add `--include-missing-unit` to generate the separate safety variants. Use the same `request-only` directory for uploads and keep the generated `gold` directory local to scoring. The scorer reads the expected unit from the V2 generation schema. It treats `원`, `KRW`, and `₩` as the same currency unit; scaled units such as `천원` remain distinct. It does not assume KRW when the source or expectation has no unit. V2 is the default; use `--version v1` explicitly to reproduce the legacy unitless corpus. Existing request/gold directories must be empty to prevent overwriting a trial's bound source files.
+Add `--include-missing-unit` to generate the separate safety variants. Use the same `request-only` directory for uploads and keep the generated `gold` directory local to scoring. The scorer reads the expected unit from the V2 generation schema. It treats `원`, `KRW`, and `₩` as the same currency unit; scaled units such as `천원` remain distinct. It does not assume KRW when the source or expectation has no unit. Use `--version v1` explicitly to reproduce the legacy unitless corpus. Existing request/gold directories must be empty to prevent overwriting a trial's bound source files.
 
 Offline contract test:
 
