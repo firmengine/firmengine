@@ -25,7 +25,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     records.push(db().prepare("INSERT INTO artifacts (id,case_id,revision,name,kind,object_key,hash,mime,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(f.id,id,data.context.revision,f.name,f.kind,key,f.hash,f.mime,now()));
   }
   await db().batch(records);
-  data.exportManifest=newExportManifest(data.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),data);
+  data.exportManifest=newExportManifest(data.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),data,mode);
   await saveCase(data,data.context.revision,data);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind}))});
   return jsonResponse(await caseResponse(data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}

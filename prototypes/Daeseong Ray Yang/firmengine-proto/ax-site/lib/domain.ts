@@ -221,6 +221,8 @@ export interface ReviewRecord {
 }
 export interface ExportManifest {
   caseRevision: number;
+  /** Legacy manifests without a mode are treated as drafts and cannot be reviewed. */
+  mode?: "draft" | "final";
   requiredKinds: ArtifactKind[];
   files: ExportFile[];
   reviews: { caseworker: ReviewRecord | null; lawyer: ReviewRecord | null };
@@ -610,13 +612,25 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
 }
 
 export function manifestFingerprint(manifest: ExportManifest): string {
-  return JSON.stringify([manifest.caseRevision, [...manifest.requiredKinds].sort(), manifest.files.filter((f) => f.status === "current").map((f) => [f.id, f.kind, f.hash]).sort((a, b) => a[0].localeCompare(b[0]))]);
+  return JSON.stringify([manifest.caseRevision, manifest.mode ?? "draft", [...manifest.requiredKinds].sort(), manifest.files.filter((f) => f.status === "current").map((f) => [f.id, f.kind, f.hash]).sort((a, b) => a[0].localeCompare(b[0]))]);
 }
 export function manifestIssues(data: CaseData): string[] {
   const m = data.exportManifest;
   if (!m || m.caseRevision !== data.context.revision) return ["현재 사건 버전의 생성물이 없습니다."];
   const current = m.files.filter((f) => f.status === "current" && !!f.hash);
   return [...new Set([...requiredKindsForCase(data), ...m.requiredKinds])].filter((kind) => !current.some((f) => f.kind === kind)).map((kind) => `필수 생성물 누락: ${kind}`);
+}
+/** Saved review records remain on the manifest as history; only records bound
+ * to the complete current final manifest are surfaced as current approvals. */
+export function currentExportReviews(data: CaseData): ExportManifest["reviews"] {
+  const manifest = data.exportManifest;
+  const none = { caseworker: null, lawyer: null } as const;
+  if (!manifest || manifest.mode !== "final" || manifest.caseRevision !== data.context.revision || manifestIssues(data).length) return none;
+  const fingerprint = manifestFingerprint(manifest);
+  const isCurrent = (record: ReviewRecord | null | undefined): record is ReviewRecord => !!record && record.caseRevision === data.context.revision && record.manifestFingerprint === fingerprint;
+  const caseworker = isCurrent(manifest.reviews?.caseworker) ? manifest.reviews.caseworker : null;
+  const lawyer = caseworker && isCurrent(manifest.reviews?.lawyer) ? manifest.reviews.lawyer : null;
+  return { caseworker, lawyer };
 }
 export function archiveExport(input: CaseData, id: string): CaseData {
   const data = structuredClone(input);
@@ -632,9 +646,10 @@ export function reviewExport(input: CaseData, role: "caseworker" | "lawyer", act
   if (issues.length) throw new Error(issues.join(" / "));
   const data = structuredClone(input);
   const manifest = data.exportManifest!;
+  if (manifest.mode !== "final") throw new Error("최종 검토본을 생성한 뒤 검수 기록을 남길 수 있습니다.");
   const fingerprint = manifestFingerprint(manifest);
   if (fingerprint !== expectedFingerprint) throw new Error("검토한 생성물 집합이 변경되었습니다.");
-  if (role === "lawyer" && manifest.reviews.caseworker?.manifestFingerprint !== fingerprint) throw new Error("현재 생성물 전체의 담당자 검수가 먼저 필요합니다.");
+  if (role === "lawyer" && currentExportReviews(data).caseworker?.manifestFingerprint !== fingerprint) throw new Error("현재 생성물 전체의 담당자 검수가 먼저 필요합니다.");
   if (role === "caseworker") manifest.reviews.lawyer = null;
   manifest.reviews[role] = { actor, at: new Date().toISOString(), caseRevision: data.context.revision, manifestFingerprint: fingerprint };
   return data;

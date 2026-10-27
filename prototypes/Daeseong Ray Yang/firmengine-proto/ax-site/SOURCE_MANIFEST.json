@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "fae3462d48d769656c838b54ebad87f659bbcae0641e5397e2eb78970b6f3547",
+  "source_digest": "af76baab8a444ac7ec3b7bd9c63cb4ec8a413ec35ab0bb7b167a20b6fb3b2642",
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "9380a16e44ddbe76323bf22754c060367afa3ff27a320327744450e79290fba9",
-      "bytes": 6467,
+      "sha256": "58de0724289bf0f63af7fa232e779f73df150ef880706155187648e5546c19cc",
+      "bytes": 6853,
       "mode": "100644"
     },
     {
@@ -43,8 +43,8 @@
     },
     {
       "path": "app/api/cases/[id]/export/route.ts",
-      "sha256": "f44500f88d7707162b00ffc0ca8d3ee3b9977904e0312b29ab3f0dd2610120ce",
-      "bytes": 3438,
+      "sha256": "214458c6f6c4bedc8404c51e3c390e713cc24eaf10fb69293afcc8ee381a215e",
+      "bytes": 3443,
       "mode": "100644"
     },
     {
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/api/cases/[id]/route.ts",
-      "sha256": "b1e40869120d8f61f86e369e7cdcff7d139d588edade262afb59c50a5095db9b",
-      "bytes": 7241,
+      "sha256": "93cd1fb881b549b8734a213cfbbb5483beaf9b8b1632c9510a2bfa93d3fcf5f5",
+      "bytes": 7414,
       "mode": "100644"
     },
     {
@@ -577,8 +577,8 @@
     },
     {
       "path": "components/workspace.tsx",
-      "sha256": "91135d6d5b98fa431426b1ab58c8740c6a8bdcdc8ebb7e58d06035a40b10a376",
-      "bytes": 102721,
+      "sha256": "d78946a83c0df675c35b710c2f62734a565ab5abc878457b4af472250b07b087",
+      "bytes": 103542,
       "mode": "100644"
     },
     {
@@ -625,8 +625,8 @@
     },
     {
       "path": "docs/audit-p0-recovery.md",
-      "sha256": "29c4f6d7de3c2f563cf3f4014e446674093cbf8bf415affc5317ba1dc85baf65",
-      "bytes": 9608,
+      "sha256": "d678e54f74d0d2effcae760edc8d2520e83bb70324498e45c6e458de42f41d1e",
+      "bytes": 11201,
       "mode": "100644"
     },
     {
@@ -841,8 +841,8 @@
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "0e920af9714d7a9ffc94955ab84a53709b954bc417f8077ac0300702f1343fe1",
-      "bytes": 43913,
+      "sha256": "70d2eaef195cd9ea718cb967b92d750edcd21cb4556310c33a702a2506ef5da4",
+      "bytes": 45157,
       "mode": "100644"
     },
     {
@@ -853,8 +853,8 @@
     },
     {
       "path": "lib/exports.ts",
-      "sha256": "6e0ad72eb4d9cd0371605eb32cc278581d71251d6ce07b81087c5901d987d352",
-      "bytes": 33975,
+      "sha256": "acc862f5a7a96e2062cbe5471f0d4720deba6740b090087ac205ae86c7fd61d3",
+      "bytes": 34211,
       "mode": "100644"
     },
     {
@@ -1297,8 +1297,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "5cad676daab991384124a639689ed13533301aa2d1af6664f93fdcc020426368",
-      "bytes": 23984,
+      "sha256": "d298526eb845e1d835bcfacc20211b6905d0bee326bd91e5958cfe230e5586aa",
+      "bytes": 24370,
       "mode": "100644"
     },
     {
@@ -1501,8 +1501,8 @@
     },
     {
       "path": "tests/domain.test.ts",
-      "sha256": "c93ee48b9b5b609116d7b9ea17c8cf46b64e19cdeec688795caeb0155e0d1056",
-      "bytes": 28012,
+      "sha256": "97f1fd7f2a8c409c34daf5c475e01769acdbe200429441742980f6bde3ef790c",
+      "bytes": 32889,
       "mode": "100644"
     },
     {
@@ -1579,8 +1579,8 @@
     },
     {
       "path": "tests/office.test.ts",
-      "sha256": "b846f4d550b0ac92d5244d80dde1acf0df9732580a68ad64acf49e1bb1699da2",
-      "bytes": 11796,
+      "sha256": "353d7c7d7403fab43f5699942906293d984ad5ac7959d05caa292a6bd76673a5",
+      "bytes": 20513,
       "mode": "100644"
     },
     {
@@ -1663,8 +1663,8 @@
     },
     {
       "path": "tests/server-integrity.test.ts",
-      "sha256": "9bcd03e93fd39d0b258646a66348769bc40a444468f6f23d2ae4e522109e1a1c",
-      "bytes": 22869,
+      "sha256": "795d2c8c5fd9f0b467fa91acea29e58f062442952840ecf1604829e1d0757f26",
+      "bytes": 22882,
       "mode": "100644"
     },
     {

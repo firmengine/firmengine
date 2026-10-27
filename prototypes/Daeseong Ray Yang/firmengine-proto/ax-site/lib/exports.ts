@@ -7,6 +7,7 @@ import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { observedSourceDetails } from "./observed-source-details.ts";
 import { applicantIdentityValue } from "./applicant-identity.ts";
+import { applicantStatementForForm } from "./statement-paragraphs.ts";
 import { PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
 export interface ExportTable { title: string; headers: string[]; rows: string[][] }
@@ -121,13 +122,17 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
   const resolvedDebts = resolveDebtRows(data,sourceIndex).rows;
   const name = data.context.applicant?.name || applicantIdentityValue(data,"name",sourceIndex);
   const applicantAddress = data.context.applicant?.address || applicantIdentityValue(data,"address",sourceIndex);
+  // Only explicit manual context or the strict author/intent/signature/scope
+  // join may populate an applicant-attributed statement field. Raw statement
+  // paragraphs remain available below as source evidence with provenance.
+  const applicantStatement = applicantStatementForForm(data,sourceIndex) || "[신청인 진술로 연결할 원문 확인 필요]";
   const note = "검토용 편집 초안입니다. 누락·상충 항목은 표시한 상태로 보존합니다. 현재 법원 서식·첨부·서명 및 사건별 인정 내용을 담당자와 변호사가 확인해야 합니다.";
   const common = [`사건명: ${data.context.caseName}`, `사건 버전: ${data.context.revision} / 신청 예정일: ${data.context.applicationDate} / 금액 기준일: ${data.context.asOf}`, note];
   const documents: CourtDocument[] = [
     { kind: "application", title: "개인회생절차 개시신청서 초안", filename: "01_application.docx", paragraphs: [...common, "아래 사실과 증빙을 기초로 개인회생절차 개시신청서의 기재 내용을 정리합니다. 신청취지·법적 요건·서명란은 최종 검토 후 확정합니다."], tables: [
       { title: "신청인 및 사건", headers: ["항목", "기재 내용"], rows: [["성명", name], ["주민등록번호", data.context.applicant?.residentIdMasked || "[보안 입력·최종 서식 대조 필요]"], ["주소", applicantAddress], ["관할", data.context.courtId], ["신청 예정일", data.context.applicationDate], ["금액 산정기준일", data.context.asOf]] },
       { title: "재무 현황", headers: ["항목", "금액 또는 상태"], rows: [["채무 원금 합계", formatWon(c.debtPrincipalWon)], ["채무 이자 합계", formatWon(c.debtInterestWon)], ["월평균 순소득", formatWon(c.monthlyIncomeWon)], ["검토 청산가치", formatWon(c.liquidationValueWon)], ["사전점검", assessment.label]] },
-      { title: "채무 경위·신청 사유", headers: ["항목", "내용"], rows: [["진술", data.context.applicant?.statement || factValue(data, ["statement.text", "person.statement", "form.statement", "statement"],sourceIndex)], ["검토 범위", assessment.scope]] },
+      { title: "채무 경위·신청 사유", headers: ["항목", "내용"], rows: [["진술", applicantStatement], ["검토 범위", assessment.scope]] },
     ] },
     { kind: "creditors", title: "개인회생채권자목록 초안", filename: "02_creditors.docx", paragraphs: [...common, "원금과 이자를 별도 열로 유지하며 동일 계약의 중복·상충을 확인합니다. 조세·재단채권·담보부족액·우선권은 법적 분류 검토 후 확정합니다."], tables: [
       { title: "채권별 명세", headers: ["계약 ID", "채권자", "원금", "이자", "합계", "기준일", "분류·담보", "보증·연대·구상 검토", "보증 청구액 / 한도", "원문 근거"], rows: c.debtRows.map((r) => { const d = resolvedDebts.find((debt) => debt.id === r.id)!; const g = d.guaranteeDetails; const guarantee = g ? `${g.liabilityRole} / ${g.claimNature} / 주채무 ${g.underlyingDebtId || "[미연결]"} / 대위 ${g.recourseStatus} / 한도 ${g.capTreatment} (${g.capTreatmentReviewed === true ? "검토" : "검토 전"})` : "[보증·연대 여부 확인 필요]"; const sourceAmounts = g ? `${formatWon(verifiedWon(g.sourceGuaranteeAmount))} / ${formatWon(verifiedWon(g.sourceGuaranteeLimit))} (신청인 채무액과 별도)` : "[확인 필요]"; return [d.contractId || "[계약 식별 필요]", r.creditor, formatWon(r.principalWon), formatWon(r.interestWon), formatWon(r.totalWon), d.asOf || "[확인 필요]", `${kindLabels[d.classification]} / ${d.secured}`, guarantee, sourceAmounts, refs(data, d.factIds,sourceIndex)]; }) },
@@ -147,7 +152,7 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
       { title: "일반채권 배분 검토", headers: ["채권자", "채권 원금", "채권 이자", "원금 배분", "이자 배분", "배분 합계", "상태"], rows: c.allocations.map((a) => [a.creditor, formatWon(a.principalWon), formatWon(a.interestWon), formatWon(a.allocatedPrincipalWon), formatWon(a.allocatedInterestWon), formatWon(a.totalWon), a.status === "reviewed_basis" ? "기준 검토 완료" : "검토 전 가정"]) },
     ] },
     { kind: "statement", title: "진술서 초안", filename: "06_statement.docx", paragraphs: [...common, "현재 진술·증빙에 나타난 내용을 보존합니다. 누락된 경력·주거·채무발생 경위·과거 절차는 신청인의 확인을 받아 보완하며, 확인되지 않은 이야기를 생성하지 않습니다."], tables: [
-      { title: "신청인 진술", headers: ["항목", "내용"], rows: [["성명", name], ["주소", applicantAddress], ["채무 발생 및 신청 경위", data.context.applicant?.statement || factValue(data, ["statement.text", "person.statement", "form.statement", "statement"],sourceIndex)], ["경력", factValue(data, ["statement.career_history", "person.career_history", "career_history"],sourceIndex)], ["현재 주거", factValue(data, ["statement.housing_type", "person.housing_type", "housing_type"],sourceIndex)], ["과거 회생·면책 등 절차", factValue(data, ["statement.prior_proceedings", "case.prior_proceedings", "prior_proceedings"],sourceIndex)]] },
+      { title: "신청인 진술", headers: ["항목", "내용"], rows: [["성명", name], ["주소", applicantAddress], ["채무 발생 및 신청 경위", applicantStatement], ["경력", factValue(data, ["statement.career_history", "person.career_history", "career_history"],sourceIndex)], ["현재 주거", factValue(data, ["statement.housing_type", "person.housing_type", "housing_type"],sourceIndex)], ["과거 회생·면책 등 절차", factValue(data, ["statement.prior_proceedings", "case.prior_proceedings", "prior_proceedings"],sourceIndex)]] },
       { title: "진술 근거 및 원문 대조", headers: ["항목", "원문", "증빙", "원문 확인", "인정 검토"], rows: currentFacts(data,sourceIndex).filter((f) => f.key.startsWith("statement.") || ["person.statement", "form.statement", "statement"].includes(f.key)).map((f) => [f.key, readable(f.value), refs(data, [f.id],sourceIndex), f.state, recognitionLabels[f.recognition]]) },
     ] },
     { kind: "evidence_index", title: "증빙 색인 및 보완·검토 목록", filename: "07_evidence_index.docx", paragraphs: [...common], tables: [
@@ -234,8 +239,8 @@ export function printableHtml(payload: ExportPackage, kind?: ArtifactKind): stri
   return `<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Firm Engine · ${escapeHtml(docs[0]?.title || "검토 초안")}</title><style>@page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;background:#f1f3f1;color:#17251e;font:13px/1.65 system-ui,-apple-system,"Malgun Gothic",sans-serif}.document{max-width:1120px;margin:28px auto;padding:44px;background:white;border:1px solid #d8dfd9;page-break-after:always}.eyebrow{font-size:11px;letter-spacing:.14em;color:#52705d}h1{font-size:26px;line-height:1.3;margin:12px 0 24px}h2{font-size:16px;margin:28px 0 10px}p{margin:8px 0;white-space:pre-wrap}table{border-collapse:collapse;table-layout:fixed;width:100%;font-size:10px}th,td{padding:8px;border:1px solid #d7ddd7;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}th{background:#eef4ee;text-align:left}thead{display:table-header-group}tr{break-inside:avoid}footer{margin-top:32px;border-top:1px solid #d7ddd7;padding-top:10px;color:#607064;font-size:10px}@media print{body{background:white}.document{border:0;margin:0;padding:0;max-width:none}h2{break-after:avoid}h1{font-size:22px}p{font-size:10px}.document:last-child{page-break-after:auto}}@media(max-width:700px){.document{margin:0;padding:20px}table{font-size:9px}th,td{padding:5px}}</style></head><body>${body}</body></html>`;
 }
 
-export function newExportManifest(caseRevision: number, files: ExportManifest["files"], data?:CaseData): ExportManifest {
-  return { caseRevision, requiredKinds: data?requiredKindsForCase(data):["application","creditors","assets","income_expense","repayment_plan","statement","evidence_index","repayment_schedule"], files, reviews: { caseworker: null, lawyer: null } };
+export function newExportManifest(caseRevision: number, files: ExportManifest["files"], data?:CaseData, mode:"draft"|"final"="draft"): ExportManifest {
+  return { caseRevision, mode, requiredKinds: data?requiredKindsForCase(data):["application","creditors","assets","income_expense","repayment_plan","statement","evidence_index","repayment_schedule"], files, reviews: { caseworker: null, lawyer: null } };
 }
 
 export function sourceQuote(fact: Fact): string { return fact.refs.map((ref) => `${ref.documentId} / ${ref.page}쪽: ${ref.quote}`).join("\n"); }

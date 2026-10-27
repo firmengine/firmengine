@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import * as XLSX from "xlsx";
 import { strFromU8, unzipSync } from "fflate";
 import { createCase, DRAFT_RULESET, normalizeMoney } from "../lib/domain.ts";
+import type { CaseData, RuleSet } from "../lib/domain.ts";
 import { buildCourtPackage } from "../lib/exports.ts";
 import { artifactHash, writeOfficePackage } from "../lib/office-writer.ts";
 import type { RenderedOffice } from "../lib/office-writer.ts";
@@ -16,6 +17,28 @@ function sourceCase() {
   data.context.inventoryComplete.debt = "yes";
   data.context.applicant = { name: "<script>합성</script>", statement: "원문 문자 {{template}} 보존" };
   return data;
+}
+
+function finalizableSourceCase(): { data: CaseData; rules: RuleSet } {
+  const rules: RuleSet = { id: "synthetic-reviewed-rules", status: "source_verified", effectiveFrom: "2026-01-01", effectiveTo: "2026-12-31", courtIds: ["seoul"], sources: [{ id: "synthetic", title: "Synthetic test rule", url: "https://example.invalid/synthetic" }], debtCaps: { unsecuredWon: "1000000000", securedWon: "1500000000", comparison: "lte" }, term: { ordinaryMonths: 36, exceptionalMaxMonths: 60 } };
+  const data = createCase("Synthetic finalizable statement case", "synthetic-final-statement", "2026-10-27");
+  data.documents = [{ id: "proof", name: "synthetic-only.pdf", sha256: "b".repeat(64), pages: [1], status: "active" }];
+  data.pages = [{ documentId: "proof", page: 1, role: "evidence", text: "Synthetic evidence only" }];
+  const fact = (id: string, subjectId: string, key: string): string => {
+    data.facts.push({ id, logicalId: id, version: 1, subjectId, key, value: "Synthetic evidence", state: "verified", recognition: "accepted", refs: [{ documentId: "proof", page: 1, quote: "Synthetic evidence" }], validation: [] });
+    return id;
+  };
+  data.incomes = [
+    { id: "wage", kind: "wage", label: "Synthetic wage", net: normalizeMoney("3000000"), amountBasis: "monthly", recurring: "yes", recognition: "accepted", factIds: [fact("f-wage", "wage", "income.wage")] },
+    { id: "business", kind: "business", label: "Synthetic business", gross: normalizeMoney("60000000"), expenses: normalizeMoney("36000000"), amountBasis: "period_total", periodMonths: 12, periodStart: "2025-01-01", periodEnd: "2025-12-31", recurring: "yes", recognition: "accepted", factIds: [fact("f-business", "business", "income.business")] },
+    { id: "rent", kind: "rent", label: "Synthetic rent", net: normalizeMoney("500000"), amountBasis: "monthly", recurring: "yes", recognition: "accepted", factIds: [fact("f-rent", "rent", "income.rent")] },
+  ];
+  for (const income of data.incomes.filter(source => source.id !== "business")) { income.periodStart = "2025-01-01"; income.periodEnd = "2025-12-31"; income.periodMonths = 12; }
+  data.debts = [{ id: "loan", contractId: "contract-001", creditor: "Synthetic creditor", principal: normalizeMoney("100000000"), interest: normalizeMoney("1000000"), secured: "no", classification: "ordinary", priority: "ordinary", legalReview: "accepted", asOf: "2026-10-27", factIds: [fact("f-loan", "loan", "debt.contract-001")] }];
+  data.assets = [{ id: "deposit", kind: "deposit", label: "Synthetic deposit", grossValue: normalizeMoney("1000000"), securedPayoff: normalizeMoney("0"), disposalCosts: normalizeMoney("0"), protectedValue: normalizeMoney("0"), ownershipBps: 10000, asOf: "2026-10-27", valuationBasis: "Synthetic basis", recognition: "accepted", factIds: [fact("f-asset", "deposit", "asset.deposit")] }];
+  data.household = { reportedMembers: 1, recognizedMembers: 1, recognizedLivingCost: normalizeMoney("1500000"), livingCostIncludesAdditional: true, recognition: "accepted", factIds: [fact("f-household", "person", "living.recognized")] };
+  Object.assign(data.context, { ruleReleaseId: rules.id, ruleApplicationReviewed: true, inventoryComplete: { income: "yes", debt: "yes", asset: "yes" }, filingPeriod: { start: "2025-01-01", end: "2025-12-31" }, incomePeriodReviewed: true, monthlyTrusteeFee: normalizeMoney("0"), monthlyPriorityPayment: normalizeMoney("0"), monthlyEstatePayment: normalizeMoney("0"), planMonths: 36, approvedMonthlyPayment: normalizeMoney("2500000"), approvedPresentValue: normalizeMoney("85000000"), presentValueBasis: "Synthetic reviewed basis", presentValueReviewed: true, assetValuationBasisReviewed: true, allocationBasis: "principal_then_interest_pro_rata", allocationBasisReviewed: true, eligibility: { naturalPerson: "yes", insolventOrRisk: "yes", priorProceedingsReviewed: "yes" }, applicant: { name: "Synthetic applicant" } });
+  return { data, rules };
 }
 
 test("실제 DOCX·XLSX·ZIP·rendered JSON의 원금/이자와 이스케이프가 일치한다", async () => {
@@ -60,6 +83,52 @@ test("과거·변조된 중립 payload로 실제출력을 바꾸거나 미확정
   const result = await writeOfficePackage({ data, rules: DRAFT_RULESET, payload });
   const rendered = JSON.parse(strFromU8(result.find((f) => f.kind === "rendered_json")!.bytes)) as RenderedOffice;
   assert.equal(rendered.fields.find((f) => f.featureKey === "debts[].principal")?.value, "100,000,000원");
+});
+
+test("unlinked source paragraphs remain in neutral evidence, never applicant-attributed rows",async()=>{
+  const data=sourceCase(),paragraph="Synthetic source narrative without linked authorship.";
+  delete data.context.applicant!.statement;
+  data.pages[0].text+=`\n${paragraph}`;
+  data.facts.push({id:"statement-paragraph",logicalId:"statement-paragraph",version:1,subjectId:"statement-record",key:"statement.text",value:paragraph,state:"verified",recognition:"unreviewed",refs:[{documentId:"proof",page:1,quote:paragraph}],validation:[]});
+  const payload=buildCourtPackage(data,DRAFT_RULESET);
+  const application=payload.documents.find(item=>item.kind==="application")!,statement=payload.documents.find(item=>item.kind==="statement")!;
+  const applicationNarrative=application.tables.find(table=>table.title==="채무 경위·신청 사유")!.rows[0][1];
+  const applicantNarrative=statement.tables.find(table=>table.title==="신청인 진술")!.rows.find(row=>row[0]==="채무 발생 및 신청 경위")![1];
+  assert.equal(applicationNarrative,"[신청인 진술로 연결할 원문 확인 필요]");
+  assert.equal(applicantNarrative,"[신청인 진술로 연결할 원문 확인 필요]");
+  const neutral=statement.tables.find(table=>table.title==="진술 근거 및 원문 대조")!;
+  assert.ok(neutral.rows.some(row=>row[0]==="statement.text"&&row[1]===paragraph&&row[2].includes("synthetic-only.pdf 1쪽")),"raw statement facts remain present with neutral key and source citation");
+  const files=await writeOfficePackage({data,rules:DRAFT_RULESET,mode:"draft"});
+  const applicationDocx=strFromU8(unzipSync(files.find(file=>file.kind==="application")!.bytes)["word/document.xml"]);
+  const statementDocx=strFromU8(unzipSync(files.find(file=>file.kind==="statement")!.bytes)["word/document.xml"]);
+  assert.ok(applicationDocx.includes("신청인 진술로 연결할 원문 확인 필요"));
+  assert.ok(statementDocx.includes("신청인 진술로 연결할 원문 확인 필요"));
+  assert.ok(statementDocx.includes(paragraph));
+});
+
+test("explicit manual statement remains available to applicant fields",()=>{
+  const manual=sourceCase(),manualPayload=buildCourtPackage(manual,DRAFT_RULESET);
+  assert.equal(manualPayload.documents.find(item=>item.kind==="application")!.tables.find(table=>table.title==="채무 경위·신청 사유")!.rows[0][1],"원문 문자 {{template}} 보존");
+  assert.equal(manualPayload.documents.find(item=>item.kind==="statement")!.tables.find(table=>table.title==="신청인 진술")!.rows.find(row=>row[0]==="채무 발생 및 신청 경위")![1],"원문 문자 {{template}} 보존");
+});
+
+test("final-mode Office export keeps unlinked verified statement text neutral",async()=>{
+  const {data,rules}=finalizableSourceCase(),paragraph="Synthetic source narrative without applicant linkage.";
+  data.pages[0].text+=`\n${paragraph}`;
+  data.facts.push({id:"statement-paragraph",logicalId:"statement-paragraph",version:1,subjectId:"statement-record",key:"statement.text",value:paragraph,state:"verified",recognition:"unreviewed",refs:[{documentId:"proof",page:1,quote:paragraph}],validation:[]});
+  const { assessCase } = await import("../lib/assessment.ts");
+  assert.equal(assessCase(data,rules).generationGate.canFinalize,true,"synthetic financial/legal inputs are complete; statement authorship remains unlinked");
+  const files=await writeOfficePackage({data,rules,mode:"final"}),rendered=JSON.parse(strFromU8(files.find(file=>file.kind==="rendered_json")!.bytes)) as RenderedOffice;
+  const application=rendered.documents.find(item=>item.kind==="application")!,statement=rendered.documents.find(item=>item.kind==="statement")!;
+  assert.ok(application.tables.some(table=>table.rows.some(row=>row[0]==="진술"&&row[1]==="[신청인 진술로 연결할 원문 확인 필요]")));
+  assert.ok(statement.tables.some(table=>table.rows.some(row=>row[0]==="채무 발생 및 신청 경위"&&row[1]==="[신청인 진술로 연결할 원문 확인 필요]")));
+  assert.ok(statement.tables.some(table=>table.rows.some(row=>row[0]==="statement.text"&&row[1]===paragraph&&row[2].includes("synthetic-only.pdf 1쪽"))));
+  const applicationDocx=strFromU8(unzipSync(files.find(file=>file.kind==="application")!.bytes)["word/document.xml"]);
+  const statementDocx=strFromU8(unzipSync(files.find(file=>file.kind==="statement")!.bytes)["word/document.xml"]);
+  assert.ok(applicationDocx.includes("신청인 진술로 연결할 원문 확인 필요"));
+  assert.ok(statementDocx.includes("신청인 진술로 연결할 원문 확인 필요"));
+  assert.ok(statementDocx.includes(paragraph),"the source paragraph remains in actual DOCX neutral provenance table");
+  assert.equal(rendered.mode,"final");
 });
 
 test("공개 서식의 독립 진술서·반복 채권행·서명 공란과 출처를 유지한다", async () => {

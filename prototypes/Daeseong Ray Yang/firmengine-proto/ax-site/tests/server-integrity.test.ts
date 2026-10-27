@@ -26,7 +26,7 @@ type Route={PUT(request:Request,context:{params:Promise<{id:string;doc:string}>}
 type CaseRoute={PATCH(request:Request,context:{params:Promise<{id:string}>}):Promise<Response>};
 const digest=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex");
 const requiredKinds=[...domain.REQUIRED_ARTIFACT_KINDS,"repayment_schedule"] as domain.ArtifactKind[];
-const manifest=(revision:number,tag:string):ExportManifest=>({caseRevision:revision,requiredKinds,files:requiredKinds.map(kind=>({id:`${tag}-${kind}`,kind,name:`${kind}.docx`,hash:`synthetic-${tag}-${kind}`,status:"current"})),reviews:{caseworker:null,lawyer:null}});
+const manifest=(revision:number,tag:string):ExportManifest=>({caseRevision:revision,mode:"final",requiredKinds,files:requiredKinds.map(kind=>({id:`${tag}-${kind}`,kind,name:`${kind}.docx`,hash:`synthetic-${tag}-${kind}`,status:"current"})),reviews:{caseworker:null,lawyer:null}});
 
 function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue[])=>void){
   const sqlite=new DatabaseSync(":memory:");

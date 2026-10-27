@@ -42,6 +42,7 @@ export async function PATCH(request:Request,{params}:Context){try{
     if(p.role!=="evidence")for(const f of currentFacts(next).filter(f=>f.refs.some(r=>r.documentId===p.documentId&&r.page===p.page)))next.facts.push({...f,id:crypto.randomUUID(),version:f.version+1,supersedes:f.id,state:"retracted",recognition:"rejected"});
     jobMutations.push(db().prepare("UPDATE page_jobs SET role = ?,status = CASE WHEN ? = 'evidence' AND image_key IS NOT NULL THEN 'pending' WHEN ? = 'evidence' THEN 'awaiting_upload' ELSE 'held' END,error = NULL,lease_until = NULL WHERE document_id = ? AND page = ? AND case_id = ?").bind(p.role,p.role,p.role,p.documentId,p.page,id));
   }else if(body.action==="review_export"){
+    if(previous.exportManifest?.mode!=="final")throw new HttpError(409,"검수 기록을 남기려면 현재 사건 버전의 최종 검토본을 먼저 생성하세요.");
     if(!(await getProcessingReadiness(previous)).complete)throw new HttpError(409,"증빙의 업로드·추출·독립 대조를 먼저 완료하세요.");
     const assessment=assessCase(previous,CURRENT_RULESET);
     if(!assessment.generationGate.canFinalize)throw new HttpError(409,"필수 검토와 계산을 먼저 마쳐야 제출본을 확정할 수 있습니다.");

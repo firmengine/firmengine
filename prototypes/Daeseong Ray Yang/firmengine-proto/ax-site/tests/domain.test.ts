@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AI_MODEL, applyExtraction, archiveExport, createCase, currentFacts, extractionCacheKey, manifestFingerprint, manifestIssues, moneyValue, normalizeMoney, REQUIRED_ARTIFACT_KINDS, retractDocument, reviewExport, reviewFact } from "../lib/domain.ts";
+import { AI_MODEL, applyExtraction, archiveExport, createCase, currentExportReviews, currentFacts, extractionCacheKey, manifestFingerprint, manifestIssues, moneyValue, normalizeMoney, REQUIRED_ARTIFACT_KINDS, retractDocument, reviewExport, reviewFact } from "../lib/domain.ts";
 import type { ArtifactKind, CaseData, Fact, RuleSet } from "../lib/domain.ts";
 import { allocateProRata, assessCase, calculateCase, calculateDisposal } from "../lib/assessment.ts";
 import { buildCourtPackage, newExportManifest, printableHtml } from "../lib/exports.ts";
@@ -196,7 +196,7 @@ test("검증된 채무한도 이하 경계는 통과하고 초과는 사전요�
 test("필수 생성물 하나를 보관하면 전체 최종 검수가 다시 차단된다", () => {
   const data = fixture();
   const kinds:ArtifactKind[]=[...REQUIRED_ARTIFACT_KINDS,"repayment_schedule"];
-  data.exportManifest = newExportManifest(data.context.revision, kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" })),data);
+  data.exportManifest = newExportManifest(data.context.revision, kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" })),data,"final");
   assert.deepEqual(manifestIssues(data), []);
   const staff = reviewExport(data, "caseworker", "합성 담당자", manifestFingerprint(data.exportManifest));
   const final = reviewExport(staff, "lawyer", "합성 변호사", manifestFingerprint(staff.exportManifest!));
@@ -205,6 +205,69 @@ test("필수 생성물 하나를 보관하면 전체 최종 검수가 다시 차
   assert.equal(archived.exportManifest?.reviews.caseworker, null);
   assert.equal(archived.exportManifest?.reviews.lawyer, null);
   assert.throws(() => reviewExport(archived, "caseworker", "합성 담당자", manifestFingerprint(archived.exportManifest!)), /필수 생성물 누락/);
+});
+
+test("draft and legacy manifests cannot be reviewed; final mode is fingerprinted and starts a fresh review cycle", () => {
+  const data = fixture();
+  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
+  const files = kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" as const }));
+  const draft = newExportManifest(data.context.revision, files, data, "draft");
+  assert.throws(() => reviewExport({ ...data, exportManifest: draft }, "caseworker", "합성 담당자", manifestFingerprint(draft)), /최종 검토본/);
+  assert.throws(() => reviewExport({ ...data, exportManifest: draft }, "lawyer", "합성 변호사", manifestFingerprint(draft)), /최종 검토본/);
+  const legacy = { ...draft };
+  delete (legacy as Partial<typeof legacy>).mode;
+  assert.throws(() => reviewExport({ ...data, exportManifest: legacy }, "caseworker", "합성 담당자", manifestFingerprint(legacy)), /최종 검토본/);
+  const final = newExportManifest(data.context.revision, files, data, "final");
+  assert.notEqual(manifestFingerprint(draft), manifestFingerprint(final));
+  assert.throws(() => reviewExport({ ...data, exportManifest: final }, "caseworker", "합성 담당자", manifestFingerprint(draft)), /생성물 집합이 변경/);
+  const staff = reviewExport({ ...data, exportManifest: final }, "caseworker", "합성 담당자", manifestFingerprint(final));
+  const lawyer = reviewExport(staff, "lawyer", "합성 변호사", manifestFingerprint(staff.exportManifest!));
+  assert.ok(lawyer.exportManifest?.reviews.lawyer);
+  const regenerated = newExportManifest(data.context.revision, files.map(file => ({ ...file, id: `new-${file.id}` })), data, "final");
+  assert.notEqual(manifestFingerprint(regenerated), manifestFingerprint(lawyer.exportManifest!));
+  assert.equal(regenerated.reviews.caseworker, null);
+  assert.equal(regenerated.reviews.lawyer, null);
+});
+
+test("current review view hides stale records without deleting history and requires current caseworker before lawyer", () => {
+  const data = fixture();
+  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
+  const files = kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" as const }));
+  const manifest = newExportManifest(data.context.revision, files, data, "final");
+  const staff = reviewExport({ ...data, exportManifest: manifest }, "caseworker", "합성 담당자", manifestFingerprint(manifest));
+  const lawyer = reviewExport(staff, "lawyer", "합성 변호사", manifestFingerprint(staff.exportManifest!));
+  assert.ok(currentExportReviews(lawyer).caseworker);
+  assert.ok(currentExportReviews(lawyer).lawyer);
+
+  const staleStaffRevision = structuredClone(staff);
+  staleStaffRevision.exportManifest!.reviews.caseworker!.caseRevision -= 1;
+  assert.equal(staleStaffRevision.exportManifest!.reviews.caseworker!.manifestFingerprint, manifestFingerprint(staleStaffRevision.exportManifest!));
+  assert.throws(() => reviewExport(staleStaffRevision, "lawyer", "합성 변호사", manifestFingerprint(staleStaffRevision.exportManifest!)), /담당자 검수/);
+  assert.equal(staleStaffRevision.exportManifest!.reviews.caseworker!.caseRevision, data.context.revision - 1, "failed lawyer review leaves the saved historical record intact");
+
+  const legacyManifest = { ...lawyer.exportManifest! };
+  delete (legacyManifest as Partial<typeof legacyManifest>).mode;
+  const legacy = { ...lawyer, exportManifest: legacyManifest };
+  assert.equal(currentExportReviews(legacy).caseworker, null);
+  assert.equal(currentExportReviews(legacy).lawyer, null);
+  assert.ok(legacy.exportManifest?.reviews.lawyer, "saved legacy review history is preserved");
+
+  const staleRevision = structuredClone(lawyer);
+  staleRevision.exportManifest!.reviews.caseworker!.caseRevision -= 1;
+  assert.equal(currentExportReviews(staleRevision).caseworker, null);
+  assert.equal(currentExportReviews(staleRevision).lawyer, null, "lawyer view depends on a current caseworker record");
+
+  const staleFingerprint = structuredClone(lawyer);
+  staleFingerprint.exportManifest!.files[0].hash = "changed-content-hash";
+  assert.equal(currentExportReviews(staleFingerprint).caseworker, null);
+  assert.equal(currentExportReviews(staleFingerprint).lawyer, null);
+  assert.ok(staleFingerprint.exportManifest?.reviews.caseworker, "stale fingerprints do not erase saved review history");
+
+  const incomplete = structuredClone(lawyer);
+  incomplete.exportManifest!.files[0].status = "archived";
+  assert.equal(currentExportReviews(incomplete).caseworker, null);
+  assert.equal(currentExportReviews(incomplete).lawyer, null);
+  assert.ok(incomplete.exportManifest?.reviews.lawyer, "incomplete manifests do not erase saved review history");
 });
 
 test("내보내기는 원금·이자·근거를 유지하고 HTML·스프레드시트 수식을 실행하지 않는다", () => {
