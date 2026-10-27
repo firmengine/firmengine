@@ -9,6 +9,7 @@ import { writeOfficePackage } from "../lib/office-writer.ts";
 import { applicantStatementForForm,sourceStatementText } from "../lib/statement-paragraphs.ts";
 import { EXTRACT_INSTRUCTIONS,PROMPT_VERSION,projectPage,sourceInstructions,STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS,type PageRead } from "../lib/extraction.ts";
 import { createSourceVerificationReceipts } from "../lib/source-verification.ts";
+import type { StatementScopeRelation } from "../lib/statement-scope-relation.ts";
 
 function fixture(){
   const data=createCase("Synthetic","synthetic","2026-10-27"),hash="a".repeat(64);
@@ -59,9 +60,9 @@ function relationFixture(){
     verifiedStatementFact({id:"typed-p2",subjectId:paragraphSubject(3),key:"statement.text",value:quotes.p2,quote:quotes.p2,bbox:[.1,.3,.9,.35],documentId:"typed-statement",hash}),
     verifiedStatementFact({id:"typed-p3",subjectId:paragraphSubject(4),key:"statement.text",value:quotes.p3,quote:quotes.p3,bbox:[.1,.5,.9,.55],documentId:"typed-statement",hash}),
   );
-  const setRelation=(relation:{version:1;openingQuote:string;closingQuote:string;signatureQuote:string;members:{quote:string}[]},options:{quote?:string;hash?:string;state?:Fact["state"]}={})=>{
+  const setRelation=(relation:StatementScopeRelation,options:{quote?:string;hash?:string;state?:Fact["state"];bbox?:[number,number,number,number]}={})=>{
     const prior=data.facts.findIndex(fact=>fact.id==="typed-relation");if(prior>=0)data.facts.splice(prior,1);
-    const value=JSON.stringify(relation),quote=options.quote??relation.openingQuote,relationFact=verifiedStatementFact({id:"typed-relation",subjectId:anchorSubject,key:"statement.scope_relation",value,quote,bbox:[.1,.1,.55,.14],documentId:"typed-statement",hash:options.hash??hash});
+    const value=JSON.stringify(relation),quote=options.quote??relation.openingQuote,relationFact=verifiedStatementFact({id:"typed-relation",subjectId:anchorSubject,key:"statement.scope_relation",value,quote,bbox:options.bbox??[.1,.1,.55,.14],documentId:"typed-statement",hash:options.hash??hash});
     if(options.state)relationFact.state=options.state;
     data.facts.push(relationFact);
   };
@@ -102,6 +103,41 @@ test("a meaning-verified typed scope relation maps all cited paragraphs into the
   for(const paragraph of [quotes.p1,quotes.p2,quotes.p3])assert.ok(officialBody.includes(paragraph),`official body omitted ${paragraph}`);
 });
 
+test("legacy v1 relation accepts independently verified overlapping opening boxes",()=>{
+  const {data,quotes,relation,setRelation}=relationFixture();
+  setRelation(relation,{bbox:[.11,.11,.56,.15]});
+  assert.equal(sourceStatementText(data),[quotes.p1,quotes.p2,quotes.p3].join("\n\n"));
+});
+
+test("v2 relation binds split anchor records and every paragraph into the official D5105 body",async()=>{
+  const {data,quotes,relation,setRelation,anchorSubject}=relationFixture();
+  data.facts.find(fact=>fact.key==="statement.applicant_intent")!.subjectId="typed-statement:p1:intent-anchor";
+  data.facts.find(fact=>fact.key==="statement.author_signature")!.subjectId="typed-statement:p1:signature-anchor";
+  const relationV2={...relation,version:2 as const,intentQuote:quotes.intent};setRelation(relationV2,{bbox:[.11,.11,.56,.15]});
+  const expected=[quotes.p1,quotes.p2,quotes.p3].join("\n\n");
+  assert.equal(sourceStatementText(data),expected);
+  const files=await writeOfficePackage({data,rules:DRAFT_RULESET,mode:"draft"}),statementFile=files.find(file=>file.kind==="statement");assert.ok(statementFile);
+  const xml=strFromU8(unzipSync(statementFile.bytes)["word/document.xml"]),appendix=xml.indexOf("계산 및 원문 근거 검토 부록");
+  assert.ok(appendix>0);assert.ok(xml.slice(0,appendix).includes(expected.replaceAll("\n\n",""))||[quotes.p1,quotes.p2,quotes.p3].every(quote=>xml.slice(0,appendix).includes(quote)),"all relation members belong in the official body before the appendix");
+  assert.equal(data.facts.find(fact=>fact.key==="statement.scope_relation")!.subjectId,anchorSubject);
+});
+
+test("v2 relation blocks wrong intent, unverified printed-signature placeholder, and stale source links",()=>{
+  const wrongIntent=relationFixture();
+  const splitRelation={...wrongIntent.relation,version:2 as const,intentQuote:"A different intent sentence."};
+  wrongIntent.data.facts.find(fact=>fact.key==="statement.applicant_intent")!.subjectId="intent-on-other-record";
+  wrongIntent.setRelation(splitRelation);
+  assert.equal(sourceStatementText(wrongIntent.data),undefined,"relation cannot bind a different intent quote");
+  const placeholder=relationFixture();
+  placeholder.data.facts.find(fact=>fact.key==="statement.author_signature")!.state="extracted";
+  placeholder.setRelation({...placeholder.relation,version:2 as const,intentQuote:placeholder.quotes.intent});
+  assert.equal(sourceStatementText(placeholder.data),undefined,"printed signature wording without an independently verified signature anchor cannot authorize drafting");
+  const stale=relationFixture();
+  stale.data.documents[0].sha256="b".repeat(64);
+  stale.setRelation({...stale.relation,version:2 as const,intentQuote:stale.quotes.intent});
+  assert.equal(sourceStatementText(stale.data),undefined,"all relation anchors must bind the active current source hash");
+});
+
 test("typed statement relation fails closed on missing, ambiguous, stale, withdrawn, or unverified links",()=>{
   const missing=relationFixture();missing.setRelation({...missing.relation,members:missing.relation.members.slice(0,2)});
   assert.equal(sourceStatementText(missing.data),undefined,"every current paragraph must be present exactly once");
@@ -137,6 +173,19 @@ test("typed relation JSON parser rejects malformed and extended contracts",async
   assert.equal(parseStatementScopeRelation(JSON.stringify({version:2,openingQuote:"a",closingQuote:"b",signatureQuote:"c",members:[{quote:"d"}]})),null);
   assert.equal(parseStatementScopeRelation(JSON.stringify({version:1,openingQuote:"a",closingQuote:"b",signatureQuote:"c",members:[{quote:"d"},{quote:"d"}]})),null);
   assert.equal(parseStatementScopeRelation(JSON.stringify({version:1,openingQuote:"a",closingQuote:"b",signatureQuote:"c",members:[{quote:"d",recordIndex:0}]})),null);
+  assert.equal(parseStatementScopeRelation(JSON.stringify({version:2,openingQuote:"a",intentQuote:"b",closingQuote:"c",signatureQuote:"d",members:[{quote:"e"}]}))?.version,2);
+  assert.equal(parseStatementScopeRelation(JSON.stringify({version:2,openingQuote:"a",intentQuote:"",closingQuote:"c",signatureQuote:"d",members:[{quote:"e"}]})),null);
+});
+
+test("scope relation extraction metadata binds the opening source quote and bbox",()=>{
+  const opening="Applicant author declaration.",relation={version:2,openingQuote:opening,intentQuote:"I request the stated relief.",closingQuote:"The above is true.",signatureQuote:"Applicant signed here.",members:[{quote:"Applicant author declaration. I request the stated relief."},{quote:"The above is true."}]};
+  const bbox:[number,number,number,number]=[.12,.18,.76,.22],read:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"authorship relation",fields:[{key:"scope_relation",label:"scope relation",value:JSON.stringify(relation),unit:null,quote:opening,bbox,confidence:"clear"}]}]};
+  const projected=projectPage(read,"source-doc",1,"d".repeat(64)),fact=projected.facts?.find(item=>item.key==="statement.scope_relation");
+  assert.ok(fact&&fact.refs,"typed relation is carried into the source fact ledger");
+  assert.equal(fact.refs[0].quote,opening);assert.deepEqual(fact.refs[0].bbox,bbox);assert.equal(fact.refs[0].sourceHash,"d".repeat(64));
+  assert.equal(PROMPT_VERSION,"luna-evidence-3.15.0");
+  assert.ok(sourceInstructions("client_statement").includes("relation 필드의 별도 quote는 openingQuote와 같게"));
+  assert.ok(STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS.includes("원문에 인쇄된 문자열이 아니라"));
 });
 
 test("other document families on the same uploaded PDF do not suppress a scoped statement draft",()=>{

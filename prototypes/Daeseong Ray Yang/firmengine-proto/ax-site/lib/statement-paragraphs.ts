@@ -1,7 +1,7 @@
 import { createCaseReadIndex, currentFacts, factSourceLineageIssues, validSourceRef } from "./domain.ts";
 import type { CaseData, CaseReadIndex, Fact } from "./domain.ts";
 import { documentFamily } from "./document-routing.ts";
-import { parseStatementScopeRelation,sameSourceQuote,sourceQuoteOccurrenceCount } from "./statement-scope-relation.ts";
+import { parseStatementScopeRelation,sameSourceQuote,sourceQuoteContained,sourceQuoteOccurrenceCount } from "./statement-scope-relation.ts";
 
 const statementSource=(data:CaseData,fact:Fact,index:CaseReadIndex)=>{
   if(fact.key!=="statement.text"||fact.refs.length!==1)return null;
@@ -65,24 +65,34 @@ export function sourceStatementText(data:CaseData,index:CaseReadIndex=createCase
   // choose the remaining applicant-looking anchors.
   if(roles.length!==1||intents.length!==1||signatures.length!==1||anchors.some(fact=>!sourceBacked(data,fact,index)||!meaningVerified(data,fact,index)))return undefined;
   const role=roles[0],intent=intents[0],signature=signatures[0];
-  // These source-semantic proofs are not a legal identity decision. Require the
-  // three independently verified anchors to belong to one statement record.
-  if(scopedValue(role)!=="applicant"||!scopedValue(intent)||!scopedValue(signature)||new Set([statementRecord(role),statementRecord(intent),statementRecord(signature)]).size!==1)return undefined;
+  if(scopedValue(role)!=="applicant"||!scopedValue(intent)||!scopedValue(signature))return undefined;
   const anchorSubject=statementRecord(role);
   const scopeFacts=sourceScopedFacts.filter(fact=>fact.key==="statement.author_scope");
   const relationFacts=sourceScopedFacts.filter(fact=>fact.key==="statement.scope_relation");
+  if(relationFacts.length>1)return undefined;
+  const relationFact=relationFacts[0];
+  const relation=relationFact?parseStatementScopeRelation(relationFact.value):null;
+  // Legacy v1 has no explicit intent quote and remains bound to one record.
+  // Cross-record anchors are allowed only through the stricter v2 relation.
+  if((!relation||relation.version===1)&&new Set([statementRecord(role),statementRecord(intent),statementRecord(signature)]).size!==1)return undefined;
+  if(relationFact&&(!relation||!sourceBacked(data,relationFact,index)||!meaningVerified(data,relationFact,index)))return undefined;
   if(scopeFacts.some(fact=>!sourceBacked(data,fact,index)||!meaningVerified(data,fact,index)))return undefined;
-  if(relationFacts.length>0&&(relationFacts.length!==1||!sourceBacked(data,relationFacts[0],index)||!meaningVerified(data,relationFacts[0],index)))return undefined;
-  if(!scopeFacts.length&&!relationFacts.length)return undefined;
+  if(!scopeFacts.length&&!relationFact)return undefined;
   const scopesByRecord=new Map<string,Fact[]>();
   for(const fact of scopeFacts)scopesByRecord.set(statementRecord(fact),[...(scopesByRecord.get(statementRecord(fact))??[]),fact]);
   const paragraphRecords=[...new Set(sourceFacts.map(({fact})=>statementRecord(fact)))];
-  const scopeSubjects=new Set([...paragraphRecords,anchorSubject]);
+  const relationV2=relation?.version===2;
+  const scopeSubjects=new Set([...paragraphRecords,anchorSubject,...(relationV2?[statementRecord(intent),statementRecord(signature)]:[])]);
   if(scopeFacts.length){
     if([...scopesByRecord.keys()].some(subjectId=>!scopeSubjects.has(subjectId)))return undefined;
     const scopeFor=(subjectId:string):string=>{const values=scopesByRecord.get(subjectId)??[];return values.length===1?scopedValue(values[0]):"";};
-    const anchorScope=scopeFor(anchorSubject),scopeValues=paragraphRecords.map(scopeFor);
-    if(!anchorScope||scopeValues.some(value=>!value)||scopeValues.some(value=>value!==anchorScope))return undefined;
+    if(relationV2){
+      const scopeRecordSubjects=[...scopeSubjects],scopeValues=scopeRecordSubjects.map(scopeFor);
+      if(scopeValues.some(value=>!value)||scopeValues.some(value=>value!==scopeValues[0]))return undefined;
+    }else{
+      const anchorScope=scopeFor(anchorSubject),scopeValues=paragraphRecords.map(scopeFor);
+      if(!anchorScope||scopeValues.some(value=>!value)||scopeValues.some(value=>value!==anchorScope))return undefined;
+    }
   }
   // Any other statement paragraph on the same source page may belong to a
   // spouse, a second signer, or a separate section; never silently omit it.
@@ -100,18 +110,20 @@ export function sourceStatementText(data:CaseData,index:CaseReadIndex=createCase
     if(a.source.page!==b.source.page)return a.source.page-b.source.page;
     return pagesWithCompleteBoxes.has(a.source.page)?(a.fact.refs[0].bbox![1]-b.fact.refs[0].bbox![1]||a.fact.refs[0].bbox![0]-b.fact.refs[0].bbox![0]):a.index-b.index;
   });
-  if(relationFacts.length){
-    const relationFact=relationFacts[0],relation=parseStatementScopeRelation(relationFact.value),sourceDocument=data.documents.find(item=>item.id===documentId),sourcePage=data.pages.find(item=>item.documentId===documentId&&item.page===page);
-    if(!relation||relationFact.subjectId!==anchorSubject||!sourceDocument||relationFact.refs.length!==1||relationFact.refs[0].sourceHash!==sourceDocument.sha256||!sameSourceQuote(relationFact.refs[0].quote,relation.openingQuote))return undefined;
+  if(relationFact&&relation){
+    const sourceDocument=data.documents.find(item=>item.id===documentId),sourcePage=data.pages.find(item=>item.documentId===documentId&&item.page===page);
+    if(relationFact.subjectId!==anchorSubject||!sourceDocument||relationFact.refs.length!==1||relationFact.refs[0].sourceHash!==sourceDocument.sha256||!sameSourceQuote(relationFact.refs[0].quote,relation.openingQuote))return undefined;
     const hashBound=(fact:Fact)=>fact.refs.length===1&&fact.refs[0].documentId===documentId&&fact.refs[0].page===page&&fact.refs[0].sourceHash===sourceDocument.sha256;
     const paragraphFactsInOrder=ordered.map(({fact})=>fact),memberQuotes=relation.members.map(member=>member.quote);
     const relationEvidence=[relationFact,role,intent,signature,...paragraphFactsInOrder];
     if(relationEvidence.some(fact=>fact.reviewer||fact.reviewReason||fact.recognition!=="unreviewed")||paragraphFactsInOrder.some(fact=>!hashBound(fact)||!meaningVerified(data,fact,index)||!validBbox(fact.refs[0].bbox))||!hashBound(role)||!hashBound(intent)||!hashBound(signature)||!validBbox(relationFact.refs[0].bbox)||!validBbox(role.refs[0].bbox)||!validBbox(intent.refs[0].bbox)||!validBbox(signature.refs[0].bbox)||!bboxOverlaps(relationFact.refs[0].bbox,role.refs[0].bbox))return undefined;
     if(memberQuotes.length!==paragraphFactsInOrder.length||memberQuotes.some((quote,i)=>!sameSourceQuote(quote,paragraphFactsInOrder[i].refs[0].quote)))return undefined;
     if(!sameSourceQuote(relation.openingQuote,role.refs[0].quote)||!sameSourceQuote(relation.signatureQuote,signature.refs[0].quote))return undefined;
+    if(relation.version===2&&!sameSourceQuote(relation.intentQuote,intent.refs[0].quote))return undefined;
+    if(relation.version===2&&memberQuotes.filter(quote=>sourceQuoteContained(quote,relation.intentQuote)).length!==1)return undefined;
     const firstQuote=paragraphFactsInOrder[0].refs[0].quote,lastQuote=paragraphFactsInOrder.at(-1)!.refs[0].quote,openingKey=relation.openingQuote.normalize("NFKC").replace(/\s+/g,"").toLocaleLowerCase(),closingKey=relation.closingQuote.normalize("NFKC").replace(/\s+/g,"").toLocaleLowerCase(),firstKey=firstQuote.normalize("NFKC").replace(/\s+/g,"").toLocaleLowerCase(),lastKey=lastQuote.normalize("NFKC").replace(/\s+/g,"").toLocaleLowerCase();
     if(!openingKey||!firstKey.includes(openingKey)||!closingKey||!lastKey.includes(closingKey))return undefined;
-    const allQuotes=[relation.openingQuote,roles[0].refs[0].quote,intent.refs[0].quote,relation.closingQuote,relation.signatureQuote,...memberQuotes];
+    const allQuotes=[relation.openingQuote,intent.refs[0].quote,relation.closingQuote,relation.signatureQuote,...memberQuotes];
     if(sourcePage?.text?.trim()&&allQuotes.some(quote=>sourceQuoteOccurrenceCount(sourcePage.text!,quote)!==1))return undefined;
     const lastBox=paragraphFactsInOrder.at(-1)!.refs[0].bbox!,signatureBox=signature.refs[0].bbox!;
     if(signatureBox[1]<lastBox[3])return undefined;
