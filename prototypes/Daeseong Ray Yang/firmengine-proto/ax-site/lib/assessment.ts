@@ -1,6 +1,7 @@
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { resolveIncomeRows } from "./income-resolution.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
+import { createDebtSourceIntegrityResolver } from "./debt-source-integrity.ts";
 import { createCaseReadIndex, currentFacts, factSourceLineageIssues, moneyValue } from "./domain.ts";
 import type { Asset, CaseData, CaseReadIndex, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
 import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-proposals.ts";
@@ -310,26 +311,48 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   for (const group of incomeGroups) traces.push({ id: "income_group:" + group.id, title: group.label + " 관측기간 월평균", formula: "동일 payer·소득유형의 비중복 관측기간 금액을 기간가중 평균 (독립 소득원은 분리 합산)", inputs: group.sourceIds.map((id) => ({ label: id + " 월평균", value: incomeRows.find((row) => row.id === id)?.monthlyWon ?? null, factIds: data.incomes.find((source) => source.id === id)?.factIds ?? [] })), resultWon: group.monthlyObservedAverageWon, status: group.monthlyObservedAverageWon === null ? "blocked" : !hasFilingPeriod || !filingPeriodValid || !periodReviewed || group.reasons.length || coverageIncomplete ? "provisional" : "calculated", reasons: [...group.reasons, ...(!hasFilingPeriod ? ["대표기간 미선택 · 관측 평균만 표시"] : []), ...(hasFilingPeriod && !filingPeriodValid ? ["선택 기간이 완전한 달력월이 아닙니다."] : []), ...(hasFilingPeriod && !periodReviewed ? ["선택한 대표기간 검토 전"] : []), ...(coverageIncomplete ? ["선택기간에 비해 관측 개월이 부족합니다."] : [])] });
   if (data.context.inventoryComplete.income !== "yes") issues.push("INCOME_INVENTORY_INCOMPLETE");
   const deduped = resolveDebtRows(data,index); issues.push(...deduped.issues); duplicateIds.push(...deduped.duplicates);
-  const debtRows: CalculationResult["debtRows"] = deduped.rows.map((debt) => {
-    const lineage = invalidLineage(data, debt.factIds,index);
+  const resolveDebtIntegrity=createDebtSourceIntegrityResolver(data,index);
+  const debtRows: CalculationResult["debtRows"] = deduped.rows.map((debt, rowIndex) => {
+    const sourceDebts=deduped.sourceGroups[rowIndex]??[debt];
+    const sourceCalculations=sourceDebts.map(sourceDebt=>{
+      const lineage=invalidLineage(data,sourceDebt.factIds,index);
+      const sourcePrincipal=lineage.length?null:nonnegative(sourceDebt.principal),sourceInterest=lineage.length?null:nonnegative(sourceDebt.interest);
+      return {lineage,integrity:resolveDebtIntegrity(sourceDebt,sourcePrincipal,sourceInterest)};
+    });
+    const lineage=[...new Set(sourceCalculations.flatMap(source=>source.lineage))];
     const principal = lineage.length ? null : nonnegative(debt.principal), interest = lineage.length ? null : nonnegative(debt.interest);
-    const total = principal === null || interest === null ? null : principal + interest;
-    const reasons = [...lineage];
+    const integrities=sourceCalculations.map(source=>source.integrity);
+    const integrity={
+      factIds:[...new Set(integrities.flatMap(source=>source.factIds))],
+      totalFactIds:[...new Set(integrities.flatMap(source=>source.totalFactIds))],
+      costFactIds:[...new Set(integrities.flatMap(source=>source.costFactIds))],
+      totalWon:integrities.every(source=>source.totalWon!==null)&&new Set(integrities.map(source=>source.totalWon?.toString())).size===1?integrities[0]?.totalWon??null:null,
+      sourceTotalWon:integrities.map(source=>source.sourceTotalWon).find(value=>value!==null)??null,
+      costObservation:[...new Set(integrities.map(source=>source.costObservation).filter((value):value is string=>value!==null))].join(", ")||null,
+      blockers:[...new Set(integrities.flatMap(source=>source.blockers))],
+    };
+    if(integrities.some(source=>source.totalWon===null)&&integrity.blockers.length===0)integrity.blockers.push("DEBT_SOURCE_ROW_IDENTITY_AMBIGUOUS");
+    const total = integrity.totalWon;
+    const reasons = [...lineage,...integrity.blockers];
     if (principal === null) reasons.push("DEBT_PRINCIPAL_MISSING");
     if (interest === null) reasons.push("DEBT_INTEREST_MISSING");
     if (!debt.asOf) reasons.push("DEBT_AS_OF_MISSING");
     else if (debt.asOf !== data.context.asOf) reasons.push("DEBT_AS_OF_RECONCILIATION_REQUIRED");
     issues.push(...reasons.map((r) => r + ":" + debt.id));
-    traces.push({ id: "debt:" + debt.id, title: debt.creditor + " 채무", formula: "원금 + 이자 (별도 열 유지)", inputs: [{ label: "원금", value: asMoney(principal), factIds: debt.factIds }, { label: "이자", value: asMoney(interest), factIds: debt.factIds }], resultWon: asMoney(total), status: total === null ? "blocked" : factSourceLineageIssues(data, debt.factIds,index).length ? "provisional" : "calculated", reasons });
+    const integrityFacts=integrity.factIds;
+    traces.push({ id: "debt:" + debt.id, title: debt.creditor + " 채무", formula: "원금 + 이자; 별도 비용·출처 합계는 같은 원문 행에서 대조하고 비용을 원금·이자에 자동 합산하지 않음", inputs: [{ label: "원금", value: asMoney(principal), factIds: debt.factIds }, { label: "이자", value: asMoney(interest), factIds: debt.factIds }, { label: "원문 채권 총액 관측", value: asMoney(integrity.sourceTotalWon), factIds:integrity.totalFactIds }, { label: "별도 비용 관측 (원금·이자에 합산하지 않음)", value: integrity.costObservation, factIds:integrity.costFactIds }], resultWon: asMoney(total), status: total === null ? "blocked" : factSourceLineageIssues(data, [...debt.factIds,...integrityFacts],index).length ? "provisional" : "calculated", reasons });
     return { id: debt.id, creditor: debt.creditor, principalWon: asMoney(principal), interestWon: asMoney(interest), totalWon: asMoney(total), classification: debt.classification };
   });
   const debtComplete = data.context.inventoryComplete.debt === "yes" && !deduped.issues.length;
   if (data.context.inventoryComplete.debt !== "yes") issues.push("DEBT_INVENTORY_INCOMPLETE");
+  const debtTotalComplete=debtComplete&&debtRows.every(row=>row.totalWon!==null);
+  const excludedAfterReview=(debt:(typeof deduped.rows)[number])=>debt.excludedByReview&&debt.legalReview==="accepted"&&!!debt.exclusionReason?.trim();
+  const includedDebtTotalComplete=debtComplete&&deduped.rows.every((debt,rowIndex)=>excludedAfterReview(debt)||debtRows[rowIndex]?.totalWon!==null);
   const principal = sumKnown(debtRows.map((r) => r.principalWon === null ? null : BigInt(r.principalWon)), debtComplete);
   const interest = sumKnown(debtRows.map((r) => r.interestWon === null ? null : BigInt(r.interestWon)), debtComplete);
-  const totalDebt = principal === null || interest === null ? null : principal + interest;
+  const totalDebt = !debtTotalComplete||principal === null || interest === null ? null : principal + interest;
   const capDateMatchesApplication = data.context.asOf === data.context.applicationDate;
-  let capComplete = debtComplete && capDateMatchesApplication, secured = ZERO, unsecured = ZERO;
+  let capComplete = includedDebtTotalComplete && capDateMatchesApplication, secured = ZERO, unsecured = ZERO;
   if (!capDateMatchesApplication) issues.push("DEBT_CAP_APPLICATION_DATE_MISMATCH");
   for (const debt of deduped.rows) {
     const row = debtRows.find((r) => r.id === debt.id)!;
@@ -389,8 +412,8 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   const liquidationComparison = liquidation === null || presentValue === null || assetDateReconciliation.length > 0 ? "unknown" : presentValue >= liquidation ? "met" : "not_met";
   traces.push({ id: "liquidation_comparison", title: "청산가치 보장 비교", formula: "검토된 변제액 현재가치 ≥ 청산가치 (명목 총변제액과 구별)", inputs: [{ label: "현재가치", value: asMoney(presentValue), factIds: [] }, { label: "청산가치", value: asMoney(liquidation), factIds: data.assets.flatMap((a) => a.factIds) }], resultWon: presentValue === null || liquidation === null ? null : (presentValue - liquidation).toString(), status: presentValue === null || liquidation === null ? "blocked" : data.context.assetValuationBasisReviewed === true && data.context.presentValueReviewed === true && assetDateReconciliation.length === 0 ? "calculated" : "provisional", reasons: [...assetDateReconciliation, ...(presentValue === null ? ["PRESENT_VALUE_BASIS_MISSING"] : data.context.presentValueReviewed !== true ? ["PRESENT_VALUE_REVIEW_REQUIRED"] : [])] });
   const allocations: Allocation[] = [];
-  const ordinary = deduped.rows.filter((d) => d.classification === "ordinary" && d.secured === "no" && d.priority === "ordinary" && !(d.excludedByReview && d.legalReview === "accepted" && d.exclusionReason?.trim()) && (!d.guaranteeDetails || d.guaranteeDetails.capTreatment === "include" && d.guaranteeDetails.capTreatmentReviewed === true && !!d.guaranteeDetails.reviewReason?.trim() && !(d.guaranteeDetails.underlyingDebtId && deduped.rows.some((candidate) => (candidate.id === d.guaranteeDetails!.underlyingDebtId || candidate.contractId === d.guaranteeDetails!.underlyingDebtId) && !(candidate.excludedByReview && candidate.legalReview === "accepted" && candidate.exclusionReason?.trim())))));
-  if (planTotal !== null && debtComplete && ["principal_then_interest_pro_rata", "principal_only_pro_rata"].includes(data.context.allocationBasis ?? "") && ordinary.every((d) => nonnegative(d.principal) !== null && nonnegative(d.interest) !== null && !invalidLineage(data, d.factIds,index).length)) {
+  const ordinary = deduped.rows.filter((d) => d.classification === "ordinary" && d.secured === "no" && d.priority === "ordinary" && !excludedAfterReview(d) && (!d.guaranteeDetails || d.guaranteeDetails.capTreatment === "include" && d.guaranteeDetails.capTreatmentReviewed === true && !!d.guaranteeDetails.reviewReason?.trim() && !(d.guaranteeDetails.underlyingDebtId && deduped.rows.some((candidate) => (candidate.id === d.guaranteeDetails!.underlyingDebtId || candidate.contractId === d.guaranteeDetails!.underlyingDebtId) && !excludedAfterReview(candidate)))));
+  if (planTotal !== null && includedDebtTotalComplete && ["principal_then_interest_pro_rata", "principal_only_pro_rata"].includes(data.context.allocationBasis ?? "") && ordinary.every((d) => nonnegative(d.principal) !== null && nonnegative(d.interest) !== null && !invalidLineage(data, d.factIds,index).length)) {
     const first = allocateProRata(planTotal.toString(), ordinary.map((d) => ({ id: d.id, amountWon: nonnegative(d.principal)!.toString() })));
     const used = first.reduce((sum, a) => sum + BigInt(a.amountWon), ZERO);
     const second = data.context.allocationBasis === "principal_then_interest_pro_rata" ? allocateProRata((planTotal - used).toString(), ordinary.map((d) => ({ id: d.id, amountWon: nonnegative(d.interest)!.toString() }))) : ordinary.map((d) => ({ id: d.id, amountWon: "0" }));
@@ -399,7 +422,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
       allocations.push({ debtId: debt.id, creditor: debt.creditor, principalWon: nonnegative(debt.principal)!.toString(), interestWon: nonnegative(debt.interest)!.toString(), allocatedPrincipalWon: p, allocatedInterestWon: i, totalWon: (BigInt(p) + BigInt(i)).toString(), factIds: debt.factIds, basis: data.context.allocationBasis!, status: data.context.allocationBasisReviewed === true ? "reviewed_basis" : "provisional" });
     }
   }
-  if (planTotal !== null && debtComplete && ["principal_then_interest_pro_rata", "principal_only_pro_rata"].includes(data.context.allocationBasis ?? "")) {
+  if (planTotal !== null && includedDebtTotalComplete && ["principal_then_interest_pro_rata", "principal_only_pro_rata"].includes(data.context.allocationBasis ?? "")) {
     const allocated = allocations.reduce((sum, row) => sum + BigInt(row.totalWon), ZERO);
     const difference = planTotal - allocated;
     if (difference !== ZERO) issues.push("ALLOCATION_BUDGET_UNRECONCILED");
@@ -506,6 +529,9 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
 
 function issueTitle(code: string): string {
   if (code.startsWith("DEBT_PRIORITY_TREATMENT_REQUIRED:")) return "채권별 우선·재단 처리 분류";
+  if (code.startsWith("DEBT_SOURCE_TOTAL")) return "채권 원문 총액과 원금·이자 대조";
+  if (code.startsWith("DEBT_SEPARATE_COST")) return "별도 채권 비용 확인";
+  if (code.startsWith("DEBT_SOURCE_ROW_IDENTITY")) return "채무 원문 행 연결 확인";
   if (code.includes("ASSET_AS_OF_RECONCILIATION")) return "재산 평가 기준일 대조";
   if (code.includes("ASSET_VALUATION_DATE_MISSING")) return "재산 평가 기준일 입력";
   if (code.includes("ASSET_VALUATION_DATE_INVALID")) return "재산 평가 기준일 확인";
@@ -535,6 +561,12 @@ function issueTitle(code: string): string {
   return "입력·산식 대조";
 }
 function issueExplanation(code: string): string {
+  if(code.includes("DEBT_SOURCE_TOTAL_CONFLICT"))return "같은 채무 원문 행의 별도 총액이 계산한 원금+이자와 다릅니다. 비용이나 미분류 금액을 원금·이자에 자동 섞지 않고 행 총액·구성 근거를 대조합니다.";
+  if(code.includes("DEBT_SOURCE_TOTAL_INVALID"))return "같은 행에 총액 필드가 있으나 단위·값·인용·검증 상태가 유효하지 않거나 상충합니다. 해당 슬롯을 누락으로 취급하지 않고 총액 계산을 보류합니다.";
+  if(code.includes("DEBT_SOURCE_TOTAL_RECONCILIATION_UNAVAILABLE"))return "원문 총액은 관측되었지만 원금이나 이자가 계산 가능하지 않아 원문 합계와 대조할 수 없습니다.";
+  if(code.includes("DEBT_SEPARATE_COST_REQUIRES_REVIEW"))return "같은 원문 행에 별도 비용이 있습니다. 비용을 원금이나 이자에 더하지 않았으며 채권 총액·법적 분류를 검토하기 전 행 총액·한도·배분을 보류합니다.";
+  if(code.includes("DEBT_SEPARATE_COST_INVALID"))return "같은 행에 별도 비용 슬롯이 있으나 금액·단위·원문 연결·검증 상태가 유효하지 않거나 상충합니다. 미기재 또는 0원으로 취급하지 않습니다.";
+  if(code.includes("DEBT_SOURCE_ROW_IDENTITY"))return "원금·이자에 연결된 원문 행의 신원을 확정하지 못해 다른 행이나 페이지의 총액·비용을 조합하지 않았습니다.";
   if(code.includes("DEBT_PRIORITY_TREATMENT_REQUIRED"))return "채무의 원금·이자·담보 구분과 별도로, 이 채권을 일반·우선·재단 처리 중 어디에 둘지 사건별 분류가 확인되지 않았습니다. 우선 여부는 한도 합계 계산과 일반채권 배분에서 다르게 사용됩니다.";
   if(code.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED"))return "공동소유 담보의 신청인 지분 귀속액을 원문으로 연결해 계산했지만, 해당 귀속 범위는 사건별 검토가 필요한 입력입니다.";
   if(code.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_UNRESOLVED"))return "공동소유 재산의 담보상환액이 신청인 지분 몫인지 전체 담보물 잔액인지 확인되지 않아 청산기여액을 계산하지 않았습니다. 전체 담보물 잔액을 소유지분으로 자동 안분하지 않습니다.";
@@ -566,6 +598,9 @@ function issueExplanation(code: string): string {
   return "미확인 값·분류·목록 완전성을 0 또는 비해당으로 대체하지 않았습니다. 확인 항목: " + code.split(":")[0];
 }
 function issueAction(code: string): string {
+  if(code.includes("DEBT_SOURCE_TOTAL"))return "같은 원문 행의 현재 원금, 이자, 채권 총액, 별도 비용과 각각의 단위·기준일을 대조하고, 총액 근거를 확인하세요. 비용을 원금·이자로 재분류하지 마세요.";
+  if(code.includes("DEBT_SEPARATE_COST"))return "별도 법률·추심·집행·기타 비용의 현재성·단위·채권자 청구와 원문 포함 범위를 검토하고, 채무 구성·분류를 별도로 결정하세요.";
+  if(code.includes("DEBT_SOURCE_ROW_IDENTITY"))return "같은 증명서 행의 원금·이자·총액·비용을 현재 source row로 연결하거나, 연결이 불가능하면 수동 검토를 기록하세요.";
   if(code.includes("ASSET_AS_OF_RECONCILIATION"))return "재산 평가 기준일과 사건 산정기준일을 대조하고, 현재 사건 기준으로 적용 가능한 평가 자료를 확인하세요.";
   if(code.includes("ASSET_VALUATION_DATE_MISSING"))return "원문에서 재산 평가 기준일을 확인해 입력하세요.";
   if(code.includes("ASSET_VALUATION_DATE_INVALID"))return "원문에서 재산 평가 기준일을 확인하고 실제 날짜로 수정하세요.";

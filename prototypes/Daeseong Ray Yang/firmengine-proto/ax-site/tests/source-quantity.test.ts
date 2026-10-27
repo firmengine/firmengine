@@ -7,7 +7,7 @@ import { isSourceMoney } from "../lib/source-quantity.ts";
 import type { Fact } from "../lib/domain.ts";
 
 const hash="d".repeat(64),sourceId="unit-doc",when="2026-10-27T10:00:00.000Z",promptHash="f".repeat(64);
-const field=(key:string,value:string,unit:string|null,quote:string):ReadField=>({key,label:key,value,unit,quote,confidence:"clear",bbox:null});
+const field=(key:string,value:string,unit:string|null,quote:string):ReadField=>({key,label:key,value,unit,quote,confidence:"clear",bbox:[.1,.2,.4,.25]});
 function insurance(fields:ReadField[]):PageRead{return{documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("kind","insurance",null,"보험 계약"),field("label","synthetic",null,"계약명 synthetic"),...fields]}]};}
 
 test("보험 가입금액·보험료 및 세금·담보 관련 금액은 원문 단위를 보존하고 환급금과 분리한다",()=>{

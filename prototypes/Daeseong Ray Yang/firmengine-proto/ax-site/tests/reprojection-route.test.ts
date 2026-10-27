@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
+import * as processJobScope from "../lib/process-job-scope.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 class MockHttpError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
@@ -11,6 +12,7 @@ function loadRoute(overrides: Record<string, unknown> = {}) {
   const output = ts.transpileModule(code, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
   const loadedModule = { exports: {} as Record<string, unknown> };
   const mocks: Record<string, unknown> = {
+    "../../../../../lib/process-job-scope": processJobScope,
     "../../../../../lib/case-response": { caseProgress: async (_id: string, result: { stage?: string }) => ({ caseId: "case-1", remaining: 0, stage: result.stage }) },
     "../../../../../lib/json-response": { jsonResponse: (body: unknown, _request: Request, init?: ResponseInit) => Response.json(body, init) },
     "../../../../../lib/page-job-inspection": { inspectStoredPageJob: async (_id: string, jobId: string) => ({ stored: true, jobId }), reprojectCasePage: async () => ({}) },

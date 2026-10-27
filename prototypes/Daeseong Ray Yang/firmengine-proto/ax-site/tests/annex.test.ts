@@ -13,6 +13,28 @@ test("conflicting fields are not resolved by first-value order; explicit zero su
 test("lease routing retains third-party tenant without treating it as applicant asset",()=>{const t=leasesAnnex(fixture());assert.equal(t.rows.length,1);assert.equal(t.rows[0][1],"Third party");assert.equal(t.rows[0][5],"900");assert.equal(t.summary?.rows[0][1],"[확인 필요]");});
 test("one explicitly namespaced field remains a visible partial bank row",()=>{const d=fixture();d.facts=d.facts.filter(f=>f.subjectId==="source:p1:other:0"&&f.key==="bank_account.account_number");const t=bankAccountsAnnex(d);assert.equal(t.rows.length,1);assert.equal(t.rows[0][3],"12**");assert.equal(t.rows[0][4],"[확인 필요]");assert.equal(t.status,"blocked");});
 test("conflicting lease party roles are shown as conflict and never inferred",()=>{const d=fixture();d.facts.push({...d.facts[0]!,id:"landlord1",logicalId:"landlord1",subjectId:"source:p1:other:2",key:"lease.landlord",value:"Lessor A"});d.facts.push({...d.facts[0]!,id:"landlord2",logicalId:"landlord2",subjectId:"source:p1:other:2",key:"lease.landlord",value:"Lessor B"});d.facts.push({...d.facts[0]!,id:"applicantrole",logicalId:"applicantrole",subjectId:"source:p1:other:2",key:"lease.applicant_role",value:"unknown"});const t=leasesAnnex(d);assert.equal(t.rows[0][2],"[상충·선택 보류]");assert.equal(t.rows[0][3],"unknown");});
+test("bank and lease source aliases survive namespaced input without borrowing another row",()=>{
+  const d=fixture(),rename:Record<string,string>={"bank_account.account_holder":"bank_account.accountHolderName","bank_account.balance":"bank_account.current_balance","bank_account.active_status":"bank_account.account_status","lease.deposit":"lease.security_deposit"};
+  d.facts=d.facts.map(f=>({...f,key:rename[f.key]??f.key}));
+  d.facts.push({...d.facts[0],id:"rent",logicalId:"rent",subjectId:"source:p1:other:2",key:"lease.rent_per_month",value:"27"});
+  d.facts.push({...d.facts[0],id:"premises",logicalId:"premises",subjectId:"source:p1:other:2",key:"lease.property_location",value:"Synthetic premises"});
+  const b=bankAccountsAnnex(d),l=leasesAnnex(d);
+  assert.equal(b.rows.length,2);assert.deepEqual(b.rows.map(r=>r[4]),["0","200"]);assert.equal(b.rows[0][2],"Applicant");assert.equal(b.rows[1][5],"[확인 필요]");
+  assert.equal(l.rows.length,1);assert.equal(l.rows[0][5],"900");assert.equal(l.rows[0][6],"27");assert.equal(l.rows[0][14],"Synthetic premises");
+  assert.equal(l.rows[0][3],"[확인 필요]","a tenant observation does not establish the applicant's role");
+});
+test("uncertain, null, and conflicting aliases block a same-row fallback",()=>{
+  for(const alternative of [{value:"0",validation:[{code:"UNCERTAIN_READING",severity:"warning" as const,message:"synthetic uncertainty"}]},{value:null,validation:[]},{value:"7",validation:[]}]){
+    const d=fixture();d.facts.push({...d.facts.find(f=>f.id==="a3")!,id:"alternate",logicalId:"alternate",key:"bank_account.current_balance",...alternative});
+    const b=bankAccountsAnnex(d);assert.ok(["[확인 필요]","[상충·선택 보류]"].includes(b.rows[0][4]));assert.equal(b.rows[1][4],"200");assert.equal(b.status,"blocked");
+  }
+});
+test("same-valued aliases require source verification of every candidate for row readiness",()=>{
+  const d=fixture();d.facts=d.facts.filter(f=>f.subjectId==="source:p1:other:0");
+  assert.equal(bankAccountsAnnex(d).status,"source_backed");
+  d.facts.push({...d.facts.find(f=>f.id==="a3")!,id:"alternate",logicalId:"alternate",key:"bank_account.current_balance",state:"extracted"});
+  const b=bankAccountsAnnex(d);assert.equal(b.rows[0][4],"0");assert.equal(b.status,"blocked");
+});
 const phases:Phase[]=[{id:"p1",firstInstallment:1,lastInstallment:2,firstPaymentDate:"2026-01-31",monthlyAvailableWon:"104",allocations:[{creditorId:"c1",principalWon:"80",interestWon:"3"},{creditorId:"c2",principalWon:"21",interestWon:"0"}]},{id:"p2",firstInstallment:3,lastInstallment:3,firstPaymentDate:"2026-03-31",monthlyAvailableWon:"104",allocations:[{creditorId:"c1",principalWon:"99",interestWon:"5"}]}];
 test("phase creditor allocations conserve monthly and period principal/interest totals",()=>{const t=repaymentScheduleAnnex(phases,3);assert.equal(t.status,"source_backed");assert.deepEqual(t.rows.map(r=>r[1]),["2026-01-31","2026-01-31","2026-02-28","2026-02-28","2026-03-31"]);assert.deepEqual(t.summary?.rows.at(-1)?.slice(2),["","","","","","301","11","312"]);});
 test("unknown dates, gaps, duplicate IDs/creditors, and bad budget block schedule safely",()=>{const noDate:Phase={id:"p",firstInstallment:1,lastInstallment:1,monthlyAvailableWon:"1",allocations:[{creditorId:"c",principalWon:"1",interestWon:"0"}]};assert.ok(expandPaymentSchedule([noDate]).issues.includes("FIRST_PAYMENT_DATE_UNKNOWN"));const draft=repaymentScheduleAnnex([noDate]);assert.equal(draft.status,"blocked");assert.equal(draft.rows[0][1],"[확인 필요]");const gapDraft=repaymentScheduleAnnex([noDate,{...noDate,id:"gap",firstInstallment:3,lastInstallment:3}]);assert.equal(gapDraft.rows.length,0);assert.ok(expandPaymentSchedule([{...phases[0],lastInstallment:1},{...phases[1],firstInstallment:3}]).issues.includes("PHASE_GAP_OVERLAP_OR_INVALID_BOUNDARY"));assert.ok(expandPaymentSchedule([{...phases[0],id:"dup"},{...phases[1],id:"dup",firstInstallment:3}]).issues.includes("DUPLICATE_PHASE_ID"));assert.ok(expandPaymentSchedule([{...phases[0],allocations:[phases[0].allocations[0],phases[0].allocations[0]]}]).issues.includes("MISSING_OR_DUPLICATE_CREDITOR_ALLOCATION"));assert.ok(expandPaymentSchedule([{...phases[0],monthlyAvailableWon:"1"}]).issues.includes("PHASE_ALLOCATION_EXCEEDS_MONTHLY_BUDGET"));});

@@ -40,6 +40,28 @@ test("current-principal aliases retain the human disposition while generic princ
   }
 });
 
+test("insurance surrender aliases cannot revive a manual retraction or replace a human approval",()=>{
+  const refs=[{documentId:"doc",page:1,sourceHash:hash,quote:"해약환급금 620원",bbox:box}];
+  const original=raw({key:"asset.surrender_refund",logicalId:"rowA:surrender_refund",refs});
+  const aliases=["asset.surrender_value","asset.cash_value","insurance.surrender_value","asset.refund_value","asset.gross_value"];
+  for(const state of ["verified","retracted"] as const)for(const key of aliases){
+    const f=fixture(state,original),incoming=raw({key,logicalId:`rowA:${key}`,refs});
+    const after=applyExtraction(f.data,payload([incoming]));
+    if(state==="retracted")assert.equal(currentFacts(after).length,0,key);
+    else assert.deepEqual(currentFacts(after).map(fact=>fact.id),[f.decision.id],key);
+  }
+  const f=fixture("retracted",original),premium=raw({key:"asset.gross_value",logicalId:"rowA:gross_value",refs:[{...refs[0],quote:"보험가입금액 620원"}]});
+  assert.equal(currentFacts(applyExtraction(f.data,payload([premium]))).length,1,"coverage/gross amounts are not surrender aliases without their own semantic evidence");
+});
+
+test("reviewed insurance alias changes with a new amount remain disputed and never approved",()=>{
+  const refs=[{documentId:"doc",page:1,sourceHash:hash,quote:"해약환급금 620원",bbox:box}],f=fixture("verified",raw({key:"asset.surrender_refund",logicalId:"rowA:surrender_refund",refs}));
+  const changed=raw({key:"asset.surrender_value",logicalId:"rowA:surrender_value",value:"610",numeric:normalizeMoney("610","원"),refs:[{...refs[0],quote:"해약환급금 610원"}]});
+  const facts=currentFacts(applyExtraction(f.data,payload([changed])));
+  assert.ok(facts.some(fact=>fact.id===f.decision.id&&fact.recognition==="accepted"));
+  assert.equal(facts.find(fact=>fact.id!==f.decision.id)?.state,"disputed");
+});
+
 test("same unlocated quote in a different row remains an unlinked review candidate, not suppressed",()=>{
   const refs=[{documentId:"doc",page:1,sourceHash:hash,quote:"원금잔액 620원"}];
   const f=fixture("retracted",raw({refs}));

@@ -1,13 +1,13 @@
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
-import { isSourceMoney } from "./source-quantity.ts";
+import { isSourceMoney,isDebtComponentSlot,debtComponentSlotKey,INSURANCE_SURRENDER_KEYS,isInsuranceSurrenderQuote,quotedInsuranceSurrenderAmount } from "./source-quantity.ts";
 import { documentFamily } from "./document-routing.ts";
-export const PROMPT_VERSION="luna-evidence-3.15.0";
+export const PROMPT_VERSION="luna-evidence-3.16.0";
 const APPLICANT_ROLE_EVIDENCE_RULE="person.role=applicant은 작성 주체가 문서에서 신청인 본인으로 명시되고, 같은 주체가 1인칭으로 개인회생 신청 의사를 직접 밝히며, 본인이 실제로 서명/날인한 근거가 각각 원문 quote로 확인되는 자필·본인 진술서에서만 source fact 후보로 기록한다. 작성자와 범위가 원문에 명시된 하나의 진술은 가능하면 anchor와 여러 statement.text 필드를 한 statement record에 모으되, 각 문단의 값·quote·bbox·순서는 독립적으로 보존한다. 서로 다른 작성자 또는 범위는 별도 record로 분리한다. 작성자 소개나 신청 의사 문장이 원문의 서술 문단이면 anchor 필드로 추출했어도 그 문단 전체를 statement.text로 함께 보존하여 본문을 누락하지 않는다. 자동 서식 연결을 위해서만 statement.author_role=applicant(신청인 본인이 작성자라는 명시 근거), statement.applicant_intent(같은 작성자의 1인칭 개인회생 신청 의사), statement.author_signature(같은 작성자의 실제 서명/날인 근거)를 각 근거 quote와 함께 별도 사실로 추출한다. 가능하면 세 anchor 사실을 한 statement record에 모은다. anchor나 문단이 여러 record로 나뉘면 statement.scope_relation v2에 openingQuote, intentQuote, closingQuote, 실제 signatureQuote와 동일 범위에 포함되는 모든 statement.text의 정확한 members quote를 빠짐없이 연결하고, relation 필드 자체의 quote와 bbox는 openingQuote 원문 영역을 가리킨다. relation은 보이는 source link의 추출 후보일 뿐이며 독립 검증에서 전체 relation이 지원되기 전에는 연결 근거가 아니다. 이 경우 record마다 scope를 복사하지 않는다. typed relation이 없을 때에만 anchor와 각 문단 record의 statement.author_scope를 각각 원문에서 직접 확인해 정확히 같은 작성 범위를 연결한다. scope는 원문에서 작성자의 진술 범위를 명시하는 연결 문장이나 구획을 직접 인용한다. 단순한 진술서 제목은 작성자와 문단의 연결 근거가 아니다. 원문이 아래 내용 또는 특정 문단 묶음을 같은 본인의 진술이라고 명시할 때만 그 범위를 연결하며, scope를 임의로 만들거나 페이지 전체에 넓혀 붙이지 않는다. 세 작성자 근거가 한 문서/같은 페이지의 같은 인물에 명확히 연결되고 각 문단이 typed relation 또는 independently verified identical author_scope로 귀속되는 경우만 자동 연결 후보이며, 사람 이름·record 순서·근접성만으로 연결하지 않는다. 인물 혼재, 작성자 누락/모호함, 실제 서명 근거 없음, 철회/상충, 다른 scope이면 연결을 보류한다. 이 사실은 unreviewed 원문 후보이지 법적 승인이나 신원 자동확정이 아니다. 채무잔액증명서의 채무자/차주 표기, 가족증명서의 본인, 유일한 성명, 주소 일치, 타인의 대리/제3자 서명만으로 신청인을 추정하지 않는다.";
 export const STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS="statement.scope_relation은 자동 연결을 위한 typed source fact 후보이며 법적 승인이나 신원 확정이 아니다. value의 JSON은 원문에 인쇄된 문자열이 아니라 원문 인용 사이의 관계를 표현하는 metadata다. relation 필드 자체의 quote와 bbox는 반드시 openingQuote가 있는 원문 영역을 가리켜야 하며, JSON 전체가 인쇄된 것처럼 인용하거나 bbox를 만들지 않는다. version=2라면 openingQuote와 같은 작성자의 intentQuote, closingQuote, 실제 signatureQuote, 모든 members quote를 각각 확인한다. legacy version=1에는 intentQuote가 없으며 그대로 인정하지 말고 role·intent·signature anchor가 동일 record에 귀속될 때만 호환한다. 원본 페이지 이미지 전체에서 openingQuote가 작성자의 명시적 자기작성 선언을 정확히 인용하는지, intentQuote가 신청 의사를 정확히 인용하는지, closingQuote가 그 동일 작성 범위의 앞선 내용을 명시적으로 가리키는 문구인지, signatureQuote가 해당 작성자의 실제 서명 근거인지, members의 모든 quote가 실제 statement.text 문단을 각각 정확하고 고유하게 인용하는지, 현재 read에서 빠진 해당 범위 문단이나 다른 작성자/별도 범위 문단이 더 있는지 독립적으로 확인한다. 각 인용은 원문에 직접 대응해야 하며, 인접 제목·이름·record 위치·페이지 근접성만으로 관계를 지지하지 않는다. 인쇄된 서명 문구, 빈 서명선, '(서명)' 표기만으로 실제 서명을 확인하지 않는다. 인용·작성자·범위·문단 경계·실제 서명 중 하나라도 원문 이미지에서 불명확하거나 relation JSON이 잘못되면 meaningStatus=unclear 또는 wrong_field이며 supported로 검증하지 않는다. relation은 원문에서 직접 확인할 수 있는 연결만 표현하고, 원문 밖의 범위를 추정하지 않는다.";
 const STATEMENT_SCOPE_RELATION_RULE="원문에서 하나의 명시적 작성자 진술 범위가 분명하고 작성자 소개, 신청 의사, 그 범위를 명시적으로 가리키는 끝맺음, 같은 작성자의 실제 서명, 모든 해당 문단의 경계를 정확히 연결할 수 있으면 statement.scope_relation key의 value에 다음 형태의 JSON 문자열을 추출한다: {\"version\":2,\"openingQuote\":\"작성자의 명시적 자기작성 선언 원문 인용\",\"intentQuote\":\"같은 작성자의 명시적 신청 의사 원문 인용\",\"closingQuote\":\"위 내용처럼 앞선 동일 범위를 명시적으로 가리키는 끝맺음 원문 인용\",\"signatureQuote\":\"같은 작성자의 실제 서명/날인 원문 인용\",\"members\":[{\"quote\":\"포함되는 각 statement.text 필드의 정확한 원문 quote\"}]}. opening/intent/closing/signature quote와 members quote는 새 문장으로 만들거나 바꾸지 말고 원문 quote를 그대로 쓴다. relation 필드의 별도 quote는 openingQuote와 같게 하고 bbox는 openingQuote 원문 영역의 bbox로 둔다. JSON value 자체는 원문에 인쇄된 내용이 아니므로 JSON 전체에 bbox를 붙이지 않는다. members에는 동일 범위에 속하는 모든 현재 statement.text 문단을 원문 순서대로 한 번씩만 나열하며, 각 quote는 고유한 한 문단을 식별해야 한다. statement.author_scope는 원문이 그 scope를 직접 명시할 때만 추출한다. 진술 범위의 관계는 원문이 명시한 연결을 statement.scope_relation quote들로 표현할 수 있으며, scope 문구를 반복 생성해 각 record에 붙여 범위를 만들거나 입증하지 않는다. 다른 작성자, 다른 진술 범위, 모호/철회/상충/누락 문단, 불명확한 문단 경계, 실제 서명이 확인되지 않는 경우, 페이지가 다른 문단은 relation에 넣지 말고 관계 사실 자체를 생략한다. 이 relation은 제안일 뿐이며 독립 원문 의미 대조가 supported일 때만 사용할 수 있다. 근거가 없으면 동일 문구를 반복해 scope를 만들거나 same-page만으로 author scope를 추정하지 않는다.";
 export const DOC_FIELDS:Record<string,string>={
   payroll:"급여·임금 명세의 원문 표제, 사용자/사업장, 수령인, 귀속기간(period_start/period_end 또는 명시된 급여월), 지급일, gross(지급총액), deductions(공제총액), net(실지급액), 통화 단위를 각각 별도 인용한다. 기본급만 gross로, 공제액을 net으로 옮기지 않는다. 표의 행/열 순서와 상관없이 실제 머리글에 연결한다. 표에 없는 합계는 계산해서 원문 사실로 만들지 않는다. amount_basis는 월분임이 명시되면 monthly, 여러 달 합계가 명시되면 period_total, 불분명하면 unknown. 월수/연도/상여 반복성을 추정하지 않는다. 같은 명세의 지급총액·공제총액·실지급액을 서로 다른 소득원으로 중복 생성하지 않는다. 원천징수 연간 집계표와 개별 급여명세의 기간을 구별한다.",
-  debt_certificate:"채무잔액증명서/부채증명서(debt_certificate/debt_balance_certificate)의 현재 채무 정보. 문서 원문 제목은 document_title로 별도 인용하고 documentType은 debt_certificate로 설정한다. 채권기관, 채무자, 계좌/계약번호, 최초대출일, 원금잔액, 이자/연체이자, 합계, 잔액기준일, 담보여부/보증/양도, 청구종류. 이 문서 family에서 principal_balance/outstanding_principal은 원금 잔액(principal), total_claim은 합계(total), creditor_name은 creditor, as_of_date는 잔액 기준일(as_of)과 명백히 같은 열일 때만 alias로 사용한다. 발급일/작성일은 as_of가 아니다. overdue_interest는 별도 원문 fact이며 전체 interest와 합치지 않는다. original_principal은 최초/원래 원금이지 현재 잔액이 아니다. 채권기관의 사업자/법인 등록번호 등 완전한 식별자가 원문에 있으면 creditor_identity_id로 인용하고, 기관명에서 번호를 추정하지 않는다. 보증채무는 주채무/보증인/연대보증인 표시, 확정/조건부/다툼 상태, 주채무 식별자·채무자, 구상·대위 변제 상태, 별도 보증한도·청구액을 원문에 보이는 대로 별도 필드로 추출한다. 보증한도·보증청구액을 principal/interest로 옮기지 말고, 신청인의 법적 책임 범위나 채권 포함여부를 판정하지 않는다. 기관별·계약별 분리. 원금/이자 열을 교환하지 말 것. 같은 증명서의 요약행과 상세행을 중복 채권으로 만들지 말 것.",
+  debt_certificate:"채무잔액증명서/부채증명서(debt_certificate/debt_balance_certificate)의 현재 채무 정보. 문서 원문 제목은 document_title로 별도 인용하고 documentType은 debt_certificate로 설정한다. 채권자, 발급기관, 채무자, 계좌/계약번호, 최초대출일, 원금잔액, 이자/연체이자, 비용, 합계, 잔액기준일, 담보여부/보증/양도, 청구종류를 구분한다. creditor는 해당 채권 행의 채권자명 칸/열에서 읽고 그 칸의 실제 이름과 역할 표제를 quote와 bbox로 연결한다. 행에 채권자가 명시되어 있으면 발급인·추심대행사·직인·하단 회사명으로 바꾸지 않는다. issuer와 debtor는 각각 별도 필드로 보존한다. 발급기관이 곧 채권자라는 원문 근거가 없으면 issuer를 creditor로 복사하지 않는다. 표 공통 채권자 또는 병합셀은 원문에서 그 셀이 적용되는 행에만 연결하며 다른 행·페이지에서 이름을 가져오지 않는다. 이름은 보이는 그대로 보존하고 약칭을 회사의 정식 명칭으로 추측해 확장하지 않는다. principal_balance/outstanding_principal은 명시된 현재 원금잔액 슬롯이며 principal(일반 원금), original_principal(최초/원래 원금)과 별도 필드로 보존한다. 현재잔액 칸이 존재하지만 불명확하면 null/uncertain으로 남기고 일반·최초 원금으로 채우지 않는다. total_claim은 명시된 합계(total), creditor_name은 명시된 채권자(creditor), as_of_date는 잔액 기준일(as_of)과 명백히 같은 의미일 때만 alias로 사용한다. 발급일/작성일은 as_of가 아니다. overdue_interest는 전체 interest와 구별하고, legal_costs(법적 비용), collection_costs(추심비용), enforcement_costs(집행비용), other_costs(기타 비용)는 원문에 표시된 경우 각각 별도 필드로 추출한다. 비용을 원금/이자에 합치거나 합계에서 빼지 않는다. source total은 보이는 합계만 추출하고 계산으로 만들지 않는다. 합계 포함 범위가 명시되면 별도 total_basis로 그대로 인용한다. 채권기관의 사업자/법인 등록번호 등 완전한 식별자가 원문에 있으면 creditor_identity_id로 인용하고, 기관명에서 번호를 추정하지 않는다. 보증채무는 주채무/보증인/연대보증인 표시, 확정/조건부/다툼 상태, 주채무 식별자·채무자, 구상·대위 변제 상태, 별도 보증한도·청구액을 원문에 보이는 대로 별도 필드로 추출한다. 보증한도·보증청구액을 principal/interest로 옮기지 말고, 신청인의 법적 책임 범위나 채권 포함여부를 판정하지 않는다. 기관별·계약별 분리. 원금/이자 열을 교환하지 말 것. 같은 증명서의 요약행과 상세행을 중복 채권으로 만들지 말 것.",
   credit_report:"신용정보조회서의 개설·대출·카드 이용 기록은 신용정보 이력이다. 현재 잔액·미변제 원금·채권자 확정 근거가 없으면 source fact로 보존하고 typed 현재 채무로 만들지 않는다. 기록된 대출액·등록금액·한도는 원금잔액이 아니다. 기관·상품코드·등록일·원문 금액·명시단위를 행별 원문 fact로 보존하고 금액 키는 reported_amount 또는 amount를 사용한다. 원금 principal, 현재잔액, 연체이자를 추정하지 않는다. 보고서의 빈 조회구역과 실제 0원·빈칸은 구별한다.",
   health_insurance_arrears:"건강보험료 미납내역서 전용 원문 판독. 가입자, 발행기준일, 미납기간·개월수, premium_arrears(미납보험료), late_charge(연체금), total_arrears(미납액계), disposal_costs(체납처분비등), 비고를 각각 별도 열로 추출한다. 원문 표 머리글의 단위(예: 원)를 각 금액 필드에 연결하고 명시된 0은 0으로 보존한다. 미납보험료를 대출 원금으로, 연체금을 대출 이자로 법적 분류하지 않는다. 우선권·재단채권 여부·변제 순위·산입 여부를 판단하지 않는다.",
   bank_transactions:"계좌번호/은행, 거래기간, 모든 거래의 날짜·시각, 입금/출금 방향과 금액, 거래후잔액, 상대방/적요. 빈칸·0·가려짐을 구분. 거래 하나당 transaction 객체. 일련번호/페이지합계는 거래로 생성하지 말 것. 내부이체/대출금/매출은 단정하지 말고 적요 보존. 주거비·도박·가상자산·보험·차량·특수관계인·고액현금·편파변제 단서도 기록.",
@@ -155,7 +155,7 @@ export const EXTRACT_INSTRUCTIONS=`당신은 한국 개인회생의 원본증거
 공동소유 재산의 secured_payoff_scope는 원문이 신청인 지분 귀속 잔액을 명시할 때만 applicant_interest, 전체 담보물 잔액을 명시할 때만 entire_collateral로 기록한다. 문서가 구분하지 않으면 unknown으로 두며 소유지분으로 전체 잔액을 신청인 몫으로 안분하지 않는다.
 권장 key:
 person: name,role(applicant/family/creditor/other/unknown),address,resident_id_masked,birth_date
-debt: creditor,contract_id,principal,interest,total,secured(yes/no/unknown),classification(ordinary/secured/tax/estate/non_dischargeable/disputed/unknown),as_of,origination_date,due_date,liability_role(principal/guarantor/joint_and_several/unknown),claim_nature(fixed/contingent/disputed/unknown),underlying_debt_id,guarantee_for,recourse_status(not_applicable/unpaid/partially_paid/subrogated/unknown),guarantee_limit,guarantee_amount
+debt: creditor,issuer,debtor,contract_id,principal,original_principal,principal_balance,interest,overdue_interest,legal_costs,collection_costs,enforcement_costs,other_costs,total,total_basis,secured(yes/no/unknown),classification(ordinary/secured/tax/estate/non_dischargeable/disputed/unknown),as_of,origination_date,due_date,liability_role(principal/guarantor/joint_and_several/unknown),claim_nature(fixed/contingent/disputed/unknown),underlying_debt_id,guarantee_for,recourse_status(not_applicable/unpaid/partially_paid/subrogated/unknown),guarantee_limit,guarantee_amount
 income: kind(wage/business/rent/interest/dividend/pension/benefit/other),label,employer,payer_identity_id(source에 명시된 지급자 식별번호만),gross,expenses,net,period_start,period_end,period_months,amount_basis(monthly/period_total/unknown),recurring(yes/no/unknown)
 health_insurance_arrears: premium_arrears,late_charge,total_arrears,disposal_costs,period,as_of
 asset: kind(cash/deposit/insurance/vehicle/real_estate/lease_deposit/business/receivable/retirement/other),label,gross_value,secured_payoff,secured_payoff_scope(applicant_interest/entire_collateral/unknown),disposal_costs,protected_value,ownership_bps,as_of,valuation_basis,account_number,monthly_rent,use,active
@@ -207,7 +207,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
   let household:ExtractionPayload["household"];
   read.records.forEach((r,ri)=>{
     const id=`${documentId}:p${page}:${r.category}:${ri}`,ids:string[]=[];
-    const localKey=(f:ReadField)=>{const key=canonicalKey(f.key),prefixes=[r.category,...(isCreditReport?["credit_report"]:[]),...(isHealthArrears?["health_insurance_arrears"]:[]),"bank_account","lease"],prefix=prefixes.find(p=>key.startsWith(p+".")),local=prefix?key.slice(prefix.length+1):key;return sourceFieldKey(local,read.documentType);};
+    const localKey=(f:ReadField)=>{const key=canonicalKey(f.key),prefixes=[r.category,...(isCreditReport?["credit_report"]:[]),...(isHealthArrears?["health_insurance_arrears"]:[]),...(family==="insurance"?["insurance"]:[]),"bank_account","lease"],prefix=prefixes.find(p=>key.startsWith(p+".")),local=prefix?key.slice(prefix.length+1):key;return sourceFieldKey(local,read.documentType);};
     const statementTextIndexes=new Set<number>(),duplicateStatementTextIndexes=new Set<number>(),conflictingStatementTextIndexes=new Set<number>(),statementTextIdentity=new Map<number,string>();
     if(r.category==="statement"){
       const locationGroups=new Map<string,number[]>(),sectionOrdinals=new Map<string,number>();let paragraphOrdinal=0,sectionAnchor:string|undefined;
@@ -233,6 +233,8 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
     const byKey=new Map<string,ReadField[]>();
     for(const field of r.fields)byKey.set(localKey(field),[...(byKey.get(localKey(field))??[]),field]);
     const conflicting=new Set([...byKey].filter(([key,fields])=>!(r.category==="statement"&&key==="text")&&new Set(fields.filter(f=>f.value!==null).map(f=>JSON.stringify([f.value,f.unit]))).size>1).map(([key])=>key));
+    // An explicit unresolved component cannot disappear behind a usable duplicate.
+    if(r.category==="debt")for(const [key,fields] of byKey)if(isDebtComponentSlot(key)&&fields.length>1&&fields.some(f=>f.value===null||!f.quote?.trim()||f.confidence!=="clear"))conflicting.add(key);
     const usable=(f:ReadField,fieldIndex?:number)=>typeof f.value==="string"&&f.value.trim()!==""&&f.confidence==="clear"&&typeof f.quote==="string"&&!!f.quote.trim()&&!conflicting.has(localKey(f))&&!(fieldIndex!==undefined&&conflictingStatementTextIndexes.has(fieldIndex));
     const field=(key:string)=>(byKey.get(key)??[]).find(usable);
     const chosen=new Map([...byKey].map(([key,fields])=>[key,field(key)??fields.find(f=>f.value!==null&&typeof f.quote==="string"&&!!f.quote.trim()&&f.confidence!=="unreadable")]));
@@ -257,12 +259,15 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
     if(conflicting.size)warnings.push(`${id}: 동일 필드의 상충값은 계산에서 제외했습니다 (${[...conflicting].join(", ")}).`);
     for(const [fi,f]of r.fields.entries()){
       const key=localKey(f);
-      if(f.value===null||typeof f.quote!=="string"||!f.quote.trim()||f.confidence==="unreadable")continue;
+      const unresolved=f.value===null||typeof f.quote!=="string"||!f.quote.trim()||f.confidence==="unreadable";
+      const preserveUnresolved=r.category==="debt"&&isDebtComponentSlot(key)&&unresolved;
+      if(unresolved&&!preserveUnresolved)continue;
       const repeatableStatementText=statementTextIndexes.has(fi),fieldConflict=conflicting.has(key)||conflictingStatementTextIndexes.has(fi);
       if(repeatableStatementText&&duplicateStatementTextIndexes.has(fi))continue;
-      if(!repeatableStatementText&&!conflicting.has(key)&&chosen.get(key)!==f)continue;
+      if(!preserveUnresolved&&!repeatableStatementText&&!conflicting.has(key)&&chosen.get(key)!==f)continue;
       const fid=`${id}:f${fi}`;
       const validation:Fact["validation"]=[];
+      if(preserveUnresolved)validation.push({code:"UNRESOLVED_DEBT_COMPONENT_SLOT",message:"원문에 합계·비용 슬롯이 있으나 값 또는 인용을 확인할 수 없어 계산을 보류합니다.",severity:"error"});
       if(f.confidence!=="clear")validation.push({code:"UNCERTAIN_READING",message:"재판독 필요: 계산 투영에서 제외한 값입니다.",severity:"warning"});
       if(fieldConflict)validation.push({code:"FIELD_CONFLICT",message:repeatableStatementText?"같은 원문 영역에서 상충하는 진술문 텍스트가 판독되었습니다.":"같은 필드에 상충하는 원문값이 있습니다.",severity:"error"});
       if(r.category==="debt"&&["bank_transactions","bank_account"].includes(family))validation.push({code:"DOCUMENT_CATEGORY_MISMATCH",message:"은행 거래·계좌 문서의 이 행을 현재 채무로 분류할 원문 근거가 없습니다. 원문 사실만 보존하고 typed 채무 투영은 보류합니다.",severity:"error"});
@@ -275,7 +280,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const accountField=["bank_account","bank_transactions"].includes(family)&&r.category!=="transaction"&&["institution","owner","account_number","balance","active","as_of","encumbrance_status","seizure_status","pledge_status"].includes(key);
       const factKey=isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
       const logicalId=`${id}:${key}${repeatableStatementText?`:paragraph:${statementTextIdentity.get(fi)}`:""}${fieldConflict?`:candidate:${fi}`:""}`;
-      facts.push({id:fid,subjectId:id,logicalId,key:factKey,value:f.value,rawValue:f.value,sourceUnit:f.unit,...(monetary?{numeric:sourceMoney(f)}:{}),periodStart:value("period_start"),periodEnd:value("period_end"),asOf:value("as_of"),refs:[{documentId,page,quote:f.quote,sourceHash:documentHash,...(isValidSourceBBox(f.bbox)?{bbox:f.bbox}:{})}],validation});
+      facts.push({id:fid,subjectId:id,logicalId,key:factKey,value:f.value,rawValue:f.value??undefined,sourceUnit:f.unit,...(monetary?{numeric:sourceMoney(f)}:{}),periodStart:value("period_start"),periodEnd:value("period_end"),asOf:value("as_of"),refs:typeof f.quote==="string"&&f.quote.trim()?[{documentId,page,quote:f.quote,sourceHash:documentHash,...(isValidSourceBBox(f.bbox)?{bbox:f.bbox}:{})}]:[],validation});
     }
     if(!ids.length)return;
     if(r.category==="income"){
@@ -292,7 +297,8 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const guaranteeKeys=["liability_role","claim_nature","underlying_debt_id","guarantee_for","recourse_status","guarantee_limit","guarantee_amount"];
       const hasGuaranteeEvidence=guaranteeKeys.some(key=>field(key));
       if(hasGuaranteeEvidence)warnings.push(`${id}: 보증·조건부 채무는 원문 사실만 추출했습니다. 채권 포함 범위와 책임액은 법률 검토가 필요합니다.`);
-      debts.push({id,creditor:value("creditor")||"",contractId:value("contract_id"),principal:currentPrincipal(),interest:num("interest"),secured:tri(value("secured")),classification:known(value("classification"),["ordinary","secured","tax","estate","non_dischargeable","disputed","unknown"],"unknown"),asOf:value("as_of"),dueDate:value("due_date"),legalReview:"unreviewed",...(hasGuaranteeEvidence?{guaranteeDetails:{liabilityRole:known(value("liability_role"),["principal","guarantor","joint_and_several","unknown"],"unknown"),claimNature:known(value("claim_nature"),["fixed","contingent","disputed","unknown"],"unknown"),underlyingDebtId:value("underlying_debt_id"),recourseStatus:known(value("recourse_status"),["not_applicable","unpaid","partially_paid","subrogated","unknown"],"unknown"),capTreatment:"unknown" as const,capTreatmentReviewed:false,sourceGuaranteeAmount:num("guarantee_amount"),sourceGuaranteeLimit:num("guarantee_limit")}}:{}),factIds:ids});
+      const sourceComponentIssues=[...new Set([...byKey].filter(([key,fields])=>isDebtComponentSlot(key)&&fields.some(f=>!usable(f))).map(([key])=>debtComponentSlotKey(key)!))];
+      debts.push({id,sourceComponentIssues,creditor:value("creditor")||"",contractId:value("contract_id"),principal:currentPrincipal(),interest:num("interest"),secured:tri(value("secured")),classification:known(value("classification"),["ordinary","secured","tax","estate","non_dischargeable","disputed","unknown"],"unknown"),asOf:value("as_of"),dueDate:value("due_date"),legalReview:"unreviewed",...(hasGuaranteeEvidence?{guaranteeDetails:{liabilityRole:known(value("liability_role"),["principal","guarantor","joint_and_several","unknown"],"unknown"),claimNature:known(value("claim_nature"),["fixed","contingent","disputed","unknown"],"unknown"),underlyingDebtId:value("underlying_debt_id"),recourseStatus:known(value("recourse_status"),["not_applicable","unpaid","partially_paid","subrogated","unknown"],"unknown"),capTreatment:"unknown" as const,capTreatmentReviewed:false,sourceGuaranteeAmount:num("guarantee_amount"),sourceGuaranteeLimit:num("guarantee_limit")}}:{}),factIds:ids});
     }
     if(r.category==="asset"){
       if(leaseType(read.documentType)&&!(["applicant_is_tenant","asset_owner_role","ownership_role"].some(k=>value(k)==="yes"||value(k)==="applicant"))){warnings.push(`${id}: 임대차 문서만으로 신청인 소유자산을 판단하지 않았습니다. 신청인 역할의 원문 근거가 필요합니다.`);return;}
@@ -307,21 +313,31 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const assetKind=family==="insurance"&&(noKindReading||familyKindReading)?"insurance":sourceAssetKind(value("kind"));
       let grossValue=num("gross_value"),securedPayoff=num("secured_payoff");
       if(assetKind==="insurance"||/insurance|보험/.test(read.documentType)){
-        const refundQuote=/(?:해약|해지|예상)?\s*환급금|surrender\s*value|cash\s*value/i;
-        // A normalized alias may coexist with the canonical field in one row.
-        // Validate quote semantics before selecting either, then block competing
-        // refund readings instead of silently preferring refund_value by order.
-        const refundCandidates=[field("refund_value"),field("gross_value")].filter((candidate):candidate is ReadField=>!!candidate&&refundQuote.test(candidate.quote??""));
-        const normalizedRefunds=refundCandidates.map(candidate=>({candidate,money:sourceMoney(candidate)}));
-        const refundAmounts=new Set(normalizedRefunds.map(item=>item.money.amountWon));
-        const allRefundsNormalized=normalizedRefunds.every(item=>item.money.normalizationStatus==="exact"&&item.money.amountWon!==null);
-        if(refundCandidates.length===1)grossValue=normalizedRefunds[0].money;
-        else if(refundCandidates.length>1&&allRefundsNormalized&&refundAmounts.size===1)grossValue=normalizedRefunds[0].money;
-        else {
-          grossValue=null;
-          if(refundCandidates.length>1&&(!allRefundsNormalized||refundAmounts.size>1))warnings.push(`${id}: 서로 다른 해약환급금 후보가 있어 자산가액 선택을 보류했습니다.`);
-          else if(!refundCandidates.length&&(field("refund_value")||field("gross_value")))warnings.push(`${id}: 보험 가입·보장·납입 금액을 환급가치로 사용하지 않았습니다. 해약환급금 원문 열이 필요합니다.`);
-        }
+        // Every explicit surrender slot participates in selection, including an
+        // unusable/null alias. Generic premium/coverage fields remain separate.
+        const strict=INSURANCE_SURRENDER_KEYS.flatMap(key=>byKey.get(key)??[]);
+        const semantic=[...(byKey.get("refund_value")??[]).filter(candidate=>!candidate.quote?.trim()||isInsuranceSurrenderQuote(candidate.quote)),...(byKey.get("gross_value")??[]).filter(candidate=>isInsuranceSurrenderQuote(candidate.quote??""))];
+        const candidates=[...strict,...semantic];
+        const located=(candidate:ReadField)=>usable(candidate)&&isValidSourceBBox(candidate.bbox)&&isInsuranceSurrenderQuote(candidate.quote??"");
+        const quoteAgrees=(candidate:ReadField)=>{
+          const quoted=quotedInsuranceSurrenderAmount(candidate.quote??"");
+          if(!quoted)return false;
+          const money=sourceMoney(candidate),quoteMoney=normalizeMoney(quoted.raw,quoted.unit??candidate.unit??"unknown");
+          if(money.normalizationStatus==="exact")return money.amountWon!==null&&BigInt(money.amountWon)>=0n&&quoteMoney.normalizationStatus==="exact"&&quoteMoney.amountWon===money.amountWon;
+          // Preserve an unnormalized observation only if its literal number agrees;
+          // missing source units never become a usable amount through the quote.
+          const raw=(value:string|null)=>value?.normalize("NFKC").trim().replace(/,/g,"").replace(/\s*(?:원|KRW)\s*$/i,"");
+          return money.normalizationStatus==="review_required"&&raw(candidate.value)===raw(quoted.raw)&&/^\+?\d+(?:\.\d+)?$/.test(raw(candidate.value)??"");
+        };
+        const coherent=candidates.length>0&&candidates.every(candidate=>located(candidate)&&quoteAgrees(candidate));
+        const amounts=new Set(candidates.map(candidate=>sourceMoney(candidate).amountWon));
+        grossValue=coherent&&amounts.size===1&&(amounts.has(null)?candidates.length===1:true)?sourceMoney(candidates[0]):null;
+        if(!grossValue&&candidates.length)warnings.push(`${id}: 서로 다른 해약환급금 후보 또는 불명확한 원문 금액·위치가 있어 자산가액 선택을 보류했습니다.`);
+        else if(!candidates.length&&(byKey.has("refund_value")||byKey.has("gross_value")))warnings.push(`${id}: 보험 가입·보장·납입 금액을 환급가치로 사용하지 않았습니다. 해약환급금 원문 열이 필요합니다.`);
+        // A policy-loan balance is evidence, not automatically a deduction from a
+        // surrender value that may already be net of that loan. Preserve its raw
+        // fact and leave a missing payoff missing until its basis is reviewed.
+        if(byKey.has("policy_loan_balance")||byKey.has("loan_balance"))warnings.push(`${id}: 보험계약대출 잔액은 원문 사실로 보존했습니다. 환급금의 대출 차감 전후와 공제 근거는 별도 검토해야 합니다.`);
       }
       if(field("secured_payoff")&&/채권\s*최고액|저당\s*설정액|근저당\s*설정|maximum\s*secured/i.test(field("secured_payoff")!.quote??"")){
         securedPayoff=null;warnings.push(`${id}: 담보 설정액·채권최고액은 실제 상환잔액이 아니므로 차감 계산에서 제외했습니다.`);

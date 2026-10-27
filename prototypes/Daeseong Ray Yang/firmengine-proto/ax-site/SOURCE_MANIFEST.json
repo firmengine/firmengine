@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "4cba05a695c82d3563efb0f9e85ee5e963fcc9a7c1eb602ffac436c189422823",
+  "source_digest": "cbccd889320125f72fbf29295ff62d08c043754b4dc12d59e1c609b3d209d5ee",
   "files": [
     {
       "path": ".gitignore",
@@ -19,8 +19,8 @@
     },
     {
       "path": "README.md",
-      "sha256": "58de0724289bf0f63af7fa232e779f73df150ef880706155187648e5546c19cc",
-      "bytes": 6853,
+      "sha256": "a8f84520e0d245e502a5723ea377a698a9a162cc0474790c01e1a13e3c787bc1",
+      "bytes": 7567,
       "mode": "100644"
     },
     {
@@ -49,8 +49,8 @@
     },
     {
       "path": "app/api/cases/[id]/process/route.ts",
-      "sha256": "33f346cb627e462af09d6dc659ddfc7371678c14a541e900488a736aea11de32",
-      "bytes": 6215,
+      "sha256": "5810397fd31a072524e42661afb5c27d58fee14c7f62e96d80f1f5f6d57e48e3",
+      "bytes": 6860,
       "mode": "100644"
     },
     {
@@ -751,8 +751,8 @@
     },
     {
       "path": "lib/assessment.ts",
-      "sha256": "dd2a58f6e87d48a53f217208a9682bc3c929077a6c46dda93f193d79a11b4985",
-      "bytes": 71537,
+      "sha256": "4362b8c9d48a3d4e1eedde8a868b9378ddeaeeac0542d3470679e86157fb1524",
+      "bytes": 76300,
       "mode": "100644"
     },
     {
@@ -763,8 +763,8 @@
     },
     {
       "path": "lib/case-response.ts",
-      "sha256": "d1f25b7eff5d0a51c7593b6951c8ee770bea16583a2d2a0eb426def980816e9e",
-      "bytes": 3236,
+      "sha256": "f817f6c3ed1cea1d44a1d888469754e27e32584abbfa637b2962822e58efe3ce",
+      "bytes": 4550,
       "mode": "100644"
     },
     {
@@ -817,14 +817,20 @@
     },
     {
       "path": "lib/debt-resolution.ts",
-      "sha256": "d579755576b6d556f573c960dec3adcba58d55312c8f86d6f51b6ec726b7431d",
-      "bytes": 4827,
+      "sha256": "7f3fa68f7e2e99034f467cc9fde90813978c506c77507fff40451a23bee8bdde",
+      "bytes": 4973,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/debt-source-integrity.ts",
+      "sha256": "191252384664a3c3a745d14453aff3c7888a2e069042ff0580c22b31b687c4da",
+      "bytes": 10161,
       "mode": "100644"
     },
     {
       "path": "lib/document-annexes.ts",
-      "sha256": "fc547ce8183ef7dc9b53fa539dd260987ba9487cbf4bdac6f189cbea824b02b2",
-      "bytes": 20903,
+      "sha256": "95e3c4098e7cd33aa80d4bcad4a6779a5cd87976af9aca1b276504dffa9170e6",
+      "bytes": 21590,
       "mode": "100644"
     },
     {
@@ -841,8 +847,8 @@
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "003195daffde0565cf143d73f28c095e2619680203281d81d256af5cbf3059a7",
-      "bytes": 51179,
+      "sha256": "2325cca59abedadd789f3268474badf096f274ccb079dc073b6ad53fa6c973bf",
+      "bytes": 53350,
       "mode": "100644"
     },
     {
@@ -859,8 +865,8 @@
     },
     {
       "path": "lib/extraction.ts",
-      "sha256": "96868c7cbb2f96ca813ccdbdd19055a4a7ae5a5488d19ff54f9a75de617a87bf",
-      "bytes": 64594,
+      "sha256": "ba1f6a6f417d3108fb9579ee426cfe440556f7270d3af7b972d398ccba86a877",
+      "bytes": 68503,
       "mode": "100644"
     },
     {
@@ -979,8 +985,14 @@
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "75e379482b396fc48286e1e43e59f645aec22a109708e2593b2f5209aad78e74",
-      "bytes": 76170,
+      "sha256": "ea1ef47b4862eb53ef935743f2215b6266e45d12fa06dfe00bf83c10dc8e165d",
+      "bytes": 78030,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/process-job-scope.ts",
+      "sha256": "cc24ad64d1dea09639f13287fb1fc58f2b07df452af176753ea6a065131f21ea",
+      "bytes": 3971,
       "mode": "100644"
     },
     {
@@ -991,7 +1003,7 @@
     },
     {
       "path": "lib/reprojection.ts",
-      "sha256": "7b992ece4122c9694d407c4c43013eb54e2b63eefa909b44191524f7c92c85ed",
+      "sha256": "ad8a5f4e8f0dd069ce57f9cb6fcb30e95c76691824b5dea775871e57d39f3bd0",
       "bytes": 14470,
       "mode": "100644"
     },
@@ -1033,8 +1045,8 @@
     },
     {
       "path": "lib/source-quantity.ts",
-      "sha256": "4dd584a6d2dbb1d7c2b8847b11ee4cc8866e53fb52e1074ec85a8b4c73a5a02c",
-      "bytes": 2921,
+      "sha256": "fadb18b7b5b6c7d1520beb8ecc376dc8df099bd2c9c26f206201c4337c3d3cf3",
+      "bytes": 5662,
       "mode": "100644"
     },
     {
@@ -1297,8 +1309,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "d298526eb845e1d835bcfacc20211b6905d0bee326bd91e5958cfe230e5586aa",
-      "bytes": 24370,
+      "sha256": "32e670c7a00fa292d1f4feb1f278138c3bcb8a6ea00971bb00bd289556052863",
+      "bytes": 25084,
       "mode": "100644"
     },
     {
@@ -1441,8 +1453,8 @@
     },
     {
       "path": "tests/annex.test.ts",
-      "sha256": "ae211218dd91b56f14f34608243b6f3d6a2d27489ea47a4f6770d8b85703a8c6",
-      "bytes": 11601,
+      "sha256": "0c86816096de03b40be56f3ef3bb4636fed1f170652638087aa2d91407dd0416",
+      "bytes": 13896,
       "mode": "100644"
     },
     {
@@ -1488,6 +1500,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/debt-source-integrity.test.ts",
+      "sha256": "4a85ded910d1c9cb44038c6f7beeae528cc4bc6caf8694658a9740aa007ff909",
+      "bytes": 19108,
+      "mode": "100644"
+    },
+    {
       "path": "tests/document-generation-metrics.test.ts",
       "sha256": "a1ec7e6bff90baff35f352e1fe2fc1befb4df34be842d842e66b139c3b6e33ed",
       "bytes": 5747,
@@ -1513,14 +1531,14 @@
     },
     {
       "path": "tests/extraction-semantics.test.ts",
-      "sha256": "429649551cc04cf0640adc988011355e33fd83c7a314e7a1ae8c3989d13e6897",
-      "bytes": 15769,
+      "sha256": "4ad7c7672b54df448865423df9fd20f1f35db7a8b4a49167a63a4fafb20ed341",
+      "bytes": 15779,
       "mode": "100644"
     },
     {
       "path": "tests/extraction.test.ts",
-      "sha256": "ab4971895fabe0045d1200e58f27b8725cc3469a5d3155e83ce96fac4d648ebc",
-      "bytes": 23756,
+      "sha256": "f5b8d9e43f4c310891f77c27916faba4fba609004fc2d3d94c14932b6aa5b93d",
+      "bytes": 28753,
       "mode": "100644"
     },
     {
@@ -1533,6 +1551,12 @@
       "path": "tests/income-resolution.test.ts",
       "sha256": "d1a445141eb39cff02344f5a3ba686db9e017b009a76f48368bf208a01ece7c7",
       "bytes": 7542,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/insurance-source-slots.test.ts",
+      "sha256": "30913a1555dc850736aff13bcef1416b573a4a614848737546521bd35083c487",
+      "bytes": 7071,
       "mode": "100644"
     },
     {
@@ -1579,8 +1603,8 @@
     },
     {
       "path": "tests/manual-review-preservation.test.ts",
-      "sha256": "df707a9e05695722359d9f42d761f8c630c91cbbd14c35e72064f2a4d382884d",
-      "bytes": 7957,
+      "sha256": "0a6e0955401c73636dd55a9f2a9b7acfab90bf2d966c436cdbe5527724826523",
+      "bytes": 9834,
       "mode": "100644"
     },
     {
@@ -1597,8 +1621,8 @@
     },
     {
       "path": "tests/output-resolution.test.ts",
-      "sha256": "0c7c576049d4d00089d775cc256bb2e9af1ef7036bfab835321a27427d797844",
-      "bytes": 17188,
+      "sha256": "a8725e09d21a121b569d0640e2c3ecab8e36fd4b332fab6a0b0d34af6eae1ed3",
+      "bytes": 17198,
       "mode": "100644"
     },
     {
@@ -1609,8 +1633,8 @@
     },
     {
       "path": "tests/page-refresh-pipeline.test.ts",
-      "sha256": "74f6316a346e223e02bb7c4ce411789fd5022721862df15bab7b6edf4faa2ea5",
-      "bytes": 11596,
+      "sha256": "01e2b8f7ca421845453118fb5e27bd24e77542ec83f594857b01768b52066682",
+      "bytes": 11704,
       "mode": "100644"
     },
     {
@@ -1621,20 +1645,26 @@
     },
     {
       "path": "tests/pipeline-audit.test.ts",
-      "sha256": "a5898d6f5ad1a909051dac5b4f6e8ac7c37c703b50ce535df7a96b2bca36ff6c",
+      "sha256": "7b8c60cedba52862e29bd4602dbe35f5985aa5d675d3df799abb8e48f048901a",
       "bytes": 24395,
       "mode": "100644"
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "d188b268bd44bbc52c704fce3ceb960a0fecfb3e27b11eda1ba8a5f2799f6c3e",
-      "bytes": 41614,
+      "sha256": "a187884df1eb4fc221205a582b51dadc540073a76c2d297d321afdbcd745a398",
+      "bytes": 41716,
       "mode": "100644"
     },
     {
       "path": "tests/principal-current-slot.test.ts",
       "sha256": "c41c18af01525bf358f4ee206bfbe6727d0d21effd4b8fad614620342c5a9391",
       "bytes": 7004,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/process-job-scope.test.ts",
+      "sha256": "e2d996d56454b64fbed00272991f5bd54b8fe1a94d3a888097f9b687bf1ed78d",
+      "bytes": 9870,
       "mode": "100644"
     },
     {
@@ -1657,8 +1687,8 @@
     },
     {
       "path": "tests/reprojection-route.test.ts",
-      "sha256": "40e61973127cbca186d64112fc0de9afd189dfbb6f8a028fece4e32407fc4a2b",
-      "bytes": 10784,
+      "sha256": "e6a360f2db5b88746d39f349830a03760e227a775e0a99957a953d7391899b99",
+      "bytes": 10909,
       "mode": "100644"
     },
     {
@@ -1693,8 +1723,8 @@
     },
     {
       "path": "tests/source-quantity.test.ts",
-      "sha256": "49935de8b4d7c26e1b673d23719cc8be7e09c54b0535f48f39c2a6f6cf7d9040",
-      "bytes": 8815,
+      "sha256": "2b67457f9e4a441f0924e1ef725904fc6046de36b11effa0037f41bf5b67e5d7",
+      "bytes": 8825,
       "mode": "100644"
     },
     {
@@ -1705,7 +1735,7 @@
     },
     {
       "path": "tests/statement-paragraphs.test.ts",
-      "sha256": "07ad89171677c273d49630ce98f44e2d5eb82bed55b3342981ee08769242f298",
+      "sha256": "c775a4cee76a5d1e567b530dda6e599305caac9a650cbc291227f1a55f1fb9c4",
       "bytes": 30381,
       "mode": "100644"
     },

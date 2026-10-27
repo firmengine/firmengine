@@ -183,7 +183,7 @@ test("scope relation extraction metadata binds the opening source quote and bbox
   const projected=projectPage(read,"source-doc",1,"d".repeat(64)),fact=projected.facts?.find(item=>item.key==="statement.scope_relation");
   assert.ok(fact&&fact.refs,"typed relation is carried into the source fact ledger");
   assert.equal(fact.refs[0].quote,opening);assert.deepEqual(fact.refs[0].bbox,bbox);assert.equal(fact.refs[0].sourceHash,"d".repeat(64));
-  assert.equal(PROMPT_VERSION,"luna-evidence-3.15.0");
+  assert.equal(PROMPT_VERSION,"luna-evidence-3.16.0");
   assert.ok(sourceInstructions("client_statement").includes("relation 필드의 별도 quote는 openingQuote와 같게"));
   assert.ok(STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS.includes("원문에 인쇄된 문자열이 아니라"));
 });

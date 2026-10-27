@@ -5,6 +5,8 @@ import type { CaseData } from "./domain";
 import { evaluateWorkflow } from "./workflow-rules";
 import { scanTransactions } from "./transaction-review";
 import { applyProcessingGate } from "./processing-readiness";
+import { samplePageRole } from "./sample-manifest";
+import { rescuePlanInScope,assertProcessJobRows,isCurrentEvidenceJob } from "./process-job-scope";
 export async function caseResponse(data:CaseData|string){
   const c=typeof data==="string"?await getCase(data):data;
   const extras=await caseExtras(c);
@@ -13,13 +15,19 @@ export async function caseResponse(data:CaseData|string){
   return {case:{...c,documents,execution:extras.execution??c.execution},assessment:applyProcessingGate(assessment,extras.processingReadiness),...extras,workflow:evaluateWorkflow(c,assessment),transactionReview:scanTransactions(c),rules:CURRENT_RULESET,legalCatalog:LEGAL_CATALOG,riskCatalog:RISK_CATALOG};
 }
 
-export async function caseProgress(caseId:string,result:{remaining?:number;stage?:string;page?:number;error?:string;warnings?:unknown[];checks?:{status?:string}[];disagreements?:number;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[]}}){
+export async function caseProgress(caseId:string,result:{remaining?:number;stage?:string;page?:number;error?:string;warnings?:unknown[];checks?:{status?:string}[];disagreements?:number;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[]}},jobIds?:string[]){
   const [c,rows,rescuePlans]=await Promise.all([getCase(caseId),jobs(caseId),persistedRescuePlans(caseId)]);
+  const scopedRows=jobIds?rows.filter(row=>jobIds.includes(String(row.id))):rows;
+  if(jobIds)assertProcessJobRows(jobIds,scopedRows.map(row=>({id:String(row.id),document_id:String(row.documentId),page:Number(row.page),role:String(row.role)})),row=>isCurrentEvidenceJob(row,c,(hash,page)=>samplePageRole(hash,page).role));
+  const scopedRescues=jobIds?rescuePlans.filter(plan=>rescuePlanInScope(plan,scopedRows as Array<{id:string;documentId:string;page:number}>,jobIds)):rescuePlans;
   const jobsByStatus:Record<string,number>={};
-  for(const row of rows)jobsByStatus[String(row.status)]=(jobsByStatus[String(row.status)]??0)+1;
+  for(const row of scopedRows)jobsByStatus[String(row.status)]=(jobsByStatus[String(row.status)]??0)+1;
   const checkStatus:Record<string,number>={};
   for(const check of result.checks??[])checkStatus[String(check.status??"unknown")]=(checkStatus[String(check.status??"unknown")]??0)+1;
-  const remaining=result.remaining??rows.filter(row=>["pending","processing","awaiting_upload","error"].includes(String(row.status))&&!['filed_form','administrative'].includes(String(row.role))).length;
-  const persistedRescue=result.rescue??rescuePlans[0];
-  return {caseId,revision:c.context.revision,counts:{documents:c.documents.filter(d=>d.status==="active").length,evidencePages:c.pages.filter(p=>p.role==="evidence").length,facts:c.facts.length,incomes:c.incomes.length,debts:c.debts.length,assets:c.assets.length,transactions:c.transactions.length},jobs:{total:rows.length,byStatus:jobsByStatus},remaining,stage:result.stage??"unknown",...(result.page!==undefined?{page:result.page}:{}),...(result.disagreements!==undefined?{disagreements:result.disagreements}:{}),...(persistedRescue?{rescue:persistedRescue}:{}),...(result.warnings?{warningCount:result.warnings.length}:{}),...(result.checks?{checks:{total:result.checks.length,byStatus:checkStatus}}:{}),...(result.error?{error:result.error}:{})};
+  const scopedRemaining=jobIds?scopedRows.filter(row=>["pending","processing","awaiting_upload","error"].includes(String(row.status))&&!['filed_form','administrative'].includes(String(row.role))).length:undefined;
+  const remaining=scopedRemaining??result.remaining??rows.filter(row=>["pending","processing","awaiting_upload","error"].includes(String(row.status))&&!['filed_form','administrative'].includes(String(row.role))).length;
+  const directRescue=rescuePlanInScope(result.rescue,scopedRows as Array<{id:string;documentId:string;page:number}>,jobIds)?result.rescue:undefined;
+  const persistedRescue=directRescue??scopedRescues[0];
+  const globalJobsByStatus:Record<string,number>={};for(const row of rows)globalJobsByStatus[String(row.status)]=(globalJobsByStatus[String(row.status)]??0)+1;
+  return {caseId,revision:c.context.revision,counts:{documents:c.documents.filter(d=>d.status==="active").length,evidencePages:c.pages.filter(p=>p.role==="evidence").length,facts:c.facts.length,incomes:c.incomes.length,debts:c.debts.length,assets:c.assets.length,transactions:c.transactions.length},jobs:{total:scopedRows.length,byStatus:jobsByStatus,...(jobIds?{globalTotal:rows.length,globalByStatus:globalJobsByStatus}:{}),...(jobIds?{scopeIds:jobIds}:{})},remaining,stage:result.stage??"unknown",...(result.page!==undefined?{page:result.page}:{}),...(result.disagreements!==undefined?{disagreements:result.disagreements}:{}),...(persistedRescue?{rescue:persistedRescue}:{}),...(result.warnings?{warningCount:result.warnings.length}:{}),...(result.checks?{checks:{total:result.checks.length,byStatus:checkStatus}}:{}),...(result.error?{error:result.error}:{})};
 }

@@ -29,7 +29,7 @@ function completeContractKey(data: CaseData, debt: Debt, facts: Fact[],index?:Ca
  * Deduplicate only the same referenced observation, or a complete issuer-scoped
  * contract. Keep ambiguous rows and prevent their aggregate from becoming final.
  */
-export function resolveDebtRows(data: CaseData,index?:CaseReadIndex): { rows: Debt[]; duplicates: string[]; issues: string[] } {
+export function resolveDebtRows(data: CaseData,index?:CaseReadIndex): { rows: Debt[]; sourceGroups: Debt[][]; duplicates: string[]; issues: string[] } {
   const facts = currentFacts(data,index), active = new Set(facts.map(f => f.id));
   const groups = new Map<string, Debt[]>(), strong = new Map<string, string | null>();
   for (const debt of data.debts) {
@@ -40,15 +40,16 @@ export function resolveDebtRows(data: CaseData,index?:CaseReadIndex): { rows: De
     const key = scoped ? "contract:" + scoped : observation ? "observation:" + observation : "id:" + debt.id;
     groups.set(key, [...(groups.get(key) ?? []), debt]);
   }
-  const rows: Debt[] = [], duplicates: string[] = [], issues: string[] = [];
+  const rows: Debt[] = [], sourceGroups: Debt[][] = [], duplicates: string[] = [], issues: string[] = [];
   const amount = (value: Debt["principal"]) => moneyValue(value)?.toString() ?? null;
   const fingerprint = (d: Debt) => JSON.stringify([d.contractId, d.creditor, amount(d.principal), amount(d.interest), d.asOf, d.dueDate, d.secured, d.classification, d.priority, d.legalReview, d.excludedByReview, d.exclusionReason, d.guaranteeDetails]);
   for (const group of groups.values()) {
     const first = group[0];
     if (group.some(d => fingerprint(d) !== fingerprint(first))) {
-      issues.push("DEBT_CONTRACT_CONFLICT:" + (first.contractId ?? first.id)); rows.push(...group);
+      issues.push("DEBT_CONTRACT_CONFLICT:" + (first.contractId ?? first.id)); rows.push(...group); sourceGroups.push(...group.map(debt=>[debt]));
     } else {
       rows.push({ ...first, factIds: [...new Set(group.flatMap(d => d.factIds))] });
+      sourceGroups.push(group);
       duplicates.push(...group.slice(1).map(d => d.id));
     }
   }
@@ -61,5 +62,5 @@ export function resolveDebtRows(data: CaseData,index?:CaseReadIndex): { rows: De
   }
   for (const group of byContract.values()) if (group.length > 1 && group.some(d => !strong.get(d.id))) issues.push("DEBT_IDENTITY_AMBIGUOUS:" + group.map(d => d.id).join(","));
   for (const group of byName.values()) if (group.length > 1 && group.some(d => !identity(d.contractId))) issues.push("DEBT_IDENTITY_AMBIGUOUS:" + group.map(d => d.id).join(","));
-  return { rows, duplicates, issues: [...new Set(issues)] };
+  return { rows, sourceGroups, duplicates, issues: [...new Set(issues)] };
 }

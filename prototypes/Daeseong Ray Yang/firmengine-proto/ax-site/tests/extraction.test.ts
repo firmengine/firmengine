@@ -20,6 +20,81 @@ function fixture(reads:PageRead[]):CaseData{
 }
 const apply=(data:CaseData,r:PageRead,page=1)=>applyExtraction(data,projectPage(r,"doc",page,hash));
 
+test("explicit unreadable or null debt component slots survive projection and block a partial total",()=>{
+  for(const key of ["legal_costs","collection_fees","enforcement_cost","other_costs","total","total_claim"]){
+    for(const state of ["null","no_quote","unreadable"]){
+      const row=loan();
+      row.fields.push(field(key,state==="null"?null:"5",{quote:state==="no_quote"?null:"별도 비용 또는 합계 판독 불가",confidence:state==="unreadable"?"unreadable":"clear"}));
+      const r=read([row]),data=apply(fixture([r]),r),calculation=calculateCase(data,DRAFT_RULESET);
+      const slot=currentFacts(data).find(f=>f.key==="debt."+key);
+      assert.ok(data.debts[0].sourceComponentIssues?.includes(({total_claim:"total",collection_fees:"collection_costs",enforcement_cost:"enforcement_costs"} as Record<string,string>)[key]??key));
+      if(state==="no_quote")assert.equal(slot,undefined,"a missing quote never becomes a source fact");
+      else {
+        assert.ok(slot,`${key}/${state}: quoted unresolved slot remains in source ledger`);
+        assert.ok(slot.validation.some(v=>v.code==="UNRESOLVED_DEBT_COMPONENT_SLOT"));
+        assert.ok(!data.debts[0].factIds.includes(slot.id));
+      }
+      assert.equal(calculation.debtRows[0].principalWon,"100000000");
+      assert.equal(calculation.debtRows[0].interestWon,"1000000");
+      assert.equal(calculation.debtRows[0].totalWon,null,`${key}/${state}`);
+      assert.equal(calculation.totalDebtWon,null);
+    }
+  }
+});
+
+test("a reviewed typed debt preserves its decision and retains newly unresolved component metadata",()=>{
+  const before=read([loan()]);let data=apply(fixture([before]),before);
+  data.debts[0].legalReview="accepted";
+  const row=loan();row.fields.push(field("legal_costs",null,{quote:null,confidence:"unreadable"}));
+  const after=read([row]);data=apply(data,after);
+  assert.equal(data.debts[0].legalReview,"accepted");
+  assert.equal(data.debts[0].principal?.amountWon,"100000000");
+  assert.ok(data.debts[0].sourceComponentIssues?.includes("legal_costs"));
+  assert.equal(calculateCase(data,DRAFT_RULESET).debtRows[0].totalWon,null);
+});
+
+test("a clear duplicate cannot erase an explicit unresolved debt cost slot",()=>{
+  for(const reverse of [false,true]){
+    const row=loan(),slots=[field("legal_costs",null,{quote:"법률비용 미확인"}),field("legal_costs","0",{quote:"법률비용 0원"})];
+    row.fields.push(...(reverse?slots.reverse():slots));
+    const r=read([row]),data=apply(fixture([r]),r),costs=currentFacts(data).filter(f=>f.key==="debt.legal_costs");
+    assert.equal(costs.length,2);assert.equal(new Set(costs.map(f=>f.logicalId)).size,2);
+    assert.ok(costs.every(f=>f.validation.some(v=>v.code==="FIELD_CONFLICT")));
+    assert.equal(calculateCase(data,DRAFT_RULESET).debtRows[0].totalWon,null);
+  }
+});
+
+test("complete exact-row replacement resolves metadata only after an explicit usable cost slot arrives",()=>{
+  const initial=loan();initial.fields.push(field("legal_costs","5",{quote:null}));
+  const first=read([initial]),source=fixture([first]);source.pages[0].text+="\n법률비용 0원";
+  let data=apply(source,first);
+  for(const fact of currentFacts(data).filter(f=>data.debts[0].factIds.includes(f.id))){
+    data=reviewFact(data,fact.id,{state:"verified",recognition:"unreviewed",actor:"synthetic-reviewer",reason:"synthetic exact-row source check"});
+  }
+  data.debts[0].legalReview="accepted";
+  const corrected=loan();corrected.fields.push(field("legal_fees","0",{quote:"법률비용 0원"}));
+  data=apply(data,read([corrected]));
+  assert.equal(data.debts[0].legalReview,"accepted");
+  assert.deepEqual(data.debts[0].sourceComponentIssues,[]);
+  assert.equal(calculateCase(data,DRAFT_RULESET).debtRows[0].totalWon,null,"a usable read is still not independent source verification");
+  const cost=currentFacts(data).find(f=>f.key==="debt.legal_fees")!;
+  data=reviewFact(data,cost.id,{state:"verified",recognition:"unreviewed",actor:"synthetic-reviewer",reason:"synthetic source verifies explicit zero"});
+  assert.equal(calculateCase(data,DRAFT_RULESET).debtRows[0].totalWon,"101000000");
+});
+
+test("omission, incomplete reading, or moved source anchors cannot clear reviewed debt metadata",()=>{
+  for(const variant of ["missing","incomplete","moved"]){
+    const initial=loan();initial.fields.push(field("legal_costs","5",{quote:null}));
+    const first=read([initial]),source=fixture([first]);source.pages[0].text+="\n법률비용 0원";
+    let data=apply(source,first);data.debts[0].legalReview="accepted";
+    const next=loan();if(variant!=="missing")next.fields.push(field("legal_costs","0",{quote:"법률비용 0원"}));
+    if(variant==="moved")next.fields.find(f=>f.key==="principal")!.bbox=[.2,.3,.5,.6];
+    data=apply(data,read([next],variant!=="incomplete"));
+    assert.ok(data.debts[0].sourceComponentIssues?.includes("legal_costs"),variant);
+    assert.equal(calculateCase(data,DRAFT_RULESET).debtRows[0].totalWon,null,variant);
+  }
+});
+
 test("원금·이자는 각 원문 필드 및 단위에 연결되고 명시적 0을 보존한다",()=>{
   const row=loan();row.fields.find(f=>f.key==="principal")!.unit="천원";row.fields.find(f=>f.key==="principal")!.value="100000";row.fields.find(f=>f.key==="principal")!.quote="원금 100000 천원";
   row.fields.find(f=>f.key==="interest")!.value="0";row.fields.find(f=>f.key==="interest")!.quote="이자 0원";

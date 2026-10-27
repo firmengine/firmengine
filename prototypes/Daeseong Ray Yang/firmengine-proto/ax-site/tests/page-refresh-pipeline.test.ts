@@ -6,6 +6,7 @@ import ts from "typescript";
 import * as domain from "../lib/domain.ts";
 import * as pageRefresh from "../lib/page-refresh.ts";
 import * as retryPolicy from "../lib/retry-page-policy.ts";
+import * as processJobScope from "../lib/process-job-scope.ts";
 
 const code = ts.transpileModule(readFileSync(new URL("../lib/pipeline.ts", import.meta.url), "utf8"), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
 class TestError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
@@ -20,6 +21,7 @@ function fixture(options: { status?: string; immutableRole?: string; archiveFail
   const job = { id: "doc:1", document_id: "doc", page: 1, role: "evidence", status: options.status ?? "completed", stage:"completed", lease_until: null, image_key: `cases/case-refresh/documents/doc/pages/1/${createHash("sha256").update(pageBytes).digest("hex")}`, image_hash: createHash("sha256").update(pageBytes).digest("hex"), document_type: "income", result: original, cache_key: "prior-cache", ready: 1 };
   const archives: Array<{ key: string; raw: string }> = [], writes: unknown[][] = [], saved: domain.CaseData[] = [];
   const modules: Record<string, unknown> = {
+    "./process-job-scope": processJobScope,
     "./domain": domain, "./page-refresh": pageRefresh, "./retry-page-policy": retryPolicy,"./extraction":{validatePageRead:(read:unknown)=>read,PROMPT_VERSION:"luna-evidence-3.13.0"},
     "./sample-manifest": { samplePageRole: () => ({ role: options.immutableRole ?? "evidence" }) },"./legal-rules":{CURRENT_RULESET:{id:"synthetic-rules"}},
     "./server-store": {

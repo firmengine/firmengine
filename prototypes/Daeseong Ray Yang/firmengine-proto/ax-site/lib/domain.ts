@@ -1,4 +1,4 @@
-import { isSourceMoney } from "./source-quantity.ts";
+import { isSourceMoney,insuranceReviewFieldKey,debtComponentSlotKey } from "./source-quantity.ts";
 
 /** Canonical, JSON-safe evidence ledger. Money arithmetic never uses floating point. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -119,6 +119,8 @@ export interface Debt {
   legalReview?: Recognition;
   excludedByReview?: boolean;
   exclusionReason?: string;
+  /** Unusable slots observed by the source reader; never numeric facts or legal decisions. */
+  sourceComponentIssues?: string[];
   /** Explicit, reviewer-authored treatment for guarantee, contingent and overlapping claims. */
   guaranteeDetails?: {
     liabilityRole: "principal" | "guarantor" | "joint_and_several" | "unknown";
@@ -512,12 +514,14 @@ export interface ExtractionPayload {
   warnings?: string[];
 }
 
-const reviewFieldKey=(key:string)=>{
-  const normalized=key.trim().replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase();
+const reviewFieldKey=(field:Partial<Fact>)=>{
+  const normalized=(field.key??"").trim().replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase();
+  const insurance=insuranceReviewFieldKey(normalized,(field.refs??[]).map(ref=>ref.quote));
+  if(insurance)return insurance;
   return normalized==="debt.outstanding_principal"?"debt.principal_balance":normalized;
 };
 function reviewedSourceField(prior:Fact,raw:Partial<Fact>,exact:boolean):boolean {
-  if(reviewFieldKey(prior.key)!==reviewFieldKey(raw.key??"")||!raw.refs?.length)return false;
+  if(reviewFieldKey(prior)!==reviewFieldKey(raw)||!raw.refs?.length)return false;
   const box=(ref:SourceRef)=>Array.isArray(ref.bbox)&&ref.bbox.length===4&&ref.bbox.every(n=>Number.isFinite(n)&&n>=0&&n<=1)&&ref.bbox[0]<ref.bbox[2]&&ref.bbox[1]<ref.bbox[3]?ref.bbox:null;
   const quote=(value:string)=>value.normalize("NFKC").trim();
   return raw.refs.every(ref=>prior.refs.some(old=>{
@@ -544,7 +548,7 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
     if(fact.reviewer&&(!humanDecisions.has(fact.logicalId)||humanDecisions.get(fact.logicalId)!.version<fact.version))humanDecisions.set(fact.logicalId,fact);
   }
   const humanByKey=new Map<string,Fact[]>();
-  for(const fact of humanDecisions.values()){const key=reviewFieldKey(fact.key);humanByKey.set(key,[...(humanByKey.get(key)??[]),fact]);}
+  for(const fact of humanDecisions.values()){const key=reviewFieldKey(fact);humanByKey.set(key,[...(humanByKey.get(key)??[]),fact]);}
   const warnings = [...(extraction.warnings ?? [])];
   for (const page of extraction.pages ?? []) {
     if (!data.documents.some((d) => d.id === page.documentId && d.status === "active" && d.pages.includes(page.page))) { warnings.push("문서 범위 밖의 추출 페이지를 제외했습니다."); continue; }
@@ -561,7 +565,7 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
   const at = new Date().toISOString();
   for(const decision of [...humanDecisions.values()]){
     const head=previousHeads.get(decision.logicalId)!;
-    const key=reviewFieldKey(decision.key),peers=humanByKey.get(key)!;
+    const key=reviewFieldKey(decision),peers=humanByKey.get(key)!;
     const incoming=(extraction.facts??[]).filter(raw=>reviewedSourceField(decision,raw,false));
     const touched=decision.refs.every(ref=>scope.has(`${ref.documentId}:${ref.page}`))||incoming.length===1;
     if(head.version<=decision.version||head.reviewer||!touched||!decision.refs.length||decision.refs.some(ref=>!validSourceRef(data,ref))||peers.filter(other=>reviewedSourceField(other,decision,false)).length!==1)continue;
@@ -593,7 +597,7 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
     if (!raw.key || !raw.subjectId || raw.value === undefined || Object.hasOwn(raw,"sourceUnit")&&raw.sourceUnit!==null&&typeof raw.sourceUnit!=="string" || !Array.isArray(raw.refs) || !raw.refs.length || raw.refs.some((r) => !validSourceRef(data, r))) { warnings.push("유효한 문서·페이지·원문 인용이 없는 사실 후보를 제외했습니다."); continue; }
     let logicalId = raw.logicalId || [raw.subjectId, raw.key, raw.periodStart ?? "", raw.periodEnd ?? "", raw.refs[0].documentId].join(":");
     const directDecision=humanDecisions.get(logicalId);
-    const keyedDecisions=humanByKey.get(reviewFieldKey(raw.key))??[];
+    const keyedDecisions=humanByKey.get(reviewFieldKey(raw))??[];
     const relatedDecisions=keyedDecisions.filter(fact=>reviewedSourceField(fact,raw,false));
     // A broad/shared coordinate cannot prove which source row was reviewed.
     const uniqueSource=relatedDecisions.length===1&&(extraction.facts??[]).filter(other=>reviewedSourceField(relatedDecisions[0],other,false)).length===1;
@@ -658,7 +662,23 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
         income.aggregationReviewReason = undefined;
       }
       const index = result.findIndex((e) => e.id === item.id);
-      if (index >= 0 && reviewedObject(result[index])) { warnings.push("인정 검토한 객체는 자동 재추출로 덮어쓰지 않았습니다. 최신 근거와 대조하세요."); continue; }
+      if (index >= 0 && reviewedObject(result[index])) {
+        // Preserve the decision and amounts while retaining new source-reader
+        // incompleteness. An unresolved slot is metadata, not a replacement fact.
+        if("sourceComponentIssues" in item&&Array.isArray(item.sourceComponentIssues)){
+          const prior=result[index] as T & Pick<Debt,"sourceComponentIssues">;
+          const incomingIssues=item.sourceComponentIssues.filter((key):key is string=>typeof key==="string");
+          const sourceFields=(extraction.facts??[]).filter(fact=>fact.subjectId===item.id);
+          const anchors=prior.factIds.map(id=>input.facts.find(fact=>fact.id===id)).filter((fact):fact is Fact=>!!fact&&["debt.principal","debt.principal_balance","debt.outstanding_principal","debt.interest"].includes(fact.key));
+          const matchedRow=anchors.length>0&&anchors.every(fact=>fact.refs.length>0&&fact.refs.every(ref=>scope.has(`${ref.documentId}:${ref.page}`))&&sourceFields.filter(raw=>reviewedSourceField(fact,raw,true)).length===1);
+          const resolvedSlots=new Set(matchedRow?sourceFields.filter(fact=>fact.key&&debtComponentSlotKey(fact.key)&&fact.value!==null&&fact.value!==undefined&&fact.refs?.length&&fact.refs.every(ref=>scope.has(`${ref.documentId}:${ref.page}`)&&validSourceRef(data,ref))&&!fact.validation?.some(issue=>issue.severity==="error"||issue.code==="UNCERTAIN_READING")&&moneyValue(fact.numeric)!==null).map(fact=>debtComponentSlotKey(fact.key!)):[]);
+          // Missing slots cannot clear earlier uncertainty. Only a complete reread
+          // of the exact amount row with an explicit usable replacement can do so.
+          // The replacement fact still needs its independent source verification.
+          prior.sourceComponentIssues=[...new Set([...(prior.sourceComponentIssues??[]).filter(key=>!resolvedSlots.has(debtComponentSlotKey(key))),...incomingIssues])];
+        }
+        warnings.push("인정 검토한 객체는 자동 재추출로 덮어쓰지 않았습니다. 최신 근거와 대조하세요."); continue;
+      }
       if (index >= 0) result[index] = item; else result.push(item);
     }
     return result;

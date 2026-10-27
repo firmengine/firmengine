@@ -4,7 +4,7 @@ import { DOC_FIELDS,EXTRACT_INSTRUCTIONS,applyFirstVerification,applyTargetedRep
 import { createSourceVerificationReceipts,sourceVerificationFieldLocation } from "../lib/source-verification.ts";
 
 const sha="e".repeat(64);
-const f=(key:string,value:string,quote:string,unit:string|null=null):ReadField=>({key,label:key,value,quote,unit,confidence:"clear",bbox:null});
+const f=(key:string,value:string,quote:string,unit:string|null=null):ReadField=>({key,label:key,value,quote,unit,confidence:"clear",bbox:[.1,.2,.4,.25]});
 function asset(fields:ReadField[],documentType="insurance"):PageRead{
   return {documentType,complete:true,warnings:[],records:[{category:"asset",label:"synthetic record",fields:[f("kind","insurance","보험"),f("label","합성보험","합성보험"),...fields]}]};
 }

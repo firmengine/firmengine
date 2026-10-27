@@ -10,7 +10,7 @@ import { applicantIdentityValue,reconcileApplicantContext } from "../lib/applica
 import type { Fact } from "../lib/domain.ts";
 
 const hash="f".repeat(64);
-const f=(key:string,value:string,unit:string|null=null):ReadField=>({key,label:key,value,unit,quote:key==="gross_value"?`해약환급금 ${value}${unit??""}`:`${key} ${value}`,confidence:"clear",bbox:null});
+const f=(key:string,value:string,unit:string|null=null):ReadField=>({key,label:key,value,unit,quote:key==="gross_value"?`해약환급금 ${value}${unit??""}`:`${key} ${value}`,confidence:"clear",bbox:[.1,.2,.4,.25]});
 function fixture(conflicting=false){
   let data=createCase("Synthetic output linkage","synthetic-output","2026-10-27");
   data.documents=[{id:"evidence",name:"synthetic.pdf",sha256:hash,status:"active",pages:[1,2]}];

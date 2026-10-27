@@ -5,12 +5,14 @@ import { inspectStoredPageJob,reprojectCasePage } from "../../../../../lib/page-
 import { PAGE_PROJECTION_VERSION,ReprojectionError,reprojectStoredPage } from "../../../../../lib/reprojection";
 import { actor,db,errorResponse,event,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
 import { processNext,reconcileCase,retryFailed,retryPage,reverifyPage,reviewLegal } from "../../../../../lib/pipeline";
-const failure=(error:unknown)=>errorResponse(error instanceof ReprojectionError?new HttpError(error.status,error.message):error);
+import { parseProcessJobIds,parseProcessJobIdsQuery,ProcessJobScopeError } from "../../../../../lib/process-job-scope";
+const failure=(error:unknown)=>errorResponse(error instanceof ReprojectionError||error instanceof ProcessJobScopeError?new HttpError(error.status,error.message):error);
 export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{
-  const {id}=await params,url=new URL(request.url),jobId=url.searchParams.get("jobId"),view=url.searchParams.get("view");
+  const {id}=await params,url=new URL(request.url),jobId=url.searchParams.get("jobId"),view=url.searchParams.get("view"),jobIds=parseProcessJobIdsQuery(url.searchParams.get("jobIds"));
   if(view!==null&&view!=="classification")throw new HttpError(400,"지원하지 않는 페이지 관측 보기입니다.");
+  if(jobIds&&(jobId||view))throw new HttpError(400,"작업 상태 범위는 전체 진행 상태 조회에서만 사용할 수 있습니다.");
   if(view==="classification"&&!jobId)throw new HttpError(400,"분류 관측에는 페이지 작업 ID가 필요합니다.");
-  const result=view==="classification"?await inspectClassificationJob(id,jobId!):jobId?await inspectStoredPageJob(id,jobId):await caseProgress(id,{stage:"status"});
+  const result=view==="classification"?await inspectClassificationJob(id,jobId!):jobId?await inspectStoredPageJob(id,jobId):await caseProgress(id,{stage:"status"},jobIds);
   return jsonResponse(result,request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return failure(e);}}
 async function reprojectPage(id:string,jobId:string){
@@ -35,8 +37,10 @@ async function reprojectPage(id:string,jobId:string){
   }
 }
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
-  requireSameOrigin(request);const {id}=await params,body=await jsonBody(request);let result;
-  if(body.action==="next")result=await processNext(id);else if(body.action==="reconcile")result=await reconcileCase(id);else if(body.action==="legal")result=await reviewLegal(id);else if(body.action==="retry")result=await retryFailed(id);else if(body.action==="retry_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId);}else if(body.action==="refresh_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"새로 판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId,"refresh");}else if(body.action==="reverify_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재검증할 페이지가 필요합니다.");result=await reverifyPage(id,body.jobId);}else if(body.action==="reproject_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재투영할 페이지 작업 ID가 필요합니다.");result=await reprojectPage(id,body.jobId);}else throw new HttpError(400,"처리 단계를 확인하세요.");
-  const progress=await caseProgress(id,result);
+  requireSameOrigin(request);const {id}=await params,body=await jsonBody(request);let result,jobIds:string[]|undefined;
+  const scoped=Object.hasOwn(body,"jobIds");
+  if(scoped){if(body.action!=="next")throw new HttpError(400,"작업 범위는 다음 증거 처리 단계에서만 사용할 수 있습니다.");jobIds=parseProcessJobIds(body.jobIds);}
+  if(body.action==="next")result=await processNext(id,jobIds);else if(body.action==="reconcile")result=await reconcileCase(id);else if(body.action==="legal")result=await reviewLegal(id);else if(body.action==="retry")result=await retryFailed(id);else if(body.action==="retry_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId);}else if(body.action==="refresh_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"새로 판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId,"refresh");}else if(body.action==="reverify_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재검증할 페이지가 필요합니다.");result=await reverifyPage(id,body.jobId);}else if(body.action==="reproject_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재투영할 페이지 작업 ID가 필요합니다.");result=await reprojectPage(id,body.jobId);}else throw new HttpError(400,"처리 단계를 확인하세요.");
+  const progress=await caseProgress(id,result,jobIds);
   return jsonResponse(body.action==="reproject_page"?{...progress,...result}:progress,request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return failure(e);}}
