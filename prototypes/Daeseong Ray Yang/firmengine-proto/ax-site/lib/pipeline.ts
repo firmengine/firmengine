@@ -1,3 +1,4 @@
+import { documentFamily,equivalentDocumentTypes } from "./document-routing";
 import { AI_MODEL,applyExtraction,currentFacts,extractionCacheKey,touchCase,validSourceRef,type CaseData } from "./domain";
 import { callLuna,imageContent,type Usage } from "./luna";
 import { applyFirstVerification,applyTargetedRepair,CLASSIFY_SCHEMA,DOC_FIELDS,EXTRACT_INSTRUCTIONS,PAGE_COMPLETENESS_INSTRUCTIONS,getRepairTargets,PAGE_SCHEMA,PROMPT_VERSION,preserveAgreedFieldsAfterOmission,projectPage,validatePageRead,VERIFY_SCHEMA,type FieldReviewCheck,type PageRead } from "./extraction";
@@ -13,15 +14,13 @@ import { PAGE_PROJECTION_VERSION } from "./reprojection";
 import legalExceptions from "./legal-exceptions.json";
 import { createPreservedOmissionReceipts,createSourceVerificationReceipts,sourceVerificationFieldLocation,sourceVerificationReceiptMatches,type ReviewPass,type SourceVerificationReceipt } from "./source-verification";
 
-const DOCUMENT_ALIASES:Record<string,string[]>={bank_transactions:["bank_statement","business_bank_statement","salary_bank_statement"],tax_income:["business_income_report","business_tax_return","income_amount_certificate","vat_certificate"],lease:["lease_contract","rental_contract"],insurance:["insurance_policy","insurance_surrender_statement"],vehicle_registry:["vehicle_registration","vehicle_register"],vehicle_valuation:["vehicle_market_evidence"],identity_family:["resident_registration","family_relation","family_relationship_certificate"],client_statement:["client_narrative"],credit_report:["credit_information_report","신용정보조회서","신용 정보 조회서"],health_insurance_arrears:["health_insurance_premium_arrears","insurance_premium_arrears","건강보험료 미납내역서","보험료 미납내역서"]};
 function documentGuide(type:string){
-  const root=Object.entries(DOCUMENT_ALIASES).find(([,aliases])=>aliases.includes(type))?.[0]??type;
-  const accepted=new Set([type,root,...DOCUMENT_ALIASES[root]??[]]);
+  const accepted=new Set(equivalentDocumentTypes(type));
   const documents=WORKFLOW_RULES.flatMap(rule=>rule.documents.filter(d=>accepted.has(d.type)||d.alternatives?.some(t=>accepted.has(t))).map(d=>({situation:rule.title,type:d.type,why:d.why,features:d.fields.map(f=>({key:f.key,label:f.label,unit:f.unit,period:f.period,crossChecks:f.crossChecks,targets:f.targets})),activation:rule.activation})));
   const extra=type==="client_statement"?WORKFLOW_RULES.flatMap(r=>r.activation):[];
   return JSON.stringify({documentRoutes:documents,additionalSituationIndicators:extra,instruction:"문서에 명시된 경우만 상황 피처를 추출한다. 미기재를 false/없음으로 만들지 않는다. 전체key를 사용하는 경우 case.*,spouse.*,income.*,debt.*,asset.* namespace를 유지한다. 법적 판단으로 인정값을 만들지 않는다."});
 }
-function sourceInstructions(type:string){const root=Object.entries(DOCUMENT_ALIASES).find(([,aliases])=>aliases.includes(type))?.[0];return DOC_FIELDS[type]||DOC_FIELDS[root||""]||DOC_FIELDS.unknown;}
+function sourceInstructions(type:string){return DOC_FIELDS[type]||DOC_FIELDS[documentFamily(type)]||DOC_FIELDS.unknown;}
 
 interface PageJob {id:string;case_id:string;document_id:string;page:number;role:string;document_type:string|null;image_key:string;image_hash:string;stage:string;attempts:number;result:string|null;cache_key:string|null;ready:number;}
 interface VerifyResult {checks:FieldReviewCheck[];omittedRows:boolean;warnings:string[];}

@@ -135,7 +135,8 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   };
   rows.asset = assetResolution.rows.map((asset) => {
     const valid = sourceValid(data, asset.factIds), own = ownGross(asset.id);
-    const base: Record<string, string> = { entity: present(asset.label), kind: present(assetLabels[asset.kind]), period: present(asset.asOf), value: own === null ? MISSING_FORM_VALUE : amount(own.toString()), ownership_share: asset.ownershipBps === null || asset.ownershipBps === undefined ? MISSING_FORM_VALUE : `${asset.ownershipBps}/10000`, valuation_basis: valid ? present(asset.valuationBasis) : MISSING_FORM_VALUE };
+    const gross = moneyValue(asset.grossValue);
+    const base: Record<string, string> = { entity: present(asset.label), kind: present(assetLabels[asset.kind]), period: present(asset.asOf), value: valid && !conflictedAssets.has(asset.id) && gross !== null && gross >= 0n ? amount(gross.toString()) : MISSING_FORM_VALUE, ownership_share: asset.ownershipBps === null || asset.ownershipBps === undefined ? MISSING_FORM_VALUE : `${asset.ownershipBps}/10000`, valuation_basis: valid ? present(asset.valuationBasis) : MISSING_FORM_VALUE, applicant_share_value: own === null ? MISSING_FORM_VALUE : amount(own.toString()), attribution_status: own === null ? "신청인 귀속분 미확정 · 원문 총액만 표시" : "입력 지분을 적용한 계산값 · 인정 여부 별도 검토" };
     for (const key of ["account_number", "acquisition_date", "address", "collateral", "description", "institution", "return_amount", "seizure"]) base[key] = valid ? objectFact("asset", key, asset.id) : MISSING_FORM_VALUE;
     if (valid && asset.kind === "insurance" && base.account_number === MISSING_FORM_VALUE) base.account_number = objectFact("asset", "policy_number", asset.id);
     return base;

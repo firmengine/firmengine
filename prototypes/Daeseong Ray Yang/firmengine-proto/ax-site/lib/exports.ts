@@ -1,10 +1,12 @@
-import { currentFacts, formatWon, moneyValue, requiredKindsForCase } from "./domain.ts";
+import { currentFacts, factSourceLineageIssues, formatWon, moneyValue, requiredKindsForCase, validSourceRef } from "./domain.ts";
 import type { ArtifactKind, CaseData, ExportManifest, Fact, RuleSet } from "./domain.ts";
 import { assessCase } from "./assessment.ts";
 import type { Assessment } from "./assessment.ts";
-import { bankAccountsAnnex, leasesAnnex, repaymentScheduleAnnex } from "./document-annexes.ts";
+import { bankAccountsAnnex, leasesAnnex, repaymentScheduleAnnex, proposedInstallmentAnnex } from "./document-annexes.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
+import { observedSourceDetails } from "./observed-source-details.ts";
+import { PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
 export interface ExportTable { title: string; headers: string[]; rows: string[][] }
 export interface CourtDocument {
@@ -43,6 +45,56 @@ function factValue(data: CaseData, keys: string[]): string {
 function refs(data: CaseData, factIds: string[]): string {
   const facts = currentFacts(data).filter((f) => factIds.includes(f.id));
   return facts.flatMap((f) => f.refs.map((r) => `${data.documents.find((d) => d.id === r.documentId)?.name ?? r.documentId} ${r.page}쪽`)).filter((r, i, all) => all.indexOf(r) === i).join("; ") || "[현재 원문 근거 연결 필요]";
+}
+function conditionalFormRoutes(data:CaseData):ExportTable {
+  const routes=[
+    {code:"D5108",keys:["asset.protected_asset_type","asset.exemption_basis","asset.exemption_application"],reason:"비재단 재산의 구체 범위·법적 근거 및 제출 필요성 검토"},
+    {code:"D5109",keys:["asset.exemption_application","asset.exemption_request"],reason:"면제재산 신청 의사·대상·법정 요건 검토"},
+    {code:"D5111",keys:["disposal.","disposals.","asset.disposal_plan","plan.asset_disposal"],reason:"재산처분 변제안 선택과 처분·대금·일정 검토"},
+    {code:"D5113",keys:["stay_request","enforcement."],reason:"중지명령 신청 의사·집행사건·필요성 검토"},
+    {code:"D5114",keys:["prohibition_request","enforcement."],reason:"금지명령 신청 의사·집행사건·필요성 검토"},
+  ];
+  const active=currentFacts(data);
+  return {title:"조건부 공식 서식 라우팅 단서 (자동 선택 전)",headers:["공식 서식","원문 단서","라우팅 상태","남은 판단","근거"],rows:routes.map(route=>{
+    const matched=active.filter(f=>route.keys.some(key=>key.endsWith(".")?f.key.startsWith(key):f.key===key)&&f.state!=="disputed"&&f.recognition!=="rejected"&&f.refs.length>0&&f.refs.every(ref=>validSourceRef(data,ref))&&!f.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code)));
+    const meta=PUBLIC_FORM_METADATA[route.code as keyof typeof PUBLIC_FORM_METADATA];
+    return [`${route.code} · ${meta?.title??"조건부 서식"}`,matched.map(f=>f.key+"="+readable(f.value)).join("; ")||"[관측 단서 없음] ",matched.length?"단서 관측 · 자동 선택하지 않음":"필요 조건·신청 의사 미확인",route.reason,matched.length?refs(data,matched.map(f=>f.id)):"관련 원문 인용 확인 필요"];
+  })};
+}
+function assetTypeDetails(data:CaseData,assets:ReturnType<typeof resolveAssetRows>["rows"]):ExportTable {
+  const current=new Map(currentFacts(data).map(fact=>[fact.id,fact]));
+  const aliases={
+    vehicle_class:["vehicle.class","asset.vehicle_class","asset.class"],
+    vehicle_market_value:["vehicle.market_value","asset.market_value"],
+    vehicle_owner:["vehicle.owner_name","vehicle.current_owner_name","asset.owner_name","asset.current_owner_name","asset.owner_identity_id","vehicle.owner_identity_id"],
+    vehicle_secured_balance:["vehicle.secured_balance","asset.secured_balance"],
+    vehicle_year:["vehicle.model_year","vehicle.year","asset.model_year","asset.year"],
+    insurance_company:["insurance.insurer","asset.insurer","asset.insurance_company"],
+    insurance_owner:["insurance.policy_holder_name","asset.policy_holder_name","asset.owner_name","asset.owner_identity_id"],
+    insurance_surrender_value:["insurance.surrender_value","asset.refund_value","asset.gross_value"],
+  } as const;
+  const format=(fact:Fact)=>fact.numeric
+    ?`${String(fact.numeric.rawValue??"[값 없음]")} ${fact.numeric.unit||"[단위 미확인]"}`.trim()
+    :readable(fact.value);
+  const get=(assetId:string,keys:readonly string[],quoteGuard?:(fact:Fact)=>boolean)=>{
+    const facts=assets.find(asset=>asset.id===assetId)?.factIds.map(id=>current.get(id)).filter((fact):fact is Fact=>!!fact)??[];
+    const found=facts.filter(fact=>keys.includes(fact.key)&&fact.state!=="disputed"&&fact.recognition!=="rejected"&&fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref))&&!fact.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code))&&!factSourceLineageIssues(data,[fact.id]).some(issue=>issue!=="SOURCE_VERIFICATION_REQUIRED")&&(!quoteGuard||quoteGuard(fact)));
+    const values=[...new Set(found.map(format))];
+    return values.length===1?values[0]:values.length>1?"[상충·선택 보류]":"[확인 필요]";
+  };
+  const refsFor=(assetId:string)=>{const facts=assets.find(asset=>asset.id===assetId)?.factIds.map(id=>current.get(id)).filter((fact):fact is Fact=>!!fact)??[];return [...new Set(facts.flatMap(fact=>fact.refs.filter(ref=>validSourceRef(data,ref)).map(ref=>`${data.documents.find(doc=>doc.id===ref.documentId)?.name??ref.documentId} p.${ref.page}: ${ref.quote}`)))].join(" / ")||"[원문 확인 필요]";};
+  const rows=assets.filter(asset=>asset.kind==="vehicle"||asset.kind==="insurance").map(asset=>[
+    asset.id,asset.kind,asset.label||"[원문 자산명 확인 필요]",
+    asset.kind==="vehicle"?get(asset.id,aliases.vehicle_class):"[해당 없음]",
+    asset.kind==="vehicle"?get(asset.id,aliases.vehicle_market_value):"[해당 없음]",
+    asset.kind==="vehicle"?get(asset.id,aliases.vehicle_owner):get(asset.id,aliases.insurance_owner),
+    asset.kind==="vehicle"?get(asset.id,aliases.vehicle_secured_balance):"[해당 없음]",
+    asset.kind==="vehicle"?get(asset.id,aliases.vehicle_year):"[해당 없음]",
+    asset.kind==="insurance"?get(asset.id,aliases.insurance_company):"[해당 없음]",
+    asset.kind==="insurance"?get(asset.id,aliases.insurance_surrender_value,fact=>/(?:해약|해지|환급금|surrender|cash value)/iu.test(fact.refs.map(ref=>ref.quote).join(" "))):"[해당 없음]",
+    refsFor(asset.id),
+  ]);
+  return {title:"차량·보험 세부 원문 관측 (자산 ID 연결)",headers:["자산 ID","유형","자산명","차종·분류(원문)","시장가액(원문)","명의·소유자(원문)","담보잔액(원문)","연식(원문)","보험사(원문)","해약환급금(원문)","연결 인용"],rows};
 }
 function textSheet(name: string, rows: (string | null | undefined)[][]): WorkbookSheet {
   return { name, rows: rows.map((row) => row.map((value) => ({ value: readable(value), type: "text" as const }))) };
@@ -106,11 +158,47 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
   if(requiredAnnexKinds.includes("leases"))appendAnnex("leases","11_leases.docx",leasesAnnex(data));
   if(requiredAnnexKinds.includes("repayment_schedule")){
     const schedule=data.context.paymentSchedule;
-    const annex=repaymentScheduleAnnex(schedule?.phases??[],schedule?.expectedInstallments??undefined);
-    const reviewed=schedule?.reviewed===true&&!!schedule.reviewReason?.trim();
+    const hasManualPhases=!!schedule?.phases.length;
+    const annex=hasManualPhases
+      ?repaymentScheduleAnnex(schedule!.phases,schedule!.expectedInstallments??undefined)
+      :proposedInstallmentAnnex(data,c);
+    const reviewed=hasManualPhases&&schedule?.reviewed===true&&!!schedule.reviewReason?.trim();
     const tables:ExportTable[]=[{title:annex.title,headers:annex.headers,rows:annex.rows}];if(annex.summary)tables.push(annex.summary);
-    documents.push({kind:"repayment_schedule",title:annex.title,filename:"12_repayment_schedule.docx",paragraphs:[...common,...annex.notes,reviewed?"단계 입력 검토 기록이 있습니다. 검토 근거: "+schedule!.reviewReason:"상태: 일정은 제안 입력이며 담당자 검토 전입니다. 검토 완료로 자동 표시하지 않습니다."],tables});
+    documents.push({kind:"repayment_schedule",title:reviewed?"변제예정액표 (검토 기록 있음)":hasManualPhases?"변제계획 수동입력 회차표 (검토 전)":"변제계획 제안 회차표 (자동 계산·승인 전)",filename:"12_repayment_schedule.docx",paragraphs:[...common,...annex.notes,reviewed?"단계 입력 검토 기록이 있습니다. 검토 근거: "+schedule!.reviewReason:hasManualPhases?"상태: 수동입력 일정을 보존했습니다. 날짜·합계·검토 상태를 별도로 확인하세요.":"상태: 자동 제안은 기간·월액·채권별 배분 입력이 모두 있을 때만 만듭니다. 변제일과 법적 승인 여부는 추정하지 않습니다."],tables});
   }
+  // Keep source observations available in the relevant draft document even when
+  // a legal attribution, category, or recognition decision is still pending.
+  const detailPrefixes: Partial<Record<ArtifactKind, string[]>> = {
+    application: ["person.", "applicant.", "jurisdiction.", "court."],
+    creditors: ["debt.", "guarantee.", "priority.", "assignment.", "tax."],
+    assets: ["asset.", "bank_account.", "lease.", "disposal."],
+    income_expense: ["income.", "employer.", "employment.", "business."],
+    statement: ["statement.", "career.", "family.", "household.", "court.order."],
+    repayment_plan: ["plan.", "payment.", "priority.", "estate."],
+    evidence_index: ["court.order.", "enforcement.", "prior.", "family."],
+  };
+  for (const document of documents) {
+    const prefixes = detailPrefixes[document.kind];
+    if (!prefixes) continue;
+    const table = observedSourceDetails(data, prefixes);
+    if (table.rows.length) document.tables.push(table);
+  }
+  const assetDetails=assetTypeDetails(data,resolvedAssets);
+  documents.find(item=>item.kind==="assets")?.tables.push(assetDetails);
+  const householdDetails = observedSourceDetails(data, ["household.", "family."]);
+  const householdDocument = documents.find(item => item.kind === "income_expense");
+  if (householdDocument) {
+    if (householdDetails.rows.length) householdDocument.tables.push(householdDetails);
+    householdDocument.tables.push({
+      title: "가구원 수: 보고 사실과 인정 결과 분리",
+      headers: ["구분", "인원", "상태", "근거"],
+      rows: [
+        ["보고된 가구원 수", data.household.reportedMembers == null ? "[확인 필요]" : String(data.household.reportedMembers), "원문·사실 입력값; 인정 인원과 별도", refs(data, data.household.factIds)],
+        ["인정된 가구원 수", data.household.recognition === "accepted" && data.household.recognizedMembers != null ? String(data.household.recognizedMembers) : "[인정 검토 필요]", data.household.recognition ?? "unreviewed", refs(data, data.household.factIds)],
+      ],
+    });
+  }
+  documents.find(item=>item.kind==="evidence_index")?.tables.push(conditionalFormRoutes(data));
   const facts = currentFacts(data);
   const workbook: WorkbookSheet[] = [
     textSheet("채권원금이자", [["채무 ID", "계약 ID", "채권자", "원금(원)", "이자(원)", "합계(원)", "분류", "기준일", "보증역할", "채권성격", "주채무 ID", "대위·구상 상태", "한도 처리", "처리 검토", "근거"], ...c.debtRows.map((r) => { const d = resolvedDebts.find((debt) => debt.id === r.id)!; const g = d.guaranteeDetails; return [r.id, d.contractId, r.creditor, r.principalWon, r.interestWon, r.totalWon, r.classification, d.asOf, g?.liabilityRole, g?.claimNature, g?.underlyingDebtId, g?.recourseStatus, g?.capTreatment, g?.capTreatmentReviewed === true ? "검토됨" : "검토 전", refs(data, d.factIds)]; })]),

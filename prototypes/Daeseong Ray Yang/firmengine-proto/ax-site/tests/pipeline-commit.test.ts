@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import ts from "typescript";
+import * as documentRouting from "../lib/document-routing.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 class TestHttpError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
@@ -20,6 +21,7 @@ function fixture(options:{staleSource?:boolean}={}){
     async run(){if(sql.includes("SET status = 'processing'")){job.status="processing";job.lease_until=params[0];return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'commit'")&&sql.includes("result = ?")){job.status="pending";job.stage="commit";job.result=params[0];if(sql.includes("cache_key = ?"))job.cache_key=params[1];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'commit'")){job.status="pending";job.stage="commit";job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'extract'")){job.status="pending";job.stage="extract";job.result=params[0];job.cache_key=null;job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'verify'")){job.status="pending";job.stage="verify";job.result=params[0];job.cache_key=params[1];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET stage = 'commit'")){job.stage="commit";job.result=params[0];job.cache_key=params[1];return {meta:{changes:1}};}if(sql.includes("SET status = ?,stage = 'completed'")){job.status=params[0];job.stage="completed";job.result=params[1];job.cache_key=params[2];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'error'")){job.status="error";job.lease_until=null;return {meta:{changes:1}};}return {meta:{changes:1}};},
   };}};}};
   const modules:Record<string,any>={
+    "./document-routing":documentRouting,
     "./domain":{AI_MODEL:"gpt-6-luna",applyExtraction:(c:any)=>c,currentFacts:()=>[],extractionCacheKey:()=>"synthetic-cache",touchCase:(c:any)=>c,validSourceRef:()=>true},
     "./luna":{callLuna:async({agent}:any)=>{lunaCalls++;if(agent==="evidence_extractor")return {value:{...read,records:[{...read.records[0],fields:[{...read.records[0].fields[0],value:"New synthetic reading"}]}]},usage:{inputTokens:1,outputTokens:1}};verifierCalls++;if(verifierCalls>1)throw new Error("commit retry must not invoke a second verifier");return {value:{checks,omittedRows:omitted,warnings:[]},usage:{inputTokens:1,outputTokens:1}};},imageContent:(content:any)=>content},
     "./extraction":{applyFirstVerification:(r:any)=>({read:r,targets:forceTargets?[{recordIndex:0,fieldIndex:0,status:"ambiguous",value:null,unit:null,quote:null,reason:"synthetic",missingFirstCheck:true}]:[]}),applyTargetedRepair:()=>({}),CLASSIFY_SCHEMA:{},DOC_FIELDS:{debt_certificate:""},EXTRACT_INSTRUCTIONS:"",PAGE_COMPLETENESS_INSTRUCTIONS:"",getRepairTargets:()=>[],PAGE_SCHEMA:{},PROMPT_VERSION:"luna-evidence-3.3.0",preserveAgreedFieldsAfterOmission:()=>read,projectPage:()=>({facts:[],pages:[]}),validatePageRead:(x:any)=>x,VERIFY_SCHEMA:{}},
