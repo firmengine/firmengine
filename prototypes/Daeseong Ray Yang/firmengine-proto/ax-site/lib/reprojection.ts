@@ -1,12 +1,13 @@
-import { applyExtraction, currentFacts, factSourceLineageIssues, type CaseData, type ExtractionPayload } from "./domain.ts";
+import { applyExtraction, currentFacts, factSourceLineageIssues, type CaseData, type ExtractionPayload, type Fact } from "./domain.ts";
 import { projectPage, validatePageRead, type PageRead } from "./extraction.ts";
 import { samplePageRole } from "./sample-manifest.ts";
+import { sourceVerificationFieldLocation, sourceVerificationReceiptMatches, type SourceVerificationReceipt } from "./source-verification.ts";
 
 export class ReprojectionError extends Error { readonly status = 409; }
 const conflict = (message: string) => new ReprojectionError(message);
 
 /** Bump whenever source-to-fact projection semantics change. This is not a model prompt version. */
-export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.6";
+export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.7";
 
 export interface StoredPageJobForReprojection {
   id: string;
@@ -81,13 +82,63 @@ export function prepareStoredReadReprojection(input: {
   if (!saved.read) throw conflict("저장된 원문 판독이 없어 재투영할 수 없습니다.");
   let read: PageRead;
   try { read = validatePageRead(saved.read); } catch { throw conflict("저장된 원문 판독 형식이 현재 검증기를 통과하지 못했습니다."); }
-  return { document, page, read, provenance };
+  let originalRead:PageRead;
+  try { originalRead=validatePageRead(saved.extractionRead??saved.firstRead??saved.read); } catch { throw conflict("저장된 최초 판독 원문 형식이 현재 검증기를 통과하지 못했습니다."); }
+  return { document, page, read, originalRead, provenance };
 }
 
+const normalized=(value:string)=>value.normalize("NFKC").trim();
+function sameRefs(a:Fact["refs"],b:NonNullable<ExtractionPayload["facts"]>[number]["refs"]):boolean{
+  const refs=(items:typeof a)=>items.map(ref=>[ref.documentId,ref.page,ref.quote,ref.sourceHash??null]).sort((left,right)=>JSON.stringify(left).localeCompare(JSON.stringify(right)));
+  return JSON.stringify(refs(a))===JSON.stringify(refs(b as Fact["refs"]));
+}
+function historicalProofIsCurrent(data:CaseData,prior:Fact,raw:NonNullable<ExtractionPayload["facts"]>[number],prepared:ReturnType<typeof prepareStoredReadReprojection>):boolean{
+  const proof=prior.sourceVerification;
+  if(!proof||prior.state!=="verified"||prior.recognition!=="unreviewed"||prior.reviewer)return false;
+  if(data.facts.some(fact=>fact.logicalId===prior.logicalId&&fact.version>prior.version&&(!!fact.reviewer||fact.state==="reported"||fact.state!=="retracted"&&fact.recognition!=="unreviewed")))return false;
+  if(proof.factBinding?.id!==prior.id||proof.factBinding.logicalId!==prior.logicalId||proof.factBinding.version!==prior.version)return false;
+  if(prior.key!==raw.key||JSON.stringify(prior.value)!==JSON.stringify(raw.value)||prior.rawValue!==raw.rawValue||JSON.stringify(prior.numeric??null)!==JSON.stringify(raw.numeric??null)||prior.periodStart!==raw.periodStart||prior.periodEnd!==raw.periodEnd||prior.asOf!==raw.asOf||!raw.refs?.length||!sameRefs(prior.refs,raw.refs))return false;
+  if(proof.source.documentId!==prepared.document.id||proof.source.page!==prepared.page.page||proof.source.sha256!==prepared.document.sha256)return false;
+  const receipt=proof as unknown as SourceVerificationReceipt;
+  if(!sourceVerificationReceiptMatches(receipt,{documentId:prepared.document.id,page:prepared.page.page,sourceHash:prepared.document.sha256,read:prepared.read}))return false;
+  const location=sourceVerificationFieldLocation(receipt,prepared.read);
+  if(!location||raw.id!==`${prepared.document.id}:p${prepared.page.page}:${receipt.field.recordCategory}:${location.recordIndex}:f${location.fieldIndex}`)return false;
+  // The proof's original extraction reading must still be locatable in the
+  // preserved first read. Corrected final values are allowed only because the
+  // existing receipt separately binds both correction passes to `read`.
+  const extractionReading=proof.extractionReading;
+  const originalMatches=prepared.originalRead.records.flatMap(record=>record.fields.map(field=>({record,field}))).filter(({record,field})=>normalized(record.category)===normalized(proof.field.recordCategory)&&normalized(field.key).replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase()===proof.field.key&&field.value!==null&&normalized(field.value)===normalized(extractionReading.value)&&((field.unit===null&&extractionReading.unit===null)||(field.unit!==null&&extractionReading.unit!==null&&normalized(field.unit)===normalized(extractionReading.unit)))&&normalized(field.quote??"")===normalized(extractionReading.quote));
+  if(originalMatches.length!==1)return false;
+  // Validate this one receipt as its active historical version against the full
+  // current document/page context. This check has no cross-fact calculation, so
+  // unrelated ledger history need not be regrouped for every source field.
+  const validationView:CaseData={...data,facts:[prior]};
+  const issues=factSourceLineageIssues(validationView,[prior.id]);
+  return issues.length===0;
+}
+function sameFactProjection(fact:Fact,raw:NonNullable<ExtractionPayload["facts"]>[number]):boolean{
+  return !!raw.logicalId&&fact.logicalId===raw.logicalId&&fact.key===raw.key&&fact.subjectId===raw.subjectId&&JSON.stringify(fact.value)===JSON.stringify(raw.value)&&fact.rawValue===raw.rawValue&&JSON.stringify(fact.numeric??null)===JSON.stringify(raw.numeric??null)&&fact.periodStart===raw.periodStart&&fact.periodEnd===raw.periodEnd&&fact.asOf===raw.asOf&&!!raw.refs?.length&&sameRefs(fact.refs,raw.refs);
+}
 /** Pure projection stage: no model call, no receipt creation, no review-state promotion. */
 export function reprojectStoredPage(data: CaseData, prepared: ReturnType<typeof prepareStoredReadReprojection>) {
   const payload: ExtractionPayload = projectPage(prepared.read, prepared.document.id, prepared.page.page, prepared.document.sha256);
   const projected = applyExtraction(data, payload);
+  // A trusted stored-read reprojection may rebind only an already-issued server
+  // receipt when the exact original field and projected fact remain unchanged.
+  // General extraction still strips all machine proof and human review fields.
+  const current=currentFacts(projected);
+  for(const raw of payload.facts??[]){
+    if(!raw.logicalId||!raw.refs?.some(ref=>ref.documentId===prepared.document.id&&ref.page===prepared.page.page&&ref.sourceHash===prepared.document.sha256))continue;
+    const candidates=data.facts.filter(fact=>fact.key===raw.key&&historicalProofIsCurrent(data,fact,raw,prepared)).sort((a,b)=>b.version-a.version);
+    if(!candidates.length)continue;
+    const prior=candidates[0];
+    const replacements=current.filter(fact=>sameFactProjection(fact,raw));
+    if(replacements.length!==1)continue;
+    const fact=replacements[0];
+    if(fact.reviewer||fact.state!=="extracted"&&fact.state!=="verified"||fact.recognition!=="unreviewed")continue;
+    const proof=structuredClone(prior.sourceVerification!);
+    fact.state="verified";fact.recognition="unreviewed";fact.sourceVerification={...proof,factBinding:{id:fact.id,logicalId:fact.logicalId,version:fact.version}};
+  }
   const retainedReceipts = currentFacts(projected).filter(fact => fact.refs.some(ref => ref.documentId === prepared.document.id && ref.page === prepared.page.page) && !!fact.sourceVerification && !factSourceLineageIssues(projected, [fact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID")).length;
   return { data: projected, payload, retainedReceipts, newReceiptsCreated: 0, projectionVersion: PAGE_PROJECTION_VERSION };
 }

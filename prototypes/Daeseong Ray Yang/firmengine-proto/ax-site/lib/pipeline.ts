@@ -10,6 +10,7 @@ import { scanTransactions } from "./transaction-review";
 import { resolveIncomeRows } from "./income-resolution";
 import { samplePageRole } from "./sample-manifest";
 import { canRetryEvidencePage } from "./retry-page-policy";
+import { canStartFreshPageRead,freshPageCheckpoint,type PageReadIntent,type PriorReadArchive } from "./page-refresh";
 import { PAGE_PROJECTION_VERSION } from "./reprojection";
 import legalExceptions from "./legal-exceptions.json";
 import { createPreservedOmissionReceipts,createSourceVerificationReceipts,sourceVerificationFieldLocation,sourceVerificationReceiptMatches,type ReviewPass,type SourceVerificationReceipt } from "./source-verification";
@@ -29,7 +30,7 @@ type CommitCheckpoint={read:PageRead;review:VerifyResult;disagreements:number;ve
 type RescuePlan={planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction";boxes:unknown[]};
 type ExtractionPass={model:typeof AI_MODEL;promptVersion:string;promptHash:string;usedVariants:{hash:string;variant:string;bbox:string;transform:string}[];sourceHash:string;baseImageHash:string;verifiedAt:string};
 type RegionResult={read:PageRead;review:VerifyResult;pass:ReviewPass;bbox:[number,number,number,number];receipts?:SourceVerificationReceipt[]};
-type SavedResult={read?:PageRead;firstRead?:PageRead;extractionRead?:PageRead;regionRead?:PageRead;regionBbox?:[number,number,number,number];regionAttempts?:Record<string,number>;regionMode?:boolean;extractionPasses?:ExtractionPass[];review?:VerifyResult;regionalReview?:VerifyResult;regionResults?:RegionResult[];regionIndex?:number;baselineRead?:PageRead;baselineReview?:VerifyResult;baselinePassInfo?:ReviewPass;omissionRetry?:boolean;rescueRetry?:boolean;rescuePlan?:RescuePlan;rescueProvenance?:{hash:string;variant:string;bbox:string;transform:string}[];verifierPasses?:ReviewPass[];commit?:CommitCheckpoint;supersededRead?:PageRead;supersededCacheKey?:string|null;supersededResult?:Omit<SavedResult,"supersededResult"|"commit">};
+type SavedResult={priorReadArchive?:PriorReadArchive;read?:PageRead;firstRead?:PageRead;extractionRead?:PageRead;regionRead?:PageRead;regionBbox?:[number,number,number,number];regionAttempts?:Record<string,number>;regionMode?:boolean;extractionPasses?:ExtractionPass[];review?:VerifyResult;regionalReview?:VerifyResult;regionResults?:RegionResult[];regionIndex?:number;baselineRead?:PageRead;baselineReview?:VerifyResult;baselinePassInfo?:ReviewPass;omissionRetry?:boolean;rescueRetry?:boolean;rescuePlan?:RescuePlan;rescueProvenance?:{hash:string;variant:string;bbox:string;transform:string}[];verifierPasses?:ReviewPass[];commit?:CommitCheckpoint;supersededRead?:PageRead;supersededCacheKey?:string|null;supersededResult?:Omit<SavedResult,"supersededResult"|"commit">};
 async function hashText(value:string){const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,"0")).join("");}
 async function hashBytes(value:ArrayBuffer){const bytes=await crypto.subtle.digest("SHA-256",value);return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,"0")).join("");}
 const normalized=(v:string)=>v.normalize("NFKC").trim();
@@ -115,7 +116,7 @@ export async function processNext(caseId:string){
       if(!cp||cp.documentId!==j.document_id||cp.page!==j.page||cp.role!==j.role||cp.sourceHash!==document.sha256||cp.imageKey!==j.image_key||cp.imageHash!==j.image_hash||cp.cacheKey!==j.cache_key||cp.cacheKey!==cacheKey||cp.projectionVersion!==PAGE_PROJECTION_VERSION||j.ready!==1||currentPage.role!=="evidence")throw new HttpError(409,"검증 결과의 원본·페이지 역할·해시·투영버전이 바뀌어 안전하게 커밋할 수 없습니다. 페이지를 다시 판독하세요.");
     } else if(["verify","repair","region_extract","region_verify"].includes(j.stage)&&j.cache_key!==cacheKey){
       const supersededResult={read:saved.read,firstRead:saved.firstRead,extractionRead:saved.extractionRead,review:saved.review,baselineRead:saved.baselineRead,baselineReview:saved.baselineReview,baselinePassInfo:saved.baselinePassInfo,omissionRetry:saved.omissionRetry,verifierPasses:saved.verifierPasses};
-      const update=await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'extract',result = ?,cache_key = NULL,lease_until = NULL,updated_at = ? WHERE id = ? AND status = 'processing' AND lease_until = ?").bind(JSON.stringify({supersededRead:saved.read??saved.extractionRead,supersededCacheKey:j.cache_key,supersededResult}),now(),j.id,lease).run();
+      const update=await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'extract',result = ?,cache_key = NULL,lease_until = NULL,updated_at = ? WHERE id = ? AND status = 'processing' AND lease_until = ?").bind(JSON.stringify({supersededRead:saved.read??saved.extractionRead,supersededCacheKey:j.cache_key,supersededResult,priorReadArchive:saved.priorReadArchive}),now(),j.id,lease).run();
       if(!update.meta.changes)throw new HttpError(409,"이전 판독을 분리하는 중 lease가 바뀌었습니다.");
       await event(caseId,"page.read_superseded",{documentId:j.document_id,page:j.page,oldCacheKey:j.cache_key,newCacheKey:cacheKey,reason:"prompt/model/source mapping key changed; extracting again"});
       return {remaining:await remaining(caseId),stage:"legacy_read_superseded",page:j.page};
@@ -178,7 +179,7 @@ export async function processNext(caseId:string){
       if(saved.omissionRetry&&saved.baselineRead&&saved.baselineReview)read=preserveAgreedFieldsAfterOmission(saved.baselineRead,saved.baselineReview.checks,extractionRead);
       const extractionPasses=[...(saved.extractionPasses??[]),{model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:extractPromptHash,usedVariants,sourceHash:document.sha256,baseImageHash:j.image_hash,verifiedAt:now()}];
       if(isRegionExtract){const bbox=JSON.parse(rescueImages[0].bbox) as [number,number,number,number];await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'region_verify',result = ?,cache_key = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND lease_until = ?").bind(JSON.stringify({...saved,read:extractionRead,regionIndex,regionRead:extractionRead,extractionPasses,rescueProvenance:usedVariants,regionBbox:bbox}),cacheKey,now(),j.id,lease).run();return {remaining:await remaining(caseId),stage:"region_extracted",page:j.page};}
-      await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'verify',result = ?,cache_key = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND lease_until = ?").bind(JSON.stringify({read,firstRead:saved.firstRead??read,extractionRead,extractionPasses,baselineRead:saved.baselineRead,baselineReview:saved.baselineReview,baselinePassInfo:saved.baselinePassInfo,omissionRetry:saved.omissionRetry,rescueRetry:saved.rescueRetry,rescuePlan:saved.rescuePlan,rescueProvenance:usedVariants,supersededRead:saved.supersededRead,supersededCacheKey:saved.supersededCacheKey,supersededResult:saved.supersededResult}),cacheKey,now(),j.id,lease).run();
+      await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'verify',result = ?,cache_key = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND lease_until = ?").bind(JSON.stringify({read,firstRead:saved.firstRead??read,extractionRead,extractionPasses,baselineRead:saved.baselineRead,baselineReview:saved.baselineReview,baselinePassInfo:saved.baselinePassInfo,omissionRetry:saved.omissionRetry,rescueRetry:saved.rescueRetry,rescuePlan:saved.rescuePlan,rescueProvenance:usedVariants,supersededRead:saved.supersededRead,supersededCacheKey:saved.supersededCacheKey,supersededResult:saved.supersededResult,priorReadArchive:saved.priorReadArchive}),cacheKey,now(),j.id,lease).run();
       return {remaining:await remaining(caseId),stage:"extracted",page:j.page};
     }
     let read:PageRead,review:VerifyResult,disagreements:number,verifierPasses:ReviewPass[];
@@ -278,7 +279,7 @@ export async function processNext(caseId:string){
     const status=disagreements||review.omittedRows||!read.complete||attachedSourceReceiptCount!==projectedFacts.length?"review_required":"completed";
     const persistedVerifierPasses:ReviewPass[]=[...(saved.baselinePassInfo?[saved.baselinePassInfo]:[]),...verifierPasses];
     await checkLease(j.id,lease);
-    const finalized=await db().prepare("UPDATE page_jobs SET status = ?,stage = 'completed',result = ?,cache_key = ?,lease_until = NULL,error = NULL,updated_at = ? WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(status,JSON.stringify({read,firstRead:saved.firstRead??saved.read,extractionRead:saved.extractionRead??saved.firstRead??saved.read,extractionPasses:saved.extractionPasses,regionResults:saved.regionResults,regionMode:saved.regionMode,rescuePlan:saved.rescuePlan,baselineRead:saved.baselineRead,baselineReview:saved.baselineReview,review,verifierPasses:persistedVerifierPasses,rescueProvenance:saved.rescueProvenance,sourceReceiptCount:attachedSourceReceiptCount,projectionVersion:PAGE_PROJECTION_VERSION,supersededRead:saved.supersededRead,supersededCacheKey:saved.supersededCacheKey,supersededResult:saved.supersededResult}),cacheKey,now(),j.id,lease).run();
+    const finalized=await db().prepare("UPDATE page_jobs SET status = ?,stage = 'completed',result = ?,cache_key = ?,lease_until = NULL,error = NULL,updated_at = ? WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(status,JSON.stringify({read,firstRead:saved.firstRead??saved.read,extractionRead:saved.extractionRead??saved.firstRead??saved.read,extractionPasses:saved.extractionPasses,regionResults:saved.regionResults,regionMode:saved.regionMode,rescuePlan:saved.rescuePlan,baselineRead:saved.baselineRead,baselineReview:saved.baselineReview,review,verifierPasses:persistedVerifierPasses,rescueProvenance:saved.rescueProvenance,sourceReceiptCount:attachedSourceReceiptCount,projectionVersion:PAGE_PROJECTION_VERSION,supersededRead:saved.supersededRead,supersededCacheKey:saved.supersededCacheKey,supersededResult:saved.supersededResult,priorReadArchive:saved.priorReadArchive}),cacheKey,now(),j.id,lease).run();
     if(!finalized.meta.changes)throw new HttpError(409,"페이지 완료 ledger를 갱신하기 전에 lease가 바뀌었습니다.");
     await event(caseId,"page.completed",{documentId:j.document_id,page:j.page,disagreements,omittedRows:review.omittedRows,sourceReceiptCount:attachedSourceReceiptCount,sourceFactCount:projectedFacts.length});
     return {remaining:await remaining(caseId),stage:"verified",page:j.page,disagreements,sourceReceiptCount:attachedSourceReceiptCount,sourceFactCount:projectedFacts.length,status};
@@ -302,21 +303,26 @@ export async function retryFailed(caseId:string){
   await db().prepare("UPDATE page_jobs SET status = 'pending',error = NULL,lease_until = NULL WHERE case_id = ? AND status = 'error' AND image_key IS NOT NULL").bind(caseId).run();
   return {remaining:await remaining(caseId),stage:"retry_queued"};
 }
-/** Start a fresh, single-page extraction after a reviewer flags an ambiguous result. */
-export async function retryPage(caseId:string,jobId:string){
-  const job=await db().prepare("SELECT p.id,p.document_id,p.page,p.role,p.status,p.lease_until,p.image_key,p.document_type,d.ready FROM page_jobs p JOIN documents d ON d.id = p.document_id WHERE p.case_id = ? AND p.id = ?").bind(caseId,jobId).first<{id:string;document_id:string;page:number;role:string;status:string;lease_until:string|null;image_key:string|null;document_type:string|null;ready:number}>();
+/** Preserve the old read, then queue only the explicitly selected evidence page. */
+export async function retryPage(caseId:string,jobId:string,intent:PageReadIntent="retry"){
+  const job=await db().prepare("SELECT p.id,p.document_id,p.page,p.role,p.status,p.lease_until,p.image_key,p.image_hash,p.document_type,p.result,p.cache_key,d.ready FROM page_jobs p JOIN documents d ON d.id = p.document_id AND d.case_id = p.case_id WHERE p.case_id = ? AND p.id = ?").bind(caseId,jobId).first<{id:string;document_id:string;page:number;role:string;status:string;lease_until:string|null;image_key:string|null;image_hash:string|null;document_type:string|null;result:string|null;cache_key:string|null;ready:number}>();
   if(!job)throw new HttpError(404,"페이지 작업을 찾을 수 없습니다.");
-  if(job.status==="processing")throw new HttpError(409,"현재 처리 중인 페이지는 다시 시작할 수 없습니다.");
-  if(!["review_required","error"].includes(job.status))throw new HttpError(409,"검토가 필요한 완료 페이지 또는 실패 페이지에서만 새 판독을 시작할 수 있습니다.");
-  if(job.lease_until)throw new HttpError(409,"페이지 처리 lease가 남아 있어 다시 시작할 수 없습니다.");
+  if(!canStartFreshPageRead(job.status,job.lease_until,intent))throw new HttpError(409,intent==="refresh"?"처리가 끝나고 처리 권한이 해제된 페이지에서만 새 판독을 시작할 수 있습니다.":"검토가 필요하거나 실패한 페이지에서만 재판독할 수 있습니다. 완료된 페이지는 새 판독을 선택하세요.");
   const c=await getCase(caseId),document=c.documents.find(d=>d.id===job.document_id&&d.status==="active"),page=c.pages.find(p=>p.documentId===job.document_id&&p.page===job.page);
-  if(!document||job.ready!==1||!job.image_key||!document.pages.includes(job.page))throw new HttpError(409,"활성 원본과 준비된 페이지 이미지가 확인되지 않습니다.");
+  if(!document||job.ready!==1||!job.image_key||!job.image_hash||!document.pages.includes(job.page))throw new HttpError(409,"활성 원본과 준비된 페이지 이미지가 확인되지 않습니다.");
   if(!canRetryEvidencePage(job,page,samplePageRole(document.sha256,job.page).role))throw new HttpError(409,"증빙 역할이 확정된 일반 원본 페이지에서만 재판독할 수 있습니다.");
-  // Reset only this page and invalidate all prior generation/review fingerprints.
+  let archive:PriorReadArchive|undefined;
+  if(job.result){
+    const hash=await hashText(job.result),key=`cases/${caseId}/documents/${job.document_id}/read-history/${job.page}/${hash}.json`;
+    await bucket().put(key,job.result,{httpMetadata:{contentType:"application/json"}});
+    archive={key,sha256:hash,cacheKey:job.cache_key,archivedAt:now()};
+  }
+  const checkpoint=freshPageCheckpoint(job.result,job.cache_key,archive);
+  // Invalidate generation/review fingerprints, without changing human-reviewed facts or CRUD data.
   const next=touchCase(c);await saveCase(next,c.context.revision,c);
-  const updated=await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'extract',result = NULL,cache_key = NULL,error = NULL,attempts = 0,lease_until = NULL,updated_at = ? WHERE id = ? AND case_id = ? AND status = ? AND lease_until IS NULL AND image_key = ?").bind(now(),job.id,caseId,job.status,job.image_key).run();
+  const updated=await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'extract',result = ?,cache_key = NULL,error = NULL,attempts = 0,lease_until = NULL,updated_at = ? WHERE id = ? AND case_id = ? AND status = ? AND lease_until IS NULL AND image_key = ? AND image_hash = ? AND role = 'evidence' AND result IS ? AND cache_key IS ?").bind(JSON.stringify(checkpoint),now(),job.id,caseId,job.status,job.image_key,job.image_hash,job.result,job.cache_key).run();
   if(!updated.meta.changes)throw new HttpError(409,"페이지 상태가 변경되었습니다. 최신 사건을 다시 불러오세요.");
-  await event(caseId,"page.retry_requested",{documentId:job.document_id,page:job.page,previousStatus:job.status,revision:next.context.revision});
+  await event(caseId,intent==="refresh"?"page.refresh_requested":"page.retry_requested",{documentId:job.document_id,page:job.page,previousStatus:job.status,priorReadArchive:archive,revision:next.context.revision});
   return {remaining:await remaining(caseId),stage:"page_retry_queued",page:job.page};
 }
 export async function reconcileCase(caseId:string){

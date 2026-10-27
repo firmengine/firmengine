@@ -236,3 +236,16 @@ test("bank account와 lease 원문 namespace의 금액은 단위가 있을 때�
   assert.equal(p.facts?.find(x=>x.key==="bank_account.active_status")?.value,"해지");
   assert.ok(!p.facts?.some(x=>x.key==="bank_account.balance"));
 });
+
+
+test("임대차 금액을 other 소득으로 분류해도 신청인 임대인 근거 없이는 수입을 만들지 않는다",()=>{
+  for(const kind of ["rent","other","business",null]){
+    const r:PageRead={documentType:"lease",complete:true,warnings:[],records:[{category:"income",label:"임대차 금액",fields:[field("kind",kind),field("gross","750000"),field("monthly_rent","750000")]}]};
+    const projected=projectPage(r,"synthetic-doc",1,hash);
+    assert.equal(projected.incomes?.length,0);
+    assert.ok(projected.facts?.some(f=>f.key==="lease.monthly_rent"));
+    assert.ok(projected.warnings?.some(w=>w.includes("임대인")));
+  }
+  const r:PageRead={documentType:"lease",complete:true,warnings:[],records:[{category:"income",label:"신청인 임대수입",fields:[field("kind","rent"),field("gross","750000"),field("applicant_is_landlord","yes",{quote:"신청인은 이 계약의 임대인입니다."})]}]};
+  assert.equal(projectPage(r,"synthetic-doc",1,hash).incomes?.length,1);
+});

@@ -62,3 +62,14 @@ test("an already-applied version/source/cache marker makes route replay a no-op"
   const payload = await response.json() as { alreadyApplied: boolean };
   assert.equal(response.status, 200); assert.equal(payload.alreadyApplied, true); assert.equal(saves, 0); assert.equal(projections, 0);
 });
+
+test("explicit refresh action requests a new read without taking the cached reprojection path", async () => {
+  const calls: unknown[][] = [];
+  const route = loadRoute({
+    "../../../../../lib/pipeline": { retryPage: async (...args: unknown[]) => { calls.push(args); return { stage: "page_retry_queued" }; } },
+    "../../../../../lib/reprojection": { ReprojectionError: class extends Error {}, reprojectStoredPage: () => { throw new Error("refresh must not reuse a cached read"); } },
+  });
+  const response = await route.POST(new Request("https://synthetic.invalid/api/cases/case-1/process", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "refresh_page", jobId: "job-7" }) }), { params: Promise.resolve({ id: "case-1" }) });
+  assert.equal(response.status, 200);
+  assert.deepEqual(calls, [["case-1", "job-7", "refresh"]]);
+});
