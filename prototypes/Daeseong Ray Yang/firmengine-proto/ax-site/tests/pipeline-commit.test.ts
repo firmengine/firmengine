@@ -5,34 +5,35 @@ import { fileURLToPath } from "node:url";
 import { createHash } from "node:crypto";
 import ts from "typescript";
 import * as documentRouting from "../lib/document-routing.ts";
+import * as applicantIdentity from "../lib/applicant-identity.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const pipelineOutput=ts.transpileModule(readFileSync(root+"lib/pipeline.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 class TestHttpError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 const hash=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex");
-function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtractor?:boolean}={}){
+function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtractor?:boolean;timeoutVerifier?:boolean}={}){
   const caseId="case-synthetic",documentId="doc-synthetic",page=1,sourceHash="a".repeat(64),bytes=new TextEncoder().encode("synthetic page bytes"),imageHash=hash(bytes),imageKey=`cases/${caseId}/documents/${documentId}/pages/${page}/${imageHash}`;
   const read={documentType:"debt_certificate",records:[{category:"debt",label:"hint",fields:[{key:"creditor",label:"creditor",value:"Synthetic Bank",unit:null,quote:"creditor Synthetic Bank",confidence:"clear",bbox:null}]}],warnings:[],complete:true};
   const checks=[{recordIndex:0,fieldIndex:0,status:"agrees",value:"Synthetic Bank",unit:null,quote:"creditor Synthetic Bank",reason:"match"}];
   const job:any={id:`${documentId}:${page}`,case_id:caseId,document_id:documentId,page,role:"evidence",document_type:"debt_certificate",image_key:imageKey,image_hash:imageHash,stage:options.initialStage??"verify",attempts:1,result:JSON.stringify({read,firstRead:read,extractionRead:read}),cache_key:options.initialStage==="waiting"?null:"synthetic-cache",ready:1,status:"pending",lease_until:null,error:null};
   const caseData:any={context:{id:caseId,revision:1},documents:[{id:documentId,sha256:sourceHash,name:"synthetic.pdf",status:"active",pages:[page]}],pages:[{documentId,page,role:"evidence"}],facts:[],incomes:[],debts:[],assets:[],transactions:[],household:{}};
-  let apiKeyConfigured=true,lunaCalls=0,verifierCalls=0,saveCalls=0,imageBytes=bytes,omitted=false,forceTargets=false,timeoutExtractor=!!options.timeoutExtractor,allowRepeatedVerifier=false,allowRegionalReceipts=false,extractionValue="New synthetic reading",checkStatus="agrees";const events:any[]=[],derivativeRows:any[]=[];
+  let apiKeyConfigured=true,lunaCalls=0,verifierCalls=0,saveCalls=0,saveFails=true,savedCase:any=null,imageBytes=bytes,omitted=false,forceTargets=false,timeoutExtractor=!!options.timeoutExtractor,allowRepeatedVerifier=false,allowRegionalReceipts=false,extractionValue="New synthetic reading",checkStatus="agrees";const events:any[]=[],derivativeRows:any[]=[];
   const db={prepare(sql:string){return {bind(...params:any[]){return {
     async first(){if(sql.includes("SELECT p.*"))return job.status==="pending"||job.status==="processing"&&job.lease_until<params[1]?{...job}:null;if(sql.includes("SELECT id FROM page_jobs"))return job.status==="processing"&&job.lease_until===params[1]?{id:job.id}:null;if(sql.includes("COUNT(*) AS n"))return {n:job.status==="pending"||job.status==="processing"?1:0};return null;},
     async all(){return {results:sql.includes("page_derivatives")?derivativeRows:[]};},
     async run(){if(sql.includes("SET status = 'processing'")){job.status="processing";job.lease_until=params[0];return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'commit'")&&sql.includes("result = ?")){job.status="pending";job.stage="commit";job.result=params[0];if(sql.includes("cache_key = ?"))job.cache_key=params[1];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'commit'")){job.status="pending";job.stage="commit";job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'extract'")){job.status="pending";job.stage="extract";job.result=params[0];job.cache_key=null;job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'region_verify'")){job.status="pending";job.stage="region_verify";job.result=params[0];job.cache_key=params[1];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'region_extract'")){job.status="pending";job.stage="region_extract";job.result=params[0];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'pending',stage = 'verify'")){job.status="pending";job.stage="verify";job.result=params[0];if(sql.includes("cache_key = ?"))job.cache_key=params[1];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET stage = 'commit'")){job.stage="commit";job.result=params[0];job.cache_key=params[1];return {meta:{changes:1}};}if(sql.includes("SET status = ?,stage = 'completed'")){job.status=params[0];job.stage="completed";job.result=params[1];job.cache_key=params[2];job.lease_until=null;return {meta:{changes:1}};}if(sql.includes("SET status = 'error'")){job.status="error";job.lease_until=null;return {meta:{changes:1}};}return {meta:{changes:1}};},
   };}};}};
   const modules:Record<string,any>={
-    "./document-routing":documentRouting,
-    "./domain":{AI_MODEL:"gpt-6-luna",applyExtraction:(c:any)=>c,currentFacts:()=>[],extractionCacheKey:()=>"synthetic-cache",touchCase:(c:any)=>c,validSourceRef:()=>true},
-    "./luna":{callLuna:async({agent}:any)=>{lunaCalls++;if(agent==="evidence_extractor"){if(timeoutExtractor)throw new DOMException("synthetic timeout","TimeoutError");return {value:{...read,records:[{...read.records[0],fields:[{...read.records[0].fields[0],value:extractionValue,bbox:extractionValue==="Synthetic Bank"?[0,0,1,1]:null}]}]},usage:{inputTokens:1,outputTokens:1}};}verifierCalls++;if(verifierCalls>1&&!allowRepeatedVerifier)throw new Error("commit retry must not invoke a second verifier");return {value:{checks:checks.map(check=>({...check,status:checkStatus})),omittedRows:omitted,warnings:[]},usage:{inputTokens:1,outputTokens:1}};},imageContent:(content:any)=>content},
+    "./document-routing":documentRouting,"./applicant-identity":applicantIdentity,
+    "./domain":{AI_MODEL:"gpt-6-luna",applyExtraction:(c:any)=>c,currentFacts:(c:any)=>c.facts??[],extractionCacheKey:()=>"synthetic-cache",touchCase:(c:any)=>c,validSourceRef:()=>true},
+    "./luna":{callLuna:async({agent}:any)=>{lunaCalls++;if(agent==="evidence_extractor"){if(timeoutExtractor)throw new DOMException("synthetic timeout","TimeoutError");return {value:{...read,records:[{...read.records[0],fields:[{...read.records[0].fields[0],value:extractionValue,bbox:extractionValue==="Synthetic Bank"?[0,0,1,1]:null}]}]},usage:{inputTokens:1,outputTokens:1}};}verifierCalls++;if(options.timeoutVerifier)throw new DOMException("synthetic verification timeout","TimeoutError");if(verifierCalls>1&&!allowRepeatedVerifier)throw new Error("commit retry must not invoke a second verifier");return {value:{checks:checks.map(check=>({...check,status:checkStatus})),omittedRows:omitted,warnings:[]},usage:{inputTokens:1,outputTokens:1}};},imageContent:(content:any)=>content},
     "./extraction":{applyFirstVerification:(r:any,c:any)=>{const next=structuredClone(r);next.records.forEach((record:any,ri:number)=>record.fields.forEach((field:any,fi:number)=>{const found=c?.filter((x:any)=>x.recordIndex===ri&&x.fieldIndex===fi)??[];field.confidence=found.length===1&&found[0].status==="agrees"&&found[0].value===field.value&&found[0].unit===field.unit?"clear":"uncertain";}));return {read:next,targets:forceTargets?[{recordIndex:0,fieldIndex:0,status:"ambiguous",value:null,unit:null,quote:null,reason:"synthetic",missingFirstCheck:true}]:[]};},applyTargetedRepair:()=>({}),CLASSIFY_SCHEMA:{},DOC_FIELDS:{debt_certificate:""},EXTRACT_INSTRUCTIONS:"",PAGE_COMPLETENESS_INSTRUCTIONS:"",getRepairTargets:()=>[],PAGE_SCHEMA:{},PROMPT_VERSION:"luna-evidence-3.3.0",preserveAgreedFieldsAfterOmission:()=>read,projectPage:()=>({facts:[],pages:[]}),validatePageRead:(x:any)=>x,VERIFY_SCHEMA:{}},
-    "./server-store":{bucket:()=>({get:async()=>({arrayBuffer:async()=>imageBytes.buffer.slice(imageBytes.byteOffset,imageBytes.byteOffset+imageBytes.byteLength),httpMetadata:{contentType:"image/jpeg"}})}),connection:()=>({apiKeyConfigured}),db:()=>db,event:async(_id:string,type:string,payload:any)=>{events.push({type,payload});},getCase:async()=>structuredClone(options.staleSource?{...caseData,documents:[{...caseData.documents[0],sha256:"b".repeat(64)}]}:caseData),HttpError:TestHttpError,now:()=>"2026-10-27T00:00:00.000Z",saveCase:async()=>{saveCalls++;if(saveCalls<=3)throw new TestHttpError(409,"revision conflict");}},
+    "./server-store":{bucket:()=>({get:async()=>({arrayBuffer:async()=>imageBytes.buffer.slice(imageBytes.byteOffset,imageBytes.byteOffset+imageBytes.byteLength),httpMetadata:{contentType:"image/jpeg"}})}),connection:()=>({apiKeyConfigured}),db:()=>db,event:async(_id:string,type:string,payload:any)=>{events.push({type,payload});},getCase:async()=>structuredClone(options.staleSource?{...caseData,documents:[{...caseData.documents[0],sha256:"b".repeat(64)}]}:caseData),HttpError:TestHttpError,now:()=>"2026-10-27T00:00:00.000Z",saveCase:async(data:any)=>{savedCase=structuredClone(data);saveCalls++;if(saveFails&&saveCalls<=3)throw new TestHttpError(409,"revision conflict");}},
     "./legal-rules":{CURRENT_RULESET:{id:"synthetic-rules"},LEGAL_CATALOG:[],RISK_CATALOG:[]},"./assessment":{assessCase:()=>({findings:[]})},"./workflow-rules":{WORKFLOW_RULES:[],LEGACY_DOCUMENT_TYPES:[]},"./transaction-review":{scanTransactions:()=>[]},"./income-resolution":{resolveIncomeRows:()=>({rows:[],issues:[],duplicates:[]})},"./sample-manifest":{samplePageRole:()=>({role:"evidence"})},"./retry-page-policy":{canRetryEvidencePage:()=>true},"./reprojection":{PAGE_PROJECTION_VERSION:"synthetic-projection-v1"},"./legal-exceptions.json":{default:{scenarios:[]}},"./source-verification":{createPreservedOmissionReceipts:()=>[],createSourceVerificationReceipts:(input:any)=>{if(!allowRegionalReceipts||input.passes.length!==1)return [];const pass=input.passes[0],out:any[]=[];input.read.records.forEach((record:any,ri:number)=>record.fields.forEach((field:any,fi:number)=>{const proof=pass.checks.find((check:any)=>check.recordIndex===ri&&check.fieldIndex===fi&&check.status==="agrees"&&check.value===field.value&&check.unit===field.unit&&check.quote);if(proof&&field.confidence==="clear")out.push({field:{recordCategory:record.category,key:field.key,value:field.value,unit:field.unit,quote:field.quote},fieldFingerprint:`${ri}:${fi}:${pass.promptHash}`,proofReadIndexes:[{pass:pass.kind,recordIndex:ri,fieldIndex:fi}],source:{documentId:"doc-synthetic",page:1,sha256:"a".repeat(64)},verifiedAt:pass.verifiedAt,promptVersion:pass.promptVersion,extractionReading:{value:field.value,unit:field.unit,quote:field.quote},verificationQuotes:[proof.quote]});}));return out;},sourceVerificationFieldLocation:(receipt:any)=>({recordIndex:receipt.proofReadIndexes[0].recordIndex,fieldIndex:receipt.proofReadIndexes[0].fieldIndex}),sourceVerificationReceiptMatches:()=>true},
   };
   const module={exports:{} as Record<string,any>};
   new Function("require","module","exports",pipelineOutput)((name:string)=>{if(Object.hasOwn(modules,name))return modules[name];throw new Error(`Unexpected dependency ${name}`);},module,module.exports);
-  return {processNext:module.exports.processNext,mergeRegionalResults:module.exports.mergeRegionalResults,job,caseData,setApiKey:(v:boolean)=>{apiKeyConfigured=v;},setImageBytes:(v:Uint8Array<ArrayBuffer>)=>{imageBytes=v;},setOmitted:(v:boolean)=>{omitted=v;},setForceTargets:(v:boolean)=>{forceTargets=v;},setTimeoutExtractor:(v:boolean)=>{timeoutExtractor=v;},allowRepeatedVerifier:()=>{allowRepeatedVerifier=true;},allowRegionalReceipts:()=>{allowRegionalReceipts=true;},setExtractionValue:(v:string)=>{extractionValue=v;},setCheckStatus:(v:string)=>{checkStatus=v;},setDerivatives:(planId:string)=>{derivativeRows.splice(0,derivativeRows.length,...[1,2,3,4].map(i=>({variant_hash:hash(bytes),variant:`rescue-incomplete_extraction-${i}`,object_key:`variant-${i}`,bbox:JSON.stringify([0,(i-1)*.25,1,Math.min(1,i*.25+.025)]),transform:"{}"})));},get lunaCalls(){return lunaCalls;},get saveCalls(){return saveCalls;},events,sourceHash};
+  return {processNext:module.exports.processNext,reconcileCase:module.exports.reconcileCase,mergeRegionalResults:module.exports.mergeRegionalResults,job,caseData,setSaveSuccess:()=>{saveFails=false;},get savedCase(){return savedCase;},setApiKey:(v:boolean)=>{apiKeyConfigured=v;},setImageBytes:(v:Uint8Array<ArrayBuffer>)=>{imageBytes=v;},setOmitted:(v:boolean)=>{omitted=v;},setForceTargets:(v:boolean)=>{forceTargets=v;},setTimeoutExtractor:(v:boolean)=>{timeoutExtractor=v;},allowRepeatedVerifier:()=>{allowRepeatedVerifier=true;},allowRegionalReceipts:()=>{allowRegionalReceipts=true;},setExtractionValue:(v:string)=>{extractionValue=v;},setCheckStatus:(v:string)=>{checkStatus=v;},setDerivatives:(planId:string)=>{derivativeRows.splice(0,derivativeRows.length,...[1,2,3,4].map(i=>({variant_hash:hash(bytes),variant:`rescue-incomplete_extraction-${i}`,object_key:`variant-${i}`,bbox:JSON.stringify([0,(i-1)*.25,1,Math.min(1,i*.25+.025)]),transform:"{}"})));},get lunaCalls(){return lunaCalls;},get saveCalls(){return saveCalls;},events,sourceHash};
 }
 
 test("검증 후 CAS 충돌은 읽기·검증 checkpoint를 보존하고 다음 요청은 Luna 없이 완료한다",async()=>{
@@ -46,6 +47,22 @@ test("검증 후 CAS 충돌은 읽기·검증 checkpoint를 보존하고 다음 
   assert.ok(f.events.some(e=>e.type==="page.commit_retry"&&e.payload.commitRetryCount===1));
   const result=await f.processNext("case-synthetic");
   assert.equal(f.lunaCalls,1);assert.equal(result.stage,"verified");assert.equal(f.job.status,"completed");
+});
+
+test("reconcileCase는 OCR 인물행을 applicant CRUD context로 승격하지 않고 수동 입력은 보존한다",async()=>{
+  const f=fixture();f.setSaveSuccess();
+  f.caseData.facts=[
+    {id:"family-name",logicalId:"family-name",version:1,subjectId:"family-row",key:"person.name",value:"Synthetic Relative",state:"extracted",recognition:"unreviewed",refs:[],validation:[]},
+    {id:"creditor-address",logicalId:"creditor-address",version:1,subjectId:"creditor-row",key:"person.address",value:"Synthetic Creditor Address",state:"extracted",recognition:"unreviewed",refs:[],validation:[]},
+    {id:"applicant-name",logicalId:"applicant-name",version:1,subjectId:"applicant-row",key:"person.name",value:"Synthetic Applicant",state:"extracted",recognition:"unreviewed",refs:[],validation:[]},
+  ];
+  await f.reconcileCase("case-synthetic");
+  assert.equal(f.savedCase.context.applicant.name,undefined,"unique OCR names remain source observations; they are not persisted as user CRUD values");
+  assert.equal(f.savedCase.context.applicant.address,undefined);
+  assert.equal(f.savedCase.context.applicant.residentIdMasked,undefined);
+  f.caseData.context.applicant={name:"Manually Entered",address:"Manual Address",residentIdMasked:"900101-1******"};
+  await f.reconcileCase("case-synthetic");
+  assert.deepEqual(f.savedCase.context.applicant,{name:"Manually Entered",address:"Manual Address",residentIdMasked:"900101-1******",statement:undefined});
 });
 
 test("checkpoint 이후 저장된 페이지 이미지 bytes가 바뀌면 commit을 거부한다",async()=>{
@@ -123,4 +140,26 @@ test("targeted repair 분기에도 superseded provenance를 보존한다",async(
   f.setForceTargets(true);const result=await f.processNext("case-synthetic");
   assert.equal(result.stage,"targeted_retry");const saved=JSON.parse(f.job.result);
   assert.equal(saved.supersededCacheKey,"legacy-3.2-cache");assert.equal(saved.supersededRead.records[0].fields[0].value,"Synthetic Bank");
+});
+
+
+test("verification deadline preserves the first read and switches to durable regional rescue",async()=>{
+  const f=fixture({timeoutVerifier:true}),before=JSON.parse(f.job.result).read;
+  const result=await f.processNext("case-synthetic");
+  assert.equal(result.stage,"incomplete_read_rescue");assert.equal(f.lunaCalls,1);
+  const saved=JSON.parse(f.job.result);assert.deepEqual(saved.read,before);
+  assert.equal(saved.rescuePlan.reason,"incomplete_extraction");assert.equal(f.job.status,"pending");
+  assert.equal(saved.verifierPasses,undefined,"no verification receipt is invented for an interrupted call");
+});
+
+test("expired whole-page lease resumes with crops without paying for another full-page call",async()=>{
+  for(const stage of ["extract","verify"]){
+    const f=fixture({initialStage:stage});f.job.status="processing";f.job.lease_until="2026-10-26T23:00:00.000Z";
+    const before=JSON.parse(f.job.result).read,result=await f.processNext("case-synthetic");
+    assert.equal(result.stage,"incomplete_read_rescue");assert.equal(f.lunaCalls,0);
+    assert.deepEqual(JSON.parse(f.job.result).read,before);assert.equal(f.job.status,"pending");
+    assert.ok(f.events.some(e=>e.payload.reason==="expired_whole_page_lease"));
+  }
+  const active=fixture();active.job.status="processing";active.job.lease_until="2026-10-28T00:00:00.000Z";
+  assert.equal((await active.processNext("case-synthetic")).stage,"idle");assert.equal(active.lunaCalls,0);
 });

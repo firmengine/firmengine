@@ -1,6 +1,6 @@
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
 import { documentFamily } from "./document-routing.ts";
-export const PROMPT_VERSION="luna-evidence-3.5.0";
+export const PROMPT_VERSION="luna-evidence-3.6.0";
 export const DOC_FIELDS:Record<string,string>={
   debt_certificate:"채무잔액증명서/부채증명서(debt_certificate/debt_balance_certificate)의 현재 채무 정보. 문서 원문 제목은 document_title로 별도 인용하고 documentType은 debt_certificate로 설정한다. 채권기관, 채무자, 계좌/계약번호, 최초대출일, 원금잔액, 이자/연체이자, 합계, 잔액기준일, 담보여부/보증/양도, 청구종류. 이 문서 family에서 principal_balance/outstanding_principal은 원금 잔액(principal), total_claim은 합계(total), creditor_name은 creditor, as_of_date는 잔액 기준일(as_of)과 명백히 같은 열일 때만 alias로 사용한다. 발급일/작성일은 as_of가 아니다. overdue_interest는 별도 원문 fact이며 전체 interest와 합치지 않는다. original_principal은 최초/원래 원금이지 현재 잔액이 아니다. 채권기관의 사업자/법인 등록번호 등 완전한 식별자가 원문에 있으면 creditor_identity_id로 인용하고, 기관명에서 번호를 추정하지 않는다. 보증채무는 주채무/보증인/연대보증인 표시, 확정/조건부/다툼 상태, 주채무 식별자·채무자, 구상·대위 변제 상태, 별도 보증한도·청구액을 원문에 보이는 대로 별도 필드로 추출한다. 보증한도·보증청구액을 principal/interest로 옮기지 말고, 신청인의 법적 책임 범위나 채권 포함여부를 판정하지 않는다. 기관별·계약별 분리. 원금/이자 열을 교환하지 말 것. 같은 증명서의 요약행과 상세행을 중복 채권으로 만들지 말 것.",
   credit_report:"신용정보조회서의 개설·대출·카드 이용 기록은 신용정보 이력이다. 현재 잔액·미변제 원금·채권자 확정 근거가 없으면 source fact로 보존하고 typed 현재 채무로 만들지 않는다. 기록된 대출액·등록금액·한도는 원금잔액이 아니다. 기관·상품코드·등록일·원문 금액·명시단위를 행별 원문 fact로 보존하고 금액 키는 reported_amount 또는 amount를 사용한다. 원금 principal, 현재잔액, 연체이자를 추정하지 않는다. 보고서의 빈 조회구역과 실제 0원·빈칸은 구별한다.",
@@ -21,7 +21,7 @@ export const DOC_FIELDS:Record<string,string>={
   tax_arrears:"국세·지방세 체납은 세목, 과세기간, 법정납부기한, 체납세액, 가산금/납부지연가산세, 체납처분비, 합계, 납세자와 발행기관을 행별로 구분한다. 과세 이력의 부과액이나 이미 납부한 금액을 현재 체납액으로 넣지 않는다. 우선권·재단채권·일반 개인회생채권 여부는 원문 사실과 별개 판단이며 추출 단계에서 법적 인정을 부여하지 않는다.",
   pension:"가입내역/납부기간/납부보험료/급여수급액/체납, 반환금/예상수령금 구별. 납부보험료를 소득으로 간주 금지.",
   pension_benefit:"실제 연금 수급자, 급여 종류, 지급기간, 지급일, 지급액, 공제액, 실수령액, 지급 종료 조건을 구분한다. 보험료 납부이력·예상연금액·일시 반환금과 정기 수급액을 구분한다. 현재와 미래 계속 수령 여부 또는 압류금지 범위는 별도 근거가 없으면 판단하지 않는다.",
-  identity_family:"성명(가려진부분 그대로), 생년월일/마스킹식별번호, 현재주소, 전입일/주소이력, 가족관계/나이. 가족 등재와 법원 부양가족 인정은 구별.",
+  identity_family:"각 사람 행마다 name(성명, 가려진 부분 그대로), resident_id_masked, birth_date, address, 전입일/주소이력, family_relation을 분리한다. 행의 대상이 원문에서 신청인 본인이라고 명시된 경우에만 person.role=applicant로 기록하고, 가족/세대원은 family, 채권자·발급기관 등은 해당 역할 또는 other로 기록한다. 성명 유일성, 문서 발급대상, 주소 일치, 가족관계만으로 신청인을 추정하지 않는다. 가족 등재와 법원 부양가족 인정은 구별.",
   client_statement:"의뢰인 진술의 시간순 경위, 직업/소득/비용, 채무발생사유, 보유/처분자산, 가족부양, 변제의사. 본인 진술이며 증명서와 충돌가능성 보존. 원문에 없는 이야기 작성 금지.",
   bank_account:"계좌증빙 원문 사실만 추출: bank(은행), account_holder(명의인), account_holder_id(원문에 보이는 식별번호; 마스킹은 그대로), account_number(계좌번호; 마스킹은 그대로), as_of(잔액 기준일), active_status(활성/해지 등 상태), balance(잔액이 실제로 기재된 경우만). 각 필드에 quote를 연결하고 명시 금액 단위를 붙인다. 개설증명서에 잔액이 없으면 balance=0으로 만들지 말고 잔액 미기재로 남긴다. 상태·명의·잔액은 원문에 명시된 경우만 기록한다. 개설/해지 기록만으로 현재 잔액, 소득, 자산 귀속을 추정하지 않는다.",
   unknown:"문서 성격에 맞는 원시 사실을 가능한 전부 추출하되, 판단/계산/보간 없이 문서에 직접 보이는 내용만. 표의 행·열과 단위를 보존.",
@@ -126,7 +126,7 @@ asset: kind(cash/deposit/insurance/vehicle/real_estate/lease_deposit/business/re
 transaction: date,account_id,counterparty,direction(in/out/unknown),amount,balance,kind(income/expense/transfer/debt_payment/asset_disposal/tax/unknown),memo
 household: reported_members
 statement: text
-총수입(gross),경비(expenses),순소득(net)을 따로 적고 추론으로 같게 채우지 않는다. payer_identity_id는 원문에 명시된 식별번호만 인용과 함께 추출하고, 지급자 이름·상호에서 번호를 추론하지 않는다. payer id가 없으면 null. 증명서 발급일은 잔액기준일과 별개다. 개인의 주장이면 label/경고에 명시한다.`;
+총수입(gross),경비(expenses),순소득(net)을 따로 적고 추론으로 같게 채우지 않는다. person.role(applicant/creditor/family/other/unknown)은 문서 원문이 해당 행의 역할을 명시할 때만 기록하며, 이름의 유일성·문서 발급대상·가족명 일치로 신청인을 추정하지 않는다. 명시 근거가 없으면 role=unknown 또는 null. payer_identity_id는 원문에 명시된 식별번호만 인용과 함께 추출하고, 지급자 이름·상호에서 번호를 추론하지 않는다. payer id가 없으면 null. 증명서 발급일은 잔액기준일과 별개다. 개인의 주장이면 label/경고에 명시한다.`;
 
 const tri=(v:string|null|undefined):"yes"|"no"|"unknown"=>["yes","예","있음","유"].includes(v??"")?"yes":["no","아니오","없음","무"].includes(v??"")?"no":"unknown";
 const known=<const T extends string>(v:string|null|undefined,values:readonly T[],fallback:T):T=>values.includes(v as T)?v as T:fallback;
@@ -218,16 +218,47 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const assetKind=sourceAssetKind(value("kind"));
       let grossValue=num("gross_value"),securedPayoff=num("secured_payoff");
       if(assetKind==="insurance"||/insurance|보험/.test(read.documentType)){
-        const refund=field("refund_value")??field("gross_value");
-        if(refund&&/(?:해약|해지|예상)?\s*환급금|surrender\s*value|cash\s*value/i.test(refund.quote??""))grossValue=sourceMoney(refund);
-        else {grossValue=null;if(refund)warnings.push(`${id}: 보험 가입·보장·납입 금액을 환급가치로 사용하지 않았습니다. 해약환급금 원문 열이 필요합니다.`);}
+        const refundQuote=/(?:해약|해지|예상)?\s*환급금|surrender\s*value|cash\s*value/i;
+        // A normalized alias may coexist with the canonical field in one row.
+        // Validate quote semantics before selecting either, then block competing
+        // refund readings instead of silently preferring refund_value by order.
+        const refundCandidates=[field("refund_value"),field("gross_value")].filter((candidate):candidate is ReadField=>!!candidate&&refundQuote.test(candidate.quote??""));
+        const normalizedRefunds=refundCandidates.map(candidate=>({candidate,money:sourceMoney(candidate)}));
+        const refundAmounts=new Set(normalizedRefunds.map(item=>item.money.amountWon));
+        const allRefundsNormalized=normalizedRefunds.every(item=>item.money.normalizationStatus==="exact"&&item.money.amountWon!==null);
+        if(refundCandidates.length===1)grossValue=normalizedRefunds[0].money;
+        else if(refundCandidates.length>1&&allRefundsNormalized&&refundAmounts.size===1)grossValue=normalizedRefunds[0].money;
+        else {
+          grossValue=null;
+          if(refundCandidates.length>1&&(!allRefundsNormalized||refundAmounts.size>1))warnings.push(`${id}: 서로 다른 해약환급금 후보가 있어 자산가액 선택을 보류했습니다.`);
+          else if(!refundCandidates.length&&(field("refund_value")||field("gross_value")))warnings.push(`${id}: 보험 가입·보장·납입 금액을 환급가치로 사용하지 않았습니다. 해약환급금 원문 열이 필요합니다.`);
+        }
       }
       if(field("secured_payoff")&&/채권\s*최고액|저당\s*설정액|근저당\s*설정|maximum\s*secured/i.test(field("secured_payoff")!.quote??"")){
         securedPayoff=null;warnings.push(`${id}: 담보 설정액·채권최고액은 실제 상환잔액이 아니므로 차감 계산에서 제외했습니다.`);
       }
       assets.push({id,kind:assetKind,label:value("label")||"",grossValue,securedPayoff,securedPayoffScope:known(value("secured_payoff_scope"),["applicant_interest","entire_collateral","unknown"],"unknown"),disposalCosts:num("disposal_costs"),protectedValue:num("protected_value"),ownershipBps:integer("ownership_bps"),asOf:value("as_of"),valuationBasis:value("valuation_basis"),recognition:"unreviewed",factIds:ids});
     }
-    if(r.category==="transaction"&&num("amount"))transactions.push({id,date:value("date")||"",accountId:value("account_id"),counterparty:value("counterparty"),direction:known(value("direction"),["in","out","unknown"],"unknown"),amount:num("amount")!,kind:known(value("kind"),["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"],"unknown"),factIds:ids});
+    if(r.category==="transaction"&&num("amount")){
+      const summaryPhrase=/^(?:(?:입금|출금|거래|금액)\s*(?:금액\s*)?(?:합계|소계|총계|누계)(?:금액)?|(?:합계|소계|총계|누계)(?:금액)?\s*(?:입금|출금|거래|금액)|(?:당일|기간|월간|일자별|페이지)\s*(?:입출금|거래|입금|출금)\s*(?:합계|소계|총계|누계)(?:금액)?|(?:subtotal|grand\s*total|total\s+(?:deposits|withdrawals|transactions)))(?=$|[\s:：=0-9,.([{])/iu;
+      const sourceSummary=(source:ReadField)=>source.confidence==="clear"&&!!source.quote&&(summaryPhrase.test(source.quote.normalize("NFKC").trim())||/^(?:합계|소계|총계|누계|subtotal|total)(?=$|[\s:：=0-9,.([{])/iu.test(source.quote.normalize("NFKC").trim()));
+      const labelText=r.label.normalize("NFKC").replace(/\s+/g,"").toLowerCase();
+      const explicitSummaryLabel=/^(?:(?:당일|일자별|기간별|월간|일일|페이지)?)(?:(?:거래|입금|출금)?)(?:합계|소계|총계|누계|subtotal|grandtotal)(?:(?:거래|입금|출금)?)$/iu.test(labelText);
+      const controlKeys=new Set(["row_type","row_class","record_type","entry_type","transaction_row_type","is_summary","is_subtotal","is_total"]);
+      const explicitSummaryField=r.fields.some(source=>{
+        const key=localKey(source),value=source.value?.normalize("NFKC").trim().toLowerCase()??"";
+        if(!controlKeys.has(key)||!sourceSummary(source))return false;
+        return ["summary","subtotal","total","합계","소계","총계","누계","yes","true","예"].includes(value);
+      });
+      // Only amount/direction source cells can supply semantic total evidence.
+      // A merchant or memo containing “합계” is ordinary transaction text.
+      const amountOrDirectionTotalQuote=r.fields.some(source=>["amount","direction"].includes(localKey(source))&&sourceSummary(source));
+      // A model-generated record label alone must never remove a real payment.
+      const quotedSummaryLabel=explicitSummaryLabel&&r.fields.some(source=>!["memo","counterparty"].includes(localKey(source))&&sourceSummary(source));
+      const summaryRow=quotedSummaryLabel||explicitSummaryField||amountOrDirectionTotalQuote;
+      if(summaryRow){warnings.push(`${id}: 원문 표지가 거래 소계·합계 행을 나타내므로 금액 facts는 보존하고 typed 거래와 거래 합계에서 제외했습니다.`);return;}
+      transactions.push({id,date:value("date")||"",accountId:value("account_id"),counterparty:value("counterparty"),direction:known(value("direction"),["in","out","unknown"],"unknown"),amount:num("amount")!,kind:known(value("kind"),["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"],"unknown"),factIds:ids});
+    }
     if(r.category==="household")household={reportedMembers:integer("reported_members"),factIds:ids};
   });
   const p:EvidencePage={documentId,page,role:"evidence",documentType:read.documentType};

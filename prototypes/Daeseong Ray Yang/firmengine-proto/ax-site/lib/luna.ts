@@ -2,10 +2,13 @@ import { env } from "cloudflare:workers";
 import { AI_MODEL } from "./domain";
 import { HttpError } from "./server-store";
 export interface Usage {inputTokens:number;outputTokens:number;durationMs:number;model:typeof AI_MODEL;}
+// Leave room to persist a recovery checkpoint before the hosting request closes.
+// A production canceled request at ~96 s never reached the former 110 s timeout.
+export const LUNA_REQUEST_TIMEOUT_MS=65_000;
 export async function callLuna<T>(args:{agent:string;instructions:string;input:unknown[];schema:Record<string,unknown>;maxOutput?:number}):Promise<{value:T,usage:Usage}>{
   if(!env.OPENAI_API_KEY)throw new HttpError(503,"OpenAI 키가 사이트에 아직 연결되지 않았습니다. 사이트의 비밀 환경변수 OPENAI_API_KEY를 연결한 뒤 재개하세요.");
   const started=Date.now();
-  const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":`Bearer ${env.OPENAI_API_KEY}`,"Content-Type":"application/json"},signal:AbortSignal.timeout(110_000),body:JSON.stringify({model:AI_MODEL,store:false,instructions:args.instructions,input:args.input,reasoning:{effort:"low"},max_output_tokens:args.maxOutput??12000,text:{format:{type:"json_schema",name:args.agent.replace(/[^a-zA-Z0-9_-]/g,"_"),strict:true,schema:args.schema}}})});
+  const response=await fetch("https://api.openai.com/v1/responses",{method:"POST",headers:{"Authorization":`Bearer ${env.OPENAI_API_KEY}`,"Content-Type":"application/json"},signal:AbortSignal.timeout(LUNA_REQUEST_TIMEOUT_MS),body:JSON.stringify({model:AI_MODEL,store:false,instructions:args.instructions,input:args.input,reasoning:{effort:"low"},max_output_tokens:args.maxOutput??12000,text:{format:{type:"json_schema",name:args.agent.replace(/[^a-zA-Z0-9_-]/g,"_"),strict:true,schema:args.schema}}})});
   if(!response.ok){
     // Upstream bodies may contain submitted document text. Return only bounded, actionable codes.
     const status=response.status;

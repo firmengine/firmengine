@@ -6,6 +6,7 @@ import { bankAccountsAnnex, leasesAnnex, repaymentScheduleAnnex, proposedInstall
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { observedSourceDetails } from "./observed-source-details.ts";
+import { applicantIdentityValue } from "./applicant-identity.ts";
 import { PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
 export interface ExportTable { title: string; headers: string[]; rows: string[][] }
@@ -116,8 +117,8 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
   const c = assessment.calculation;
   const resolvedAssets = resolveAssetRows(data,sourceIndex).rows;
   const resolvedDebts = resolveDebtRows(data,sourceIndex).rows;
-  const name = data.context.applicant?.name || factValue(data, ["person.name", "client_name"],sourceIndex);
-  const applicantAddress = data.context.applicant?.address || factValue(data, ["person.address", "address", "jurisdiction.residence"],sourceIndex);
+  const name = data.context.applicant?.name || applicantIdentityValue(data,"name",sourceIndex);
+  const applicantAddress = data.context.applicant?.address || applicantIdentityValue(data,"address",sourceIndex);
   const note = "검토용 편집 초안입니다. 누락·상충 항목은 표시한 상태로 보존합니다. 현재 법원 서식·첨부·서명 및 사건별 인정 내용을 담당자와 변호사가 확인해야 합니다.";
   const common = [`사건명: ${data.context.caseName}`, `사건 버전: ${data.context.revision} / 신청 예정일: ${data.context.applicationDate} / 금액 기준일: ${data.context.asOf}`, note];
   const documents: CourtDocument[] = [

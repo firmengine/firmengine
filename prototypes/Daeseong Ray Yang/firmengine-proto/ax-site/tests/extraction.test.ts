@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyExtraction, createCase, currentFacts, reviewFact, DRAFT_RULESET } from "../lib/domain.ts";
 import type { CaseData } from "../lib/domain.ts";
 import { calculateCase } from "../lib/assessment.ts";
-import { projectPage, validatePageRead } from "../lib/extraction.ts";
+import { EXTRACT_INSTRUCTIONS,DOC_FIELDS,projectPage, validatePageRead } from "../lib/extraction.ts";
 import type { PageRead, ReadField, ReadRecord } from "../lib/extraction.ts";
 
 const hash="d".repeat(64);
@@ -208,6 +208,15 @@ test("IncomeSource payerIdentityId는 인용된 source ID만 받고 aggregation 
   const p=projectPage(read([good,uncertain]),"doc",1,hash);
   assert.equal(p.incomes?.[0].payerIdentityId,"사업자-123");assert.equal(p.incomes?.[0].aggregationTreatment,"unknown");assert.equal(p.incomes?.[0].aggregationReviewed,false);
   assert.equal(p.incomes?.[1].payerIdentityId,undefined);assert.equal(p.incomes?.[1].aggregationTreatment,"unknown");assert.equal(p.incomes?.[1].aggregationReviewed,false);
+});
+
+test("신원 추출은 명시된 person.role만 사실로 보존하고 신청인 추정을 금지한다",()=>{
+  const input:PageRead={documentType:"identity_family",complete:true,warnings:[],records:[{category:"person",label:"합성 대상 행",fields:[field("name","Synthetic Applicant"),field("role","applicant"),field("address","Synthetic Address"),field("resident_id_masked","900101-1******")]}]};
+  const projected=projectPage(input,"doc",1,hash);
+  assert.ok(projected.facts?.some(fact=>fact.key==="person.role"&&fact.value==="applicant"));
+  assert.ok(projected.facts?.some(fact=>fact.key==="person.name"&&fact.value==="Synthetic Applicant"));
+  assert.match(DOC_FIELDS.identity_family,/원문에서 신청인 본인이라고 명시된 경우에만 person\.role=applicant/);
+  assert.match(EXTRACT_INSTRUCTIONS,/이름의 유일성/);
 });
 
 test("bank account와 lease 원문 namespace의 금액은 단위가 있을 때만 source fact로 보존하고 typed 자산을 만들지 않는다",()=>{

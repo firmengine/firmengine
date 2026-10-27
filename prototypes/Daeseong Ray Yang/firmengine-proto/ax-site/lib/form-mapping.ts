@@ -5,6 +5,7 @@ import type { ArtifactKind, CaseData, CaseReadIndex, Fact, NumericInput } from "
 import type { CalculationResult } from "./assessment.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
+import { applicantIdentityValue } from "./applicant-identity.ts";
 import { PUBLIC_FORM_BASE64, PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
 export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.0";
@@ -82,9 +83,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   const scalars: Record<string, string> = {};
   for (const form of Object.values(PUBLIC_FORM_METADATA)) for (const token of form.mapped_tokens) if (!token.includes(".")) scalars[token] = pick(token);
   Object.assign(scalars, {
-    client_name: present(data.context.applicant?.name || (pick("client_name") !== MISSING_FORM_VALUE ? pick("client_name") : undefined)),
-    address: present(data.context.applicant?.address || (pick("address") !== MISSING_FORM_VALUE ? pick("address") : undefined)),
-    resident_id: present(data.context.applicant?.residentIdMasked || (pick("resident_id") !== MISSING_FORM_VALUE ? pick("resident_id") : undefined)),
+    client_name: present(data.context.applicant?.name || (applicantIdentityValue(data,"name",index) !== MISSING_FORM_VALUE ? applicantIdentityValue(data,"name",index) : undefined)),
+    address: present(data.context.applicant?.address || (applicantIdentityValue(data,"address",index) !== MISSING_FORM_VALUE ? applicantIdentityValue(data,"address",index) : undefined)),
+    resident_id: present(data.context.applicant?.residentIdMasked || (applicantIdentityValue(data,"resident_id_masked",index) !== MISSING_FORM_VALUE ? applicantIdentityValue(data,"resident_id_masked",index) : undefined)),
     court_name: pick("court_name") !== MISSING_FORM_VALUE ? pick("court_name") : data.context.courtId === "seoul" ? "서울회생법원" : MISSING_FORM_VALUE,
     application_date: present(data.context.applicationDate), debt_as_of: present(data.context.asOf),
     statement: present(data.context.applicant?.statement || (pick("statement") !== MISSING_FORM_VALUE ? pick("statement") : undefined)),

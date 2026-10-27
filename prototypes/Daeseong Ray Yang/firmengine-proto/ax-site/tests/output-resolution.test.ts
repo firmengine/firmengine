@@ -6,6 +6,7 @@ import { calculateCase } from "../lib/assessment.ts";
 import { buildFormBindings,MISSING_FORM_VALUE } from "../lib/form-mapping.ts";
 import { buildCourtPackage } from "../lib/exports.ts";
 import { assessCase } from "../lib/assessment.ts";
+import { applicantIdentityValue,reconcileApplicantContext } from "../lib/applicant-identity.ts";
 
 const hash="f".repeat(64);
 const f=(key:string,value:string,unit:string|null=null):ReadField=>({key,label:key,value,unit,quote:key==="gross_value"?`해약환급금 ${value}${unit??""}`:`${key} ${value}`,confidence:"clear",bbox:null});
@@ -39,6 +40,60 @@ test("같은 자산의 상충하는 평가일·금액을 서식 집계에서 합
   assert.equal(calc.liquidationValueWon,null);
   assert.equal(bindings.rows.asset.length,2);
   assert.equal(bindings.scalars.insurance_surrender,MISSING_FORM_VALUE);
+});
+
+test("채권자·가족 person.name 관측은 신청인 성명으로 채워지지 않는다",()=>{
+  const data=fixture();
+  const add=(id:string,subjectId:string,key:string,value:string,quote:string)=>data.facts.push({id,logicalId:id,version:1,subjectId,key,value,state:"extracted",recognition:"unreviewed",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote}],validation:[]});
+  data.pages[0].text+="\nCreditor person.name Creditor Kim\nFamily person.name Relative Lee";
+  add("creditor-person-name","debt:creditor-1","person.name","Creditor Kim","Creditor person.name Creditor Kim");
+  add("family-person-name","family:member-1","person.name","Relative Lee","Family person.name Relative Lee");
+  const bindings=buildFormBindings(data,calculateCase(data,DRAFT_RULESET));
+  const pack=buildCourtPackage(data,DRAFT_RULESET);
+  const applicant=pack.documents.find(doc=>doc.kind==="application")!.tables[0].rows.find(row=>row[0]==="성명")!;
+  assert.equal(bindings.scalars.client_name,MISSING_FORM_VALUE);
+  assert.equal(applicant[1],MISSING_FORM_VALUE);
+
+  data.pages[0].text+="\nApplicant applicant.name Synthetic Applicant";
+  add("applicant-name","source:p1:person:applicant","applicant.name","Synthetic Applicant","Applicant applicant.name Synthetic Applicant");
+  assert.equal(buildFormBindings(data,calculateCase(data,DRAFT_RULESET)).scalars.client_name,"Synthetic Applicant");
+  assert.equal(buildCourtPackage(data,DRAFT_RULESET).documents.find(doc=>doc.kind==="application")!.tables[0].rows.find(row=>row[0]==="성명")![1],"Synthetic Applicant");
+});
+
+test("person 신원은 같은 대상의 명시된 applicant 역할에서만 연결하고 충돌·불인정은 거부한다",()=>{
+  const data=fixture();
+  const add=(id:string,subjectId:string,key:string,value:string,quote:string,options:{state?:"extracted"|"verified"|"disputed"|"retracted";recognition?:"unreviewed"|"accepted"|"rejected";logicalId?:string;version?:number}={})=>data.facts.push({id,logicalId:options.logicalId??id,version:options.version??1,subjectId,key,value,state:options.state??"extracted",recognition:options.recognition??"unreviewed",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote}],validation:[]});
+  data.pages[0].text+="\nApplicant role applicant\nApplicant person.name Applicant Kim\nFamily role family\nFamily person.name Family Kim\nCreditor role creditor\nCreditor person.name Creditor Kim";
+  add("role-a","row-applicant","person.role","applicant","Applicant role applicant");
+  add("name-a","row-applicant","person.name","Applicant Kim","Applicant person.name Applicant Kim");
+  add("role-f","row-family","person.role","family","Family role family");
+  add("name-f","row-family","person.name","Family Kim","Family person.name Family Kim");
+  add("role-c","row-creditor","person.role","creditor","Creditor role creditor");
+  add("name-c","row-creditor","person.name","Creditor Kim","Creditor person.name Creditor Kim");
+  assert.equal(applicantIdentityValue(data,"name"),"Applicant Kim");
+  assert.equal(buildFormBindings(data,calculateCase(data,DRAFT_RULESET)).scalars.client_name,"Applicant Kim");
+  assert.equal(buildCourtPackage(data,DRAFT_RULESET).documents.find(doc=>doc.kind==="application")!.tables[0].rows.find(row=>row[0]==="성명")![1],"Applicant Kim");
+
+  data.pages[0].text+="\nAlternate applicant name Applicant Park";
+  add("name-a-conflict","row-applicant","person.name","Applicant Park","Alternate applicant name Applicant Park");
+  assert.equal(applicantIdentityValue(data,"name"),"[상충: 원문 대조 필요]");
+  data.facts=data.facts.filter(fact=>fact.id!=="name-a-conflict");
+  add("conflict-role","row-applicant","person.role","family","Applicant is a family member");
+  assert.equal(applicantIdentityValue(data,"name"),MISSING_FORM_VALUE,"conflicting roles are not enough to associate that identity with the applicant");
+  data.facts=data.facts.filter(fact=>fact.id!=="conflict-role");
+  add("rejected-name","row-applicant","applicant.name","Wrong Person","Applicant name wrong",{recognition:"rejected"});
+  assert.equal(applicantIdentityValue(data,"name"),MISSING_FORM_VALUE,"a rejected explicit identity conflicts with the same subject's person name");
+  data.facts=data.facts.filter(fact=>fact.id!=="name-a");
+  assert.equal(applicantIdentityValue(data,"name"),"[확인 필요]","a rejected identity cannot be used as fallback");
+  const stale=structuredClone(data);stale.pages[0].text+="\nOld role applicant Old name";
+  stale.facts.push({id:"stale-role",logicalId:"stale-role",version:1,subjectId:"stale-row",key:"person.role",value:"applicant",state:"extracted",recognition:"unreviewed",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote:"Old role applicant"}],validation:[]});
+  stale.facts.push({id:"stale-name-v1",logicalId:"stale-name",version:1,subjectId:"stale-row",key:"person.name",value:"Old name",state:"extracted",recognition:"unreviewed",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote:"Old name"}],validation:[]});
+  stale.facts.push({id:"stale-name-v2",logicalId:"stale-name",version:2,subjectId:"stale-row",key:"person.name",value:"Old name",state:"retracted",recognition:"rejected",refs:[{documentId:"evidence",page:1,sourceHash:hash,quote:"Old name"}],validation:[]});
+  assert.equal(applicantIdentityValue(stale,"name"),MISSING_FORM_VALUE,"a superseded/retracted identity version is not current");
+
+  const crud=structuredClone(data);crud.context.applicant={name:"Manually Entered",address:"Manual Address"};
+  assert.deepEqual(reconcileApplicantContext(crud),{name:"Manually Entered",address:"Manual Address"});
+  assert.deepEqual(reconcileApplicantContext(data),{},"reconciliation must not promote OCR names into persistent CRUD context");
 });
 
 test("지분 미확정도 인용된 재산 총액은 초안에 표시하고 신청인 귀속 계산은 비운다",()=>{

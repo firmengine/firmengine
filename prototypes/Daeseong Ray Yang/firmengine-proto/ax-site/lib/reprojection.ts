@@ -6,7 +6,7 @@ export class ReprojectionError extends Error { readonly status = 409; }
 const conflict = (message: string) => new ReprojectionError(message);
 
 /** Bump whenever source-to-fact projection semantics change. This is not a model prompt version. */
-export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.4";
+export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-27.6";
 
 export interface StoredPageJobForReprojection {
   id: string;

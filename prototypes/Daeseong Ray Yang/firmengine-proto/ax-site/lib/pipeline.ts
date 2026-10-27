@@ -13,6 +13,7 @@ import { canRetryEvidencePage } from "./retry-page-policy";
 import { PAGE_PROJECTION_VERSION } from "./reprojection";
 import legalExceptions from "./legal-exceptions.json";
 import { createPreservedOmissionReceipts,createSourceVerificationReceipts,sourceVerificationFieldLocation,sourceVerificationReceiptMatches,type ReviewPass,type SourceVerificationReceipt } from "./source-verification";
+import { reconcileApplicantContext } from "./applicant-identity";
 
 function documentGuide(type:string){
   const accepted=new Set(equivalentDocumentTypes(type));
@@ -22,7 +23,7 @@ function documentGuide(type:string){
 }
 function sourceInstructions(type:string){return DOC_FIELDS[type]||DOC_FIELDS[documentFamily(type)]||DOC_FIELDS.unknown;}
 
-interface PageJob {id:string;case_id:string;document_id:string;page:number;role:string;document_type:string|null;image_key:string;image_hash:string;stage:string;attempts:number;result:string|null;cache_key:string|null;ready:number;}
+interface PageJob {id:string;case_id:string;document_id:string;page:number;role:string;document_type:string|null;image_key:string;image_hash:string;stage:string;status:string;lease_until:string|null;attempts:number;result:string|null;cache_key:string|null;ready:number;}
 interface VerifyResult {checks:FieldReviewCheck[];omittedRows:boolean;warnings:string[];}
 type CommitCheckpoint={read:PageRead;review:VerifyResult;disagreements:number;verifierPasses:ReviewPass[];sourceHash:string;imageKey:string;imageHash:string;cacheKey:string;projectionVersion:string;documentId:string;page:number;role:string;casConflictCount?:number;firstRead?:PageRead;extractionRead?:PageRead;baselineRead?:PageRead;baselineReview?:VerifyResult;baselinePassInfo?:ReviewPass;omissionRetry?:boolean;};
 type RescuePlan={planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction";boxes:unknown[]};
@@ -65,6 +66,19 @@ async function logUsage(caseId:string,stage:string,usage:Usage){
   await event(caseId,"model.call",{agent:stage,...usage});
 }
 async function checkLease(id:string,lease:string){const active=await db().prepare("SELECT id FROM page_jobs WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(id,lease).first();if(!active)throw new HttpError(409,"처리 중 페이지 구성이 변경되었습니다. 이전 응답은 반영하지 않습니다.");}
+async function persistIncompleteReadRescue(caseId:string,j:PageJob,lease:string,saved:SavedResult,sourceHash:string,reason:string){
+  const canRescue=!saved.rescueRetry,message="원문 구간 재시도도 완료되지 않았습니다. 이 페이지만 원본과 대조한 뒤 재판독할 수 있습니다.";
+  if(canRescue){
+    saved.rescueRetry=true;saved.rescuePlan={planId:crypto.randomUUID(),documentId:j.document_id,page:j.page,sourceHash,baseImageHash:j.image_hash,reason:"incomplete_extraction",boxes:[[0,0,1,1]]};
+    const updated=await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'extract',result = ?,lease_until = NULL,error = NULL,updated_at = ? WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(JSON.stringify(saved),now(),j.id,lease).run();
+    if(!updated.meta.changes)throw new HttpError(409,"구간 재판독 계획을 저장하기 전에 페이지 처리 권한이 바뀌었습니다.");
+  }else{
+    const updated=await db().prepare("UPDATE page_jobs SET status = 'review_required',stage = 'failed',lease_until = NULL,error = ?,updated_at = ? WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(message,now(),j.id,lease).run();
+    if(!updated.meta.changes)throw new HttpError(409,"재판독 보류 상태를 저장하기 전에 페이지 처리 권한이 바뀌었습니다.");
+  }
+  await event(caseId,"page.initial_read_incomplete",{documentId:j.document_id,page:j.page,reason});
+  return {remaining:await remaining(caseId),stage:canRescue?"incomplete_read_rescue":"page_error",page:j.page,...(canRescue?{rescue:saved.rescuePlan}:{})};
+}
 async function setPageRole(caseId:string,documentId:string,page:number,role:"evidence"|"filed_form"|"administrative"|"unknown",documentType:string,jobId:string,lease:string){
   for(let retry=0;retry<3;retry++){
     await checkLease(jobId,lease);
@@ -85,10 +99,11 @@ export async function processNext(caseId:string){
   const lease=new Date(Date.now()+150_000).toISOString();
   const claim=await db().prepare("UPDATE page_jobs SET status = 'processing',lease_until = ?,attempts = attempts + 1,updated_at = ? WHERE id = ? AND (status = 'pending' OR (status = 'processing' AND lease_until < ?))").bind(lease,now(),j.id,now()).run();
   if(!claim.meta.changes)return {remaining:await remaining(caseId),stage:"busy"};
-  const checkpointed=j.stage==="commit";let retryCommitConflict=false,commitRetryCount=0,saved:SavedResult={},activeOperation="waiting";
+  const checkpointed=j.stage==="commit";let retryCommitConflict=false,commitRetryCount=0,saved:SavedResult={},activeOperation="waiting",activeSourceHash="";
   try{
     const data=await getCase(caseId),document=data.documents.find(d=>d.id===j.document_id&&d.status==="active");
     if(!document)throw new HttpError(409,"철회한 문서는 처리하지 않습니다.");
+    activeSourceHash=document.sha256;
     const currentPage=data.pages.find(p=>p.documentId===j.document_id&&p.page===j.page);
     if(!currentPage||currentPage.role!==j.role||["filed_form","administrative"].includes(currentPage.role)||["filed_form","administrative"].includes(samplePageRole(document.sha256,j.page).role))throw new HttpError(409,"분리된 제출본·행정자료 또는 역할이 변경된 페이지는 모델에 전달하지 않습니다.");
     const cacheKey=extractionCacheKey({documentId:j.document_id,documentHash:document.sha256,pages:[j.page],mappingVersion:j.document_type||"unknown",promptVersion:PROMPT_VERSION,model:AI_MODEL,ruleReleaseId:CURRENT_RULESET.id});
@@ -106,6 +121,12 @@ export async function processNext(caseId:string){
       return {remaining:await remaining(caseId),stage:"legacy_read_superseded",page:j.page};
     } else if(!apiKeyConfigured)throw new HttpError(503,"사이트의 비밀 환경변수 OPENAI_API_KEY 연결이 필요합니다. 이미 완료한 업로드는 보존되어 있습니다.");
     await checkLease(j.id,lease);
+    // A canceled hosting request cannot run its catch handler. Once its lease
+    // expires, move an unfinished whole-page read to bounded regions instead
+    // of paying for the same long request again. Existing verified checkpoints
+    // and already bounded region attempts retain their normal resume paths.
+    const abandonedWholeRead=j.status==="processing"&&!!j.lease_until&&j.lease_until<now()&&j.attempts>0&&j.role==="evidence"&&!!j.document_type&&["waiting","extract","verify"].includes(j.stage)&&!saved.regionalReview&&!saved.rescueRetry;
+    if(abandonedWholeRead)return await persistIncompleteReadRescue(caseId,j,lease,saved,document.sha256,"expired_whole_page_lease");
     const file=await bucket().get(j.image_key);if(!file)throw new HttpError(404,"페이지 이미지가 없습니다. 해당 파일을 다시 업로드하세요.");
     const imageBytes=await file.arrayBuffer();
     if(j.stage==="commit"){
@@ -272,13 +293,7 @@ export async function processNext(caseId:string){
       return {remaining:await remaining(caseId),stage:"commit_retry",page:j.page,commitRetryCount};
     }
     const timeout=e instanceof DOMException&&(e.name==="TimeoutError"||e.name==="AbortError"),upstream=e instanceof HttpError&&(e.status===502||e.status===504);
-    if((timeout||upstream)&&activeOperation==="extract"&&j.role==="evidence"){
-      const canRescue=!saved.rescueRetry,message="원문 구간 재시도도 완료되지 않았습니다. 이 페이지만 원본과 대조한 뒤 재판독할 수 있습니다.";
-      if(canRescue){const rescueCase=await getCase(caseId),sourceHash=rescueCase.documents.find(d=>d.id===j.document_id&&d.status==="active")?.sha256??"";saved.rescueRetry=true;saved.rescuePlan={planId:crypto.randomUUID(),documentId:j.document_id,page:j.page,sourceHash,baseImageHash:j.image_hash,reason:"incomplete_extraction",boxes:[[0,0,1,1]]};await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'extract',result = ?,lease_until = NULL,error = NULL,updated_at = ? WHERE id = ? AND lease_until = ?").bind(JSON.stringify(saved),now(),j.id,lease).run();}
-      else await db().prepare("UPDATE page_jobs SET status = 'review_required',stage = 'failed',lease_until = NULL,error = ?,updated_at = ? WHERE id = ? AND lease_until = ?").bind(message,now(),j.id,lease).run();
-      await event(caseId,"page.initial_read_incomplete",{documentId:j.document_id,page:j.page,reason:timeout?"timeout":"upstream_incomplete"});
-      return {remaining:await remaining(caseId),stage:canRescue?"incomplete_read_rescue":"page_error",page:j.page,...(canRescue?{rescue:saved.rescuePlan}:{})};
-    }
+    if((timeout||upstream)&&["extract","verify"].includes(activeOperation)&&j.role==="evidence"&&activeSourceHash)return await persistIncompleteReadRescue(caseId,j,lease,saved,activeSourceHash,`${activeOperation}_${timeout?"timeout":"upstream_incomplete"}`);
     await db().prepare("UPDATE page_jobs SET status = 'error',lease_until = NULL,error = ?,updated_at = ? WHERE id = ? AND lease_until = ?").bind(e instanceof Error?e.message.slice(0,350):"처리 실패",now(),j.id,lease).run();throw e;
   }
 }
@@ -308,7 +323,7 @@ export async function reconcileCase(caseId:string){
   const c=await getCase(caseId),n=touchCase(c),facts=currentFacts(c);const warnings:string[]=[];
   // No empty input becomes zero or a complete inventory. Conflicting values stay visible.
   const unique=(key:string)=>{const values=[...new Set(facts.filter(f=>f.key===key&&f.state!=="disputed"&&f.recognition!=="rejected").map(f=>String(f.value)))];if(values.length>1)warnings.push(`${key}: 서로 다른 값 ${values.length}개 — 기준시점·원문 대조 필요`);return values.length===1?values[0]:undefined;};
-  n.context.applicant={...n.context.applicant,name:n.context.applicant?.name||unique("person.name"),address:n.context.applicant?.address||unique("person.address"),residentIdMasked:n.context.applicant?.residentIdMasked||unique("person.resident_id_masked"),statement:n.context.applicant?.statement||unique("statement.text")};
+  n.context.applicant={...reconcileApplicantContext(n),statement:n.context.applicant?.statement||unique("statement.text")};
   const incomeResolution=resolveIncomeRows(n,n.incomes);
   n.incomes=incomeResolution.rows;
   warnings.push(...incomeResolution.issues);

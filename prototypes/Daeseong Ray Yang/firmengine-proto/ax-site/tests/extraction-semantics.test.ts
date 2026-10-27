@@ -37,6 +37,48 @@ test("보험 해약환급금은 명시적 0과 원문 단위를 보존한다",()
   assert.equal(absentUnit.assets?.[0].grossValue?.amountWon,null);
 });
 
+test("보험 환급금 별칭 선택은 필드 순서에 무관하고 상충한 두 원문값은 계산에서 보류한다",()=>{
+  const premium=f("refund_value","900","납입보험료 900만원","만원"),quoted=f("gross_value","100","해약환급금 100만원","만원");
+  for(const fields of [[premium,quoted],[quoted,premium]]){
+    const projected=projectPage(asset(fields),"synthetic-insurance",1,sha);
+    assert.equal(projected.assets?.[0].grossValue?.amountWon,"1000000");
+    assert.ok(projected.facts?.some(fact=>fact.key==="asset.refund_value"&&fact.numeric?.amountWon==="9000000"));
+    assert.ok(projected.facts?.some(fact=>fact.key==="asset.gross_value"&&fact.numeric?.amountWon==="1000000"));
+  }
+  for(const fields of [
+    [f("refund_value","120","해약환급금 120만원","만원"),quoted],
+    [quoted,f("refund_value","120","해약환급금 120만원","만원")],
+  ]){
+    const projected=projectPage(asset(fields),"synthetic-insurance-conflict",2,sha);
+    assert.equal(projected.assets?.[0].grossValue,null);
+    assert.ok(projected.warnings?.some(message=>message.includes("서로 다른 해약환급금 후보")));
+    assert.equal(projected.facts?.filter(fact=>fact.key==="asset.refund_value"||fact.key==="asset.gross_value").length,2);
+  }
+});
+
+test("거래 명시적 합계행은 원문 fact로 남기고, 적요의 합계 단어와 반복 금액은 실제 행을 제거하지 않는다",()=>{
+  const tx=(counterparty:string,memo:string)=>({category:"transaction" as const,label:"거래 행",fields:[
+    f("date","2026-03-10","거래일 2026-03-10"),f("account_id","1234-****-90","계좌 1234-****-90"),
+    f("direction","in","입금"),f("amount","1000","1,000원","원"),f("counterparty",counterparty,counterparty),f("memo",memo,memo),
+  ]});
+  const subtotal={category:"transaction" as const,label:"당일 입금 합계",fields:[
+    f("date","2026-03-10","합계 기준일 2026-03-10"),f("account_id","1234-****-90","계좌 1234-****-90"),
+    f("direction","in","당일 입금 합계"),f("amount","1000","당일 입금 합계 1,000원","원"),
+  ]};
+  const read=(records:PageRead["records"]):PageRead=>({documentType:"bank_statement",complete:true,warnings:[],records});
+  for(const records of [[tx("합계마트","가맹점 합계마트"),tx("다른 상점","정상 결제"),subtotal],[subtotal,tx("다른 상점","정상 결제"),tx("합계마트","가맹점 합계마트")]]){
+    const projected=projectPage(read(records),"synthetic-bank",1,sha);
+    assert.equal(projected.transactions?.length,2);
+    assert.deepEqual(projected.transactions?.map(item=>item.amount.amountWon),["1000","1000"]);
+    assert.equal(projected.facts?.filter(fact=>fact.key==="transaction.amount").length,3);
+    assert.ok(projected.warnings?.some(message=>message.includes("소계·합계 행")));
+  }
+  const mislabeled=tx("다른 상점","입금 합계 송금");mislabeled.label="당일 입금 합계";
+  const unsupportedMarker={...f("row_type","total",""),quote:null};mislabeled.fields.push(unsupportedMarker);
+  const kept=projectPage(read([mislabeled]),"synthetic-bank",2,sha);
+  assert.equal(kept.transactions?.length,1,"unquoted model labels and control fields cannot discard a real transaction");
+});
+
 test("실효·해지·만기는 미기재 환급금을 0으로 바꾸지 않는다",()=>{
   for(const status of ["실효","해지","만기"]){
     const p=projectPage(asset([f("contract_status",status,`계약상태 ${status}`)]),"synthetic-insurance",1,sha);
