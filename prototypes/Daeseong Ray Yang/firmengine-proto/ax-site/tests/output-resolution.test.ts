@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { applyExtraction,createCase,DRAFT_RULESET } from "../lib/domain.ts";
+import { applyExtraction,createCase,createCaseReadIndex,DRAFT_RULESET } from "../lib/domain.ts";
 import { projectPage,type ReadField,type PageRead } from "../lib/extraction.ts";
 import { calculateCase } from "../lib/assessment.ts";
 import { buildFormBindings,MISSING_FORM_VALUE } from "../lib/form-mapping.ts";
 import { buildCourtPackage } from "../lib/exports.ts";
+import { assessCase } from "../lib/assessment.ts";
 
 const hash="f".repeat(64);
 const f=(key:string,value:string,unit:string|null=null):ReadField=>({key,label:key,value,unit,quote:key==="gross_value"?`해약환급금 ${value}${unit??""}`:`${key} ${value}`,confidence:"clear",bbox:null});
@@ -86,10 +87,12 @@ test("차량·보험 세부 행은 각 자산 ID의 명시 fact만 연결하고 
   assert.equal(vehicle[3],"sedan");
   assert.equal(vehicle[4],"[상충·선택 보류]");
   assert.equal(vehicle[5],"Applicant");
-  assert.equal(vehicle[7],"2020");
+  assert.equal(vehicle[8],"2020");
   const insurance=table.rows.find(row=>row[0]===data.assets[0].id)!;
-  assert.equal(insurance[8],"합성 보험사");
-  assert.ok(insurance[9].includes("4000"));
+  assert.equal(insurance[5],"[확인 필요]");
+  assert.equal(insurance[6],"OWNER-2002");
+  assert.equal(insurance[9],"합성 보험사");
+  assert.ok(insurance[10].includes("4000"));
 });
 
 test("조건부 공식 서식은 명시 단서와 미확인 사유를 보여주되 증빙만으로 자동 선택하지 않는다",()=>{
@@ -106,4 +109,15 @@ test("조건부 공식 서식은 명시 단서와 미확인 사유를 보여주�
   assert.ok(prohibition[1].includes("wage garnishment"));
   assert.match(prohibition[2],/자동 선택하지 않음/);
   assert.match(prohibition[3],/신청 의사/);
+});
+
+test("request index and shared form bindings preserve assessment, package tables and form bindings",()=>{
+  const data=fixture(),index=createCaseReadIndex(data),calc=calculateCase(data,DRAFT_RULESET);
+  assert.deepEqual(buildFormBindings(data,calc,index),buildFormBindings(data,calc));
+  const a=assessCase(data,DRAFT_RULESET),b=assessCase(data,DRAFT_RULESET,index);
+  assert.deepEqual(b,a);
+  const before=buildCourtPackage(data,DRAFT_RULESET,a),after=buildCourtPackage(data,DRAFT_RULESET,b,index);
+  delete (before as Partial<typeof before>).generatedAt;
+  delete (after as Partial<typeof after>).generatedAt;
+  assert.deepEqual(after,before);
 });

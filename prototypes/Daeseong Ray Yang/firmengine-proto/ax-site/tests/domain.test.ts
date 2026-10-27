@@ -265,3 +265,74 @@ test("계획총액이 배분가능 채권액을 초과하면 차액을 숨기지
   const balanced=finalizableFixture(),checked=calculateCase(balanced,rules);
   assert.equal(checked.allocations.reduce((sum,row)=>sum+BigInt(row.totalWon),0n).toString(),checked.planTotalWon);assert.equal(assessCase(balanced,rules).generationGate.canFinalize,true);
 });
+
+test("우선 또는 우선순위 미확정 채권은 일반채권 배분에서 빠지지만 무담보 한도 합계에는 남는다",()=>{
+  const baseline=finalizableFixture(),baseCalculation=calculateCase(baseline,rules);
+  assert.equal(assessCase(baseline,rules).generationGate.canFinalize,true);
+  assert.deepEqual(baseCalculation.allocations.map(row=>row.debtId),["loan"]);
+  const baselineUnsecured=baseCalculation.unsecuredDebtWon;
+  for(const priority of ["priority","unknown",undefined] as const){
+    const data=structuredClone(baseline);
+    if(priority===undefined) delete data.debts[0]!.priority;
+    else data.debts[0]!.priority=priority;
+    const calculation=calculateCase(data,rules);
+    assert.equal(calculation.unsecuredDebtWon,baselineUnsecured,"priority does not alter the statutory unsecured-debt total");
+    assert.deepEqual(calculation.allocations,[],"only explicitly ordinary claims enter this allocation pool");
+    assert.ok(calculation.issues.includes("ALLOCATION_BUDGET_UNRECONCILED"));
+    assert.equal(assessCase(data,rules).generationGate.canFinalize,false,"unallocated planned funds cannot pass finalization");
+  }
+  const mixed=structuredClone(baseline);
+  mixed.facts.push({id:"f-priority-contract",logicalId:"f-priority-contract",version:1,subjectId:"priority-loan",key:"debt.contract_id",value:"Synthetic evidence",state:"verified",recognition:"accepted",refs:[{documentId:"doc",page:1,quote:"Synthetic evidence"}],validation:[]});
+  mixed.debts.push({...structuredClone(mixed.debts[0]!),id:"priority-loan",contractId:"priority-contract",creditor:"Synthetic priority creditor",principal:normalizeMoney("100000"),interest:normalizeMoney("0"),priority:"priority",factIds:["f-priority-contract"]});
+  const mixedCalculation=calculateCase(mixed,rules);
+  assert.equal(mixedCalculation.allocations.reduce((sum,row)=>sum+BigInt(row.totalWon),0n).toString(),mixedCalculation.planTotalWon,"large ordinary debt can still absorb the full ordinary budget");
+  assert.equal(mixedCalculation.unsecuredDebtWon,(BigInt(baselineUnsecured!)+100000n).toString(),"the priority claim remains in the unsecured statutory total");
+  assert.ok(!mixedCalculation.issues.includes("ALLOCATION_BUDGET_UNRECONCILED"),"the explicit coverage gate is needed even when budget math balances");
+  assert.ok(mixedCalculation.issues.includes("PRIORITY_CLAIM_SCHEDULE_COVERAGE_REQUIRED"));
+  assert.equal(assessCase(mixed,rules).generationGate.canFinalize,false);
+  for(const priority of ["unknown",undefined] as const){
+    const ambiguous=structuredClone(mixed),claim=ambiguous.debts.find(debt=>debt.id==="priority-loan")!;
+    if(priority===undefined)delete claim.priority;else claim.priority=priority;
+    const calculation=calculateCase(ambiguous,rules);
+    assert.equal(calculation.allocations.reduce((sum,row)=>sum+BigInt(row.totalWon),0n).toString(),calculation.planTotalWon,"large ordinary claim absorbs the budget despite unresolved second-claim priority");
+    assert.ok(!calculation.issues.includes("ALLOCATION_BUDGET_UNRECONCILED"));
+    assert.ok(calculation.issues.some(code=>code.startsWith("DEBT_PRIORITY_TREATMENT_REQUIRED:priority-loan")));
+    assert.equal(calculation.unsecuredDebtWon,mixedCalculation.unsecuredDebtWon,"unresolved priority classification does not remove debt from statutory unsecured total");
+    assert.equal(assessCase(ambiguous,rules).generationGate.canFinalize,false,"priority classification is required even if budget arithmetic balances");
+  }
+  mixed.context.paymentSchedule={reviewed:true,reviewReason:"Synthetic reviewer assigned both claims in each phase",expectedInstallments:36,phases:[{id:"phase-1",firstInstallment:1,lastInstallment:36,firstPaymentDate:"2026-11-01",monthlyAvailableWon:"2500000",allocations:[{creditorId:"loan",principalWon:"2300000",interestWon:"0"},{creditorId:"priority-loan",principalWon:"200000",interestWon:"0"}]}]};
+  assert.ok(!calculateCase(mixed,rules).issues.includes("PRIORITY_CLAIM_SCHEDULE_COVERAGE_REQUIRED"),"reviewed per-phase creditor coverage resolves only the coverage finding");
+});
+
+test("공동소유 담보상환액은 명시된 신청인 귀속 범위와 현재 원문 사실 없이는 청산가치에서 빼지 않는다",()=>{
+  const make=()=>{
+    const data=finalizableFixture(),asset=data.assets[0]!;
+    asset.ownershipBps=5000;asset.securedPayoff=normalizeMoney("100000");asset.securedPayoffScope="applicant_interest";
+    const quote="담보상환액 귀속범위 applicant_interest";data.pages[0]!.text+="\n"+quote;
+    data.facts.push({id:"f-payoff-scope",logicalId:"f-payoff-scope",version:1,subjectId:asset.id,key:"asset.secured_payoff_scope",value:"applicant_interest",state:"verified",recognition:"accepted",refs:[{documentId:"doc",page:1,sourceHash:"a".repeat(64),quote}],validation:[]});asset.factIds.push("f-payoff-scope");
+    return data;
+  };
+  const attributable=make(),calculated=calculateCase(attributable,rules);
+  assert.equal(calculated.assetRows.find(row=>row.id==="deposit")?.liquidationWon,"400000");
+  assert.equal(calculated.traces.find(trace=>trace.id==="asset:deposit")?.status,"calculated");
+  assert.equal(assessCase(attributable,rules).generationGate.canFinalize,true,"reviewed source scope plus accepted asset permits final calculation");
+  const provisional=make(),provisionalScope=provisional.facts.find(f=>f.id==="f-payoff-scope")!;provisionalScope.state="extracted";provisionalScope.recognition="unreviewed";
+  const provisionalResult=calculateCase(provisional,rules);
+  assert.equal(provisionalResult.assetRows.find(row=>row.id==="deposit")?.liquidationWon,"400000");
+  assert.equal(provisionalResult.traces.find(trace=>trace.id==="asset:deposit")?.status,"provisional");
+  assert.equal(assessCase(provisional,rules).generationGate.canFinalize,false);
+  const setScope=(data:CaseData,value:"unknown"|"entire_collateral")=>{data.assets[0]!.securedPayoffScope=value;const fact=data.facts.find(f=>f.id==="f-payoff-scope")!;fact.value=value;fact.refs[0]!.quote=`담보상환액 귀속범위 ${value}`;data.pages[0]!.text+=`\n담보상환액 귀속범위 ${value}`;};
+  const unknown=make();setScope(unknown,"unknown");
+  const unknownResult=calculateCase(unknown,rules);
+  assert.equal(unknownResult.assetRows.find(row=>row.id==="deposit")?.liquidationWon,null);
+  assert.ok(unknownResult.issues.some(code=>code.startsWith("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_UNRESOLVED")));
+  const entire=make();setScope(entire,"entire_collateral");
+  assert.equal(calculateCase(entire,rules).assetRows.find(row=>row.id==="deposit")?.liquidationWon,null);
+  const missingSource=make();missingSource.assets[0]!.factIds=missingSource.assets[0]!.factIds.filter(id=>id!=="f-payoff-scope");
+  assert.equal(calculateCase(missingSource,rules).assetRows.find(row=>row.id==="deposit")?.liquidationWon,null);
+  assert.ok(calculateCase(missingSource,rules).issues.some(code=>code.startsWith("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_SOURCE_REQUIRED")));
+  const fullOwnership=make();fullOwnership.assets[0]!.ownershipBps=10000;fullOwnership.assets[0]!.securedPayoffScope="unknown";
+  assert.equal(calculateCase(fullOwnership,rules).assetRows.find(row=>row.id==="deposit")?.liquidationWon,"900000");
+  const zeroPayoff=make();zeroPayoff.assets[0]!.securedPayoff=normalizeMoney("0");zeroPayoff.assets[0]!.securedPayoffScope="unknown";
+  assert.equal(calculateCase(zeroPayoff,rules).assetRows.find(row=>row.id==="deposit")?.liquidationWon,"500000");
+});

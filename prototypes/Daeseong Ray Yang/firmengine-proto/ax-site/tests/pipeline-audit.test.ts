@@ -57,9 +57,11 @@ test("보증 한도·청구액은 별도 원문 사실로 보존하고 principal
 
 test("추출 프롬프트 버전이 바뀌어 이전 캐시키와 격리된다",()=>{
   const input={documentId:"doc",documentHash:"a".repeat(64),pages:[1],mappingVersion:"debt_certificate",model:"gpt-6-luna",ruleReleaseId:"test"};
-  const old=extractionCacheKey({...input,promptVersion:"luna-evidence-3.0.1"});
   const current=extractionCacheKey({...input,promptVersion:PROMPT_VERSION});
-  assert.notEqual(current,old);assert.equal(PROMPT_VERSION,"luna-evidence-3.3.0");
+  for(const priorVersion of ["luna-evidence-3.0.1","luna-evidence-3.3.0"]){
+    assert.notEqual(current,extractionCacheKey({...input,promptVersion:priorVersion}));
+  }
+  assert.match(PROMPT_VERSION,/^luna-evidence-\d+\.\d+\.\d+$/);
   assert.match(PAGE_COMPLETENESS_INSTRUCTIONS,/한 페이지 이미지에 실제로 보이는 행·셀/);assert.match(PAGE_COMPLETENESS_INSTRUCTIONS,/문서 전체의 총 N건/);
 });
 

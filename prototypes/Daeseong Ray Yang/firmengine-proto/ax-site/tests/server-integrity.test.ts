@@ -10,6 +10,7 @@ import ts from "typescript";
 import * as domain from "../lib/domain.ts";
 import * as processingReadiness from "../lib/processing-readiness.ts";
 import * as jsonResponses from "../lib/json-response.ts";
+import * as scanQuality from "../lib/scan-quality.ts";
 import type { CaseData, ExportManifest } from "../lib/domain.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -26,7 +27,7 @@ const digest=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex"
 const requiredKinds=[...domain.REQUIRED_ARTIFACT_KINDS,"repayment_schedule"] as domain.ArtifactKind[];
 const manifest=(revision:number,tag:string):ExportManifest=>({caseRevision:revision,requiredKinds,files:requiredKinds.map(kind=>({id:`${tag}-${kind}`,kind,name:`${kind}.docx`,hash:`synthetic-${tag}-${kind}`,status:"current"})),reviews:{caseworker:null,lawyer:null}});
 
-function setup(){
+function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue[])=>void){
   const sqlite=new DatabaseSync(":memory:");
   sqlite.exec(readFileSync(root+"drizzle/0000_chunky_cardiac.sql","utf8"));
   const data=domain.createCase("Synthetic server integrity",crypto.randomUUID(),"2026-10-27");
@@ -44,7 +45,7 @@ function setup(){
   };
   const db={prepare(sql:string){return {bind(...params:SQLInputValue[]){return {
     async first(){return sqlite.prepare(sql).get(...params)??null;},
-    async run(){const result=sqlite.prepare(sql).run(...params);return {meta:{changes:Number(result.changes)}};},
+    async run(){if(sql.includes("INSERT INTO page_derivatives")&&beforeDerivativeInsert)beforeDerivativeInsert(sqlite,params);const result=sqlite.prepare(sql).run(...params);return {meta:{changes:Number(result.changes)}};},
     async all(){return {results:sqlite.prepare(sql).all(...params)};},
   };}};},async batch(commands:Array<{run():Promise<unknown>}>){const results=[];for(const command of commands)results.push(await command.run());return results;}};
   const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>({userId:"synthetic-owner"})},"./domain":domain,"./processing-readiness":processingReadiness});
@@ -123,9 +124,32 @@ function documentSetup(ready:boolean){
   h.sqlite.prepare("UPDATE cases SET payload = ? WHERE id = ?").run(JSON.stringify(h.data),h.data.context.id);
   h.sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,original_key,ready,created_at) VALUES (?,?,?,?,?,?,?,?)").run(doc,h.data.context.id,"synthetic.pdf",hash,1,ready?originalKey:null,ready?1:0,"synthetic");
   if(ready)h.objects.set(originalKey,{bytes,mime:"application/pdf"});
-  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
+  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
   const put=(body:Uint8Array)=>route.PUT(new Request(`https://synthetic.invalid/api/cases/${h.data.context.id}/documents/${doc}?kind=original`,{method:"PUT",headers:{"Content-Type":"application/pdf","Content-Length":String(body.byteLength)},body:new Uint8Array(body)}),{params:Promise.resolve({id:h.data.context.id,doc})});
   return {...h,bytes,doc,originalKey,put};
+}
+
+function derivativeSetup(options:{changePlanAtInsert?:boolean}={}){
+  const h=setup(options.changePlanAtInsert?(sqlite)=>{
+    const row=sqlite.prepare("SELECT result FROM page_jobs WHERE id = ?").get("synthetic-doc:1") as {result:string};
+    const result=JSON.parse(row.result);result.rescuePlan.planId="stale-plan";
+    sqlite.prepare("UPDATE page_jobs SET result = ? WHERE id = ?").run(JSON.stringify(result),"synthetic-doc:1");
+  }:undefined);
+  h.sqlite.exec(readFileSync(root+"drizzle/0002_page_derivatives.sql","utf8"));
+  h.sqlite.exec(readFileSync(root+"drizzle/0003_derivative_plan_id.sql","utf8"));
+  const bytes=new TextEncoder().encode("Synthetic immutable original"),sourceHash=digest(bytes),doc="synthetic-doc",page=1,planId="plan-current",baseHash=digest(new TextEncoder().encode("Synthetic page image")),boxes:[[number,number,number,number]]=[[0,0,1,1]];
+  h.data.documents=[{id:doc,name:"synthetic.pdf",sha256:sourceHash,status:"active",pages:[page]}];h.data.pages=[{documentId:doc,page,role:"evidence"}];
+  h.sqlite.prepare("UPDATE cases SET payload = ? WHERE id = ?").run(JSON.stringify(h.data),h.data.context.id);
+  h.sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,original_key,ready,created_at) VALUES (?,?,?,?,?,?,?,?)").run(doc,h.data.context.id,"synthetic.pdf",sourceHash,1,"synthetic-original",1,"synthetic");
+  h.objects.set("synthetic-original",{bytes,mime:"application/pdf"});
+  h.sqlite.prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,image_key,image_hash,status,stage,attempts,lease_until,cache_key,result,error,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(`${doc}:${page}`,h.data.context.id,doc,page,"evidence","debt_certificate","synthetic-page",baseHash,"pending","extract",0,null,null,JSON.stringify({rescuePlan:{planId,documentId:doc,page,sourceHash,baseImageHash:baseHash,reason:"incomplete_extraction",boxes}}),null,"synthetic");
+  const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
+  const upload=(variant:string,image:Uint8Array,overrides:Record<string,string>={})=>{
+    const spec=scanQuality.rescueSpecs({reason:"incomplete_extraction",boxes,sourceHash,baseImageHash:baseHash}).find(item=>item.variant===variant)!;
+    const request=new Request(`https://synthetic.invalid/api/cases/${h.data.context.id}/documents/${doc}?kind=variant&page=${page}`,{method:"PUT",headers:{"Content-Type":"image/jpeg","x-rescue-plan-id":planId,"x-source-hash":sourceHash,"x-base-image-hash":baseHash,"x-variant":variant,"x-source-bbox":JSON.stringify(spec.bbox),"x-transform":JSON.stringify({method:"canvas-crop-v1",rotation:spec.rotation,contrast:spec.contrast}),...overrides},body:new Uint8Array(image)});
+    return route.PUT(request,{params:Promise.resolve({id:h.data.context.id,doc})});
+  };
+  return {...h,doc,page,planId,sourceHash,baseHash,upload};
 }
 
 test("해시가 다른 원본 재전송은 기존 객체·ready 상태를 손상하지 않는다",async()=>{
@@ -153,5 +177,40 @@ test("잘못된 최초 업로드와 정상 업로드의 경합도 정상 원본�
   const h=documentSetup(false),responses=await Promise.all([h.put(new TextEncoder().encode("Synthetic wrong bytes")),h.put(h.bytes)]);
   assert.deepEqual(responses.map(r=>r.status),[422,200]);const row=h.sqlite.prepare("SELECT original_key,ready FROM documents WHERE id = ?").get(h.doc)!;
   assert.equal(row.ready,1);assert.equal(h.objects.size,1);assert.deepEqual(h.objects.get(String(row.original_key))!.bytes,h.bytes);
+  h.sqlite.close();
+});
+
+test("같은 바이트의 서로 다른 재판독 슬롯은 별도 SQLite 행과 R2 객체로 저장된다",async()=>{
+  const h=derivativeSetup(),image=new TextEncoder().encode("same crop bytes");
+  const first=await h.upload("rescue-incomplete_extraction-1",image),second=await h.upload("rescue-incomplete_extraction-2",image);
+  assert.equal(first.status,200);assert.equal(second.status,200);
+  const rows=h.sqlite.prepare("SELECT variant,variant_hash,object_key,id FROM page_derivatives ORDER BY variant").all() as {variant:string;variant_hash:string;object_key:string;id:string}[];
+  assert.equal(rows.length,2);assert.notEqual(rows[0].variant,rows[1].variant);assert.equal(rows[0].variant_hash,rows[1].variant_hash);assert.notEqual(rows[0].id,rows[1].id);assert.notEqual(rows[0].object_key,rows[1].object_key);
+  assert.equal(h.objects.size,3);assert.deepEqual(h.objects.get(rows[0].object_key)!.bytes,image);assert.deepEqual(h.objects.get(rows[1].object_key)!.bytes,image);
+  h.sqlite.close();
+});
+
+test("재판독 슬롯은 같은 이미지에만 idempotent이며 슬롯 안의 다른 이미지는 409",async()=>{
+  const h=derivativeSetup(),image=new TextEncoder().encode("slot one"),other=new TextEncoder().encode("different image");
+  assert.equal((await h.upload("rescue-incomplete_extraction-1",image)).status,200);
+  const repeated=await h.upload("rescue-incomplete_extraction-1",image);assert.equal(repeated.status,200);assert.equal((await repeated.json() as {idempotent?:boolean}).idempotent,true);
+  assert.equal((await h.upload("rescue-incomplete_extraction-1",other)).status,409);
+  const rows=h.sqlite.prepare("SELECT variant,object_key FROM page_derivatives").all() as {variant:string;object_key:string}[];assert.equal(rows.length,1);assert.equal(rows[0].variant,"rescue-incomplete_extraction-1");assert.deepEqual(h.objects.get(rows[0].object_key)!.bytes,image);assert.equal(h.objects.size,2);
+  h.sqlite.close();
+});
+
+test("변형 업로드는 잘못된 geometry와 만료된 rescue plan을 거부한다",async()=>{
+  const h=derivativeSetup(),image=new TextEncoder().encode("candidate");
+  const wrong=await h.upload("rescue-incomplete_extraction-1",image,{"x-source-bbox":JSON.stringify([.1,.1,.9,.9])});assert.equal(wrong.status,400);
+  const stale=await h.upload("rescue-incomplete_extraction-1",image,{"x-rescue-plan-id":"old-plan"});assert.equal(stale.status,409);
+  assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,0);assert.equal(h.objects.size,1);
+  h.sqlite.close();
+});
+
+test("R2 저장 뒤 INSERT 전 rescue plan이 바뀌면 stale derivative를 등록하지 않고 staging key를 지운다",async()=>{
+  const h=derivativeSetup({changePlanAtInsert:true}),image=new TextEncoder().encode("candidate");
+  const response=await h.upload("rescue-incomplete_extraction-1",image);
+  assert.equal(response.status,409);assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,0);assert.equal(h.objects.size,1);
+  const job=h.sqlite.prepare("SELECT json_extract(result,'$.rescuePlan.planId') AS plan FROM page_jobs WHERE id = ?").get("synthetic-doc:1") as {plan:string};assert.equal(job.plan,"stale-plan");
   h.sqlite.close();
 });

@@ -1,7 +1,7 @@
 /** Public blank-form mapping. No filled sample, evaluator answer, or model output is embedded. */
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import { currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
-import type { ArtifactKind, CaseData, Fact, NumericInput } from "./domain.ts";
+import { createCaseReadIndex, currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
+import type { ArtifactKind, CaseData, CaseReadIndex, Fact, NumericInput } from "./domain.ts";
 import type { CalculationResult } from "./assessment.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
@@ -43,13 +43,13 @@ const claimLabels: Record<string,string> = { ordinary:"일반채권", secured:"�
 const assetLabels: Record<string,string> = { cash:"현금",deposit:"예금",insurance:"보험 해약환급금",vehicle:"자동차",real_estate:"부동산",lease_deposit:"임차보증금",business:"사업용 재산",receivable:"채권",retirement:"퇴직금",other:"기타 재산" };
 const allocationLabels: Record<string,string> = { principal_then_interest_pro_rata:"원금 비례배분 후 잔여금으로 이자 배분",principal_only_pro_rata:"원금 비례배분" };
 const normalizedKey = (key: string) => key.replace(/[A-Z]/g, (x) => "_" + x.toLowerCase());
-function usableFact(data: CaseData, fact: Fact): boolean {
-  return fact.state !== "disputed" && fact.recognition !== "rejected" && !!fact.refs.length && fact.refs.every((r) => validSourceRef(data, r)) && !fact.validation.some((v) => v.severity === "error" || ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(v.code));
+function usableFact(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
+  return fact.state !== "disputed" && fact.recognition !== "rejected" && !!fact.refs.length && fact.refs.every((r) => validSourceRef(data, r,index)) && !fact.validation.some((v) => v.severity === "error" || ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(v.code));
 }
-function sourceValid(data: CaseData, ids: string[]): boolean {
+function sourceValid(data: CaseData, ids: string[],index?:CaseReadIndex): boolean {
   // Draft preview may show clear, cited extracted values before cross-read.
   // Final generation is independently gated by assessment/source review.
-  return !factSourceLineageIssues(data, ids).some(code => code !== "SOURCE_VERIFICATION_REQUIRED");
+  return !factSourceLineageIssues(data, ids,index).some(code => code !== "SOURCE_VERIFICATION_REQUIRED");
 }
 const aliases: Record<string, string[]> = {
   client_name: ["person.name", "applicant.name"], address: ["person.address", "applicant.address", "jurisdiction.residence"],
@@ -65,9 +65,9 @@ const aliases: Record<string, string[]> = {
 };
 
 /** Exact typed amounts are reused; unsupported legal choices and missing facts stay explicit. */
-export function buildFormBindings(data: CaseData, calculation: CalculationResult): FormBindings {
-  const facts = currentFacts(data).filter((fact) => usableFact(data, fact));
-  const assetResolution = resolveAssetRows(data), debtResolution = resolveDebtRows(data);
+export function buildFormBindings(data: CaseData, calculation: CalculationResult,index:CaseReadIndex=createCaseReadIndex(data)): FormBindings {
+  const facts = currentFacts(data,index).filter((fact) => usableFact(data, fact,index));
+  const assetResolution = resolveAssetRows(data,index), debtResolution = resolveDebtRows(data,index);
   const conflictedAssets = new Set(assetResolution.conflictIds);
   const linkedFacts = new Map([...data.incomes, ...debtResolution.rows, ...assetResolution.rows].map(row=>[row.id,new Set(row.factIds)]));
   const select = (key: string, subjectId?: string): Fact[] => {
@@ -97,7 +97,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     total_repayment: amount(calculation.planTotalWon), liquidation_value: amount(calculation.liquidationValueWon),
     present_value: amount(calculation.presentValueWon), present_value_basis: present(data.context.presentValueBasis),
     allocation_basis: data.context.allocationBasisReviewed === true ? present(allocationLabels[data.context.allocationBasis ?? ""]) : "[배분 기준 검토 필요]",
-    approved_monthly_income: data.incomes.length > 0 && data.incomes.every((s) => s.recognition === "accepted" && factSourceLineageIssues(data, s.factIds).length === 0) ? amount(calculation.monthlyIncomeWon) : MISSING_FORM_VALUE,
+    approved_monthly_income: data.incomes.length > 0 && data.incomes.every((s) => s.recognition === "accepted" && factSourceLineageIssues(data, s.factIds,index).length === 0) ? amount(calculation.monthlyIncomeWon) : MISSING_FORM_VALUE,
   });
   // D5110's ③=①−② and ⑤=③−④ are a different quantity from an approved ordinary-claim payment.
   const beforeFee = calculation.monthlyIncomeWon === null || calculation.recognizedLivingCostWon === null ? null : BigInt(calculation.monthlyIncomeWon) - BigInt(calculation.recognizedLivingCostWon);
@@ -134,9 +134,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     return (gross * BigInt(asset.ownershipBps!) + 9999n) / 10000n;
   };
   rows.asset = assetResolution.rows.map((asset) => {
-    const valid = sourceValid(data, asset.factIds), own = ownGross(asset.id);
+    const valid = sourceValid(data, asset.factIds,index), own = ownGross(asset.id);
     const gross = moneyValue(asset.grossValue);
-    const base: Record<string, string> = { entity: present(asset.label), kind: present(assetLabels[asset.kind]), period: present(asset.asOf), value: valid && !conflictedAssets.has(asset.id) && gross !== null && gross >= 0n ? amount(gross.toString()) : MISSING_FORM_VALUE, ownership_share: asset.ownershipBps === null || asset.ownershipBps === undefined ? MISSING_FORM_VALUE : `${asset.ownershipBps}/10000`, valuation_basis: valid ? present(asset.valuationBasis) : MISSING_FORM_VALUE, applicant_share_value: own === null ? MISSING_FORM_VALUE : amount(own.toString()), attribution_status: own === null ? "신청인 귀속분 미확정 · 원문 총액만 표시" : "입력 지분을 적용한 계산값 · 인정 여부 별도 검토" };
+    const base: Record<string, string> = { entity: present(asset.label), kind: present(assetLabels[asset.kind]), period: present(asset.asOf), value: valid && !conflictedAssets.has(asset.id) && gross !== null && gross >= 0n ? amount(gross.toString()) : MISSING_FORM_VALUE, ownership_share: asset.ownershipBps === null || asset.ownershipBps === undefined ? MISSING_FORM_VALUE : `${asset.ownershipBps}/10000`, secured_payoff_scope: objectFact("asset", "secured_payoff_scope", asset.id), valuation_basis: valid ? present(asset.valuationBasis) : MISSING_FORM_VALUE, applicant_share_value: own === null ? MISSING_FORM_VALUE : amount(own.toString()), attribution_status: own === null ? "신청인 귀속분 미확정 · 원문 총액만 표시" : "입력 지분을 적용한 계산값 · 인정 여부 별도 검토" };
     for (const key of ["account_number", "acquisition_date", "address", "collateral", "description", "institution", "return_amount", "seizure"]) base[key] = valid ? objectFact("asset", key, asset.id) : MISSING_FORM_VALUE;
     if (valid && asset.kind === "insurance" && base.account_number === MISSING_FORM_VALUE) base.account_number = objectFact("asset", "policy_number", asset.id);
     return base;
@@ -185,7 +185,7 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 const decode = (base64: string): Uint8Array => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
 /** Fill literal tokens and clone original table rows without evaluating expressions or signatures. */
-export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseData; calculation: CalculationResult; appendixDocx: Uint8Array; mode: "draft" | "final" }): Promise<MappedPublicForm | null> {
+export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseData; calculation: CalculationResult; appendixDocx: Uint8Array; mode: "draft" | "final"; sourceIndex?:CaseReadIndex; bindings?:FormBindings }): Promise<MappedPublicForm | null> {
   const code = BASIC_FORM_CODES[input.kind];
   if (!code) return null;
   const metadata = PUBLIC_FORM_METADATA[code];
@@ -197,7 +197,7 @@ export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseDa
     xml = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/g, (table) => ["approved_monthly_income", "recognized_living_cost", "monthly_disposable_income", "monthly_trustee_fee", "monthly_payment", "repayment_months", "total_repayment"].every((token) => table.includes("{{" + token + "}}")) ? table.replaceAll("{{monthly_disposable_income}}", "{{form_pre_fee_disposable}}").replaceAll("{{monthly_payment}}", "{{form_available_after_trustee}}").replaceAll("{{total_repayment}}", "{{form_total_available_after_trustee}}") + textParagraph("위 표는 ①−②−④의 기본 가용소득 산식입니다. 별도 우선·재단채권 변제와 검토된 일반채권 계획 월액·총액은 6항 및 계산 부록에서 구분하여 대조합니다.") : table);
     xml = xml.replace(/월 평균\s*가용소득에서 월 회생위원 보수를 차감한 월 실제 가용소득을 안분하여/g, "검토한 일반채권 월 변제계획액을 안분하여");
   }
-  const bindings = buildFormBindings(input.data, input.calculation), unresolved = new Set<string>();
+  const bindings = input.bindings??buildFormBindings(input.data, input.calculation,input.sourceIndex), unresolved = new Set<string>();
   bindings.scalars.review_status = input.mode === "final" ? "최종 검토본 · 서식 검토 대기" : "초안 · 서식 검토 대기";
   bindings.scalars.revision = String(input.data.context.revision);
   const replace = (source: string, prefix?: string, row?: Record<string, string>): string => source.replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, (_, token: string) => {

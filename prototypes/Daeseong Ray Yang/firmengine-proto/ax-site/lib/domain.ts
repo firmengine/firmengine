@@ -134,6 +134,7 @@ export interface Asset {
   label: string;
   grossValue?: NumericInput | null;
   securedPayoff?: NumericInput | null;
+  securedPayoffScope?: "applicant_interest" | "entire_collateral" | "unknown";
   disposalCosts?: NumericInput | null;
   protectedValue?: NumericInput | null;
   ownershipBps?: number | null;
@@ -301,43 +302,75 @@ export function formatWon(value: Money | null | undefined): string {
   return value !== null && value !== undefined && /^-?\d+$/.test(value) ? BigInt(value).toLocaleString("ko-KR") + "원" : "확인 필요";
 }
 
-export function currentFacts(data: Pick<CaseData, "facts">): Fact[] {
+/** Request-scoped read indexes. Callers must not mutate evidence during the indexed read. */
+export interface CaseReadIndex {
+  readonly owner: CaseData;
+  readonly current: Fact[];
+  readonly byId: Map<string, Fact>;
+  readonly documentsById: Map<string, EvidenceDocument>;
+  readonly pagesByKey: Map<string, EvidencePage>;
+  readonly canonicalPageTextByKey: Map<string, string | null>;
+  readonly validRefs: WeakMap<object, boolean>;
+  readonly lineageById: Map<string, string[]>;
+}
+const pageKey=(documentId:string,page:number)=>documentId+"\0"+page;
+export function createCaseReadIndex(data:CaseData):CaseReadIndex {
   const groups = new Map<string, Fact[]>();
   for (const fact of data.facts) groups.set(fact.logicalId, [...(groups.get(fact.logicalId) ?? []), fact]);
-  return [...groups.values()].flatMap((items) => {
+  const current=[...groups.values()].flatMap((items) => {
     const version = Math.max(...items.map((f) => f.version));
     // Concurrent same-version candidates stay visible so downstream checks can block them.
     return items.filter((f) => f.version === version && f.state !== "retracted");
   });
+  const pagesByKey=new Map(data.pages.map(page=>[pageKey(page.documentId,page.page),page]));
+  const canonicalPageTextByKey=new Map([...pagesByKey].map(([key,page])=>[key,page.text?.trim()?page.text.normalize("NFKC").replace(/\s+/g,"").toLowerCase():null]));
+  return {owner:data,current,byId:new Map(current.map(fact=>[fact.id,fact])),documentsById:new Map(data.documents.map(document=>[document.id,document])),pagesByKey,canonicalPageTextByKey,validRefs:new WeakMap(),lineageById:new Map()};
 }
 
-export function validSourceRef(data: CaseData, ref: SourceRef): boolean {
-  const document = data.documents.find((d) => d.id === ref.documentId && d.status === "active");
-  if (!document || !document.pages.includes(ref.page) || !ref.quote?.trim()) return false;
-  if (ref.sourceHash && ref.sourceHash !== document.sha256) return false;
-  const page = data.pages.find((p) => p.documentId === ref.documentId && p.page === ref.page);
-  if (!page || page.role !== "evidence") return false;
+export function currentFacts(data: Pick<CaseData, "facts">, index?:CaseReadIndex): Fact[] {
+  if(index){if(index.owner!==data)throw new Error("source index belongs to a different case snapshot");return index.current;}
+  const groups = new Map<string, Fact[]>();
+  for (const fact of data.facts) groups.set(fact.logicalId, [...(groups.get(fact.logicalId) ?? []), fact]);
+  return [...groups.values()].flatMap(items => {const version=Math.max(...items.map(f=>f.version));return items.filter(f=>f.version===version&&f.state!=="retracted");});
+}
+
+export function validSourceRef(data: CaseData, ref: SourceRef, index?:CaseReadIndex): boolean {
+  if(index&&index.owner!==data)throw new Error("source index belongs to a different case snapshot");
+  const cached=index?.validRefs.get(ref);if(cached!==undefined)return cached;
+  const document = index?.documentsById.get(ref.documentId)??data.documents.find((d) => d.id === ref.documentId);
+  let result=false;
+  if (!document || document.status!=="active" || !document.pages.includes(ref.page) || !ref.quote?.trim()) {index?.validRefs.set(ref,false);return false;}
+  if (ref.sourceHash && ref.sourceHash !== document.sha256) {index?.validRefs.set(ref,false);return false;}
+  const page = index?.pagesByKey.get(pageKey(ref.documentId,ref.page))??data.pages.find((p) => p.documentId === ref.documentId && p.page === ref.page);
+  if (!page || page.role !== "evidence") {index?.validRefs.set(ref,false);return false;}
   // Text-backed pages permit a deterministic quote check. Images remain explicit review inputs.
   const canonical = (text: string) => text.normalize("NFKC").replace(/\s+/g, "").toLowerCase();
-  return !page.text?.trim() || canonical(page.text).includes(canonical(ref.quote));
+  const canonicalPage=index?.canonicalPageTextByKey.get(pageKey(ref.documentId,ref.page));
+  result=canonicalPage!==undefined?canonicalPage===null||canonicalPage.includes(canonical(ref.quote)):!page.text?.trim()||canonical(page.text).includes(canonical(ref.quote));
+  index?.validRefs.set(ref,result);
+  return result;
 }
 
-export function factSourceLineageIssues(data: CaseData, ids: string[]): string[] {
+export function factSourceLineageIssues(data: CaseData, ids: string[], index?:CaseReadIndex): string[] {
+  if(index&&index.owner!==data)throw new Error("source index belongs to a different case snapshot");
   if (!ids.length) return ["SOURCE_FACTS_MISSING"];
-  const active = new Map(currentFacts(data).map((f) => [f.id, f]));
+  const active = index?.byId??new Map(currentFacts(data,index).map((f) => [f.id, f]));
   const issues = new Set<string>();
   for (const id of ids) {
+    const cached=index?.lineageById.get(id);
+    if(cached){for(const issue of cached)issues.add(issue);continue;}
+    const factIssues=new Set<string>();
     const fact = active.get(id);
-    if (!fact) { issues.add("STALE_OR_RETRACTED_FACT"); continue; }
-    if (fact.state === "disputed" || fact.recognition === "rejected") issues.add("DISPUTED_OR_REJECTED_FACT");
-    if (!fact.refs.length || fact.refs.some((ref) => !validSourceRef(data, ref))) issues.add("SOURCE_REFERENCE_INVALID");
-    if (fact.state !== "verified") issues.add("SOURCE_VERIFICATION_REQUIRED");
+    if (!fact) { issues.add("STALE_OR_RETRACTED_FACT");index?.lineageById.set(id,["STALE_OR_RETRACTED_FACT"]);continue; }
+    if (fact.state === "disputed" || fact.recognition === "rejected") factIssues.add("DISPUTED_OR_REJECTED_FACT");
+    if (!fact.refs.length || fact.refs.some((ref) => !validSourceRef(data, ref,index))) factIssues.add("SOURCE_REFERENCE_INVALID");
+    if (fact.state !== "verified") factIssues.add("SOURCE_VERIFICATION_REQUIRED");
     const proof = fact.sourceVerification;
     if (proof) {
       const sourceDocumentId = typeof proof.source?.documentId === "string" ? proof.source.documentId : "";
       const sourcePage = Number.isSafeInteger(proof.source?.page) ? proof.source.page : -1;
       const sourceHash = typeof proof.source?.sha256 === "string" ? proof.source.sha256 : "";
-      const document = data.documents.find((d) => d.id === sourceDocumentId && d.status === "active");
+      const document = index?.documentsById.get(sourceDocumentId)??data.documents.find((d) => d.id === sourceDocumentId);
       const quote = typeof proof.field?.quote === "string" ? proof.field.quote : "";
       const boundRef = !!quote && fact.refs.some((r) => r.documentId === sourceDocumentId && r.page === sourcePage && r.quote.normalize("NFKC").trim() === quote.normalize("NFKC").trim() && r.sourceHash === sourceHash);
       const raw = fact.numeric?.rawValue ?? (typeof fact.value === "string" ? fact.value : null);
@@ -345,16 +378,17 @@ export function factSourceLineageIssues(data: CaseData, ids: string[]): string[]
       const validProofReads = Array.isArray(proof.proofReads) && proof.proofReads.length > 0 && typeof proof.field?.value === "string" && proof.proofReads.every(p => p.model === AI_MODEL && typeof p.promptVersion === "string" && !!p.promptVersion.trim() && typeof p.promptHash === "string" && /^[a-f0-9]{64}$/i.test(p.promptHash) && Number.isFinite(Date.parse(p.verifiedAt)) && p.fieldIndex >= 0 && p.recordIndex >= 0 && ["agrees","corrected"].includes(p.status) && typeof p.value === "string" && p.value.normalize("NFKC").trim() === proof.field.value.normalize("NFKC").trim() && (p.unit===null?proof.field.unit===null:typeof proof.field.unit==="string"&&p.unit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim()) && typeof p.quote === "string" && !!p.quote.trim()) && Array.isArray(proof.proofReadIndexes) && proof.proofReads.length === proof.proofReadIndexes.length;
       const validNumeric = !fact.numeric || fact.numeric.normalizationStatus === "exact" && fact.numeric.amountWon !== null && typeof proof.field?.unit === "string" && fact.numeric.unit.normalize("NFKC").trim() === proof.field.unit.normalize("NFKC").trim() && normalizeMoney(raw, proof.field.unit).amountWon === fact.numeric.amountWon;
       const validProofIndexBinding = Array.isArray(proof.proofReadIndexes) && Array.isArray(proof.proofReads) && Array.isArray(proof.verificationQuotes) && proof.proofReads.every((p,i)=>p.pass===proof.proofReadIndexes[i]?.pass&&p.recordIndex===proof.proofReadIndexes[i]?.recordIndex&&p.fieldIndex===proof.proofReadIndexes[i]?.fieldIndex&&p.quote===proof.verificationQuotes[i]);
-      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") issues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
+      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
     }
+    const normalized=[...factIssues];index?.lineageById.set(id,normalized);for(const issue of normalized)issues.add(issue);
   }
   return [...issues];
 }
 
 /** Compatibility helper; source verification and normative recognition remain distinct checks. */
-export function factLineageIssues(data: CaseData, ids: string[]): string[] {
-  const issues = new Set(factSourceLineageIssues(data, ids));
-  const active = new Map(currentFacts(data).map((f) => [f.id, f]));
+export function factLineageIssues(data: CaseData, ids: string[], index?:CaseReadIndex): string[] {
+  const issues = new Set(factSourceLineageIssues(data, ids,index));
+  const active = index?.byId??new Map(currentFacts(data,index).map((f) => [f.id, f]));
   for (const id of ids) { const fact = active.get(id); if (fact && fact.recognition !== "accepted") issues.add("LEGAL_RECOGNITION_REQUIRED"); }
   return [...issues];
 }

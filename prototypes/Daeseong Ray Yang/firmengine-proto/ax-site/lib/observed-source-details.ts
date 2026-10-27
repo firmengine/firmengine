@@ -1,5 +1,5 @@
 import { currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
-import type { CaseData, Fact } from "./domain.ts";
+import type { CaseData, CaseReadIndex, Fact } from "./domain.ts";
 
 export interface ObservedDetailTable { title: string; headers: string[]; rows: string[][] }
 
@@ -13,17 +13,17 @@ const value = (data: CaseData, fact: Fact) => {
   return typeof fact.value === "string" ? fact.value : JSON.stringify(fact.value);
 };
 
-function usable(data: CaseData, fact: Fact): boolean {
+function usable(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
   return fact.state !== "disputed" && fact.recognition !== "rejected" &&
-    fact.refs.length > 0 && fact.refs.every(ref => validSourceRef(data, ref)) &&
+    fact.refs.length > 0 && fact.refs.every(ref => validSourceRef(data, ref,index)) &&
     !fact.validation.some(item => item.severity === "error" ||
       ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(item.code)) &&
-    !factSourceLineageIssues(data, [fact.id]).some(issue => issue !== "SOURCE_VERIFICATION_REQUIRED");
+    !factSourceLineageIssues(data, [fact.id],index).some(issue => issue !== "SOURCE_VERIFICATION_REQUIRED");
 }
 
 /** Evidence observations for draft schedules. Values are never upgraded to legal ownership or recognition. */
-export function observedSourceDetails(data: CaseData, kinds: string[]): ObservedDetailTable {
-  const selected = currentFacts(data).filter(fact => usable(data, fact) &&
+export function observedSourceDetails(data: CaseData, kinds: string[],index?:CaseReadIndex): ObservedDetailTable {
+  const selected = currentFacts(data,index).filter(fact => usable(data, fact,index) &&
     kinds.some(kind => kind === "*" || fact.key.toLowerCase().startsWith(kind.toLowerCase())));
   const collisions = new Map<string, Set<string>>();
   for (const fact of selected) {
@@ -31,7 +31,7 @@ export function observedSourceDetails(data: CaseData, kinds: string[]): Observed
     collisions.set(key, new Set([...(collisions.get(key) ?? []), value(data, fact)]));
   }
   const rows = selected.map(fact => {
-    const refs = fact.refs.filter(ref => validSourceRef(data, ref))
+    const refs = fact.refs.filter(ref => validSourceRef(data, ref,index))
       .map(ref => `${data.documents.find(doc => doc.id === ref.documentId)?.name ?? ref.documentId}, p.${ref.page}: “${ref.quote}”`).join(" / ");
     const conflict = (collisions.get(fact.subjectId + "\0" + fact.key)?.size ?? 0) > 1;
     const ownershipHint = /(?:owner|ownership|tenant|landlord|lessor|lessee|applicant_role|attribution|share)/i.test(fact.key)

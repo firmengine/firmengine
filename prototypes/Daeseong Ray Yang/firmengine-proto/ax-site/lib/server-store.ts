@@ -61,6 +61,7 @@ export async function event(caseId:string,type:string,detail:unknown){
 export async function jobs(caseId:string){
   return (await db().prepare("SELECT id,document_id AS documentId,page,role,document_type AS documentType,status,stage,attempts,error,updated_at AS updatedAt FROM page_jobs WHERE case_id = ? ORDER BY document_id,page").bind(caseId).all()).results;
 }
+export async function persistedRescuePlans(caseId:string){return (await db().prepare("SELECT result FROM page_jobs WHERE case_id = ? AND status = 'pending'").bind(caseId).all<{result:string|null}>()).results?.map(row=>{try{return JSON.parse(row.result??"{}").rescuePlan;}catch{return null;}}).filter(Boolean)??[];}
 export async function getProcessingReadiness(data:CaseData){
   const [documents,pages]=await Promise.all([
     db().prepare("SELECT id,ready FROM documents WHERE case_id = ?").bind(data.context.id).all<StoredDocumentState>(),

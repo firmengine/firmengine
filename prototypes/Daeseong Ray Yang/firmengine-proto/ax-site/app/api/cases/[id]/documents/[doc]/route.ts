@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
+import { rescueSpecs } from "../../../../../../lib/scan-quality";
 type Context={params:Promise<{id:string,doc:string}>};
 async function record(id:string,doc:string){
   const c=await getCase(id);if(!c.documents.some(d=>d.id===doc&&d.status==="active"))throw new HttpError(404,"사용 중인 문서를 찾을 수 없습니다.");
@@ -36,9 +37,47 @@ export async function PUT(request:Request,{params}:Context){try{
     }
   }
   const page=Number(url.searchParams.get("page"));if(!Number.isInteger(page)||page<1||page>r.page_count)throw new HttpError(400,"페이지 범위를 확인하세요.");
-  const job=await db().prepare("SELECT role,status,image_hash FROM page_jobs WHERE id = ? AND case_id = ?").bind(`${doc}:${page}`,id).first<{role:string,status:string,image_hash:string|null}>();
+  const job=await db().prepare("SELECT role,status,image_hash FROM page_jobs WHERE id = ? AND case_id = ? AND document_id = ? AND page = ?").bind(`${doc}:${page}`,id,doc,page).first<{role:string,status:string,image_hash:string|null}>();
   if(!job)throw new HttpError(404,"페이지가 없습니다.");
   if(["filed_form","administrative"].includes(job.role)||["filed_form","administrative"].includes(samplePageRole(r.sha256,page).role))return Response.json({stored:false,heldOut:true});
+  if(kind==="variant"){
+    const current=await getCase(id),casePage=current.pages.find(p=>p.documentId===doc&&p.page===page);
+    if(!casePage||casePage.role!=="evidence"||job.role!=="evidence")throw new HttpError(409,"현재 활성 증빙 역할의 페이지만 후보 재판독에 사용할 수 있습니다.");
+    if(r.ready!==1)throw new HttpError(409,"활성 원본 문서가 준비되지 않았습니다.");
+    if(!job.image_hash)throw new HttpError(409,"기준 페이지 이미지가 아직 준비되지 않았습니다.");
+    const planId=request.headers.get("x-rescue-plan-id")||"",sourceHash=request.headers.get("x-source-hash")||"",baseHash=request.headers.get("x-base-image-hash")||"",variant=request.headers.get("x-variant")||"",bboxText=request.headers.get("x-source-bbox")||"",transformText=request.headers.get("x-transform")||"{}";
+    let currentPlan: {rescuePlan?:{planId?:string;documentId?:string;page?:number;sourceHash?:string;baseImageHash?:string;reason?:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction";boxes?:unknown[]}}|null=null;
+    const jobResult=await db().prepare("SELECT result FROM page_jobs WHERE id = ? AND case_id = ?").bind(`${doc}:${page}`,id).first<{result:string|null}>();try{currentPlan=JSON.parse(jobResult?.result??"{}");}catch{}
+    const activePlan=currentPlan?.rescuePlan;
+    if(!planId||activePlan?.planId!==planId||activePlan.documentId!==doc||activePlan.page!==page||activePlan.sourceHash!==sourceHash||activePlan.baseImageHash!==baseHash)throw new HttpError(409,"재판독 계획이 만료되었거나 원본이 변경되었습니다. 최신 계획을 다시 불러오세요.");
+    if(sourceHash!==r.sha256||baseHash!==job.image_hash)throw new HttpError(409,"원본 또는 기준 이미지가 변경되어 후보를 연결하지 않았습니다.");
+    if(!activePlan.reason||!activePlan.boxes)throw new HttpError(409,"재판독 계획 정보가 불완전합니다.");
+    if(!/^rescue-(field_disagreement|omitted_rows|unreadable|incomplete_extraction)-[1-4]$/.test(variant))throw new HttpError(400,"후보 유형을 확인하세요.");
+    let bbox:unknown,transform:unknown;try{bbox=JSON.parse(bboxText);transform=JSON.parse(transformText);}catch{throw new HttpError(400,"후보의 위치 정보를 읽을 수 없습니다.");}
+    if(!Array.isArray(bbox)||bbox.length!==4||bbox.some(x=>typeof x!=="number"||x<0||x>1)||bbox[0]>=bbox[2]||bbox[1]>=bbox[3])throw new HttpError(400,"후보 위치 범위가 올바르지 않습니다.");
+    const tx=transform as {rotation?:unknown;contrast?:unknown;method?:unknown};if(!tx||typeof tx!=="object"||!(["canvas-crop-v1","pymupdf-pillow-crop-v1"] as unknown[]).includes(tx.method)||typeof tx.rotation!=="number"||!Number.isFinite(tx.rotation)||Math.abs(tx.rotation)>180||typeof tx.contrast!=="number"||tx.contrast<.75||tx.contrast>1.35)throw new HttpError(400,"후보 변환 정보가 허용 범위를 벗어났습니다.");
+    const expected=rescueSpecs({reason:activePlan.reason,boxes:activePlan.boxes,sourceHash,baseImageHash:baseHash}).find(spec=>spec.variant===variant);
+    if(!expected||JSON.stringify(expected.bbox)!==JSON.stringify(bbox)||expected.rotation!==tx.rotation||expected.contrast!==tx.contrast)throw new HttpError(400,"후보는 저장된 재판독 계획의 위치·회전·대비와 일치해야 합니다.");
+    const bytes=await request.arrayBuffer();if(bytes.byteLength<1||bytes.byteLength>8_000_000)throw new HttpError(413,"후보 이미지는 8MB까지 지원합니다.");
+    const contentType=request.headers.get("content-type")||"";if(!["image/jpeg","image/png","image/webp"].includes(contentType))throw new HttpError(415,"후보는 JPEG·PNG·WEBP 이미지여야 합니다.");
+    // The same crop bytes may legitimately occupy distinct rescue slots. Bind
+    // both the row identity and object key to the validated slot so one slot
+    // can never make another appear idempotent or overwrite its R2 object.
+    const variantHash=await sha256(bytes),derivativeId=`${doc}:${page}:${planId}:${variant}:${variantHash}`,key=`cases/${id}/documents/${doc}/derivatives/${page}/${planId}/${variant}/${variantHash}`;
+    const existing=await db().prepare("SELECT id,variant_hash FROM page_derivatives WHERE id = ? AND case_id = ? AND plan_id = ? AND source_hash = ? AND base_image_hash = ?").bind(derivativeId,id,planId,sourceHash,baseHash).first();if(existing)return Response.json({stored:true,idempotent:true,variant,variantHash});
+    const sameVariant=await db().prepare("SELECT id,variant_hash FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND variant = ?").bind(id,doc,page,planId,variant).first<{id:string;variant_hash:string}>();
+    if(sameVariant){if(sameVariant.variant_hash===variantHash)return Response.json({stored:true,idempotent:true,variant,variantHash});throw new HttpError(409,"이 재판독 계획의 후보 유형은 이미 다른 이미지로 저장되었습니다.");}
+    const count=await db().prepare("SELECT COUNT(*) AS n FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND source_hash = ? AND base_image_hash = ?").bind(id,doc,page,planId,sourceHash,baseHash).first<{n:number}>();
+    if((count?.n??0)>=4)throw new HttpError(409,"이 페이지의 후보 재판독 한도에 도달했습니다.");
+    const latestJob=await db().prepare("SELECT role,image_hash,status FROM page_jobs WHERE id = ? AND case_id = ?").bind(`${doc}:${page}`,id).first<{role:string;image_hash:string|null;status:string}>(),latestCase=await getCase(id),latestPage=latestCase.pages.find(p=>p.documentId===doc&&p.page===page);
+    if(!latestJob||latestJob.role!=="evidence"||latestJob.image_hash!==baseHash||!latestPage||latestPage.role!=="evidence"||!latestCase.documents.some(d=>d.id===doc&&d.status==="active"&&d.sha256===sourceHash))throw new HttpError(409,"페이지 역할이나 원본이 변경되어 후보를 연결하지 않았습니다.");
+    await bucket().put(key,bytes,{httpMetadata:{contentType}});
+    try{
+      const inserted=await db().prepare("INSERT INTO page_derivatives (id,case_id,document_id,page,plan_id,source_hash,base_image_hash,variant_hash,variant,object_key,bbox,transform,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE (SELECT COUNT(*) FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND source_hash = ? AND base_image_hash = ?) < 4 AND NOT EXISTS (SELECT 1 FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND variant = ?) AND EXISTS (SELECT 1 FROM page_jobs WHERE id = ? AND case_id = ? AND document_id = ? AND page = ? AND role = 'evidence' AND image_hash = ? AND json_extract(result, '$.rescuePlan.planId') = ? AND json_extract(result, '$.rescuePlan.documentId') = ? AND json_extract(result, '$.rescuePlan.page') = ? AND json_extract(result, '$.rescuePlan.sourceHash') = ? AND json_extract(result, '$.rescuePlan.baseImageHash') = ?)").bind(derivativeId,id,doc,page,planId,sourceHash,baseHash,variantHash,variant,key,JSON.stringify(bbox),JSON.stringify(transform),now(),id,doc,page,planId,sourceHash,baseHash,id,doc,page,planId,variant,`${doc}:${page}`,id,doc,page,baseHash,planId,doc,page,sourceHash,baseHash).run();
+      if(!inserted.meta.changes){const existing=await db().prepare("SELECT id,variant_hash FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND variant = ?").bind(id,doc,page,planId,variant).first<{id:string;variant_hash:string}>();if(existing?.variant_hash===variantHash)return Response.json({stored:true,idempotent:true,variant,variantHash});if(!existing)throw new HttpError(409,"재판독 계획이 변경되었거나 페이지 후보 한도에 도달했습니다.");throw new HttpError(409,"이 재판독 계획의 후보 유형은 이미 다른 이미지로 저장되었습니다.");}
+    }catch(error){const sameVariant=await db().prepare("SELECT id,variant_hash FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND variant = ?").bind(id,doc,page,planId,variant).first<{id:string;variant_hash:string}>();if(sameVariant?.variant_hash===variantHash)return Response.json({stored:true,idempotent:true,variant,variantHash});if(sameVariant){try{await bucket().delete(key);}catch{/* orphan cleanup is best-effort */}throw new HttpError(409,"이 재판독 계획의 후보 유형은 이미 다른 이미지로 저장되었습니다.");}const existing=await db().prepare("SELECT id FROM page_derivatives WHERE id = ? AND case_id = ?").bind(derivativeId,id).first();if(!existing){try{await bucket().delete(key);}catch{/* orphan cleanup is best-effort */}throw error;}}
+    return Response.json({stored:true,variant,variantHash});
+  }
   const contentType=request.headers.get("content-type")||"";if(!["image/jpeg","image/png","image/webp"].includes(contentType))throw new HttpError(415,"페이지는 JPEG·PNG·WEBP 이미지여야 합니다.");
   const bytes=await request.arrayBuffer();if(bytes.byteLength>8_000_000)throw new HttpError(413,"페이지 이미지는 8MB까지 지원합니다.");
   const hash=await sha256(bytes),key=`cases/${id}/documents/${doc}/pages/${page}/${hash}`;

@@ -13,7 +13,7 @@ function fixture() {
   data.context.inventoryComplete = { income: "yes", debt: "yes", asset: "yes" };
   return data;
 }
-function addAsset(data: CaseData, opts: { id: string; page: number; kind?: Asset["kind"]; label?: string; policy?: string; issuer?: string; account?: string; bank?: string; owner?: string; ownerName?: string; vin?: string; registration?: string; ownerStatus?: string; value?: string | null; asOf?: string; protectedValue?: string; payoff?: string; costs?: string; basis?: string; ownershipBps?: number | null }) {
+function addAsset(data: CaseData, opts: { id: string; page: number; kind?: Asset["kind"]; label?: string; policy?: string; issuer?: string; account?: string; bank?: string; owner?: string; ownerName?: string; vin?: string; registration?: string; ownerStatus?: string; value?: string | null; asOf?: string; protectedValue?: string; payoff?: string; payoffScope?: Asset["securedPayoffScope"]; costs?: string; basis?: string; ownershipBps?: number | null }) {
   const fields: [string,string][] = [];
   if (opts.policy) { fields.push(["asset.policy_number", opts.policy], ["asset.issuer_identity_id", opts.issuer ?? "issuer-001"], ["asset.owner_identity_id", opts.owner ?? "owner-001"]); }
   if (opts.account) { fields.push(["asset.account_number", opts.account], ["asset.bank_identity_id", opts.bank ?? "bank-001"], ["asset.owner_identity_id", opts.owner ?? "owner-001"]); }
@@ -21,13 +21,14 @@ function addAsset(data: CaseData, opts: { id: string; page: number; kind?: Asset
   if (opts.registration) { fields.push(["asset.vehicle_registration_number", opts.registration], ["asset.owner_identity_id", opts.owner ?? "owner-001"]); }
   if (opts.ownerStatus) fields.push(["vehicle.owner_status", opts.ownerStatus]);
   if (opts.ownerName) fields.push(["vehicle.current_owner_name", opts.ownerName]);
+  if(opts.payoffScope)fields.push(["asset.secured_payoff_scope",opts.payoffScope]);
   const factIds = fields.map(([key,value],i) => {
     const id = `${opts.id}-f${i}`, quote = `synthetic source ${key} ${value}`;
     const fact: Fact = { id, logicalId: `${opts.id}:${key}`, version: 1, subjectId: opts.id, key, value, rawValue: value, state: "extracted", recognition: "unreviewed", refs: [{ documentId: "doc", page: opts.page, quote, sourceHash: hash }], validation: [] };
     data.facts.push(fact); return id;
   });
   const money = (value: string | undefined) => value === undefined ? null : normalizeMoney(value, "KRW");
-  const asset: Asset = { id: opts.id, kind: opts.kind ?? (opts.policy ? "insurance" : "vehicle"), label: opts.label ?? "Synthetic asset", ...(opts.value !== null && opts.value !== undefined ? { grossValue: money(opts.value) } : {}), ...(opts.payoff !== undefined ? { securedPayoff: money(opts.payoff) } : {}), ...(opts.costs !== undefined ? { disposalCosts: money(opts.costs) } : {}), ...(opts.protectedValue !== undefined ? { protectedValue: money(opts.protectedValue) } : {}), ...(opts.ownershipBps !== undefined ? { ownershipBps: opts.ownershipBps } : {}), ...(opts.asOf ? { asOf: opts.asOf } : {}), ...(opts.basis ? { valuationBasis: opts.basis } : {}), recognition: "unreviewed", factIds };
+  const asset: Asset = { id: opts.id, kind: opts.kind ?? (opts.policy ? "insurance" : "vehicle"), label: opts.label ?? "Synthetic asset", ...(opts.value !== null && opts.value !== undefined ? { grossValue: money(opts.value) } : {}), ...(opts.payoff !== undefined ? { securedPayoff: money(opts.payoff) } : {}), ...(opts.payoffScope ? {securedPayoffScope:opts.payoffScope}:{}), ...(opts.costs !== undefined ? { disposalCosts: money(opts.costs) } : {}), ...(opts.protectedValue !== undefined ? { protectedValue: money(opts.protectedValue) } : {}), ...(opts.ownershipBps !== undefined ? { ownershipBps: opts.ownershipBps } : {}), ...(opts.asOf ? { asOf: opts.asOf } : {}), ...(opts.basis ? { valuationBasis: opts.basis } : {}), recognition: "unreviewed", factIds };
   data.assets.push(asset); return asset;
 }
 const completeInsurance = (id: string, page: number, extra: Partial<Parameters<typeof addAsset>[1]> = {}) => ({ id, page, policy: "POLICY-001", issuer: "INSURER-001", owner: "OWNER-001", kind: "insurance" as const, label: "Synthetic policy", value: "4000000", asOf: "2026-10-01", protectedValue: "500000", payoff: "0", costs: "0", basis: "surrender value certificate", ownershipBps: 10000, ...extra });
@@ -47,6 +48,15 @@ test("different valuation date or legal deduction keeps both rows and blocks the
     assert.ok(calculation.assetRows.every(row => row.liquidationWon === null));
     assert.ok(calculation.issues.some(issue => issue.startsWith("ASSET_SAME_ID_DIFFERENT_OBSERVATION_REVIEW_REQUIRED")));
   }
+});
+
+test("secured payoff scope differences are separate asset observations and cannot deduplicate",()=>{
+  const data=fixture();
+  const a=addAsset(data,{...completeInsurance("scope-a",1),payoff:"1000000",payoffScope:"applicant_interest"});
+  const b=addAsset(data,{...completeInsurance("scope-b",2),payoff:"1000000",payoffScope:"entire_collateral"});
+  const resolved=resolveAssetRows(data);
+  assert.equal(resolved.rows.length,2);assert.equal(resolved.duplicates.length,0);
+  assert.ok(resolved.conflictIds.includes(a.id)&&resolved.conflictIds.includes(b.id));
 });
 
 test("same-name and same-value assets without strong IDs remain separate and become a review candidate", () => {

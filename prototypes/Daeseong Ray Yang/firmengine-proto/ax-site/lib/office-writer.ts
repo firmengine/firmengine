@@ -2,11 +2,13 @@
 import { AlignmentType, BorderStyle, Document, Footer, HeadingLevel, Packer, PageNumber, PageOrientation, Paragraph, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType } from "docx";
 import * as XLSX from "xlsx";
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { createCaseReadIndex } from "./domain.ts";
 import type { ArtifactKind, CaseData, RuleSet } from "./domain.ts";
 import { assessCase } from "./assessment.ts";
 import { buildCourtPackage, escapeHtml } from "./exports.ts";
 import type { CourtDocument, ExportPackage, ExportTable } from "./exports.ts";
 import { renderPublicForm } from "./form-mapping.ts";
+import { buildFormBindings } from "./form-mapping.ts";
 import type { FormProvenance } from "./form-mapping.ts";
 import { buildExportProvenance,type ExportPageReceipt,type ExportProvenance } from "./export-provenance.ts";
 
@@ -208,17 +210,19 @@ async function artifact(kind: OfficeArtifact["kind"], name: string, mime: string
 
 export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet; payload?: ExportPackage; mode?: OfficeMode; pageReceipts?:ExportPageReceipt[] }): Promise<OfficeArtifact[]> {
   const mode = input.mode ?? "draft";
-  const assessment = assessCase(input.data, input.rules);
+  const sourceIndex=createCaseReadIndex(input.data);
+  const assessment = assessCase(input.data, input.rules,sourceIndex);
   if (mode === "final" && !assessment.generationGate.canFinalize) throw new Error("미확정 자료·인정·법리 검토가 남아 최종 검토본 생성을 보류했습니다.");
   if (input.payload && (input.payload.caseId !== input.data.context.id || input.payload.caseRevision !== input.data.context.revision)) throw new Error("내보낼 사건 버전이 변경되었습니다.");
   // Rebuild from the canonical ledger so an old/mutated payload cannot override current values.
-  const payload = buildCourtPackage(input.data, input.rules, assessment);
+  const payload = buildCourtPackage(input.data, input.rules, assessment,sourceIndex);
+  const formBindings=buildFormBindings(input.data,assessment.calculation,sourceIndex);
   const artifacts: OfficeArtifact[] = [];
   const rendered: RenderedOffice = { schemaVersion: "firmengine-office-v1", caseId: payload.caseId, caseRevision: payload.caseRevision, mode, generatedAt: payload.generatedAt, extractionMethod: "reopened-docx-xml-and-xlsx-cells", metadata:buildExportProvenance(input.data,input.pageReceipts), documents: [], fields: [], workbook: [], artifacts: [] };
   for (const item of payload.documents) {
     const displayed = mode === "final" ? { ...item, title: item.title.replaceAll("초안", "최종 검토본"), paragraphs: item.paragraphs.map((p) => p.replaceAll("검토용 편집 초안", "최종 검토용 편집본")) } : item;
     const appendix = await writeDocx(displayed, payload, mode);
-    const mappedForm = await renderPublicForm({ kind: item.kind, data: input.data, calculation: assessment.calculation, appendixDocx: appendix, mode });
+    const mappedForm = await renderPublicForm({ kind: item.kind, data: input.data, calculation: assessment.calculation, appendixDocx: appendix, mode,sourceIndex,bindings:formBindings });
     const bytes = mappedForm?.bytes ?? appendix;
     const output = await artifact(item.kind, item.filename, DOCX_MIME, bytes);
     artifacts.push(output);

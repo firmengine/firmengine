@@ -21,6 +21,9 @@ export const pageJobs = sqliteTable("page_jobs", {
   leaseUntil: text("lease_until"), cacheKey: text("cache_key"), result: text("result"),
   error: text("error"), updatedAt: text("updated_at").notNull(),
 }, t => [index("page_jobs_case_idx").on(t.caseId)]);
+export const pageDerivatives = sqliteTable("page_derivatives", {
+  id:text("id").primaryKey(),caseId:text("case_id").notNull(),documentId:text("document_id").notNull(),page:integer("page").notNull(),planId:text("plan_id").notNull().default("legacy"),sourceHash:text("source_hash").notNull(),baseImageHash:text("base_image_hash").notNull(),variantHash:text("variant_hash").notNull(),variant:text("variant").notNull(),objectKey:text("object_key").notNull(),bbox:text("bbox").notNull(),transform:text("transform").notNull(),createdAt:text("created_at").notNull(),
+},t=>[index("page_derivatives_page_idx").on(t.caseId,t.documentId,t.page)]);
 export const artifacts = sqliteTable("artifacts", {
   id: text("id").primaryKey(), caseId: text("case_id").notNull(), revision: integer("revision").notNull(),
   name: text("name").notNull(), kind: text("kind").notNull(), objectKey: text("object_key").notNull(),

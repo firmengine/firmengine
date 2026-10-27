@@ -1,4 +1,4 @@
-import { currentFacts, validSourceRef, type Asset, type CaseData, type Fact } from "./domain.ts";
+import { currentFacts, validSourceRef, type Asset, type CaseData, type CaseReadIndex, type Fact } from "./domain.ts";
 
 export interface AssetResolution {
   rows: Asset[];
@@ -18,22 +18,22 @@ function idValue(raw: unknown): string | null {
 }
 function canonicalKey(value: string) { return value.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase(); }
 function factsFor(asset: Asset, active: Map<string, Fact>): Fact[] { return [...new Set(asset.factIds)].map(id => active.get(id)).filter((fact): fact is Fact => !!fact); }
-function sourceBackedValue(data: CaseData, facts: Fact[], keys: string[]): string | null {
+function sourceBackedValue(data: CaseData, facts: Fact[], keys: string[],index?:CaseReadIndex): string | null {
   const candidates = facts.filter(fact => keys.includes(canonicalKey(fact.key)));
-  if (!candidates.length || candidates.some(fact => fact.state === "disputed" || fact.recognition === "rejected" || fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || fact.value === null || !fact.refs.length || fact.refs.some(ref => !ref.sourceHash || !validSourceRef(data, ref)))) return null;
+  if (!candidates.length || candidates.some(fact => fact.state === "disputed" || fact.recognition === "rejected" || fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || fact.value === null || !fact.refs.length || fact.refs.some(ref => !ref.sourceHash || !validSourceRef(data, ref,index)))) return null;
   const values = candidates.map(fact => idValue(fact.value));
   if (values.some(value => !value) || new Set(values).size !== 1) return null;
   const value = values[0]!;
   if (candidates.some(fact => fact.refs.every(ref => !ref.quote.normalize("NFKC").replace(/[\s().\-‐‑‒–—/]/gu, "").toLocaleUpperCase("en-US").includes(value)))) return null;
   return value;
 }
-function historicalOwnership(data: CaseData, facts: Fact[]): boolean {
+function historicalOwnership(data: CaseData, facts: Fact[],index?:CaseReadIndex): boolean {
   const keys = new Set(["asset.owner_status", "vehicle.owner_status", "asset.ownership_status", "vehicle.current_owner_status", "asset.current_ownership"]);
-  return facts.some(fact => keys.has(canonicalKey(fact.key)) && fact.state !== "disputed" && fact.recognition !== "rejected" && !fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") && fact.refs.length > 0 && fact.refs.every(ref => !!ref.sourceHash && validSourceRef(data, ref)) && /(?:former|previous|historical|past|transferred|disposed|cancelled|이전\s*소유|과거|말소|양도|처분)/iu.test(String(fact.value ?? "")));
+  return facts.some(fact => keys.has(canonicalKey(fact.key)) && fact.state !== "disputed" && fact.recognition !== "rejected" && !fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") && fact.refs.length > 0 && fact.refs.every(ref => !!ref.sourceHash && validSourceRef(data, ref,index)) && /(?:former|previous|historical|past|transferred|disposed|cancelled|이전\s*소유|과거|말소|양도|처분)/iu.test(String(fact.value ?? "")));
 }
-function ownershipStatusAmbiguous(data: CaseData, facts: Fact[]): boolean {
+function ownershipStatusAmbiguous(data: CaseData, facts: Fact[],index?:CaseReadIndex): boolean {
   const keys = new Set(["asset.owner_status", "vehicle.owner_status", "asset.ownership_status", "vehicle.current_owner_status", "asset.current_ownership"]);
-  return facts.some(fact => keys.has(canonicalKey(fact.key)) && (fact.state === "disputed" || fact.recognition === "rejected" || fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || !fact.refs.length || fact.refs.some(ref => !ref.sourceHash || !validSourceRef(data, ref))));
+  return facts.some(fact => keys.has(canonicalKey(fact.key)) && (fact.state === "disputed" || fact.recognition === "rejected" || fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || !fact.refs.length || fact.refs.some(ref => !ref.sourceHash || !validSourceRef(data, ref,index))));
 }
 const OWNER_KEYS = new Set(["asset.owner_name", "asset.current_owner", "asset.current_owner_name", "vehicle.owner_name", "vehicle.current_owner", "vehicle.current_owner_name", "insurance.policy_holder_name", "bank_account.account_holder_name"]);
 function ownerObservation(facts: Fact[]): { value: string | null; ambiguous: boolean } {
@@ -43,24 +43,24 @@ function ownerObservation(facts: Fact[]): { value: string | null; ambiguous: boo
   const values = ownerFacts.map(fact => `${canonicalKey(fact.key)}=${String(fact.value ?? "").normalize("NFKC").trim().toLocaleUpperCase("en-US")}`).sort();
   return { value: JSON.stringify(values), ambiguous: false };
 }
-function identityFor(data: CaseData, asset: Asset, facts: Fact[]): Identity {
-  const ownerId = sourceBackedValue(data, facts, ["asset.owner_identity_id", "asset.owner_id", "asset.policy_holder_identity_id", "asset.account_holder_identity_id", "bank_account.account_holder_id"]);
+function identityFor(data: CaseData, asset: Asset, facts: Fact[],index?:CaseReadIndex): Identity {
+  const ownerId = sourceBackedValue(data, facts, ["asset.owner_identity_id", "asset.owner_id", "asset.policy_holder_identity_id", "asset.account_holder_identity_id", "bank_account.account_holder_id"],index);
   if (asset.kind === "insurance") {
-    const issuer = sourceBackedValue(data, facts, ["asset.issuer_identity_id", "asset.insurer_identity_id", "asset.insurer_id", "insurance.issuer_identity_id"]);
-    const policy = sourceBackedValue(data, facts, ["asset.policy_id", "asset.policy_number", "asset.insurance_policy_number", "insurance.policy_number"]);
+    const issuer = sourceBackedValue(data, facts, ["asset.issuer_identity_id", "asset.insurer_identity_id", "asset.insurer_id", "insurance.issuer_identity_id"],index);
+    const policy = sourceBackedValue(data, facts, ["asset.policy_id", "asset.policy_number", "asset.insurance_policy_number", "insurance.policy_number"],index);
     const base = issuer && policy ? JSON.stringify(["insurance", issuer, policy]) : null;
     return { key: base && ownerId ? JSON.stringify([base, ownerId]) : null, candidateKey: base, ownerId, historical: false, incompleteScope: !!base && !ownerId };
   }
   if (asset.kind === "vehicle") {
-    const vin = sourceBackedValue(data, facts, ["asset.vin", "asset.chassis_number", "vehicle.vin", "vehicle.chassis_number"]);
-    if (vin) return { key: ownerId ? JSON.stringify(["vehicle-vin", vin, ownerId]) : null, candidateKey: JSON.stringify(["vehicle-vin", vin]), ownerId, historical: historicalOwnership(data, facts), incompleteScope: !ownerId };
-    const reg = sourceBackedValue(data, facts, ["asset.vehicle_registration_number", "asset.vehicle_number", "asset.plate_number", "vehicle.vehicle_number", "vehicle.registration_number"]);
+    const vin = sourceBackedValue(data, facts, ["asset.vin", "asset.chassis_number", "vehicle.vin", "vehicle.chassis_number"],index);
+    if (vin) return { key: ownerId ? JSON.stringify(["vehicle-vin", vin, ownerId]) : null, candidateKey: JSON.stringify(["vehicle-vin", vin]), ownerId, historical: historicalOwnership(data, facts,index), incompleteScope: !ownerId };
+    const reg = sourceBackedValue(data, facts, ["asset.vehicle_registration_number", "asset.vehicle_number", "asset.plate_number", "vehicle.vehicle_number", "vehicle.registration_number"],index);
     const base = reg ? JSON.stringify(["vehicle-registration", reg]) : null;
-    return { key: base && ownerId ? JSON.stringify([base, ownerId]) : null, candidateKey: base, ownerId, historical: historicalOwnership(data, facts), incompleteScope: !!base && !ownerId };
+    return { key: base && ownerId ? JSON.stringify([base, ownerId]) : null, candidateKey: base, ownerId, historical: historicalOwnership(data, facts,index), incompleteScope: !!base && !ownerId };
   }
   if (asset.kind === "cash" || asset.kind === "deposit") {
-    const issuer = sourceBackedValue(data, facts, ["asset.bank_identity_id", "asset.bank_id", "bank_account.bank_identity_id", "bank_account.bank_id"]);
-    const account = sourceBackedValue(data, facts, ["asset.account_id", "asset.account_number", "bank_account.account_number"]);
+    const issuer = sourceBackedValue(data, facts, ["asset.bank_identity_id", "asset.bank_id", "bank_account.bank_identity_id", "bank_account.bank_id"],index);
+    const account = sourceBackedValue(data, facts, ["asset.account_id", "asset.account_number", "bank_account.account_number"],index);
     const base = issuer && account ? JSON.stringify(["bank-account", issuer, account]) : null;
     return { key: base && ownerId ? JSON.stringify([base, ownerId]) : null, candidateKey: base, ownerId, historical: false, incompleteScope: !!base && !ownerId };
   }
@@ -68,24 +68,24 @@ function identityFor(data: CaseData, asset: Asset, facts: Fact[]): Identity {
 }
 function amount(value: Asset["grossValue"]) { return value == null ? null : [value.rawValue, value.unit, value.amountWon, value.normalizationStatus]; }
 function observationKey(asset: Asset, ownerId: string | null, ownerSource: string | null) {
-  return JSON.stringify([asset.kind, asset.asOf ?? null, asset.valuationBasis ?? null, asset.ownershipBps ?? null, amount(asset.grossValue), amount(asset.securedPayoff), amount(asset.disposalCosts), amount(asset.protectedValue), ownerId, ownerSource, asset.recognition ?? null]);
+  return JSON.stringify([asset.kind, asset.asOf ?? null, asset.valuationBasis ?? null, asset.ownershipBps ?? null, amount(asset.grossValue), amount(asset.securedPayoff), asset.securedPayoffScope ?? null, amount(asset.disposalCosts), amount(asset.protectedValue), ownerId, ownerSource, asset.recognition ?? null]);
 }
 function informationalOnly(asset: Asset) {
   return asset.grossValue == null && asset.securedPayoff == null && asset.disposalCosts == null && asset.protectedValue == null;
 }
 
 /** Group by source-backed identity; only exact observations are deduplicated or linked as detail support. */
-export function resolveAssetRows(data: CaseData): AssetResolution {
-  const active = new Map(currentFacts(data).map(fact => [fact.id, fact]));
+export function resolveAssetRows(data: CaseData,index?:CaseReadIndex): AssetResolution {
+  const active = new Map(currentFacts(data,index).map(fact => [fact.id, fact]));
   const rows: Asset[] = [], duplicates: string[] = [], conflictIds = new Set<string>(), issues: string[] = [];
   const exactBuckets = new Map<string, Asset>(), identityBuckets = new Map<string, Asset[]>(), candidates = new Map<string, { row: Asset; identity: Identity }[]>(), weakCandidates = new Map<string, Asset[]>();
   const duplicateFacts = new Map<string, string[]>(), linkedSupportIds = new Set<string>();
   let mapLookups = 0;
   for (const asset of data.assets) {
     const row: Asset = { ...asset, factIds: [...asset.factIds] };
-    const facts = factsFor(asset, active), identity = identityFor(data, asset, facts), owner = ownerObservation(facts), statusAmbiguous = ownershipStatusAmbiguous(data, facts);
+    const facts = factsFor(asset, active), identity = identityFor(data, asset, facts,index), owner = ownerObservation(facts), statusAmbiguous = ownershipStatusAmbiguous(data, facts,index);
     if (!identity.key && !identity.candidateKey) {
-      const weakKey = JSON.stringify([asset.kind, asset.label.normalize("NFKC").trim().toLocaleLowerCase("ko-KR"), asset.asOf ?? null, asset.valuationBasis ?? null, asset.ownershipBps ?? null, amount(asset.grossValue), amount(asset.securedPayoff), amount(asset.disposalCosts), amount(asset.protectedValue)]);
+      const weakKey = JSON.stringify([asset.kind, asset.label.normalize("NFKC").trim().toLocaleLowerCase("ko-KR"), asset.asOf ?? null, asset.valuationBasis ?? null, asset.ownershipBps ?? null, amount(asset.grossValue), amount(asset.securedPayoff), asset.securedPayoffScope ?? null, amount(asset.disposalCosts), amount(asset.protectedValue)]);
       mapLookups++; const weakBucket = weakCandidates.get(weakKey) ?? []; weakBucket.push(row); weakCandidates.set(weakKey, weakBucket);
     }
     if (identity.historical) { conflictIds.add(row.id); issues.push(`ASSET_HISTORICAL_OWNERSHIP_NOT_CURRENT:${row.id}`); rows.push(row); continue; }

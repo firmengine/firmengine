@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createCase,currentFacts } from "../lib/domain.ts";
 import { upsertObject } from "../lib/object-editor.ts";
 
-const source={documentId:"doc",page:1,quote:"합성 증빙"};
+const source={documentId:"doc",page:1,quote:"합성 증빙",sourceHash:"a".repeat(64)};
 function fixture(){const data=createCase("CRUD 합성 검사");data.documents=[{id:"doc",name:"synthetic.pdf",sha256:"a".repeat(64),status:"active",pages:[1]}];data.pages=[{documentId:"doc",page:1,role:"evidence",text:"합성 증빙"}];return data;}
 const debt={creditor:"합성은행",principal:"1000",interest:"0",secured:"no",classification:"ordinary",asOf:"2026-10-27"};
 
@@ -26,6 +26,31 @@ test("잘못된 유형·달력 날짜·분모·지분을 다른 값으로 바꾸
   assert.throws(()=>upsertObject(fixture(),"assets",{kind:"cash",ownershipBps:"10001"},source,"입력","tester"),/허용 범위/);
   assert.throws(()=>upsertObject(fixture(),"incomes",{kind:"wage",periodMonths:"1e1"},source,"입력","tester"),/정수/);
   assert.throws(()=>upsertObject(fixture(),"incomes",{kind:"wage",periodStart:"2026-02-01",periodEnd:"2026-01-01"},source,"입력","tester"),/종료일/);
+});
+
+test("채권 우선처리는 별도 담당자 선택이며 변경하면 기존 법률승인을 무효화한다",()=>{
+  const added=upsertObject(fixture(),"debts",{...debt,priority:"ordinary"},source,"합성 사건별 일반채권 처리 검토","tester");
+  const id=added.debts[0].id;
+  assert.equal(added.debts[0].priority,"ordinary");
+  assert.equal(added.debts[0].legalReview,"unreviewed");
+  assert.equal(currentFacts(added).some(f=>f.key==="debt.priority"),false,"legal decision is kept out of source OCR facts");
+  const accepted=structuredClone(added);accepted.debts[0].legalReview="accepted";
+  const changed=upsertObject(accepted,"debts",{...debt,id,priority:"priority"},source,"합성 사건별 우선 처리 재검토","tester");
+  assert.equal(changed.debts[0].priority,"priority");
+  assert.equal(changed.debts[0].legalReview,"unreviewed","changing the decision cannot retain a prior approval");
+  const legacy=upsertObject(fixture(),"debts",debt,source,"합성 구형채무를 검토대상으로 입력","tester");
+  assert.equal(legacy.debts[0].priority,"unknown","missing legacy priority is never silently defaulted to ordinary");
+});
+
+test("공동소유 담보잔액 범위는 최신 인용이 있는 별도 원문 사실로 기록한다",()=>{
+  const input={label:"합성 공동소유 부동산",kind:"real_estate",grossValue:"100000000",securedPayoff:"20000000",securedPayoffScope:"applicant_interest",ownershipBps:"5000",asOf:"2026-10-27",valuationBasis:"합성 평가서"};
+  const added=upsertObject(fixture(),"assets",input,source,"합성 범위 명시","tester");
+  assert.equal(added.assets[0].securedPayoffScope,"applicant_interest");
+  const fact=currentFacts(added).find(f=>f.key==="asset.secured_payoff_scope");
+  assert.equal(fact?.value,"applicant_interest");assert.equal(fact?.refs[0]?.sourceHash,"a".repeat(64));
+  const missing=upsertObject(fixture(),"assets",{...input,securedPayoffScope:"unknown"},source,"합성 범위 미확정","tester");
+  assert.equal(missing.assets[0].securedPayoffScope,"unknown");
+  assert.equal(currentFacts(missing).find(f=>f.key==="asset.secured_payoff_scope")?.value,"unknown");
 });
 
 test("다른 사건이나 철회된 항목 ID는 새 항목으로 다시 생성하지 않는다",()=>{

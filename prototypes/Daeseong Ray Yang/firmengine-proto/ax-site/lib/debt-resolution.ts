@@ -1,4 +1,4 @@
-import { currentFacts, moneyValue, validSourceRef, type CaseData, type Debt, type Fact } from "./domain.ts";
+import { currentFacts, moneyValue, validSourceRef, type CaseData, type CaseReadIndex, type Debt, type Fact } from "./domain.ts";
 
 /** A complete source identifier; masked suffixes and display names never identify a contract. */
 function identity(value: unknown, requireDigit = false): string | null {
@@ -9,18 +9,18 @@ function identity(value: unknown, requireDigit = false): string | null {
   return result.length >= 4 && (!requireDigit || /\d/.test(result)) ? result : null;
 }
 
-function sourceIdentity(data: CaseData, debt: Debt, facts: Fact[], keys: string[], requireDigit = false): string | null {
+function sourceIdentity(data: CaseData, debt: Debt, facts: Fact[], keys: string[], requireDigit = false,index?:CaseReadIndex): string | null {
   const candidates = facts.filter(f => debt.factIds.includes(f.id) && keys.includes(f.key.replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase()));
-  if (!candidates.length || candidates.some(f => f.state === "disputed" || f.recognition === "rejected" || f.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || !f.refs.length || f.refs.some(r => !validSourceRef(data, r)))) return null;
+  if (!candidates.length || candidates.some(f => f.state === "disputed" || f.recognition === "rejected" || f.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || !f.refs.length || f.refs.some(r => !validSourceRef(data, r,index)))) return null;
   const values = candidates.map(f => identity(f.value, requireDigit));
   if (values.some(v => v === null) || new Set(values).size !== 1) return null;
   const value = values[0]!;
   return candidates.every(f => f.refs.some(r => r.quote.normalize("NFKC").toUpperCase().replace(/[\s().\-‐‑‒–—/]/gu, "").includes(value))) ? value : null;
 }
 
-function completeContractKey(data: CaseData, debt: Debt, facts: Fact[]): string | null {
-  const issuer = sourceIdentity(data, debt, facts, ["debt.creditor_identity_id", "debt.creditor_registration_number", "debt.issuer_identity_id"], true);
-  const contract = sourceIdentity(data, debt, facts, ["debt.contract_id", "debt.account_number"]);
+function completeContractKey(data: CaseData, debt: Debt, facts: Fact[],index?:CaseReadIndex): string | null {
+  const issuer = sourceIdentity(data, debt, facts, ["debt.creditor_identity_id", "debt.creditor_registration_number", "debt.issuer_identity_id"], true,index);
+  const contract = sourceIdentity(data, debt, facts, ["debt.contract_id", "debt.account_number"],false,index);
   if (!issuer || !contract || contract !== identity(debt.contractId)) return null;
   return JSON.stringify([issuer, contract]);
 }
@@ -29,11 +29,11 @@ function completeContractKey(data: CaseData, debt: Debt, facts: Fact[]): string 
  * Deduplicate only the same referenced observation, or a complete issuer-scoped
  * contract. Keep ambiguous rows and prevent their aggregate from becoming final.
  */
-export function resolveDebtRows(data: CaseData): { rows: Debt[]; duplicates: string[]; issues: string[] } {
-  const facts = currentFacts(data), active = new Set(facts.map(f => f.id));
+export function resolveDebtRows(data: CaseData,index?:CaseReadIndex): { rows: Debt[]; duplicates: string[]; issues: string[] } {
+  const facts = currentFacts(data,index), active = new Set(facts.map(f => f.id));
   const groups = new Map<string, Debt[]>(), strong = new Map<string, string | null>();
   for (const debt of data.debts) {
-    const scoped = completeContractKey(data, debt, facts); strong.set(debt.id, scoped);
+    const scoped = completeContractKey(data, debt, facts,index); strong.set(debt.id, scoped);
     const ids = [...new Set(debt.factIds)].sort();
     // A shared quote on the same page is not necessarily the same row. Use exact fact versions.
     const observation = ids.length && ids.every(id => active.has(id)) ? JSON.stringify([debt.contractId ?? null, ids]) : null;
