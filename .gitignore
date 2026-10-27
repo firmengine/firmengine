@@ -3,6 +3,10 @@
 env.example
 env.example.*
 *.env
+.dev.vars*
+*.pem
+*.key
+node_modules/
 *[sS][aA][mM][pP][lL][eE]*.[pP][dD][fF]
 *샘플*.[pP][dD][fF]
 .runtime/
