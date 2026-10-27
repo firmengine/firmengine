@@ -56,6 +56,10 @@ with tempfile.TemporaryDirectory(prefix='synthetic-ocr-budget-') as td:
     except TimeoutError: pass
     else: raise AssertionError('timeout expected')
     assert budget.used==1, 'timed-out mutation must remain charged globally'
+    checkpoint=json.loads((root/'reads/checkpoints/payroll-01-SYN-123-01--clean.json').read_text())
+    assert checkpoint['site_case_id']=='site-case-1' and checkpoint['document_id']=='site-doc-1'
+    assert checkpoint['case_process_steps']==1 and checkpoint['steps_used']==1
+    assert checkpoint['last_attempted_stage']=='process_request'
     try: budget.consume()
     except RuntimeError: pass
     else: raise AssertionError('no further process calls allowed')
@@ -70,3 +74,55 @@ with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
     outcomes=list(pool.map(attempt,range(40)))
 assert sum(outcomes)==7 and budget.used==7
 print('PASS: concurrent cases cannot exceed the shared budget.')
+
+from http.client import IncompleteRead
+from unittest.mock import patch
+class TruncatedThenComplete:
+    def __init__(self): self.calls=0
+    def open(self,request,timeout):
+        self.calls+=1
+        if self.calls==1: raise IncompleteRead(b'partial response')
+        class Response:
+            headers={}
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self): return b'{"readable":true}'
+        return Response()
+
+for method,expected_calls in [('GET',2),('POST',1)]:
+    api=runner.SiteClient('https://synthetic.chatgpt.site','non-secret-fixture')
+    opener=TruncatedThenComplete();api.opener=opener
+    with patch.object(runner.time,'sleep'):
+        if method=='GET': assert api.call('/api/cases/example',method)=={'readable':True}
+        else:
+            try: api.call('/api/cases/example/process',method,payload={'action':'next'})
+            except RuntimeError: pass
+            else: raise AssertionError('an uncertain mutation response must not be replayed')
+    assert opener.calls==expected_calls
+print('PASS: truncated safe reads retry; truncated mutations are never replayed.')
+
+class CreatedButTruncated:
+    def __init__(self,location): self.location=location;self.requests=[]
+    def open(self,request,timeout):
+        self.requests.append((request.get_method(),request.full_url))
+        creation=request.get_method()=='POST'
+        location=self.location
+        class Response:
+            status=201 if creation else 200
+            headers={'Location':location} if creation else {}
+            def __enter__(self): return self
+            def __exit__(self,*args): pass
+            def read(self):
+                if creation: raise IncompleteRead(b'partial creation response')
+                return b'{"case":{"context":{"id":"12345678-1234-1234-1234-123456789abc"}}}'
+        return Response()
+
+for location,success in [('/api/cases/12345678-1234-1234-1234-123456789abc',True),('https://elsewhere.invalid/collect',False),('/api/workspace',False)]:
+    api=runner.SiteClient('https://synthetic.chatgpt.site','non-secret-fixture')
+    opener=CreatedButTruncated(location);api.opener=opener
+    try: result=api.call('/api/cases','POST',payload={'name':'synthetic'})
+    except RuntimeError: assert not success
+    else: assert success and result['case']['context']['id']=='12345678-1234-1234-1234-123456789abc'
+    assert [method for method,_ in opener.requests]==(['POST','GET'] if success else ['POST'])
+    assert all(url.startswith('https://synthetic.chatgpt.site/') for _,url in opener.requests)
+print('PASS: truncated creation recovers its exact same-site Location by GET without repeating creation.')

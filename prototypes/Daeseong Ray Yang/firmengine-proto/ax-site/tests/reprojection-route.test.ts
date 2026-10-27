@@ -16,7 +16,7 @@ function loadRoute(overrides: Record<string, unknown> = {}) {
     "../../../../../lib/page-job-inspection": { inspectStoredPageJob: async (_id: string, jobId: string) => ({ stored: true, jobId }), reprojectCasePage: async () => ({}) },
     "../../../../../lib/reprojection": { PAGE_PROJECTION_VERSION: "synthetic-projection-v1", ReprojectionError: class extends Error { status = 409; }, reprojectStoredPage: () => ({}) },
     "../../../../../lib/server-store": { actor: async () => "synthetic-actor", db: () => ({ prepare: () => ({ bind: () => ({ run: async () => ({ meta: { changes: 1 } }) }) }) }), errorResponse: (error: unknown) => Response.json({ error: error instanceof Error ? error.message : "error" }, { status: 409 }), event: async () => {}, HttpError: MockHttpError, jsonBody: async (request: Request) => request.json(), now: () => "2026-10-27T00:00:00.000Z", requireSameOrigin: () => {}, saveCase: async () => {} },
-    "../../../../../lib/pipeline": { processNext: async () => { throw new Error("paid process path must not run"); }, reconcileCase: async () => ({}), retryFailed: async () => ({}), retryPage: async () => ({}), reviewLegal: async () => ({}) },
+    "../../../../../lib/pipeline": { processNext: async () => { throw new Error("paid process path must not run"); }, reconcileCase: async () => ({}), retryFailed: async () => ({}), retryPage: async () => ({}), reverifyPage:async()=>({}),reviewLegal: async () => ({}) },
     ...overrides,
   };
   new Function("require", "module", "exports", output)((name: string) => {
@@ -72,4 +72,11 @@ test("explicit refresh action requests a new read without taking the cached repr
   const response = await route.POST(new Request("https://synthetic.invalid/api/cases/case-1/process", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "refresh_page", jobId: "job-7" }) }), { params: Promise.resolve({ id: "case-1" }) });
   assert.equal(response.status, 200);
   assert.deepEqual(calls, [["case-1", "job-7", "refresh"]]);
+});
+
+test("explicit reverify action sends only the selected job id and never accepts a client-supplied read",async()=>{
+  const calls:unknown[][]=[];
+  const route=loadRoute({"../../../../../lib/pipeline":{processNext:async()=>({}),reconcileCase:async()=>({}),retryFailed:async()=>({}),retryPage:async()=>({}),reverifyPage:async(...args:unknown[])=>{calls.push(args);return {stage:"page_reverify_queued"};},reviewLegal:async()=>({})}});
+  const response=await route.POST(new Request("https://synthetic.invalid/api/cases/case-1/process",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"reverify_page",jobId:"job-7",read:{records:[{value:"untrusted"}]}})}),{params:Promise.resolve({id:"case-1"})});
+  assert.equal(response.status,200);assert.deepEqual(calls,[["case-1","job-7"]]);
 });

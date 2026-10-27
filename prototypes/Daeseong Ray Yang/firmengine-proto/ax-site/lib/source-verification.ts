@@ -7,8 +7,17 @@ export const SOURCE_VERIFICATION_MODEL = AI_MODEL;
 export interface ReadField { key: string; value: string | null; unit: string | null; quote: string | null; confidence: "clear" | "uncertain" | "unreadable" }
 export interface ReadRecord { category: string; fields: ReadField[] }
 export interface PageRead { documentType: string; complete: boolean; records: ReadRecord[] }
-export interface Check { recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected" | "unreadable" | "ambiguous"; value: string | null; unit: string | null; quote: string | null }
-export interface ReviewPass { kind: "verify" | "repair"; checks: readonly Check[]; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string }
+export interface Check { recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected" | "unreadable" | "ambiguous"; value: string | null; unit: string | null; quote: string | null; bbox?: number[] | null; reason?: string }
+export interface ReviewPass {
+  kind: "verify" | "repair";
+  /** Only coordinate-bound checks may participate in verification or receipts. */
+  checks: readonly Check[];
+  /** Original model response retained for audit; never used to bind facts. */
+  originalChecks?: readonly Check[];
+  bindingStatus?: "bound" | "unbound";
+  bindingIssues?: readonly string[];
+  model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string;
+}
 export interface FieldError { recordIndex: number; fieldIndex: number; code: string }
 export interface SourceVerificationInput {
   documentId: string; page: number; sourceHash: string; promptVersion: string; verifiedAt: string;

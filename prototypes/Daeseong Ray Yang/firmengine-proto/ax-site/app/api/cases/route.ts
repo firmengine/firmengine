@@ -10,5 +10,5 @@ export async function POST(request:Request){try{
   c.context.ruleReleaseId=CURRENT_RULESET.id;
   await db().prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(c.context.id,c.context.caseName,await actor(),c.context.revision,JSON.stringify(c),now(),now()).run();
   await event(c.context.id,"case.created",{name:c.context.caseName});
-  return Response.json(await caseResponse(c),{status:201});
+  return Response.json(await caseResponse(c),{status:201,headers:{"Location":`/api/cases/${c.context.id}`,"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}

@@ -33,10 +33,16 @@ async function inspect(caseId: string, jobId: string, data?: CaseData) {
 /** Read one completed evidence job. Returns only the stored source read and its historical provenance. */
 export async function inspectStoredPageJob(caseId: string, jobId: string) {
   const { job, saved, provenance } = await inspect(caseId, jobId);
+  const extractionPasses=Array.isArray(saved.extractionPasses)?saved.extractionPasses:[];
+  const hasBoundExtractionProvenance=extractionPasses.length>0&&extractionPasses.every((value:unknown)=>{
+    if(!value||typeof value!=="object"||Array.isArray(value))return false;
+    const pass=value as Record<string,unknown>;
+    return pass.model===provenance.model&&typeof pass.promptVersion==="string"&&!!pass.promptVersion.trim()&&typeof pass.promptHash==="string"&&/^[a-f0-9]{64}$/i.test(pass.promptHash)&&pass.sourceHash===provenance.documentSha256&&pass.baseImageHash===job.imageHash&&typeof pass.verifiedAt==="string"&&Number.isFinite(Date.parse(pass.verifiedAt));
+  });
   return {
     job: { id: job.id, documentId: job.documentId, page: job.page, role: job.role, status: job.status, stage: job.stage, cacheKey: job.cacheKey },
-    historicalProvenance: provenance,
-    stored: { read: saved.read, firstRead: saved.firstRead, extractionRead: saved.extractionRead, review: saved.review, verifierPasses: saved.verifierPasses, historicalReceiptCounter: provenance.storedReceiptCount, projection: saved.projection },
+    historicalProvenance: { ...provenance, extractionPassCount: extractionPasses.length, hasBoundExtractionProvenance },
+    stored: { read: saved.read, firstRead: saved.firstRead, extractionRead: saved.extractionRead, review: saved.review, verifierPasses: saved.verifierPasses, extractionPasses: saved.extractionPasses, reverification: saved.reverification, historicalReceiptCounter: provenance.storedReceiptCount, projection: saved.projection },
   };
 }
 

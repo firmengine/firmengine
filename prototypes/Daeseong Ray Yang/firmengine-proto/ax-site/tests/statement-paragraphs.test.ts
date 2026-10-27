@@ -58,6 +58,17 @@ test("same-page paragraphs across record IDs flow through the generated statemen
   assert.ok(xml.indexOf("first paragraph")<xml.indexOf("second paragraph"));
 });
 
+test("other document families on the same uploaded PDF do not suppress a scoped statement draft",()=>{
+  const {data,addDocument,addFact,authorize}=fixture();addDocument("mixed-bundle",[1]);
+  addFact("applicant-paragraph","mixed-bundle",1,0,"synthetic applicant narrative","Paragraph source quote mixed-bundle-1.");
+  authorize("mixed-bundle",1,[0]);
+  data.documents[0].type="other";
+  data.documents[0].pages.push(2);
+  data.pages.push({documentId:"mixed-bundle",page:2,role:"evidence",documentType:"debt_certificate",text:"Synthetic debt source; unrelated extracted text quote."});
+  addFact("other-family-text","mixed-bundle",2,0,"synthetic non-statement metadata","unrelated extracted text quote.");
+  assert.equal(sourceStatementText(data),"synthetic applicant narrative","a debt-certificate page in the same PDF is not another applicant paragraph");
+});
+
 test("a complete page reread with changed record IDs and bboxes supersedes exact old paragraph occurrences",()=>{
   const {data,addDocument,addFact,authorize}=fixture();addDocument("statement",[1]);
   const paragraph="same paragraph after fresh OCR",quote="Applicant statement paragraph: same paragraph after fresh OCR.";

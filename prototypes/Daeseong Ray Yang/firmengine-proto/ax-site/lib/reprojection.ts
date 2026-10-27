@@ -29,6 +29,8 @@ export interface StoredReadResult {
   extractionRead?: unknown;
   review?: unknown;
   verifierPasses?: unknown;
+  extractionPasses?: unknown;
+  reverification?: unknown;
   sourceReceiptCount?: unknown;
   projection?: { version?: string; appliedAt?: string; caseRevision?: number; sourceSha256?: string; cacheKey?: string | null };
   [key: string]: unknown;

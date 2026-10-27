@@ -80,9 +80,11 @@ export function sourceStatementText(data:CaseData,index:CaseReadIndex=createCase
   // spouse, a second signer, or a separate section; never silently omit it.
   const allPageParagraphs=paragraphFacts.filter(fact=>fact.refs.some(ref=>ref.documentId===documentId&&ref.page===page));
   if(allPageParagraphs.length!==sourceFacts.length)return undefined;
-  // A disputed/edited/uncited paragraph from this source prevents silently
-  // producing a partial narrative that could look complete in the filing.
-  if(sourceFacts.length!==paragraphFacts.filter(fact=>fact.refs.some(ref=>ref.documentId===documentIds[0])).length)return undefined;
+  // sourceFacts already contains every current statement.text on this client
+  // statement page. Other document families in the same uploaded PDF are not
+  // narrative paragraphs and must not suppress this statement. Same-page
+  // extras are checked above; additional client-statement pages were rejected
+  // when selecting sourceFacts.
   if(sourceFacts.some(({fact})=>!sourceBacked(data,fact,index)))return undefined;
   const ordered=sourceFacts.map((entry,index)=>({...entry,index}));
   const pagesWithCompleteBoxes=new Set(ordered.map(item=>item.source.page).filter(page=>ordered.filter(item=>item.source.page===page).every(item=>item.fact.refs[0].bbox!==undefined)));

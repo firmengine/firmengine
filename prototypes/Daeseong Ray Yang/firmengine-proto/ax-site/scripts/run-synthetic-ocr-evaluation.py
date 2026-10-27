@@ -14,6 +14,7 @@ import threading
 import getpass
 import gzip
 import hashlib
+from http.client import IncompleteRead, RemoteDisconnected
 import io
 import json
 from pathlib import Path
@@ -61,8 +62,12 @@ class SiteClient:
         request = urllib.request.Request(self.origin + path, headers=headers, data=data, method=method)
         attempts = 3 if method.upper() == 'GET' else 1
         for attempt in range(attempts):
+            created_location = None
             try:
                 with self.opener.open(request, timeout=timeout) as response:
+                    location = response.headers.get('Location', '')
+                    if method.upper() == 'POST' and path == '/api/cases' and response.status == 201 and re.fullmatch(r'/api/cases/[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', location):
+                        created_location = location
                     body = response.read()
                     if response.headers.get('Content-Encoding', '').lower() == 'gzip':
                         body = gzip.decompress(body)
@@ -76,7 +81,12 @@ class SiteClient:
                 if method.upper() == 'GET' and 500 <= error.code < 600 and attempt + 1 < attempts:
                     time.sleep(.5 * (attempt + 1)); continue
                 raise RuntimeError(f'HTTP {error.code} {method} {path}: {str(message)[:300]}') from None
-            except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError, OSError, EOFError) as error:
+            except (IncompleteRead, RemoteDisconnected, urllib.error.URLError, TimeoutError, socket.timeout, ConnectionError, OSError, EOFError) as error:
+                # A successful creation header identifies the already-created
+                # resource even when its large response body is truncated.
+                # Recover only with a same-site GET; never replay the POST.
+                if created_location:
+                    return self.call(created_location, timeout=timeout)
                 if method.upper() == 'GET' and attempt + 1 < attempts:
                     time.sleep(.5 * (attempt + 1)); continue
                 raise RuntimeError(f'{method} {path}: {type(error).__name__}; mutation calls are not replayed') from None
@@ -146,19 +156,31 @@ def write_result(out_dir, case_id, family, variant, value):
     path.write_text(json.dumps(value, ensure_ascii=False, indent=2), encoding='utf-8')
     return path
 
-def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=None, source_commit=None):
+def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=None, source_commit=None, resume_context=None):
     budget = budget or StageBudget(max_steps, steps_used)
     case_id_from_source, family, variant = request_metadata(pdf_path)
     digest = source_hash(pdf_path)
+    resume_context = resume_context if resume_context is not None else {}
+    resume_context.update({'source_case_id':case_id_from_source, 'family':family, 'variant':variant,
+                           'source_sha256':digest, 'source_page':1, 'model':MODEL,
+                           'source_commit':source_commit, 'case_process_steps':0})
+    def checkpoint(stage, **values):
+        resume_context.update(values)
+        resume_context.update({'last_attempted_stage':stage, 'steps_used':budget.used, 'max_steps':max_steps})
+        directory = out_dir / 'checkpoints'
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / f'{case_id_from_source}--{variant}.json').write_text(json.dumps(resume_context, ensure_ascii=False, indent=2), encoding='utf-8')
     if pdf_path.stat().st_size > MAX_PDF_BYTES:
         raise ValueError(f'PDF exceeds the Site 100 MB limit: {pdf_path.name}')
     page_bytes = render_single_page(pdf_path)
     created = client.call('/api/cases', 'POST', {'name': '합성 OCR 평가', 'applicationDate': app_date, 'courtId': 'seoul'})
     case_id = created['case']['context']['id']
+    checkpoint('case_created', site_case_id=case_id)
     registered = client.call(f'/api/cases/{case_id}/documents', 'POST', {
         'name': f'synthetic-{digest[:12]}.pdf', 'sha256': digest, 'pageCount': 1,
     })
     document_id = registered['documentId']
+    checkpoint('document_registered', document_id=document_id)
     roles = {int(item['page']): item['role'] for item in registered.get('pageRoles', [])}
     # Preserve immutable filed-form/administrative holdouts if a request ever
     # resolves to one of those known source hashes; never upload its page image.
@@ -179,6 +201,7 @@ def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=N
         # reached the Site and must not be treated as free on the next run.
         budget.consume()
         steps_used = budget.used
+        checkpoint('process_request', case_process_steps=resume_context['case_process_steps'] + 1)
         progress = client.call(f'/api/cases/{case_id}/process', 'POST', {'action': 'next'}, timeout=240)
         if progress.get('rescue'):
             prepare_rescue(client, pdf_path, case_id, document_id, digest, hashlib.sha256(page_bytes).hexdigest(), progress['rescue'], prepared_plans)
@@ -208,11 +231,13 @@ def run_one(client, pdf_path, out_dir, max_steps, steps_used, app_date, budget=N
             'model': MODEL, 'status': status, 'role': job.get('role'),
             'job_status': job.get('status'), 'job_stage': job.get('stage'),
             'steps_used': steps_used, 'max_steps': max_steps,
+            'case_process_steps': resume_context['case_process_steps'],
             'api_model': (snapshot.get('case') or {}).get('execution', {}).get('model'),
             'source_commit': source_commit,
             'historical_provenance': inspection.get('historicalProvenance') if read is not None else None,
         },
     }
+    checkpoint('snapshot_saved', status=status)
     return write_result(out_dir, case_id_from_source, family, variant, value), steps_used
 
 def prepare_rescue(client, pdf_path, case_id, document_id, source_digest, base_image_hash, request, prepared):
@@ -306,6 +331,7 @@ def main():
     def execute_pdf(pdf_path):
         steps = budget.used
         started = time.monotonic()
+        resume_context = {}
         if steps >= args.max_steps:
             # Write explicit no-run records without creating extra Site cases.
             source_id, family, variant = request_metadata(pdf_path)
@@ -317,7 +343,7 @@ def main():
                     'status':'not_run_global_cost_cap','steps_used':steps,'max_steps':args.max_steps}})
             return
         try:
-            path, steps = run_one(client, pdf_path, out_dir, args.max_steps, steps, args.application_date, budget, args.source_commit)
+            path, steps = run_one(client, pdf_path, out_dir, args.max_steps, steps, args.application_date, budget, args.source_commit, resume_context)
             print(json.dumps({'event':'pdf_finished','source_id':request_metadata(pdf_path)[0],
                               'status':json.loads(path.read_text())['provenance']['status'],
                               'steps_used':budget.used,'max_steps':args.max_steps,'elapsed_ms':round((time.monotonic()-started)*1000)},ensure_ascii=False),flush=True)
@@ -327,8 +353,9 @@ def main():
             digest = source_hash(pdf_path)
             write_result(out_dir, source_id, family, variant, {
                 'schema_version':'synthetic-ocr-read-v1','fields':[],'read':None,
-                'provenance':{'source_case_id':source_id,'family':family,'variant':variant,
+                'provenance':{**resume_context,'source_case_id':source_id,'family':family,'variant':variant,
                     'source_sha256':digest,'source_page':1,'model':MODEL,
+                    'source_commit':args.source_commit,
                     'status':'driver_error','safe_error':str(error)[:300],
                     'steps_used':steps,'max_steps':args.max_steps}})
             print(json.dumps({'event':'pdf_error','source_id':source_id,'error':str(error)[:300],
