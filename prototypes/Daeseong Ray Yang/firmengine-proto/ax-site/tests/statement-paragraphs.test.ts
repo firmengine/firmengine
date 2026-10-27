@@ -7,7 +7,7 @@ import type { CalculationResult } from "../lib/assessment.ts";
 import { buildFormBindings } from "../lib/form-mapping.ts";
 import { writeOfficePackage } from "../lib/office-writer.ts";
 import { applicantStatementForForm,sourceStatementText } from "../lib/statement-paragraphs.ts";
-import { EXTRACT_INSTRUCTIONS,PROMPT_VERSION,projectPage,sourceInstructions,type PageRead } from "../lib/extraction.ts";
+import { EXTRACT_INSTRUCTIONS,PROMPT_VERSION,projectPage,sourceInstructions,STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS,type PageRead } from "../lib/extraction.ts";
 import { createSourceVerificationReceipts } from "../lib/source-verification.ts";
 
 function fixture(){
@@ -38,6 +38,37 @@ function fixture(){
   };
   return {data,addDocument,addFact,authorize};
 }
+function verifiedStatementFact(input:{id:string;subjectId:string;key:string;value:string;quote:string;bbox:[number,number,number,number];documentId:string;hash:string}){
+  const key=input.key.replace(/^statement\./,"");
+  const read:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"synthetic statement record",fields:[{key,label:key,value:input.value,unit:null,quote:input.quote,bbox:input.bbox,confidence:"clear"}]}]};
+  const verifiedAt="2026-10-27T10:00:00.000Z";
+  const [receipt]=createSourceVerificationReceipts({documentId:input.documentId,page:1,sourceHash:input.hash,promptVersion:PROMPT_VERSION,verifiedAt,originalRead:read,read,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:input.value,unit:null,quote:input.quote}]}]});
+  assert.ok(receipt,`synthetic ${input.key} receipt must be constructible`);
+  const fact={id:input.id,logicalId:input.id,version:1,subjectId:input.subjectId,key:input.key,value:input.value,rawValue:input.value,state:"verified" as const,recognition:"unreviewed" as const,refs:[{documentId:input.documentId,page:1,quote:input.quote,bbox:input.bbox,sourceHash:input.hash}],validation:[],sourceVerification:{...receipt,factBinding:{id:input.id,logicalId:input.id,version:1}}};
+  return fact as Fact;
+}
+function relationFixture(){
+  const {data,addDocument}=fixture();addDocument("typed-statement",[1]);const hash="a".repeat(64),anchorSubject="typed-statement:p1:statement:author",paragraphSubject=(record:number)=>`typed-statement:p1:statement:${record}`;
+  const quotes={opening:"I personally wrote this statement.",intent:"I seek personal rehabilitation.",p1:"I personally wrote this statement. I seek personal rehabilitation.",p2:"My work hours were reduced.",p3:"The above account is true and I will cooperate.",closing:"The above account is true.",signature:"Applicant signature."};
+  data.pages.find(page=>page.documentId==="typed-statement")!.text=[quotes.p1,quotes.p2,quotes.p3,quotes.signature].join(" ");
+  data.facts.push(
+    verifiedStatementFact({id:"typed-role",subjectId:anchorSubject,key:"statement.author_role",value:"applicant",quote:quotes.opening,bbox:[.1,.1,.55,.14],documentId:"typed-statement",hash}),
+    verifiedStatementFact({id:"typed-intent",subjectId:anchorSubject,key:"statement.applicant_intent",value:"I seek personal rehabilitation",quote:quotes.intent,bbox:[.56,.1,.9,.14],documentId:"typed-statement",hash}),
+    verifiedStatementFact({id:"typed-signature",subjectId:anchorSubject,key:"statement.author_signature",value:"Applicant signed",quote:quotes.signature,bbox:[.1,.8,.4,.84],documentId:"typed-statement",hash}),
+    verifiedStatementFact({id:"typed-p1",subjectId:paragraphSubject(2),key:"statement.text",value:quotes.p1,quote:quotes.p1,bbox:[.1,.1,.9,.15],documentId:"typed-statement",hash}),
+    verifiedStatementFact({id:"typed-p2",subjectId:paragraphSubject(3),key:"statement.text",value:quotes.p2,quote:quotes.p2,bbox:[.1,.3,.9,.35],documentId:"typed-statement",hash}),
+    verifiedStatementFact({id:"typed-p3",subjectId:paragraphSubject(4),key:"statement.text",value:quotes.p3,quote:quotes.p3,bbox:[.1,.5,.9,.55],documentId:"typed-statement",hash}),
+  );
+  const setRelation=(relation:{version:1;openingQuote:string;closingQuote:string;signatureQuote:string;members:{quote:string}[]},options:{quote?:string;hash?:string;state?:Fact["state"]}={})=>{
+    const prior=data.facts.findIndex(fact=>fact.id==="typed-relation");if(prior>=0)data.facts.splice(prior,1);
+    const value=JSON.stringify(relation),quote=options.quote??relation.openingQuote,relationFact=verifiedStatementFact({id:"typed-relation",subjectId:anchorSubject,key:"statement.scope_relation",value,quote,bbox:[.1,.1,.55,.14],documentId:"typed-statement",hash:options.hash??hash});
+    if(options.state)relationFact.state=options.state;
+    data.facts.push(relationFact);
+  };
+  const relation={version:1 as const,openingQuote:quotes.opening,closingQuote:quotes.p3,signatureQuote:quotes.signature,members:[{quote:quotes.p1},{quote:quotes.p2},{quote:quotes.p3}]};
+  setRelation(relation);
+  return {data,quotes,relation,setRelation,hash,anchorSubject};
+}
 const calculation={caseRevision:1,computedBy:"deterministic-bigint",incomeRows:[],incomeGroups:[],debtRows:[],assetRows:[],monthlyIncomeWon:null,debtPrincipalWon:null,debtInterestWon:null,totalDebtWon:null,securedDebtWon:null,unsecuredDebtWon:null,recognizedLivingCostWon:null,disposableIncomeWon:null,liquidationValueWon:null,monthlyPaymentWon:null,planTotalWon:null,presentValueWon:null,liquidationComparison:"unknown",allocations:[],traces:[],issues:[],excludedDuplicateIds:[]} as unknown as CalculationResult;
 
 test("same-page paragraphs across record IDs flow through the generated statement DOCX",async()=>{
@@ -56,6 +87,56 @@ test("same-page paragraphs across record IDs flow through the generated statemen
   const xml=strFromU8(archive["word/document.xml"]);
   assert.ok(xml.includes("first paragraph"));assert.ok(xml.includes("second paragraph"));
   assert.ok(xml.indexOf("first paragraph")<xml.indexOf("second paragraph"));
+});
+
+test("a meaning-verified typed scope relation maps all cited paragraphs into the official D5105 body",async()=>{
+  const {data,quotes}=relationFixture();
+  const expected=[quotes.p1,quotes.p2,quotes.p3].join("\n\n");
+  assert.equal(sourceStatementText(data),expected);
+  assert.equal(buildFormBindings(data,calculation).scalars.statement,expected);
+  const files=await writeOfficePackage({data,rules:DRAFT_RULESET,mode:"draft"});
+  const statementFile=files.find(file=>file.kind==="statement");assert.ok(statementFile);
+  const archive=unzipSync(statementFile.bytes),xml=strFromU8(archive["word/document.xml"]),appendix=xml.indexOf("계산 및 원문 근거 검토 부록");
+  assert.ok(appendix>0,"the official D5105 body precedes the evidence appendix");
+  const officialBody=xml.slice(0,appendix);
+  for(const paragraph of [quotes.p1,quotes.p2,quotes.p3])assert.ok(officialBody.includes(paragraph),`official body omitted ${paragraph}`);
+});
+
+test("typed statement relation fails closed on missing, ambiguous, stale, withdrawn, or unverified links",()=>{
+  const missing=relationFixture();missing.setRelation({...missing.relation,members:missing.relation.members.slice(0,2)});
+  assert.equal(sourceStatementText(missing.data),undefined,"every current paragraph must be present exactly once");
+  const changed=relationFixture();changed.setRelation({...changed.relation,members:[changed.relation.members[0],{quote:"Different source paragraph."},changed.relation.members[2]]});
+  assert.equal(sourceStatementText(changed.data),undefined,"relation quotes must bind exactly to current paragraph refs");
+  const duplicate=relationFixture();duplicate.setRelation({...duplicate.relation,members:[duplicate.relation.members[0],duplicate.relation.members[0],duplicate.relation.members[2]]});
+  assert.equal(sourceStatementText(duplicate.data),undefined,"duplicate paragraph quote cannot uniquely identify every member");
+  const stale=relationFixture();stale.setRelation(stale.relation,{hash:"b".repeat(64)});
+  assert.equal(sourceStatementText(stale.data),undefined,"relation must bind to the current active source hash");
+  const withdrawn=relationFixture();withdrawn.data.facts.find(fact=>fact.key==="statement.scope_relation")!.state="retracted";
+  assert.equal(sourceStatementText(withdrawn.data),undefined,"a withdrawn relation cannot authorize drafting");
+  const unverified=relationFixture();unverified.data.facts.find(fact=>fact.key==="statement.scope_relation")!.state="extracted";
+  assert.equal(sourceStatementText(unverified.data),undefined,"relation needs its own field-meaning receipt");
+  const multiple=relationFixture();
+  multiple.data.facts.push(verifiedStatementFact({id:"second-relation",subjectId:multiple.anchorSubject,key:"statement.scope_relation",value:JSON.stringify(multiple.relation),quote:multiple.quotes.opening,bbox:[.1,.1,.55,.14],documentId:"typed-statement",hash:multiple.hash}));
+  assert.equal(sourceStatementText(multiple.data),undefined,"competing relation facts cannot be cherry-picked");
+  const human=relationFixture();human.data.facts.find(fact=>fact.key==="statement.scope_relation")!.reviewer="Synthetic reviewer";
+  assert.equal(sourceStatementText(human.data),undefined,"reviewed or human-conflicted relation evidence is not silently reused");
+  const absent=relationFixture();absent.data.facts=absent.data.facts.filter(fact=>fact.key!=="statement.scope_relation");
+  assert.equal(sourceStatementText(absent.data),undefined,"same-page paragraphs alone do not establish author scope");
+  const mixed=relationFixture();
+  const role=mixed.data.facts.find(fact=>fact.key==="statement.author_role")!;
+  mixed.data.facts.push({...role,id:"uncertain-second-author",logicalId:"uncertain-second-author",version:1,value:"spouse",rawValue:"spouse",state:"disputed",sourceVerification:undefined,validation:[{code:"UNCERTAIN_READING",message:"synthetic competing author",severity:"warning"}]});
+  assert.equal(sourceStatementText(mixed.data),undefined,"confirmed applicant plus uncertain competing author is ambiguous");
+  const oldScope=relationFixture();
+  oldScope.data.facts.push(verifiedStatementFact({id:"unexpected-scope",subjectId:"other-scope",key:"statement.author_scope",value:"other scope",quote:oldScope.quotes.opening,bbox:[.1,.1,.55,.14],documentId:"typed-statement",hash:oldScope.hash}));
+  assert.equal(sourceStatementText(oldScope.data),undefined,"a competing scope is not ignored in favor of a good relation");
+});
+
+test("typed relation JSON parser rejects malformed and extended contracts",async()=>{
+  const {parseStatementScopeRelation}=await import("../lib/statement-scope-relation.ts");
+  assert.equal(parseStatementScopeRelation("not-json"),null);
+  assert.equal(parseStatementScopeRelation(JSON.stringify({version:2,openingQuote:"a",closingQuote:"b",signatureQuote:"c",members:[{quote:"d"}]})),null);
+  assert.equal(parseStatementScopeRelation(JSON.stringify({version:1,openingQuote:"a",closingQuote:"b",signatureQuote:"c",members:[{quote:"d"},{quote:"d"}]})),null);
+  assert.equal(parseStatementScopeRelation(JSON.stringify({version:1,openingQuote:"a",closingQuote:"b",signatureQuote:"c",members:[{quote:"d",recordIndex:0}]})),null);
 });
 
 test("other document families on the same uploaded PDF do not suppress a scoped statement draft",()=>{
@@ -160,5 +241,6 @@ test("client statement route receives explicit author-scope and three-evidence r
   const route=sourceInstructions("client_statement");
   for(const item of ["작성 주체","1인칭","서명/날인","unreviewed","채무잔액증명서","대리/제3자"])assert.ok(route.includes(item),`route missing ${item}`);
   assert.ok(EXTRACT_INSTRUCTIONS.includes("person.role=applicant"));assert.ok(EXTRACT_INSTRUCTIONS.includes("세 근거"));
-  assert.ok(route.includes("statement.author_scope"));assert.ok(route.includes("statement.author_signature"));
+  assert.ok(route.includes("statement.author_scope"));assert.ok(route.includes("statement.author_signature"));assert.ok(route.includes("statement.scope_relation"));
+  assert.ok(STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS.includes("독립적으로 확인"));assert.ok(STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS.includes("supported"));
 });

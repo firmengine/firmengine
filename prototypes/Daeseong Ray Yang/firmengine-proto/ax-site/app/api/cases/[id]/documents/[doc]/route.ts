@@ -46,7 +46,7 @@ export async function PUT(request:Request,{params}:Context){try{
     if(r.ready!==1)throw new HttpError(409,"활성 원본 문서가 준비되지 않았습니다.");
     if(!job.image_hash)throw new HttpError(409,"기준 페이지 이미지가 아직 준비되지 않았습니다.");
     const planId=request.headers.get("x-rescue-plan-id")||"",sourceHash=request.headers.get("x-source-hash")||"",baseHash=request.headers.get("x-base-image-hash")||"",variant=request.headers.get("x-variant")||"",bboxText=request.headers.get("x-source-bbox")||"",transformText=request.headers.get("x-transform")||"{}";
-    let currentPlan: {rescuePlan?:{planId?:string;documentId?:string;page?:number;sourceHash?:string;baseImageHash?:string;reason?:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes?:unknown[]}}|null=null;
+    let currentPlan: {rescuePlan?:{planId?:string;documentId?:string;page?:number;sourceHash?:string;baseImageHash?:string;reason?:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes?:unknown[];recipeVersion?:"neutral-v1"|"luma-levels-v2"}}|null=null;
     const jobResult=await db().prepare("SELECT result FROM page_jobs WHERE id = ? AND case_id = ?").bind(`${doc}:${page}`,id).first<{result:string|null}>();try{currentPlan=JSON.parse(jobResult?.result??"{}");}catch{}
     const activePlan=currentPlan?.rescuePlan;
     if(!canUseRescueRole(job.role,casePage?.role,activePlan?.reason))throw new HttpError(409,"현재 활성 증빙 또는 제한된 미분류 복구 계획의 페이지만 사용할 수 있습니다.");
@@ -56,9 +56,11 @@ export async function PUT(request:Request,{params}:Context){try{
     if(!/^rescue-(field_disagreement|omitted_rows|unreadable|incomplete_extraction|classification_unknown)-[1-4]$/.test(variant))throw new HttpError(400,"후보 유형을 확인하세요.");
     let bbox:unknown,transform:unknown;try{bbox=JSON.parse(bboxText);transform=JSON.parse(transformText);}catch{throw new HttpError(400,"후보의 위치 정보를 읽을 수 없습니다.");}
     if(!Array.isArray(bbox)||bbox.length!==4||bbox.some(x=>typeof x!=="number"||x<0||x>1)||bbox[0]>=bbox[2]||bbox[1]>=bbox[3])throw new HttpError(400,"후보 위치 범위가 올바르지 않습니다.");
-    const tx=transform as {rotation?:unknown;contrast?:unknown;method?:unknown};if(!tx||typeof tx!=="object"||!(["canvas-crop-v1","pymupdf-pillow-crop-v1"] as unknown[]).includes(tx.method)||typeof tx.rotation!=="number"||!Number.isFinite(tx.rotation)||Math.abs(tx.rotation)>180||typeof tx.contrast!=="number"||tx.contrast<.75||tx.contrast>1.35)throw new HttpError(400,"후보 변환 정보가 허용 범위를 벗어났습니다.");
-    const expected=rescueSpecs({reason:activePlan.reason,boxes:activePlan.boxes,sourceHash,baseImageHash:baseHash}).find(spec=>spec.variant===variant);
-    if(!expected||JSON.stringify(expected.bbox)!==JSON.stringify(bbox)||expected.rotation!==tx.rotation||expected.contrast!==tx.contrast)throw new HttpError(400,"후보는 저장된 재판독 계획의 위치·회전·대비와 일치해야 합니다.");
+    const tx=transform as {rotation?:unknown;contrast?:unknown;tone?:unknown;recipeVersion?:unknown;method?:unknown};if(!tx||typeof tx!=="object"||!(["canvas-crop-v1","pymupdf-pillow-crop-v1"] as unknown[]).includes(tx.method)||typeof tx.rotation!=="number"||!Number.isFinite(tx.rotation)||Math.abs(tx.rotation)>180||typeof tx.contrast!=="number"||tx.contrast<.75||tx.contrast>1.35)throw new HttpError(400,"후보 변환 정보가 허용 범위를 벗어났습니다.");
+    if(activePlan.recipeVersion!==undefined&&!("neutral-v1"===activePlan.recipeVersion||"luma-levels-v2"===activePlan.recipeVersion))throw new HttpError(409,"저장된 재판독 변환 레시피를 확인할 수 없습니다.");
+    const expected=rescueSpecs({reason:activePlan.reason,boxes:activePlan.boxes,sourceHash,baseImageHash:baseHash,recipeVersion:activePlan.recipeVersion}).find(spec=>spec.variant===variant);
+    const legacyNeutral=expected?.recipeVersion==="neutral-v1"&&tx.recipeVersion===undefined&&tx.tone===undefined;
+    if(!expected||JSON.stringify(expected.bbox)!==JSON.stringify(bbox)||expected.rotation!==tx.rotation||expected.contrast!==tx.contrast||(!legacyNeutral&&(tx.recipeVersion!==expected.recipeVersion||tx.tone!==expected.tone)))throw new HttpError(400,"후보는 저장된 재판독 계획의 위치·회전·대비·톤 레시피와 일치해야 합니다.");
     const bytes=await request.arrayBuffer();if(bytes.byteLength<1||bytes.byteLength>8_000_000)throw new HttpError(413,"후보 이미지는 8MB까지 지원합니다.");
     const contentType=request.headers.get("content-type")||"";if(!["image/jpeg","image/png","image/webp"].includes(contentType))throw new HttpError(415,"후보는 JPEG·PNG·WEBP 이미지여야 합니다.");
     // The same crop bytes may legitimately occupy distinct rescue slots. Bind

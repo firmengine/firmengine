@@ -14,6 +14,7 @@ function loadRoute(overrides: Record<string, unknown> = {}) {
     "../../../../../lib/case-response": { caseProgress: async (_id: string, result: { stage?: string }) => ({ caseId: "case-1", remaining: 0, stage: result.stage }) },
     "../../../../../lib/json-response": { jsonResponse: (body: unknown, _request: Request, init?: ResponseInit) => Response.json(body, init) },
     "../../../../../lib/page-job-inspection": { inspectStoredPageJob: async (_id: string, jobId: string) => ({ stored: true, jobId }), reprojectCasePage: async () => ({}) },
+    "../../../../../lib/classification-inspection": { inspectClassificationJob: async (_id: string, jobId: string) => ({ classification: true, jobId, modelCalls: 0, mutatesState: false }) },
     "../../../../../lib/reprojection": { PAGE_PROJECTION_VERSION: "synthetic-projection-v1", ReprojectionError: class extends Error { status = 409; }, reprojectStoredPage: () => ({}) },
     "../../../../../lib/server-store": { actor: async () => "synthetic-actor", db: () => ({ prepare: () => ({ bind: () => ({ run: async () => ({ meta: { changes: 1 } }) }) }) }), errorResponse: (error: unknown) => Response.json({ error: error instanceof Error ? error.message : "error" }, { status: 409 }), event: async () => {}, HttpError: MockHttpError, jsonBody: async (request: Request) => request.json(), now: () => "2026-10-27T00:00:00.000Z", requireSameOrigin: () => {}, saveCase: async () => {} },
     "../../../../../lib/pipeline": { processNext: async () => { throw new Error("paid process path must not run"); }, reconcileCase: async () => ({}), retryFailed: async () => ({}), retryPage: async () => ({}), reverifyPage:async()=>({}),reviewLegal: async () => ({}) },
@@ -79,4 +80,21 @@ test("explicit reverify action sends only the selected job id and never accepts 
   const route=loadRoute({"../../../../../lib/pipeline":{processNext:async()=>({}),reconcileCase:async()=>({}),retryFailed:async()=>({}),retryPage:async()=>({}),reverifyPage:async(...args:unknown[])=>{calls.push(args);return {stage:"page_reverify_queued"};},reviewLegal:async()=>({})}});
   const response=await route.POST(new Request("https://synthetic.invalid/api/cases/case-1/process",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"reverify_page",jobId:"job-7",read:{records:[{value:"untrusted"}]}})}),{params:Promise.resolve({id:"case-1"})});
   assert.equal(response.status,200);assert.deepEqual(calls,[["case-1","job-7"]]);
+});
+
+test("classification view reads only routing diagnostics and cannot fall through to OCR inspection", async () => {
+  const calls: string[] = [];
+  const route = loadRoute({
+    "../../../../../lib/classification-inspection": { inspectClassificationJob: async (caseId: string, jobId: string) => { calls.push(caseId, jobId); return { mode: "classification_diagnostic", modelCalls: 0, mutatesState: false }; } },
+    "../../../../../lib/page-job-inspection": { inspectStoredPageJob: async () => { throw new Error("classification must not request a completed OCR read"); } },
+  });
+  const response = await route.GET(new Request("https://synthetic.invalid/api/cases/case-1/process?jobId=job-7&view=classification"), { params: Promise.resolve({ id: "case-1" }) });
+  assert.equal(response.status, 200); assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.deepEqual(calls, ["case-1", "job-7"]);
+  assert.deepEqual(await response.json(), { mode: "classification_diagnostic", modelCalls: 0, mutatesState: false });
+  for (const query of ["view=classification", "jobId=job-7&view=unsupported"]) {
+    const invalid = await route.GET(new Request("https://synthetic.invalid/api/cases/case-1/process?" + query), { params: Promise.resolve({ id: "case-1" }) });
+    assert.equal(invalid.ok, false);
+  }
+  assert.deepEqual(calls, ["case-1", "job-7"]);
 });

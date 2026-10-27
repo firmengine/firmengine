@@ -130,7 +130,7 @@ function documentSetup(ready:boolean){
   return {...h,bytes,doc,originalKey,put};
 }
 
-function derivativeSetup(options:{changePlanAtInsert?:boolean;classification?:boolean;role?:string}={}){
+function derivativeSetup(options:{changePlanAtInsert?:boolean;classification?:boolean;role?:string;recipeVersion?:"luma-levels-v2"}={}){
   const h=setup(options.changePlanAtInsert?(sqlite)=>{
     const row=sqlite.prepare("SELECT result FROM page_jobs WHERE id = ?").get("synthetic-doc:1") as {result:string};
     const result=JSON.parse(row.result);result.rescuePlan.planId="stale-plan";
@@ -144,11 +144,11 @@ function derivativeSetup(options:{changePlanAtInsert?:boolean;classification?:bo
   h.sqlite.prepare("UPDATE cases SET payload = ? WHERE id = ?").run(JSON.stringify(h.data),h.data.context.id);
   h.sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,original_key,ready,created_at) VALUES (?,?,?,?,?,?,?,?)").run(doc,h.data.context.id,"synthetic.pdf",sourceHash,1,"synthetic-original",1,"synthetic");
   h.objects.set("synthetic-original",{bytes,mime:"application/pdf"});
-  h.sqlite.prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,image_key,image_hash,status,stage,attempts,lease_until,cache_key,result,error,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(`${doc}:${page}`,h.data.context.id,doc,page,role,"debt_certificate","synthetic-page",baseHash,"pending","extract",0,null,null,JSON.stringify({rescuePlan:{planId,documentId:doc,page,sourceHash,baseImageHash:baseHash,reason,boxes}}),null,"synthetic");
+  h.sqlite.prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,image_key,image_hash,status,stage,attempts,lease_until,cache_key,result,error,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").run(`${doc}:${page}`,h.data.context.id,doc,page,role,"debt_certificate","synthetic-page",baseHash,"pending","extract",0,null,null,JSON.stringify({rescuePlan:{planId,documentId:doc,page,sourceHash,baseImageHash:baseHash,reason,boxes,...(options.recipeVersion?{recipeVersion:options.recipeVersion}:{})}}),null,"synthetic");
   const route=load<Route>("app/api/cases/[id]/documents/[doc]/route.ts",{"node:crypto":nodeCrypto,"../../../../../../lib/server-store":h.store,"../../../../../../lib/scan-quality":scanQuality,"../../../../../../lib/classification-recovery":classificationRecovery,"../../../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})}});
   const upload=(variant:string,image:Uint8Array,overrides:Record<string,string>={})=>{
-    const spec=scanQuality.rescueSpecs({reason,boxes,sourceHash,baseImageHash:baseHash}).find(item=>item.variant===variant)!;
-    const request=new Request(`https://synthetic.invalid/api/cases/${h.data.context.id}/documents/${doc}?kind=variant&page=${page}`,{method:"PUT",headers:{"Content-Type":"image/jpeg","x-rescue-plan-id":planId,"x-source-hash":sourceHash,"x-base-image-hash":baseHash,"x-variant":variant,"x-source-bbox":JSON.stringify(spec.bbox),"x-transform":JSON.stringify({method:"canvas-crop-v1",rotation:spec.rotation,contrast:spec.contrast}),...overrides},body:new Uint8Array(image)});
+    const spec=scanQuality.rescueSpecs({reason,boxes,sourceHash,baseImageHash:baseHash,recipeVersion:options.recipeVersion}).find(item=>item.variant===variant)!;
+    const request=new Request(`https://synthetic.invalid/api/cases/${h.data.context.id}/documents/${doc}?kind=variant&page=${page}`,{method:"PUT",headers:{"Content-Type":"image/jpeg","x-rescue-plan-id":planId,"x-source-hash":sourceHash,"x-base-image-hash":baseHash,"x-variant":variant,"x-source-bbox":JSON.stringify(spec.bbox),"x-transform":JSON.stringify({method:"canvas-crop-v1",rotation:spec.rotation,contrast:spec.contrast,...(options.recipeVersion?{tone:spec.tone,recipeVersion:spec.recipeVersion}:{})}),...overrides},body:new Uint8Array(image)});
     return route.PUT(request,{params:Promise.resolve({id:h.data.context.id,doc})});
   };
   return {...h,doc,page,planId,sourceHash,baseHash,upload};
@@ -222,6 +222,13 @@ test("unknown page can upload only a saved classification rescue candidate",asyn
   assert.equal((await h.upload("rescue-classification_unknown-1",image)).status,200);
   assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM page_derivatives").get()!.n,1);
   h.sqlite.close();
+});
+
+test("versioned classification tone transform must match the saved recipe exactly",async()=>{
+  const h=derivativeSetup({classification:true,role:"unknown",recipeVersion:"luma-levels-v2"}),image=new TextEncoder().encode("synthetic classification crop");
+  const wrong=await h.upload("rescue-classification_unknown-2",image,{"x-transform":JSON.stringify({method:"canvas-crop-v1",rotation:90,contrast:1,tone:"neutral",recipeVersion:"luma-levels-v2"})});assert.equal(wrong.status,400);
+  const accepted=await h.upload("rescue-classification_unknown-2",image);assert.equal(accepted.status,200);
+  const row=h.sqlite.prepare("SELECT transform FROM page_derivatives WHERE variant = ?").get("rescue-classification_unknown-2") as {transform:string};assert.equal(JSON.parse(row.transform).tone,"luma-levels-v2");h.sqlite.close();
 });
 
 test("unknown role cannot upload ordinary extraction rescue candidates",async()=>{

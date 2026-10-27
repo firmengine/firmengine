@@ -1,11 +1,18 @@
 import { caseProgress } from "../../../../../lib/case-response";
+import { inspectClassificationJob } from "../../../../../lib/classification-inspection";
 import { jsonResponse } from "../../../../../lib/json-response";
 import { inspectStoredPageJob,reprojectCasePage } from "../../../../../lib/page-job-inspection";
 import { PAGE_PROJECTION_VERSION,ReprojectionError,reprojectStoredPage } from "../../../../../lib/reprojection";
 import { actor,db,errorResponse,event,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
 import { processNext,reconcileCase,retryFailed,retryPage,reverifyPage,reviewLegal } from "../../../../../lib/pipeline";
 const failure=(error:unknown)=>errorResponse(error instanceof ReprojectionError?new HttpError(error.status,error.message):error);
-export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{const {id}=await params,jobId=new URL(request.url).searchParams.get("jobId");return jsonResponse(jobId?await inspectStoredPageJob(id,jobId):await caseProgress(id,{stage:"status"}),request,{headers:{"Cache-Control":"no-store"}});}catch(e){return failure(e);}}
+export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{
+  const {id}=await params,url=new URL(request.url),jobId=url.searchParams.get("jobId"),view=url.searchParams.get("view");
+  if(view!==null&&view!=="classification")throw new HttpError(400,"지원하지 않는 페이지 관측 보기입니다.");
+  if(view==="classification"&&!jobId)throw new HttpError(400,"분류 관측에는 페이지 작업 ID가 필요합니다.");
+  const result=view==="classification"?await inspectClassificationJob(id,jobId!):jobId?await inspectStoredPageJob(id,jobId):await caseProgress(id,{stage:"status"});
+  return jsonResponse(result,request,{headers:{"Cache-Control":"no-store"}});
+}catch(e){return failure(e);}}
 async function reprojectPage(id:string,jobId:string){
   const staged=await reprojectCasePage(id,jobId);
   if(staged.alreadyApplied)return {stage:"reprojected",alreadyApplied:true,projectionVersion:PAGE_PROJECTION_VERSION,revision:staged.data.context.revision};

@@ -24,7 +24,7 @@ type WorkspaceState = {
 type Workflow = ReturnType<typeof evaluateWorkflow>;
 type TransactionReview = ReturnType<typeof scanTransactions>;
 type PageJobSummary = {id:string;documentId:string;page:number;role:string;status:string;error?:string|null};
-type ProcessProgress = {caseId:string;revision:number;counts:{documents:number;evidencePages:number;facts:number;incomes:number;debts:number;assets:number;transactions:number};jobs:{total:number;byStatus:Record<string,number>};remaining:number;stage:string;page?:number;disagreements?:number;error?:string;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[]}};
+type ProcessProgress = {caseId:string;revision:number;counts:{documents:number;evidencePages:number;facts:number;incomes:number;debts:number;assets:number;transactions:number};jobs:{total:number;byStatus:Record<string,number>};remaining:number;stage:string;page?:number;disagreements?:number;error?:string;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[];recipeVersion?:"neutral-v1"|"luma-levels-v2"}};
 type RescueDocumentCache={documentId?:string;pdf?:import("pdfjs-dist").PDFDocumentProxy;task?:import("pdfjs-dist").PDFDocumentLoadingTask;bitmap?:ImageBitmap;blob?:Blob};
 type CaseResponse = { case: CaseData; assessment: Assessment; workflow?: Workflow; transactionReview?: TransactionReview; analyses?: LegalAnalysis[]; files?: DownloadFile[]; jobs?: PageJobSummary[]; remaining?: number; stage?: string; error?: string };
 type Notice = { type: "success" | "error" | "info"; message: string };
@@ -132,7 +132,7 @@ export default function Workspace({ initialTab = "overview", initialCaseId }: { 
   }
   async function prepareRescue(caseId:string,rescue:NonNullable<ProcessProgress["rescue"]>,cache:RescueDocumentCache){
     try{
-      const specs=rescueSpecs({reason:rescue.reason,boxes:rescue.boxes,sourceHash:rescue.sourceHash,baseImageHash:rescue.baseImageHash});
+      const specs=rescueSpecs({reason:rescue.reason,boxes:rescue.boxes,sourceHash:rescue.sourceHash,baseImageHash:rescue.baseImageHash,recipeVersion:rescue.recipeVersion});
       if(cache.documentId!==rescue.documentId){if(cache.task)await cache.task.destroy();cache.bitmap?.close();cache.documentId=undefined;cache.pdf=undefined;cache.task=undefined;cache.bitmap=undefined;cache.blob=undefined;
         const response=await fetch(`/api/cases/${caseId}/documents/${rescue.documentId}?kind=original`,{cache:"no-store"});if(!response.ok)throw new Error("원본을 가져오지 못했습니다.");cache.blob=await response.blob();cache.documentId=rescue.documentId;
         if(cache.blob.type==="application/pdf"){const pdfjs=await import("pdfjs-dist");pdfjs.GlobalWorkerOptions.workerSrc="/pdf.worker.min.mjs";cache.task=pdfjs.getDocument({data:new Uint8Array(await cache.blob.arrayBuffer())});cache.pdf=await cache.task.promise;}else cache.bitmap=await createImageBitmap(cache.blob);
@@ -140,9 +140,9 @@ export default function Workspace({ initialTab = "overview", initialCaseId }: { 
       let source:CanvasImageSource;
       if(cache.pdf){const page=await cache.pdf.getPage(rescue.page);const raw=page.getViewport({scale:1});const scale=Math.min(4,3600/Math.max(raw.width,raw.height),Math.sqrt(12_000_000/(raw.width*raw.height)));const viewport=page.getViewport({scale});const rendered=document.createElement("canvas");rendered.width=Math.ceil(viewport.width);rendered.height=Math.ceil(viewport.height);await page.render({canvas:rendered,viewport}).promise;page.cleanup();source=rendered;}else if(cache.bitmap)source=cache.bitmap;else throw new Error("원본을 열 수 없습니다.");
       const renderedCanvas=source instanceof HTMLCanvasElement?source:null;
-      try{for(const spec of specs){const canvas=transformCanvas(source,spec.bbox,spec.rotation,spec.contrast);let blob:Blob;try{blob=await canvasJpeg(canvas);}finally{canvas.width=0;canvas.height=0;}
+      try{for(const spec of specs){const canvas=transformCanvas(source,spec.bbox,spec.rotation,spec.contrast,spec.tone);let blob:Blob;try{blob=await canvasJpeg(canvas);}finally{canvas.width=0;canvas.height=0;}
         const url=`/api/cases/${caseId}/documents/${rescue.documentId}?kind=variant&page=${rescue.page}`;
-        await request(url,{method:"PUT",body:blob,headers:{"Content-Type":"image/jpeg","X-Rescue-Plan-Id":rescue.planId,"X-Source-Hash":spec.sourceHash,"X-Base-Image-Hash":spec.baseImageHash,"X-Variant":spec.variant,"X-Source-BBox":JSON.stringify(spec.bbox),"X-Transform":JSON.stringify({rotation:spec.rotation,contrast:spec.contrast,method:"canvas-crop-v1"})}});
+        await request(url,{method:"PUT",body:blob,headers:{"Content-Type":"image/jpeg","X-Rescue-Plan-Id":rescue.planId,"X-Source-Hash":spec.sourceHash,"X-Base-Image-Hash":spec.baseImageHash,"X-Variant":spec.variant,"X-Source-BBox":JSON.stringify(spec.bbox),"X-Transform":JSON.stringify({rotation:spec.rotation,contrast:spec.contrast,tone:spec.tone,recipeVersion:spec.recipeVersion,method:"canvas-crop-v1"})}});
       }}finally{if(renderedCanvas){renderedCanvas.width=0;renderedCanvas.height=0;}}
     }catch(error){const message=`페이지 재판독 후보를 준비하지 못했습니다. 원본 페이지를 직접 확인해 주세요. ${error instanceof Error?error.message:""}`.trim();notify(message,"error");throw new Error(message);}
   }

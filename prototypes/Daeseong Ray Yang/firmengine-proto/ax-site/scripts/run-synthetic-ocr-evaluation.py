@@ -31,6 +31,29 @@ from PIL import Image
 MODEL = 'gpt-6-luna'
 MAX_PDF_BYTES = 100_000_000
 MAX_PAGE_BYTES = 8_000_000
+CLASSIFICATION_RECIPE = 'luma-levels-v2'
+
+def apply_luma_levels_v2(image):
+    """Match scan-quality.ts: BT.601 grayscale, fixed monotone bounded levels."""
+    gray = image.convert('L')
+    lut = [max(32,min(240,int(32+(value-176)*208/76+0.5))) for value in range(256)]
+    return gray.point(lut).convert('RGB')
+
+def rescue_specs(request):
+    import math
+    reason=request['reason']
+    valid=[b for b in request.get('boxes',[]) if isinstance(b,list) and len(b)==4 and all(isinstance(x,(int,float)) and not isinstance(x,bool) and math.isfinite(x) and 0<=x<=1 for x in b) and b[0]<b[2] and b[1]<b[3]][:4]
+    boxes=[[0,.08,1,.96]] if reason=='omitted_rows' else valid or [[.03,.12,.97,.9]]
+    def expand(b): return [max(0,b[0]-.035),max(0,b[1]-.035),min(1,b[2]+.035),min(1,b[3]+.035)]
+    if reason=='incomplete_extraction': values=[([0,i*.25,1,min(1,(i+1)*.25+.025)],0,'neutral') for i in range(4)]
+    elif reason=='classification_unknown': values=[([0,0,1,.45],0,'neutral'),([0,0,1,1],90,'luma-levels-v2' if request.get('recipeVersion')==CLASSIFICATION_RECIPE else 'neutral')]
+    elif reason=='unreadable': values=[(expand(boxes[0] if boxes else [.03,.12,.97,.9]),rotation,'neutral') for rotation in (0,90,180,-90)]
+    elif reason in ('omitted_rows','field_disagreement'):
+        if reason=='omitted_rows': boxes=[[0,.08,1,.96]]
+        values=[(expand(list(b)),0,'neutral') for b in dict.fromkeys(tuple(b) for b in boxes or [[.03,.12,.97,.9]])]
+    else: raise RuntimeError('Unknown rescue reason')
+    recipe=request.get('recipeVersion') if reason=='classification_unknown' and request.get('recipeVersion')==CLASSIFICATION_RECIPE else 'neutral-v1'
+    return [{'variant':f'rescue-{reason}-{index+1}','bbox':box,'rotation':rotation,'contrast':1,'tone':tone,'recipeVersion':recipe} for index,(box,rotation,tone) in enumerate(values)]
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
@@ -245,34 +268,28 @@ def prepare_rescue(client, pdf_path, case_id, document_id, source_digest, base_i
     if not plan or request.get('documentId') != document_id or request.get('page') != 1 or request.get('sourceHash') != source_digest or request.get('baseImageHash') != base_image_hash:
         raise RuntimeError('Rescue request does not bind this uploaded source page')
     if plan in prepared: return
-    import math
     reason = request.get('reason')
-    boxes = [b for b in request.get('boxes', []) if isinstance(b, list) and len(b) == 4 and all(isinstance(x, (int, float)) and not isinstance(x, bool) and math.isfinite(x) and 0 <= x <= 1 for x in b) and b[0] < b[2] and b[1] < b[3]][:4]
-    def expand(b): return [max(0,b[0]-.035),max(0,b[1]-.035),min(1,b[2]+.035),min(1,b[3]+.035)]
-    if reason == 'incomplete_extraction': specs = [([0,i*.25,1,min(1,(i+1)*.25+.025)],0) for i in range(4)]
-    elif reason == 'classification_unknown': specs = [([0,0,1,.45],0),([0,0,1,1],90)]
-    elif reason == 'unreadable': specs = [(expand(boxes[0] if boxes else [.03,.12,.97,.9]),r) for r in (0,90,180,-90)]
-    elif reason in ('omitted_rows','field_disagreement'):
-        if reason == 'omitted_rows': boxes = [[0,.08,1,.96]]
-        specs = [(expand(list(b)),0) for b in dict.fromkeys(tuple(b) for b in boxes or [[.03,.12,.97,.9]])]
-    else: raise RuntimeError('Unknown rescue reason')
+    specs = rescue_specs(request)
     with fitz.open(pdf_path) as doc:
         page = doc[0]
         scale = min(3600/max(page.rect.width,page.rect.height),math.sqrt(12_000_000/(page.rect.width*page.rect.height)),4)
         pix = page.get_pixmap(matrix=fitz.Matrix(scale,scale),colorspace=fitz.csRGB,alpha=False)
         image = Image.frombytes('RGB',(pix.width,pix.height),pix.samples)
         try:
-            for index,(box,rotation) in enumerate(specs):
+            for spec in specs:
+                box,rotation,tone=spec['bbox'],spec['rotation'],spec['tone']
                 variant = image.crop((math.floor(box[0]*image.width),math.floor(box[1]*image.height),math.ceil(box[2]*image.width),math.ceil(box[3]*image.height)))
                 if rotation: variant = variant.rotate(-rotation,expand=True,fillcolor='white')
+                if tone=='luma-levels-v2':
+                    adjusted=apply_luma_levels_v2(variant);variant.close();variant=adjusted
                 variant.thumbnail((3600,3600),Image.Resampling.LANCZOS)
                 encoded = io.BytesIO(); variant.save(encoded,format='JPEG',quality=92); variant.close()
                 content = encoded.getvalue()
                 if len(content) > MAX_PAGE_BYTES: raise RuntimeError('Rescue variant exceeds upload limit')
                 client.call(f'/api/cases/{case_id}/documents/{document_id}?kind=variant&page=1','PUT',data=content,mime='image/jpeg',extra_headers={
                     'X-Rescue-Plan-Id':plan,'X-Source-Hash':source_digest,'X-Base-Image-Hash':base_image_hash,
-                    'X-Variant':f'rescue-{reason}-{index+1}','X-Source-BBox':json.dumps(box),
-                    'X-Transform':json.dumps({'rotation':rotation,'contrast':1,'method':'pymupdf-pillow-crop-v1'})})
+                    'X-Variant':spec['variant'],'X-Source-BBox':json.dumps(box),
+                    'X-Transform':json.dumps({'rotation':rotation,'contrast':1,'tone':tone,'recipeVersion':spec['recipeVersion'],'method':'pymupdf-pillow-crop-v1'})})
         finally: image.close()
     prepared.add(plan)
 
