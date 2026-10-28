@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import {demo,approve,revise,canEdit} from '../public/domain.mjs';
+test('미확인 항목과 요약이 있으면 확정 불가',()=>{const c=demo();assert.throws(()=>approve(c,'담당자'));c.fields.forEach(f=>f.status='confirmed');assert.throws(()=>approve(c,'담당자'));});
+test('예외 승인과 요약 확인 후 확정하고 수정하면 재승인 필요',()=>{const c=demo();c.fields.forEach(f=>f.status='exception');c.summaryApproved=true;approve(c,'담당자');assert.equal(c.approved,true);revise(c,1,'24000000','원문 대조 정정','배지열');assert.equal(c.approved,false);assert.equal(c.summaryApproved,false);assert.equal(c.fields[1].status,'pending');assert.equal(c.version,2);assert.match(c.logs[0].text,/25000000 → 24000000/);});
+test('수정 사유 없으면 값과 버전 보존',()=>{const c=demo();assert.throws(()=>revise(c,1,'0',' ','배지열'));assert.equal(c.fields[1].value,'25000000');assert.equal(c.version,1);});
+test('담당자는 배정 사건만 수정, 대표는 전체 수정',()=>{const c=demo();c.owner='다른 담당자';assert.equal(canEdit(c,'staff'),false);assert.equal(canEdit(c,'master'),true);});
