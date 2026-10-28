@@ -1,6 +1,6 @@
 /** Public blank-form mapping. No filled sample, evaluator answer, or model output is embedded. */
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
-import { createCaseReadIndex, currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
+import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
 import type { ArtifactKind, CaseData, CaseReadIndex, Fact, NumericInput } from "./domain.ts";
 import type { CalculationResult } from "./assessment.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
@@ -46,7 +46,8 @@ const assetLabels: Record<string,string> = { cash:"현금",deposit:"예금",insu
 const allocationLabels: Record<string,string> = { principal_then_interest_pro_rata:"원금 비례배분 후 잔여금으로 이자 배분",principal_only_pro_rata:"원금 비례배분" };
 const normalizedKey = (key: string) => key.replace(/[A-Z]/g, (x) => "_" + x.toLowerCase());
 function usableFact(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
-  return fact.state !== "disputed" && fact.recognition !== "rejected" && !!fact.refs.length && fact.refs.every((r) => validSourceRef(data, r,index)) && !fact.validation.some((v) => v.severity === "error" || ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(v.code)) && !factSourceLineageIssues(data,[fact.id],index).some(code=>code!=="SOURCE_VERIFICATION_REQUIRED");
+  const linked = fact.structuredRefs !== undefined ? factHasValidStructuredRefs(data, fact) : !!fact.refs.length && fact.refs.every((r) => validSourceRef(data, r,index));
+  return fact.state !== "disputed" && fact.recognition !== "rejected" && linked && !fact.validation.some((v) => v.severity === "error" || ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(v.code)) && !factSourceLineageIssues(data,[fact.id],index).some(code=>code!=="SOURCE_VERIFICATION_REQUIRED");
 }
 function sourceValid(data: CaseData, ids: string[],index?:CaseReadIndex): boolean {
   // Draft preview may show clear, cited extracted values before cross-read.
@@ -96,7 +97,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     secured_debt_total: amount(calculation.securedDebtWon), unsecured_debt_total: amount(calculation.unsecuredDebtWon),
     monthly_income: amount(calculation.monthlyIncomeWon), recognized_living_cost: amount(calculation.recognizedLivingCostWon),
     household_size: data.household.recognition === "accepted" ? present(data.household.recognizedMembers) : MISSING_FORM_VALUE,
-    monthly_disposable_income: amount(calculation.disposableIncomeWon), monthly_payment: amount(calculation.monthlyPaymentWon),
+    monthly_disposable_income: amount(calculation.disposableIncomeWon), ordinary_repayment_budget: amount(calculation.ordinaryRepaymentBudgetWon), monthly_payment: amount(calculation.monthlyPaymentWon),
     monthly_trustee_fee: numeric(data.context.monthlyTrusteeFee), repayment_months: present(data.context.planMonths),
     total_repayment: amount(calculation.planTotalWon), liquidation_value: amount(calculation.liquidationValueWon),
     present_value: amount(calculation.presentValueWon), present_value_basis: present(data.context.presentValueBasis),

@@ -1,19 +1,19 @@
 import { caseProgress } from "../../../../../lib/case-response";
 import { inspectClassificationJob } from "../../../../../lib/classification-inspection";
 import { jsonResponse } from "../../../../../lib/json-response";
-import { inspectStoredPageJob,reprojectCasePage } from "../../../../../lib/page-job-inspection";
+import { inspectPreservedFamilyRead,inspectStoredPageJob,reprojectCasePage } from "../../../../../lib/page-job-inspection";
 import { PAGE_PROJECTION_VERSION,ReprojectionError,reprojectStoredPage } from "../../../../../lib/reprojection";
-import { actor,db,errorResponse,event,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
+import { actor,db,errorResponse,event,getCase,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
 import { processNext,processNextBatch,reconcileCase,retryFailed,retryPage,reverifyPage,reviewLegal } from "../../../../../lib/pipeline";
 import { clampDocumentParallelism } from "../../../../../lib/document-agent-registry";
 import { parseProcessJobIds,parseProcessJobIdsQuery,ProcessJobScopeError } from "../../../../../lib/process-job-scope";
 const failure=(error:unknown)=>errorResponse(error instanceof ReprojectionError||error instanceof ProcessJobScopeError?new HttpError(error.status,error.message):error);
 export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){try{
   const {id}=await params,url=new URL(request.url),jobId=url.searchParams.get("jobId"),view=url.searchParams.get("view"),jobIds=parseProcessJobIdsQuery(url.searchParams.get("jobIds"));
-  if(view!==null&&view!=="classification")throw new HttpError(400,"지원하지 않는 페이지 관측 보기입니다.");
+  if(view!==null&&view!=="classification"&&view!=="preserved_extraction")throw new HttpError(400,"지원하지 않는 페이지 관측 보기입니다.");
   if(jobIds&&(jobId||view))throw new HttpError(400,"작업 상태 범위는 전체 진행 상태 조회에서만 사용할 수 있습니다.");
-  if(view==="classification"&&!jobId)throw new HttpError(400,"분류 관측에는 페이지 작업 ID가 필요합니다.");
-  const result=view==="classification"?await inspectClassificationJob(id,jobId!):jobId?await inspectStoredPageJob(id,jobId):await caseProgress(id,{stage:"status"},jobIds);
+  if((view==="classification"||view==="preserved_extraction")&&!jobId)throw new HttpError(400,"페이지 작업 ID가 필요합니다.");
+  const result=view==="classification"?await inspectClassificationJob(id,jobId!):view==="preserved_extraction"?await inspectPreservedFamilyRead(id,jobId!):jobId?await inspectStoredPageJob(id,jobId):await caseProgress(id,{stage:"status"},jobIds);
   return jsonResponse(result,request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return failure(e);}}
 async function reprojectPage(id:string,jobId:string){
@@ -39,6 +39,8 @@ async function reprojectPage(id:string,jobId:string){
 }
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request);let result,jobIds:string[]|undefined;
+  const current=await getCase(id);
+  if((current.referenceTest||current.structuredTest)&&body.action!=="legal")throw new HttpError(409,"OCR, page mutation, and reconciliation are locked for this synthetic reference-test case.");
   const scoped=Object.hasOwn(body,"jobIds");
   if(scoped){if(!["next","next_batch"].includes(body.action))throw new HttpError(400,"작업 범위는 다음 증거 처리 단계에서만 사용할 수 있습니다.");jobIds=parseProcessJobIds(body.jobIds);}
   if(body.action==="next")result=await processNext(id,jobIds);else if(body.action==="next_batch"){if(!jobIds)throw new HttpError(400,"병렬 처리할 증거 페이지 범위가 필요합니다.");let parallelism:number;try{parallelism=clampDocumentParallelism(body.parallelism);}catch(error){throw new HttpError(400,error instanceof Error?error.message:"병렬 처리 수를 확인하세요.");}result=await processNextBatch(id,jobIds,parallelism);}else if(body.action==="reconcile")result=await reconcileCase(id);else if(body.action==="legal")result=await reviewLegal(id);else if(body.action==="retry")result=await retryFailed(id);else if(body.action==="retry_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId);}else if(body.action==="refresh_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"새로 판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId,"refresh");}else if(body.action==="reverify_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재검증할 페이지가 필요합니다.");result=await reverifyPage(id,body.jobId);}else if(body.action==="reproject_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재투영할 페이지 작업 ID가 필요합니다.");result=await reprojectPage(id,body.jobId);}else throw new HttpError(400,"처리 단계를 확인하세요.");

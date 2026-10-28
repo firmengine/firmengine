@@ -1,7 +1,7 @@
 /** Shared record category vocabulary. These are source labels, not family allowlists. */
 export const RECORD_CATEGORIES = ["person", "income", "debt", "asset", "transaction", "household", "business", "statement", "other"] as const;
 export type RecordCategory = typeof RECORD_CATEGORIES[number];
-export const RECORD_CATEGORY_STATUS_PROMPT_VERSION = "luna-evidence-3.20.0" as const;
+export const RECORD_CATEGORY_STATUS_PROMPT_VERSION = "luna-evidence-3.21.0" as const;
 
 export const RECORD_CATEGORY_POLICY = {
   person: "사람·주체에 관한 원문 행",

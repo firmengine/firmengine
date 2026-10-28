@@ -1,4 +1,4 @@
-import { factSourceLineageIssues, moneyValue, normalizeMoney, validSourceRef } from "./domain.ts";
+import { factSourceLineageIssues, factHasValidStructuredRefs, moneyValue, normalizeMoney, structuredSourceRowKeys, validSourceRef } from "./domain.ts";
 import type { CaseData, CaseReadIndex, Debt, Fact } from "./domain.ts";
 import { DEBT_TOTAL_KEYS, DEBT_COST_KEYS } from "./source-quantity.ts";
 
@@ -44,26 +44,26 @@ function quoteLabeledAmountMatches(fact:Fact,amount:bigint,kind:"total"|"cost"):
   return false;
 }
 
-function slotCandidates(bySubject:Map<string,Map<string,Fact[]>>,subjectId:string,keys:Set<string>,anchorPages:Set<string>):Fact[]{
+function slotCandidates(data:CaseData,bySubject:Map<string,Map<string,Fact[]>>,subjectId:string,keys:Set<string>,anchorScopes:Set<string>):Fact[]{
   const slots=bySubject.get(subjectId);
   if(!slots)return [];
   return [...keys].flatMap(slotKey=>(slots.get(slotKey)??[]).filter(fact=>{
     // A same-subject slot with no usable page is explicit but unresolved; keep it
     // so it cannot disappear merely because the typed projection omitted it.
-    if(!fact.refs.length)return true;
+    if(!fact.refs.length){const rows=structuredSourceRowKeys(data,fact);return !rows.length||rows.some(row=>anchorScopes.has(`structured:${row}`));}
     // A field from another page cannot complete the current amount row. If any
     // reference touches this row's page, include the fact and validate all refs.
-    return fact.refs.some(ref=>anchorPages.has(refKey(ref)));
+    return fact.refs.some(ref=>anchorScopes.has(refKey(ref)));
   }));
 }
 
-function observations(data:CaseData,facts:Fact[],index:CaseReadIndex,anchorPage:string|null):{values:bigint[];valid:boolean}{
+function observations(data:CaseData,facts:Fact[],index:CaseReadIndex,anchorScope:string|null):{values:bigint[];valid:boolean}{
   if(!facts.length)return {values:[],valid:true};
   const values:bigint[]=[];
   let valid=true;
   for(const fact of facts){
     const lineage=factSourceLineageIssues(data,[fact.id],index);
-    const refScope=fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index)&&(!anchorPage||refKey(ref)===anchorPage));
+    const refScope=fact.refs.length>0?fact.refs.every(ref=>validSourceRef(data,ref,index)&&(!anchorScope||refKey(ref)===anchorScope)):factHasValidStructuredRefs(data,fact)&&structuredSourceRowKeys(data,fact).length===1&&(!anchorScope||`structured:${structuredSourceRowKeys(data,fact)[0]}`===anchorScope);
     const parsed=moneyValue(fact.numeric);
     const sourceCurrent=fact.state==="verified"&&fact.recognition!=="rejected";
     const clear=fact.validation.every(item=>item.severity!=="error"&&!(["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(item.code)))
@@ -110,16 +110,16 @@ export function createDebtSourceIntegrityResolver(data:CaseData,index:CaseReadIn
     const subjectId=amountSubjects[0]??linkedSubjects[0];
     if(!subjectId)return {factIds:[],totalFactIds:[],costFactIds:[],totalWon:unresolvedBlockers.length||principal===null||interest===null?null:principal+interest,sourceTotalWon:null,costObservation:null,blockers:unresolvedBlockers,hasSourceTotal:unresolvedTotal,hasCostSlot:unresolvedCost};
     const rowFacts=amountFacts.length?amountFacts:linkedFacts.filter(fact=>fact.subjectId===subjectId);
-    const pageSets=rowFacts.map(fact=>new Set(fact.refs.map(ref=>refKey(ref))));
-    const anchorPages=new Set(pageSets.length?pageSets[0]:[]);
-    for(const page of anchorPages)if(pageSets.some(pages=>!pages.has(page)))anchorPages.delete(page);
-    const allPages=new Set(rowFacts.flatMap(fact=>fact.refs.map(ref=>refKey(ref))));
-    const candidatesForDetection=slotCandidates(bySubject,subjectId,new Set([...totalKeys,...costKeys]),allPages);
-    const rowPageAmbiguous=candidatesForDetection.length>0&&anchorPages.size!==1;
-    const anchorPage=anchorPages.size===1?[...anchorPages][0]:null;
-    const totals=rowPageAmbiguous?candidatesForDetection.filter(fact=>totalKeys.has(canonicalFactKey(fact))):slotCandidates(bySubject,subjectId,totalKeys,anchorPages);
-    const costs=rowPageAmbiguous?candidatesForDetection.filter(fact=>costKeys.has(canonicalFactKey(fact))):slotCandidates(bySubject,subjectId,costKeys,anchorPages);
-    const totalRead=observations(data,totals,index,anchorPage),costRead=observations(data,costs,index,anchorPage),blockers:string[]=[...unresolvedBlockers];
+    const scopesByFact=rowFacts.map(fact=>new Set(fact.refs.map(ref=>refKey(ref)).concat(structuredSourceRowKeys(data,fact).map(row=>`structured:${row}`))));
+    const anchorScopes=new Set(scopesByFact.length?scopesByFact[0]:[]);
+    for(const scope of anchorScopes)if(scopesByFact.some(scopes=>!scopes.has(scope)))anchorScopes.delete(scope);
+    const allScopes=new Set(rowFacts.flatMap(fact=>fact.refs.map(ref=>refKey(ref)).concat(structuredSourceRowKeys(data,fact).map(row=>`structured:${row}`))));
+    const candidatesForDetection=slotCandidates(data,bySubject,subjectId,new Set([...totalKeys,...costKeys]),allScopes);
+    const rowPageAmbiguous=candidatesForDetection.length>0&&anchorScopes.size!==1;
+    const anchorScope=anchorScopes.size===1?[...anchorScopes][0]:null;
+    const totals=rowPageAmbiguous?candidatesForDetection.filter(fact=>totalKeys.has(canonicalFactKey(fact))):slotCandidates(data,bySubject,subjectId,totalKeys,anchorScopes);
+    const costs=rowPageAmbiguous?candidatesForDetection.filter(fact=>costKeys.has(canonicalFactKey(fact))):slotCandidates(data,bySubject,subjectId,costKeys,anchorScopes);
+    const totalRead=observations(data,totals,index,anchorScope),costRead=observations(data,costs,index,anchorScope),blockers:string[]=[...unresolvedBlockers];
     if(rowPageAmbiguous)blockers.push("DEBT_SOURCE_ROW_IDENTITY_AMBIGUOUS");
     if(totals.some(fact=>!quoteLabeledAmountMatches(fact,moneyValue(fact.numeric)??-1n,"total")))totalRead.valid=false;
     if(costs.some(fact=>!quoteLabeledAmountMatches(fact,moneyValue(fact.numeric)??-1n,"cost")))costRead.valid=false;
@@ -134,7 +134,7 @@ export function createDebtSourceIntegrityResolver(data:CaseData,index:CaseReadIn
       if(!costRead.valid){blockers.push("DEBT_SEPARATE_COST_INVALID");costObservation="미확인·상충";totalWon=null;}
       else {costObservation=costValues.length&&new Set(costValues.map(value=>value.toString())).size===1?costValues[0].toString():"상충";if(costValues.some(value=>value!==0n)){blockers.push("DEBT_SEPARATE_COST_REQUIRES_REVIEW");totalWon=null;}}
     }
-    if((totals.length||costs.length)&&anchorPages.size!==1){if(!rowPageAmbiguous)blockers.push("DEBT_SOURCE_ROW_IDENTITY_UNRESOLVED");totalWon=null;}
+    if((totals.length||costs.length)&&anchorScopes.size!==1){if(!rowPageAmbiguous)blockers.push("DEBT_SOURCE_ROW_IDENTITY_UNRESOLVED");totalWon=null;}
     return {factIds:[...new Set([...totals,...costs].map(fact=>fact.id))],totalFactIds:[...new Set(totals.map(fact=>fact.id))],costFactIds:[...new Set(costs.map(fact=>fact.id))],totalWon,sourceTotalWon,costObservation,blockers:[...new Set(blockers)],hasSourceTotal:totals.length>0||unresolvedTotal,hasCostSlot:costs.length>0||unresolvedCost};
   };
 }

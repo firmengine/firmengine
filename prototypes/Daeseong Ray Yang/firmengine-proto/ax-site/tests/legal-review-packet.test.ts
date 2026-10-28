@@ -9,6 +9,18 @@ import { scanTransactions } from "../lib/transaction-review.ts";
 const risk=(id:string,feature:string):LegalReviewRisk=>({id,title:`Synthetic ${id}`,conditions:"Source-backed condition",features:[feature],request:"Synthetic evidence request",legalRuleIds:["rule-1"],manual:true});
 function fact(id:string,key:string,value:string,state:Fact["state"]="verified",recognition:Fact["recognition"]="accepted"):Fact{return {id,logicalId:id,version:1,subjectId:`subject-${id}`,key,value,state,recognition,refs:[{documentId:"doc",page:1,quote:`Synthetic quote ${id} `.repeat(20)}],validation:[]};}
 
+test("data-only legal review keeps JSON source provenance and scenario assumptions visible",()=>{
+  const data=createCase("Synthetic data-only review","synthetic-json-review","2026-10-29");
+  const source=fact("json-cost","household.recognized_living_cost","1550000","reported","unreviewed");
+  source.refs=[];source.structuredRefs=[{sourceRecordId:"hypothesis",jsonPointer:"/cost/value"}];
+  data.facts=[source];data.structuredTest={mode:"assumed_extracted_synthetic",sourceRecords:[{id:"hypothesis",recordType:"hypothetical_assumption",recordId:source.subjectId,data:{cost:{fieldId:source.key,presence:"present",value:source.value}}}]};
+  const packet=buildLegalReviewPacket({data,facts:data.facts,checks:[risk("living-cost",source.key)],rules:[],guidance:[],findings:[],transactionReview:scanTransactions(data)});
+  const row=packet.payload.providedFacts[0];
+  assert.equal(row.evidenceMode,"assumed_extracted_synthetic");assert.deepEqual(row.refs,[]);
+  assert.deepEqual(row.structuredRefs,[{sourceRecordId:"hypothesis",jsonPointer:"/cost/value",recordType:"hypothetical_assumption"}]);
+  assert.equal(row.recognition,"unreviewed");assert.equal(data.documents.length,0);
+});
+
 test("legal review packet bounds large advisory context and reports omitted coverage without mutating full case evidence",()=>{
   const data=createCase("Synthetic large review","synthetic-review","2026-10-27");
   data.facts=Array.from({length:1200},(_,i)=>fact(`fact-${i}`,i%3===0?"debt.classification":i%3===1?"asset.ownership":"income.kind",`synthetic-${i}`));

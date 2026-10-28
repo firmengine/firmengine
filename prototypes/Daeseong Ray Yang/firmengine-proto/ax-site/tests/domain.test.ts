@@ -151,7 +151,8 @@ test("동일파일 재업로드나 매핑 변경이 추출 캐시에 섞이지 �
 
 test("미확인 비용과 미확인 목록은 0이나 비해당으로 처리하지 않는다", () => {
   const data = fixture(); delete data.context.monthlyTrusteeFee;
-  assert.equal(calculateCase(data, rules).disposableIncomeWon, null);
+  assert.equal(calculateCase(data, rules).disposableIncomeWon, "4000000");
+  assert.equal(calculateCase(data, rules).ordinaryRepaymentBudgetWon, null);
   data.context.inventoryComplete.asset = "unknown";
   assert.equal(calculateCase(data, rules).liquidationValueWon, null);
 });
@@ -195,7 +196,7 @@ test("검증된 채무한도 이하 경계는 통과하고 초과는 사전요�
 
 test("필수 생성물 하나를 보관하면 전체 최종 검수가 다시 차단된다", () => {
   const data = fixture();
-  const kinds:ArtifactKind[]=[...REQUIRED_ARTIFACT_KINDS,"repayment_schedule"];
+  const kinds:ArtifactKind[]=[...REQUIRED_ARTIFACT_KINDS,"repayment_schedule","bank_accounts","leases"];
   data.exportManifest = newExportManifest(data.context.revision, kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" })),data,"final");
   assert.deepEqual(manifestIssues(data), []);
   const staff = reviewExport(data, "caseworker", "합성 담당자", manifestFingerprint(data.exportManifest));
@@ -209,7 +210,7 @@ test("필수 생성물 하나를 보관하면 전체 최종 검수가 다시 차
 
 test("draft and legacy manifests cannot be reviewed; final mode is fingerprinted and starts a fresh review cycle", () => {
   const data = fixture();
-  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
+  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule", "bank_accounts", "leases"];
   const files = kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" as const }));
   const draft = newExportManifest(data.context.revision, files, data, "draft");
   assert.throws(() => reviewExport({ ...data, exportManifest: draft }, "caseworker", "합성 담당자", manifestFingerprint(draft)), /최종 검토본/);
@@ -231,7 +232,7 @@ test("draft and legacy manifests cannot be reviewed; final mode is fingerprinted
 
 test("current review view hides stale records without deleting history and requires current caseworker before lawyer", () => {
   const data = fixture();
-  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
+  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule", "bank_accounts", "leases"];
   const files = kinds.map((kind) => ({ id: kind, kind, name: kind + ".docx", hash: "synthetic-hash-" + kind, status: "current" as const }));
   const manifest = newExportManifest(data.context.revision, files, data, "final");
   const staff = reviewExport({ ...data, exportManifest: manifest }, "caseworker", "합성 담당자", manifestFingerprint(manifest));

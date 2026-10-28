@@ -1,4 +1,4 @@
-import { createCaseReadIndex, currentFacts, factSourceLineageIssues, formatWon, moneyValue, requiredKindsForCase, validSourceRef } from "./domain.ts";
+import { createCaseReadIndex, currentFacts, describeStructuredSourceRefs, factHasValidStructuredRefs, factSourceLineageIssues, formatWon, moneyValue, requiredKindsForCase, validSourceRef } from "./domain.ts";
 import type { ArtifactKind, CaseData, CaseReadIndex, ExportManifest, Fact, RuleSet } from "./domain.ts";
 import { assessCase } from "./assessment.ts";
 import type { Assessment } from "./assessment.ts";
@@ -48,7 +48,7 @@ function factValue(data: CaseData, keys: string[],index?:CaseReadIndex): string 
 function refs(data: CaseData, factIds: string[],index?:CaseReadIndex): string {
   const active=index?.byId??new Map(currentFacts(data,index).map(f=>[f.id,f]));
   const facts = factIds.map(id=>active.get(id)).filter((f):f is Fact=>!!f);
-  return facts.flatMap((f) => f.refs.map((r) => `${index?.documentsById.get(r.documentId)?.name ?? data.documents.find((d) => d.id === r.documentId)?.name ?? r.documentId} ${r.page}쪽`)).filter((r, i, all) => all.indexOf(r) === i).join("; ") || "[현재 원문 근거 연결 필요]";
+  return facts.flatMap((f) => f.refs.map((r) => `${index?.documentsById.get(r.documentId)?.name ?? data.documents.find((d) => d.id === r.documentId)?.name ?? r.documentId} ${r.page}쪽`).concat(describeStructuredSourceRefs(data,f))).filter((r, i, all) => all.indexOf(r) === i).join("; ") || "[현재 원문 근거 연결 필요]";
 }
 function conditionalFormRoutes(data:CaseData,index?:CaseReadIndex):ExportTable {
   const routes=[
@@ -60,7 +60,7 @@ function conditionalFormRoutes(data:CaseData,index?:CaseReadIndex):ExportTable {
   ];
   const active=currentFacts(data,index);
   return {title:"조건부 공식 서식 라우팅 단서 (자동 선택 전)",headers:["공식 서식","원문 단서","라우팅 상태","남은 판단","근거"],rows:routes.map(route=>{
-    const matched=active.filter(f=>route.keys.some(key=>key.endsWith(".")?f.key.startsWith(key):f.key===key)&&f.state!=="disputed"&&f.recognition!=="rejected"&&f.refs.length>0&&f.refs.every(ref=>validSourceRef(data,ref,index))&&!f.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code)));
+    const matched=active.filter(f=>route.keys.some(key=>key.endsWith(".")?f.key.startsWith(key):f.key===key)&&f.state!=="disputed"&&f.recognition!=="rejected"&&(f.structuredRefs!==undefined?factHasValidStructuredRefs(data,f):f.refs.length>0&&f.refs.every(ref=>validSourceRef(data,ref,index)))&&!f.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code)));
     const meta=PUBLIC_FORM_METADATA[route.code as keyof typeof PUBLIC_FORM_METADATA];
     return [`${route.code} · ${meta?.title??"조건부 서식"}`,matched.map(f=>f.key+"="+readable(f.value)).join("; ")||"[관측 단서 없음] ",matched.length?"단서 관측 · 자동 선택하지 않음":"필요 조건·신청 의사 미확인",route.reason,matched.length?refs(data,matched.map(f=>f.id),index):"관련 원문 인용 확인 필요"];
   })};
@@ -86,11 +86,11 @@ function assetTypeDetails(data:CaseData,assets:ReturnType<typeof resolveAssetRow
     :readable(fact.value);
   const get=(assetId:string,keys:readonly string[],quoteGuard?:(fact:Fact)=>boolean)=>{
     const facts=assets.find(asset=>asset.id===assetId)?.factIds.map(id=>current.get(id)).filter((fact):fact is Fact=>!!fact)??[];
-    const found=facts.filter(fact=>keys.includes(fact.key)&&fact.state!=="disputed"&&fact.recognition!=="rejected"&&fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index))&&!fact.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code))&&!factSourceLineageIssues(data,[fact.id],index).some(issue=>issue!=="SOURCE_VERIFICATION_REQUIRED")&&(!quoteGuard||quoteGuard(fact)));
+    const found=facts.filter(fact=>keys.includes(fact.key)&&fact.state!=="disputed"&&fact.recognition!=="rejected"&&(fact.structuredRefs!==undefined?factHasValidStructuredRefs(data,fact):fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index)))&&!fact.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code))&&!factSourceLineageIssues(data,[fact.id],index).some(issue=>issue!=="SOURCE_VERIFICATION_REQUIRED")&&(!quoteGuard||quoteGuard(fact)));
     const values=[...new Set(found.map(format))];
     return values.length===1?values[0]:values.length>1?"[상충·선택 보류]":"[확인 필요]";
   };
-  const refsFor=(assetId:string)=>{const facts=assets.find(asset=>asset.id===assetId)?.factIds.map(id=>current.get(id)).filter((fact):fact is Fact=>!!fact)??[];return [...new Set(facts.flatMap(fact=>fact.refs.filter(ref=>validSourceRef(data,ref,index)).map(ref=>`${data.documents.find(doc=>doc.id===ref.documentId)?.name??ref.documentId} p.${ref.page}: ${ref.quote}`)))].join(" / ")||"[원문 확인 필요]";};
+  const refsFor=(assetId:string)=>{const facts=assets.find(asset=>asset.id===assetId)?.factIds.map(id=>current.get(id)).filter((fact):fact is Fact=>!!fact)??[];return [...new Set(facts.flatMap(fact=>fact.refs.filter(ref=>validSourceRef(data,ref,index)).map(ref=>`${data.documents.find(doc=>doc.id===ref.documentId)?.name??ref.documentId} p.${ref.page}: ${ref.quote}`).concat(describeStructuredSourceRefs(data,fact))))].join(" / ")||"[원문 확인 필요]";};
   const rows=assets.filter(asset=>asset.kind==="vehicle"||asset.kind==="insurance").map(asset=>[
     asset.id,asset.kind,asset.label||"[원문 자산명 확인 필요]",
     asset.kind==="vehicle"?get(asset.id,aliases.vehicle_class):"[해당 없음]",
@@ -225,7 +225,7 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
     textSheet("소득기간 집계", [["집계 ID","소득원","연결 관측 ID","기간 시작","기간 종료","증빙 개월","기간가중 월평균(원)","확인 사항"],...c.incomeGroups.map(g=>[g.id,g.label,g.sourceIds.join("; "),g.selectedPeriod?.start,g.selectedPeriod?.end,String(g.observedMonths),g.monthlyObservedAverageWon,g.reasons.join("; ")])]),
     textSheet("재산청산가치", [["ID", "재산", "평가액(원)", "지분(1/10000)", "담보상환(원)", "담보상환 범위", "비용(원)", "면제(원)", "청산기여(원)", "평가일", "평가근거"], ...resolvedAssets.map((a) => [a.id, a.label, a.grossValue?.amountWon, a.ownershipBps?.toString(), a.securedPayoff?.amountWon, a.securedPayoffScope??"unknown", a.disposalCosts?.amountWon, a.protectedValue?.amountWon, c.assetRows.find((r) => r.id === a.id)?.liquidationWon, a.asOf, a.valuationBasis])]),
     textSheet("산식대조", [["계산 ID", "제목", "산식", "입력", "결과(원)", "상태", "확인 사항"], ...c.traces.map((t) => [t.id, t.title, t.formula, t.inputs.map((i) => i.label + "=" + (i.value ?? "미확인")).join("; "), t.resultWon, t.status, t.reasons.join("; ")])]),
-    textSheet("사실과인정", [["사실 ID", "논리 ID", "버전", "대상", "피처", "원문값", "값", "원문 단위", "정규화 원화", "원문 검증", "법적 인정", "문서·페이지", "인용"], ...facts.map((f) => [f.id, f.logicalId, f.version.toString(), f.subjectId, f.key, f.rawValue ?? readable(f.numeric?.rawValue), readable(f.value), Object.hasOwn(f,"sourceUnit") ? f.sourceUnit : f.numeric?.unit, f.numeric?.amountWon, f.state, f.recognition, refs(data, [f.id],sourceIndex), f.refs.map((r) => r.quote).join(" / ")])]),
+    textSheet("사실과인정", [["사실 ID", "논리 ID", "버전", "대상", "피처", "원문값", "값", "원문 단위", "정규화 원화", "원문 검증", "법적 인정", "문서·페이지 또는 합성 레코드", "인용 또는 구조 포인터"], ...facts.map((f) => [f.id, f.logicalId, f.version.toString(), f.subjectId, f.key, f.rawValue ?? readable(f.numeric?.rawValue), readable(f.value), Object.hasOwn(f,"sourceUnit") ? f.sourceUnit : f.numeric?.unit, f.numeric?.amountWon, f.state, f.recognition, refs(data, [f.id],sourceIndex), f.refs.map((r) => r.quote).concat(describeStructuredSourceRefs(data,f)).join(" / ")])]),
     textSheet("보완검토", [["점검 ID", "항목", "구분", "결과", "내용", "다음 조치"], ...assessment.findings.map((f) => [f.id, f.title, f.category, f.outcome, f.detail, f.nextAction])]),
     textSheet("평가범위", [["항목", "내용"], ["결과", assessment.label], ["범위", assessment.scope], ["지표 안내", assessment.quality.note], ["현재 사실", String(facts.length)], ["원문 검증 완료", String(assessment.quality.sourceVerified)], ["인정 검토 완료", String(assessment.quality.legallyAccepted)]]),
   ];

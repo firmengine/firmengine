@@ -12,6 +12,31 @@ export const MAX_DOCUMENT_PARALLELISM = 4;
 export type DocumentTaskRole = "document_classifier" | "family_extractor" | "source_verifier" | "human_review_route";
 export type LogicalBoundaryStatus = "page_only_unverified" | "continuation_candidate_unverified" | "boundary_conflict_pending";
 
+export interface DownstreamDemand {
+  version: "downstream-demand-1";
+  targetDocumentTypes: string[];
+  featureIds: string[];
+  targetFields: { documentType: string; section: string; field: string; featureId: string; status: string }[];
+}
+
+/** Metadata only: selected output fields and current workflow status, never desired values or legal conclusions. */
+export function buildDownstreamDemand(input: {
+  familyId: string | null | undefined;
+  requests: { documentType: string; sourceFamilyId: string | null; fields: { key: string; status: string; targets: { section: string; field: string }[] }[] }[];
+}): DownstreamDemand | undefined {
+  if (!input.familyId) return undefined;
+  const matches = input.requests.filter(request => request.sourceFamilyId === input.familyId);
+  if (!matches.length) return undefined;
+  const targetFields = matches.flatMap(request => request.fields.flatMap(field => field.targets.map(target => ({ documentType: request.documentType, section: target.section, field: target.field, featureId: field.key, status: field.status }))));
+  const order=(a:string,b:string)=>a<b?-1:a>b?1:0;
+  return {
+    version: "downstream-demand-1",
+    targetDocumentTypes: [...new Set(matches.map(request => request.documentType))].sort(order),
+    featureIds: [...new Set(targetFields.map(target => target.featureId))].sort(order),
+    targetFields: targetFields.sort((a,b) => order(`${a.documentType}\u0000${a.section}\u0000${a.field}\u0000${a.featureId}`,`${b.documentType}\u0000${b.section}\u0000${b.field}\u0000${b.featureId}`)),
+  };
+}
+
 export interface DocumentTaskEnvelope {
   schemaVersion: "document-task-envelope-1";
   runId: string;
@@ -39,6 +64,7 @@ export interface DocumentTaskEnvelope {
   modelContextIndependence: "separate_task_context_same_model";
   verificationVisibility: "source_only" | "candidate_read_visible" | "not_applicable";
   legalApproval: "not_provided";
+  downstreamDemand?: DownstreamDemand;
 }
 
 type FamilyFieldContract = (typeof fieldContracts.families)[keyof typeof fieldContracts.families];
@@ -97,7 +123,7 @@ export function createDocumentTaskEnvelope(input: {
   documentId: string; sourceSha256: string; imageSha256: string; page: number; familyId: string | null;
   sentImageSha256?: string[];
   familyContractId?: string | null; canonicalFieldIds?: string[];
-  logicalBoundaryStatus?: LogicalBoundaryStatus; logicalDocumentId?: string | null; promptVersion: string; model: string;
+  logicalBoundaryStatus?: LogicalBoundaryStatus; logicalDocumentId?: string | null; promptVersion: string; model: string; downstreamDemand?: DownstreamDemand;
 }): DocumentTaskEnvelope {
   return {
     schemaVersion: "document-task-envelope-1", ...input,

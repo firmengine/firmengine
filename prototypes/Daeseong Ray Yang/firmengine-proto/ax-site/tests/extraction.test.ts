@@ -291,7 +291,7 @@ test("신원 추출은 명시된 person.role만 사실로 보존하고 신청인
   assert.ok(projected.facts?.some(fact=>fact.key==="person.role"&&fact.value==="applicant"));
   assert.ok(projected.facts?.some(fact=>fact.key==="person.name"&&fact.value==="Synthetic Applicant"));
   assert.match(DOC_FIELDS.identity_family,/원문에서 신청인 본인이라고 명시된 경우에만 person\.role=applicant/);
-  assert.match(EXTRACT_INSTRUCTIONS,/이름의 유일성/);
+  assert.match(EXTRACT_INSTRUCTIONS,/신청인을 추정하지 않으며/);
 });
 
 test("bank account와 lease 원문 namespace의 금액은 단위가 있을 때만 source fact로 보존하고 typed 자산을 만들지 않는다",()=>{

@@ -298,6 +298,12 @@ h1 { font-size: 28px; letter-spacing: -1.15px; font-weight: 600; line-height: 1.
 .object-tables > section + section { margin-top: 27px; }
 .object-table-title { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
 .object-table-title h3 { font-size: 12px; font-weight: 500; color: #68864b; }
+.plan-field-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #edf2e2; }
+.plan-field-row > div { display: grid; gap: 3px; }
+.plan-field-row small { color: #78816f; font-size: 11px; }
+.plan-calculation-detail { margin-top: 12px; padding: 12px; border-radius: 9px; background: #f7f8f3; }
+.plan-calculation-detail > summary { cursor: pointer; color: #526d37; font-size: 12px; font-weight: 600; }
+.plan-calculation-detail .calculation-detail { padding: 14px 0 0; }
 .object-tables .table-scroll { border: 1px solid #e4edda; border-radius: 4px; }
 .object-empty { font-size: 11px; color: #a3b28d; padding: 20px; background: #f9fbf5; border: 1px dashed #e3ecd8; border-radius: 4px; }
 .export-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 23px; }

@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { LAWGRAPH } from "../lib/lawgraph.ts";
+import { WORKFLOW_CALCULATIONS } from "../lib/execution-catalog.ts";
 
 test("all 46 scenarios have unique stable graph identities and every edge endpoint resolves",()=>{
   assert.equal(LAWGRAPH.count,46);
@@ -13,6 +14,17 @@ test("all 46 scenarios have unique stable graph identities and every edge endpoi
     assert.ok(s.nodeIds.every(id=>nodeIds.has(id)));
     const edgeIds=new Set(LAWGRAPH.edges.map(e=>e.id)); assert.ok(s.edgeIds.every(id=>edgeIds.has(id)));
   }
+});
+
+test("every workflow calculation connects through a real MCP tool and an agent node",()=>{
+  assert.equal(LAWGRAPH.calculationContracts.length,18);
+  for(const [workflow,calculations] of Object.entries(WORKFLOW_CALCULATIONS))for(const id of calculations){
+    assert.ok(LAWGRAPH.edges.some(e=>e.from===`workflow-rule:${workflow}`&&e.to===`calculation:${id}`&&e.type==="selects_calculation"));
+    assert.ok(LAWGRAPH.edges.some(e=>e.to===`calculation:${id}`&&e.from.startsWith("mcp-tool:")&&e.type==="executes_calculation"));
+  }
+  for(const node of LAWGRAPH.agentNodes)assert.ok(LAWGRAPH.edges.some(e=>e.from===`agent:${node.id}`&&e.to===`mcp-tool:${node.tool}`));
+  assert.ok(LAWGRAPH.edges.some(e=>e.from==="case-database"&&e.to==="agent:case_planner"&&e.type==="recheck_after_committed_change"));
+  assert.ok(LAWGRAPH.edges.some(e=>e.from==="agent:evidence_collector"&&e.to==="case-database"));
 });
 
 test("workflow docs compile into document → feature → target paths with field metadata",()=>{

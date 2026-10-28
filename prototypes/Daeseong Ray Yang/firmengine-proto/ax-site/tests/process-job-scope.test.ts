@@ -90,7 +90,7 @@ test("process route forwards bounded job scopes to next and status, rejecting em
     "../../../../../lib/json-response":{jsonResponse:(value:any,_request:any,init:any)=>Response.json(value,init)},
     "../../../../../lib/page-job-inspection":{inspectStoredPageJob:async()=>({}),reprojectCasePage:async()=>({})},
     "../../../../../lib/reprojection":{PAGE_PROJECTION_VERSION:"synthetic",ReprojectionError:class extends Error{} ,reprojectStoredPage:()=>({})},
-    "../../../../../lib/server-store":{actor:async()=>"synthetic",db:()=>({}),errorResponse:(error:any)=>Response.json({error:error.message},{status:error instanceof HttpError?error.status:500}),event:async()=>{},HttpError,jsonBody:async(request:Request)=>request.json(),now:()=>"2026-10-27",requireSameOrigin:()=>{},saveCase:async()=>{}},
+    "../../../../../lib/server-store":{actor:async()=>"synthetic",db:()=>({}),errorResponse:(error:any)=>Response.json({error:error.message},{status:error instanceof HttpError?error.status:500}),event:async()=>{},getCase:async()=>({context:{revision:1}}),HttpError,jsonBody:async(request:Request)=>request.json(),now:()=>"2026-10-27",requireSameOrigin:()=>{},saveCase:async()=>{}},
     "../../../../../lib/pipeline":pipeline,
     "../../../../../lib/document-agent-registry":await import("../lib/document-agent-registry.ts"),
     "../../../../../lib/process-job-scope":await import("../lib/process-job-scope.ts"),

@@ -1,10 +1,11 @@
-import { currentFacts, factSourceLineageIssues, validSourceRef } from "./domain.ts";
+import { currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, validSourceRef } from "./domain.ts";
 import type { CaseData, CaseReadIndex, Fact } from "./domain.ts";
 
 const unresolved="[확인 필요]";
 const conflicted="[상충: 원문 대조 필요]";
 function usableIdentityFact(data:CaseData,fact:Fact,index?:CaseReadIndex):boolean{
-  return typeof fact.value==="string"&&!!fact.value.trim()&&fact.state!=="disputed"&&fact.state!=="retracted"&&fact.recognition!=="rejected"&&fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index))&&!fact.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code))&&!factSourceLineageIssues(data,[fact.id],index).some(issue=>issue!=="SOURCE_VERIFICATION_REQUIRED");
+  const linked = fact.structuredRefs !== undefined ? factHasValidStructuredRefs(data,fact) : fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index));
+  return typeof fact.value==="string"&&!!fact.value.trim()&&fact.state!=="disputed"&&fact.state!=="retracted"&&fact.recognition!=="rejected"&&linked&&!fact.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code))&&!factSourceLineageIssues(data,[fact.id],index).some(issue=>issue!=="SOURCE_VERIFICATION_REQUIRED");
 }
 // Names, addresses and masked identifiers are text; never format them as money.
 function valueOf(fact:Fact):string{return typeof fact.value==="string"?fact.value:"";}

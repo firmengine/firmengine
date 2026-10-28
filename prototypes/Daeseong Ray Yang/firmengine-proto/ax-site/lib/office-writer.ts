@@ -9,6 +9,7 @@ import type { CourtDocument, ExportPackage, ExportTable } from "./exports.ts";
 import { renderPublicForm } from "./form-mapping.ts";
 import { buildFormBindings } from "./form-mapping.ts";
 import type { FormProvenance } from "./form-mapping.ts";
+import type { ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { buildExportProvenance,type ExportPageReceipt,type ExportProvenance } from "./export-provenance.ts";
 
 export type OfficeMode = "draft" | "final";
@@ -187,15 +188,17 @@ async function artifact(kind: OfficeArtifact["kind"], name: string, mime: string
   return { id: `${kind}-${hash.slice(0, 20)}`, kind, name, mime, bytes, hash, sha256: hash };
 }
 
-export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet; payload?: ExportPackage; mode?: OfficeMode; pageReceipts?:ExportPageReceipt[] }): Promise<OfficeArtifact[]> {
+export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet; payload?: ExportPackage; mode?: OfficeMode; pageReceipts?:ExportPageReceipt[]; preparedExecution?:ExecutionSnapshot }): Promise<OfficeArtifact[]> {
   const mode = input.mode ?? "draft";
   const sourceIndex=createCaseReadIndex(input.data);
-  const assessment = assessCase(input.data, input.rules,sourceIndex);
+  const assessment = input.preparedExecution?.assessment ?? assessCase(input.data, input.rules,sourceIndex);
+  if(input.preparedExecution&&(input.preparedExecution.caseId!==input.data.context.id||input.preparedExecution.caseRevision!==input.data.context.revision||!input.preparedExecution.formBindings||!input.preparedExecution.documentPayloads))throw new Error("내보낼 저장 계산·서식 결과가 현재 사건 버전과 일치하지 않습니다.");
   if (mode === "final" && !assessment.generationGate.canFinalize) throw new Error("미확정 자료·인정·법리 검토가 남아 최종 검토본 생성을 보류했습니다.");
   if (input.payload && (input.payload.caseId !== input.data.context.id || input.payload.caseRevision !== input.data.context.revision)) throw new Error("내보낼 사건 버전이 변경되었습니다.");
   // Rebuild from the canonical ledger so an old/mutated payload cannot override current values.
-  const payload = buildCourtPackage(input.data, input.rules, assessment,sourceIndex);
-  const formBindings=buildFormBindings(input.data,assessment.calculation,sourceIndex);
+  const rebuiltPayload = buildCourtPackage(input.data, input.rules, assessment,sourceIndex);
+  const payload:ExportPackage = input.preparedExecution ? {...rebuiltPayload,documents:input.preparedExecution.documentPayloads!} : rebuiltPayload;
+  const formBindings=input.preparedExecution?.formBindings ?? buildFormBindings(input.data,assessment.calculation,sourceIndex);
   const artifacts: OfficeArtifact[] = [];
   const rendered: RenderedOffice = { schemaVersion: "firmengine-office-v1", caseId: payload.caseId, caseRevision: payload.caseRevision, mode, generatedAt: payload.generatedAt, extractionMethod: "reopened-docx-xml-and-xlsx-cells", metadata:buildExportProvenance(input.data,input.pageReceipts), documents: [], fields: [], workbook: [], artifacts: [] };
   for (const item of payload.documents) {

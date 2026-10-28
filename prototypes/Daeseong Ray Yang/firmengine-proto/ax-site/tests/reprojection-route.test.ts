@@ -17,13 +17,15 @@ function loadRoute(overrides: Record<string, unknown> = {}) {
     "../../../../../lib/document-agent-registry": documentAgentRegistry,
     "../../../../../lib/case-response": { caseProgress: async (_id: string, result: { stage?: string }) => ({ caseId: "case-1", remaining: 0, stage: result.stage }) },
     "../../../../../lib/json-response": { jsonResponse: (body: unknown, _request: Request, init?: ResponseInit) => Response.json(body, init) },
-    "../../../../../lib/page-job-inspection": { inspectStoredPageJob: async (_id: string, jobId: string) => ({ stored: true, jobId }), reprojectCasePage: async () => ({}) },
+    "../../../../../lib/page-job-inspection": { inspectPreservedFamilyRead: async (_id: string, jobId: string) => ({ mode: "preserved_unverified_extraction", jobId }), inspectStoredPageJob: async (_id: string, jobId: string) => ({ stored: true, jobId }), reprojectCasePage: async () => ({}) },
     "../../../../../lib/classification-inspection": { inspectClassificationJob: async (_id: string, jobId: string) => ({ classification: true, jobId, modelCalls: 0, mutatesState: false }) },
     "../../../../../lib/reprojection": { PAGE_PROJECTION_VERSION: "synthetic-projection-v1", ReprojectionError: class extends Error { status = 409; }, reprojectStoredPage: () => ({}) },
     "../../../../../lib/server-store": { actor: async () => "synthetic-actor", db: () => ({ prepare: () => ({ bind: () => ({ run: async () => ({ meta: { changes: 1 } }) }) }) }), errorResponse: (error: unknown) => Response.json({ error: error instanceof Error ? error.message : "error" }, { status: 409 }), event: async () => {}, HttpError: MockHttpError, jsonBody: async (request: Request) => request.json(), now: () => "2026-10-27T00:00:00.000Z", requireSameOrigin: () => {}, saveCase: async () => {} },
     "../../../../../lib/pipeline": { processNext: async () => { throw new Error("paid process path must not run"); }, processNextBatch: async () => { throw new Error("invalid batch must not mutate state"); }, reconcileCase: async () => ({}), retryFailed: async () => ({}), retryPage: async () => ({}), reverifyPage:async()=>({}),reviewLegal: async () => ({}) },
     ...overrides,
   };
+  const store = mocks["../../../../../lib/server-store"] as Record<string, unknown>;
+  if (!Object.hasOwn(store, "getCase")) store.getCase = async () => ({});
   new Function("require", "module", "exports", output)((name: string) => {
     if (Object.hasOwn(mocks, name)) return mocks[name];
     throw new Error(`Unexpected dependency: ${name}`);
@@ -47,6 +49,13 @@ test("GET job inspection returns only the selected page inspection result", asyn
   const response = await route.GET(new Request("https://synthetic.invalid/api/cases/case-1/process?jobId=job-7"), { params: Promise.resolve({ id: "case-1" }) });
   assert.deepEqual(received, ["case-1", "job-7"]);
   assert.deepEqual(await response.json(), { jobId: "job-7", rawRead: "synthetic" });
+});
+
+test("GET preserved extraction view calls only the read-only failed-family diagnostic",async()=>{
+  const received:string[]=[];
+  const route=loadRoute({"../../../../../lib/page-job-inspection":{inspectPreservedFamilyRead:async(caseId:string,jobId:string)=>{received.push(caseId,jobId);return {mode:"preserved_unverified_extraction",jobId};},inspectStoredPageJob:async()=>{throw new Error("completed inspector must not run");},reprojectCasePage:async()=>{throw new Error("POST mutation path must not run");}}});
+  const response=await route.GET(new Request("https://synthetic.invalid/api/cases/case-1/process?view=preserved_extraction&jobId=job-8"),{params:Promise.resolve({id:"case-1"})});
+  assert.equal(response.status,200);assert.deepEqual(received,["case-1","job-8"]);assert.deepEqual(await response.json(),{mode:"preserved_unverified_extraction",jobId:"job-8"});
 });
 
 test("reproject action persists deterministic result without invoking processNext", async () => {

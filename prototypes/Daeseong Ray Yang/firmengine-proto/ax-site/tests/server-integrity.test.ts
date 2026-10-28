@@ -12,6 +12,9 @@ import * as processingReadiness from "../lib/processing-readiness.ts";
 import * as jsonResponses from "../lib/json-response.ts";
 import * as classificationRecovery from "../lib/classification-recovery.ts";
 import * as scanQuality from "../lib/scan-quality.ts";
+import * as executionCatalog from "../lib/execution-catalog.ts";
+import * as reactiveEvaluation from "../lib/reactive-evaluation.ts";
+import * as calculatorTools from "../lib/calculator-tools.ts";
 import type { CaseData, ExportManifest } from "../lib/domain.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -28,7 +31,7 @@ const digest=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex"
 const requiredKinds=[...domain.REQUIRED_ARTIFACT_KINDS,"repayment_schedule"] as domain.ArtifactKind[];
 const manifest=(revision:number,tag:string):ExportManifest=>({caseRevision:revision,mode:"final",requiredKinds,files:requiredKinds.map(kind=>({id:`${tag}-${kind}`,kind,name:`${kind}.docx`,hash:`synthetic-${tag}-${kind}`,status:"current"})),reviews:{caseworker:null,lawyer:null}});
 
-function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue[])=>void){
+function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue[])=>void,derivedHooks:Record<string,unknown>=reactiveEvaluation as unknown as Record<string,unknown>){
   const sqlite=new DatabaseSync(":memory:");
   sqlite.exec(readFileSync(root+"drizzle/0000_chunky_cardiac.sql","utf8"));
   const data=domain.createCase("Synthetic server integrity",crypto.randomUUID(),"2026-10-27");
@@ -42,6 +45,7 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
       const bytes=value instanceof ReadableStream?new Uint8Array(await new Response(value).arrayBuffer()):new Uint8Array(value instanceof ArrayBuffer?value:value);
       objects.set(key,{bytes,mime:options?.httpMetadata?.contentType||"application/octet-stream"});return {};
     },
+    async get(key:string){const item=objects.get(key);return item?{arrayBuffer:async()=>item.bytes.buffer.slice(item.bytes.byteOffset,item.bytes.byteOffset+item.bytes.byteLength)}:null;},
     async delete(key:string){objects.delete(key);},
   };
   const db={prepare(sql:string){return {bind(...params:SQLInputValue[]){return {
@@ -50,7 +54,7 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
     async all(){return {results:sqlite.prepare(sql).all(...params)};},
   };}};},async batch(commands:Array<{run():Promise<unknown>}>){const results=[];for(const command of commands)results.push(await command.run());return results;}};
   let authenticatedUser:{userId:string}|null={userId:"synthetic-owner"};
-  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./processing-readiness":processingReadiness});
+  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":derivedHooks,"./calculator-tools.ts":calculatorTools});
   return {sqlite,data,objects,store,setAuthenticatedUser:(user:{userId:string}|null)=>{authenticatedUser=user;}};
 }
 
@@ -74,11 +78,87 @@ test("불러온 snapshot 없이 복제한 데이터는 CAS 저장을 허가하�
   h.sqlite.close();
 });
 
+test("successful save writes a current revision-and-token bound calculation; stale loaded objects cannot reuse it",async()=>{
+  const h=setup(),before=await h.store.getCase(h.data.context.id),next=structuredClone(before);
+  next.context.revision++;
+  await h.store.saveCase(next,before.context.revision,before);
+  const currentRow=h.sqlite.prepare("SELECT storage_token AS token,revision FROM cases WHERE id=?").get(next.context.id) as {token:string;revision:number};
+  const currentEval=h.sqlite.prepare("SELECT payload FROM analyses WHERE case_id=? AND type='derived_evaluation' AND revision=? ORDER BY at DESC LIMIT 1").get(next.context.id,next.context.revision) as {payload:string};
+  const envelope=JSON.parse(currentEval.payload);
+  assert.equal(envelope.status,"complete");assert.equal(envelope.revision,currentRow.revision);assert.equal(envelope.storageToken,currentRow.token);
+  if(envelope.executionPointer){
+    h.objects.delete(envelope.executionPointer.key);
+    const repaired=await (h.store as any).caseExtras(await h.store.getCase(next.context.id));
+    assert.equal(repaired.derivedEvaluation.status,"complete","missing current R2 output is rebuilt from a durable pending marker");
+    assert.notEqual(repaired.derivedEvaluation.executionPointer.key,envelope.executionPointer.key,"recovery writes a unique immutable pointer");
+  }
+  const firstRead=await (h.store as any).caseExtras(await h.store.getCase(next.context.id));assert.equal(firstRead.derivedEvaluation.execution.caseRevision,next.context.revision);
+  const stale=await (h.store as any).caseExtras(before);
+  assert.notEqual(stale.derivedEvaluation?.status,"complete","an old in-memory object cannot fetch the current or its stale prior-token result");
+  const fresh=await h.store.getCase(next.context.id),current=await (h.store as any).caseExtras(fresh);
+  assert.equal(current.derivedEvaluation.status,"complete");assert.equal(current.derivedEvaluation.storageToken,currentRow.token);
+  h.sqlite.close();
+});
+
+test("a failed deterministic refresh leaves durable pending state and a later read retries it",async()=>{
+  let shouldFail=true;const derivedHooks={...reactiveEvaluation,buildDerivedExecution:(data:CaseData)=>{if(shouldFail)throw new Error("synthetic evaluator failure");return reactiveEvaluation.buildDerivedExecution(data);}};
+  const h=setup(undefined,derivedHooks),before=await h.store.getCase(h.data.context.id),next=structuredClone(before);next.context.revision++;
+  await h.store.saveCase(next,before.context.revision,before);
+  let payload=JSON.parse((h.sqlite.prepare("SELECT payload FROM analyses WHERE case_id=? AND type='derived_evaluation' AND revision=? ORDER BY at DESC LIMIT 1").get(next.context.id,next.context.revision) as {payload:string}).payload);
+  assert.equal(payload.status,"pending","a successful case save cannot be mistaken for a completed calculation when evaluation fails");
+  shouldFail=false;const refreshed=await (h.store as any).caseExtras(await h.store.getCase(next.context.id));
+  assert.equal(refreshed.derivedEvaluation.status,"complete");assert.equal(refreshed.derivedEvaluation.execution.caseRevision,next.context.revision);
+  payload=JSON.parse((h.sqlite.prepare("SELECT payload FROM analyses WHERE case_id=? AND type='derived_evaluation' AND revision=? ORDER BY at DESC LIMIT 1").get(next.context.id,next.context.revision) as {payload:string}).payload);assert.equal(payload.status,"complete");
+  h.sqlite.close();
+});
+
+test("same-revision authoritative writes invalidate the derived cache through a new storage token and input digest",async()=>{
+  const h=setup(),snapshot=await h.store.getCase(h.data.context.id);
+  await h.store.saveCase(snapshot,snapshot.context.revision,snapshot);
+  const first=h.sqlite.prepare("SELECT storage_token AS token FROM cases WHERE id=?").get(snapshot.context.id) as {token:string};
+  const firstEnvelope=JSON.parse((h.sqlite.prepare("SELECT payload FROM analyses WHERE case_id=? AND type='derived_evaluation' AND revision=? ORDER BY at DESC LIMIT 1").get(snapshot.context.id,snapshot.context.revision) as {payload:string}).payload);
+  const sameRevision=await h.store.getCase(snapshot.context.id);sameRevision.context.caseName="Updated synthetic case name";
+  await h.store.saveCase(sameRevision,sameRevision.context.revision,sameRevision);
+  const latest=h.sqlite.prepare("SELECT storage_token AS token FROM cases WHERE id=?").get(snapshot.context.id) as {token:string};
+  const latestEnvelope=JSON.parse((h.sqlite.prepare("SELECT payload FROM analyses WHERE case_id=? AND type='derived_evaluation' AND revision=? AND json_extract(payload,'$.storageToken')=? ORDER BY at DESC LIMIT 1").get(snapshot.context.id,sameRevision.context.revision,latest.token) as {payload:string}).payload);
+  assert.notEqual(latest.token,first.token);assert.notEqual(latestEnvelope.inputSha256,firstEnvelope.inputSha256);assert.equal(latestEnvelope.status,"complete");
+  h.sqlite.close();
+});
+
+test("persisted derived snapshot keeps calculator and court-form values synchronized across income and fee edits",async()=>{
+  const h=setup(),data=await h.store.getCase(h.data.context.id),amount="3500000",recordId="synthetic-income-row";
+  const money=(value:string)=>({currency:"KRW",minorUnits:value,unit:"KRW"} as const);
+  const normalized=(value:string)=>domain.normalizeMoney(value,"KRW","KRW");
+  data.structuredTest={mode:"assumed_extracted_synthetic",scenarioId:"synthetic-derived-form",sourceRecords:[{id:"source-income-net",recordType:"income",recordId,data:{net:{fieldId:"income.net",presence:"present",value:money(amount),rawValue:amount,sourceUnit:"KRW",currency:"KRW"}}}]};
+  data.facts=[{id:"fact-income-net",logicalId:"fact-income-net",version:1,subjectId:recordId,key:"income.net",value:money(amount),numeric:normalized(amount),sourceUnit:"KRW",state:"reported",recognition:"unreviewed",refs:[],structuredRefs:[{sourceRecordId:"source-income-net",jsonPointer:"/net/value"}],validation:[]}];
+  data.incomes=[{id:recordId,kind:"wage",label:"Synthetic wage",net:normalized(amount),amountBasis:"monthly",periodStart:"2026-09-01",periodEnd:"2026-09-30",recurring:"yes",payerIdentityId:"synthetic-payer",recognition:"unreviewed",factIds:["fact-income-net"]}];
+  data.context.inventoryComplete.income="yes";data.context.monthlyTrusteeFee=normalized("50000");data.context.revision++;
+  await h.store.saveCase(data,data.context.revision-1,data);
+  const first=await (h.store as any).caseExtras(await h.store.getCase(data.context.id)),firstExecution=first.derivedEvaluation.execution;
+  assert.equal(firstExecution.assessment.calculation.monthlyIncomeWon,amount);assert.equal(firstExecution.formBindings.scalars.monthly_income,"3,500,000");assert.equal(firstExecution.formBindings.scalars.monthly_trustee_fee,"50,000");
+  const current=await h.store.getCase(data.context.id),nextAmount="4200000",row=current.incomes[0];row.net=normalized(nextAmount);current.facts[0].value=money(nextAmount);current.facts[0].numeric=normalized(nextAmount);const sourceData=current.structuredTest!.sourceRecords[0].data as Record<string,any>;sourceData.net.value=money(nextAmount);sourceData.net.rawValue=nextAmount;current.context.monthlyTrusteeFee=normalized("60000");current.context.revision++;
+  await h.store.saveCase(current,current.context.revision-1,current);
+  const refreshed=await (h.store as any).caseExtras(await h.store.getCase(current.context.id)),execution=refreshed.derivedEvaluation.execution;
+  assert.equal(execution.assessment.calculation.monthlyIncomeWon,nextAmount);assert.equal(execution.formBindings.scalars.monthly_income,"4,200,000");assert.equal(execution.formBindings.scalars.monthly_trustee_fee,"60,000");
+  h.sqlite.close();
+});
+
+test("legal advisory analysis is current only when its calculator receipt matches the canonical case snapshot",async()=>{
+  const h=setup(),data=await h.store.getCase(h.data.context.id),currentHash=await calculatorTools.snapshotSha256(data);
+  const insert=h.sqlite.prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)");
+  insert.run("advisory-stale",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:"0".repeat(64)}}),"2026-10-29T00:00:02Z");
+  insert.run("advisory-current",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash}}),"2026-10-29T00:00:03Z");
+  insert.run("advisory-legacy",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[]}),"2026-10-29T00:00:04Z");
+  const extras=await (h.store as any).caseExtras(data);
+  assert.deepEqual(extras.analyses.filter((row:any)=>row.type==="legal_advisory").map((row:any)=>row.id),["advisory-current"]);
+  h.sqlite.close();
+});
+
 test("검수 API는 지문 누락과 재생성 전의 지문을 거부하고 현재 지문만 기록한다",async()=>{
   const h=setup(),prior=await h.store.getCase(h.data.context.id),oldFingerprint=domain.manifestFingerprint(prior.exportManifest!);
   prior.exportManifest=manifest(prior.context.revision,"new");await h.store.saveCase(prior,prior.context.revision,prior);
   const route=load<CaseRoute>("app/api/cases/[id]/route.ts",{
-    "../../../../lib/domain":domain,"../../../../lib/assessment":{assessCase:()=>({generationGate:{canFinalize:true}})},"../../../../lib/legal-rules":{CURRENT_RULESET:{}},"../../../../lib/case-response":{caseResponse:async(c:CaseData)=>({case:c})},"../../../../lib/server-store":h.store,"../../../../lib/object-editor":{},"../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})},"../../../../lib/context-validation":{},"../../../../lib/json-response":jsonResponses,"../../../../lib/history-integrity-restore":{parseRestoreInput:()=>{throw new Error("history restore helper must not run in review API test");},buildRestorePlan:()=>{throw new Error("history restore helper must not run in review API test");}},
+    "../../../../lib/reference-case-import":{prepareReferenceCaseImport:async()=>{throw new Error("unexpected reference import");},ReferenceImportError:class extends Error{status=400;}},"../../../../lib/domain":domain,"../../../../lib/assessment":{assessCase:()=>({generationGate:{canFinalize:true}})},"../../../../lib/legal-rules":{CURRENT_RULESET:{}},"../../../../lib/case-response":{caseResponse:async(c:CaseData)=>({case:c})},"../../../../lib/server-store":h.store,"../../../../lib/object-editor":{},"../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})},"../../../../lib/context-validation":{},"../../../../lib/json-response":jsonResponses,"../../../../lib/history-integrity-restore":{parseRestoreInput:()=>{throw new Error("history restore helper must not run in review API test");},buildRestorePlan:()=>{throw new Error("history restore helper must not run in review API test");}},
   });
   const request=(fingerprint?:string)=>new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_export",role:"caseworker",revision:prior.context.revision,...(fingerprint===undefined?{}:{fingerprint})})});
   const context={params:Promise.resolve({id:prior.context.id})};
@@ -104,7 +184,8 @@ test("같은 내용의 반복 출력과 다른 사건 출력은 독립된 파일
   const h=setup(),second=domain.createCase("Another synthetic case",crypto.randomUUID(),"2026-10-27");
   h.sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at,storage_token) VALUES (?,?,?,?,?,?,?,?)").run(second.context.id,second.context.caseName,"synthetic-owner",second.context.revision,JSON.stringify(second),"synthetic","synthetic",crypto.randomUUID());
   const route=load<{POST(request:Request,context:{params:Promise<{id:string}>}):Promise<Response>}>("app/api/cases/[id]/export/route.ts",{
-    "../../../../../lib/assessment":{assessCase:()=>({generationGate:{canGenerateDraft:true,canFinalize:true}})},
+    "../../../../../lib/domain":domain,
+    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required"}})},
     "../../../../../lib/exports":{newExportManifest:(revision:number,files:ExportManifest["files"])=>({...manifest(revision,"test"),files})},
     "../../../../../lib/office-writer":{writeOfficePackage:async()=>[{id:"application-identical-content",kind:"application",name:"synthetic.docx",mime:"application/octet-stream",hash:"same-content-hash",bytes:new TextEncoder().encode("Identical synthetic content")}]},
     "../../../../../lib/legal-rules":{CURRENT_RULESET:{}},
@@ -121,7 +202,7 @@ test("같은 내용의 반복 출력과 다른 사건 출력은 독립된 파일
   const other=(await h.store.getCase(second.context.id)).exportManifest!.files[0].id;
   assert.equal(new Set([first,repeated,other]).size,3);
   assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM artifacts").get()!.n,3);
-  assert.equal(h.objects.size,3);
+  assert.equal([...h.objects.keys()].filter(key=>key.includes("/artifacts/")).length,3);
   assert.equal((await h.store.getCase(h.data.context.id)).exportManifest!.reviews.caseworker,null);
   h.sqlite.close();
 });
@@ -198,7 +279,7 @@ test("같은 바이트의 서로 다른 재판독 슬롯은 별도 SQLite 행과
   assert.equal(first.status,200);assert.equal(second.status,200);
   const rows=h.sqlite.prepare("SELECT variant,variant_hash,object_key,id FROM page_derivatives ORDER BY variant").all() as {variant:string;variant_hash:string;object_key:string;id:string}[];
   assert.equal(rows.length,2);assert.notEqual(rows[0].variant,rows[1].variant);assert.equal(rows[0].variant_hash,rows[1].variant_hash);assert.notEqual(rows[0].id,rows[1].id);assert.notEqual(rows[0].object_key,rows[1].object_key);
-  assert.equal(h.objects.size,3);assert.deepEqual(h.objects.get(rows[0].object_key)!.bytes,image);assert.deepEqual(h.objects.get(rows[1].object_key)!.bytes,image);
+  assert.ok(h.objects.has(rows[0].object_key));assert.ok(h.objects.has(rows[1].object_key));assert.deepEqual(h.objects.get(rows[0].object_key)!.bytes,image);assert.deepEqual(h.objects.get(rows[1].object_key)!.bytes,image);
   h.sqlite.close();
 });
 

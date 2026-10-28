@@ -2,6 +2,9 @@ import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
 import { AI_MODEL, type CaseData } from "./domain";
 import { inspectProcessingReadiness,type StoredDocumentState,type StoredPageState } from "./processing-readiness";
+import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
+import { snapshotSha256 } from "./calculator-tools.ts";
+import { buildDerivedExecution, completeDerivedEvaluation, DERIVED_EVALUATION_INLINE_LIMIT, isDerivedEvaluation, pendingDerivedEvaluation, type DerivedEvaluationEnvelope, type ExecutionSnapshot } from "./reactive-evaluation.ts";
 
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 export const now=()=>new Date().toISOString();
@@ -57,10 +60,85 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData){
   if(!snapshot||snapshot.id!==data.context.id||snapshot.revision!==expected||!Number.isSafeInteger(data.context.revision)||data.context.revision<expected)throw new HttpError(409,"원래 불러온 사건 버전이 필요합니다. 최신 내용을 불러온 뒤 다시 시도하세요.");
   const token=crypto.randomUUID(),serialized=JSON.stringify(data),bytes=new TextEncoder().encode(serialized);let payload=serialized,createdKey:string|undefined;
   if(bytes.byteLength>=CASE_INLINE_LIMIT){const uuid=crypto.randomUUID();createdKey=`cases/${data.context.id}/state/${uuid}.json`;await bucket().put(createdKey,bytes,{httpMetadata:{contentType:"application/json"}});const pointer:CasePointer={_storage:"r2-case-v1",caseId:data.context.id,revision:data.context.revision,key:createdKey,sha256:await sha256(bytes),summary:caseSummary(data)};payload=JSON.stringify(pointer);}
-  let result;try{result=await db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ? WHERE id = ? AND revision = ? AND storage_token = ?")
-    .bind(payload,data.context.revision,data.context.caseName,now(),token,data.context.id,expected,snapshot.token).run();}catch(error){if(createdKey)await bucket().delete(createdKey);throw error;}
+  const at=now(),evaluationId=crypto.randomUUID(),inputSha256=await sha256(new TextEncoder().encode(serialized));
+  const pending=pendingDerivedEvaluation({revision:data.context.revision,storageToken:token,inputSha256,generatedAt:at});
+  let result;try{
+    const commands=await db().batch([
+      db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ? WHERE id = ? AND revision = ? AND storage_token = ?")
+        .bind(payload,data.context.revision,data.context.caseName,at,token,data.context.id,expected,snapshot.token),
+      db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)")
+        .bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
+    ]);
+    result=commands[0];
+  }catch(error){if(createdKey)await bucket().delete(createdKey);throw error;}
   if(!result.meta.changes){if(createdKey)await bucket().delete(createdKey);throw new HttpError(409,"사건이 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");}
   caseSnapshots.delete(previous);caseSnapshots.set(data,{id:data.context.id,revision:data.context.revision,token});
+  await finishDerivedEvaluation(data,evaluationId,pending);
+}
+
+async function finishDerivedEvaluation(data:CaseData,id:string,pending:DerivedEvaluationEnvelope){
+  let key:string|undefined;
+  try{
+    const execution=buildDerivedExecution(data),bytes=new TextEncoder().encode(JSON.stringify(execution)),evaluationSha256=await sha256(bytes);
+    let completed:DerivedEvaluationEnvelope;
+    if(bytes.byteLength<=DERIVED_EVALUATION_INLINE_LIMIT)completed=completeDerivedEvaluation(pending,execution,evaluationSha256);
+    else{
+      key=`cases/${data.context.id}/evaluations/${pending.revision}-${pending.storageToken}-${crypto.randomUUID()}.json`;
+      await bucket().put(key,bytes,{httpMetadata:{contentType:"application/json"}});
+      completed={...pending,status:"complete",evaluationSha256,executionPointer:{key,sha256:evaluationSha256}};
+    }
+    const result=await db().prepare("UPDATE analyses SET payload = ? WHERE id = ? AND case_id = ? AND revision = ? AND type = 'derived_evaluation' AND json_extract(payload,'$.status') = 'pending' AND json_extract(payload,'$.storageToken') = ? AND json_extract(payload,'$.inputSha256') = ? AND EXISTS (SELECT 1 FROM cases c WHERE c.id = analyses.case_id AND c.revision = analyses.revision AND c.storage_token = ?)")
+      .bind(JSON.stringify(completed),id,data.context.id,data.context.revision,pending.storageToken,pending.inputSha256,pending.storageToken).run();
+    if(!result.meta.changes&&key)await bucket().delete(key);
+  }catch{
+    // The CAS batch durably inserted a pending marker. Reads can retry this exact
+    // token/input pair; a prior revision's successful evaluation is never reused.
+    if(key)await bucket().delete(key).catch(()=>{});
+  }
+}
+
+type DerivedEvaluationRead={status:"pending";revision:number;inputSha256:string;storageToken?:string}|(DerivedEvaluationEnvelope&{status:"complete";execution:ExecutionSnapshot});
+async function resetAndRetryDerivedEvaluation(data:CaseData,id:string,identity:{id:string;revision:number;token:string},inputSha256:string):Promise<DerivedEvaluationRead|undefined>{
+  const pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now()});
+  const reset=await db().prepare("UPDATE analyses SET payload = ? WHERE id = ? AND case_id = ? AND revision = ? AND type = 'derived_evaluation' AND json_extract(payload,'$.storageToken') = ? AND json_extract(payload,'$.inputSha256') = ? AND EXISTS (SELECT 1 FROM cases c WHERE c.id = analyses.case_id AND c.revision = analyses.revision AND c.storage_token = ?)")
+    .bind(JSON.stringify(pending),id,data.context.id,identity.revision,identity.token,inputSha256,identity.token).run();
+  if(!reset.meta.changes)return {status:"pending" as const,revision:identity.revision,inputSha256,storageToken:identity.token};
+  await finishDerivedEvaluation(data,id,pending);
+  return readDerivedEvaluation(data,identity,inputSha256,false);
+}
+
+async function readDerivedEvaluation(data:CaseData,identity:{id:string;revision:number;token:string}|undefined,inputSha256:string,retryPending=true):Promise<DerivedEvaluationRead|undefined>{
+  if(!identity||identity.id!==data.context.id||identity.revision!==data.context.revision)return undefined;
+  const rows=(await db().prepare("SELECT a.id,a.payload FROM analyses a JOIN cases c ON c.id = a.case_id AND c.revision = a.revision WHERE a.case_id = ? AND a.revision = ? AND a.type = 'derived_evaluation' AND c.storage_token = ? AND json_valid(a.payload) = 1 AND json_extract(a.payload,'$.storageToken') = ? AND json_extract(a.payload,'$.inputSha256') = ? ORDER BY a.at DESC LIMIT 1")
+    .bind(data.context.id,data.context.revision,identity.token,identity.token,inputSha256).all<{id:string;payload:string}>()).results;
+  if(!rows.length){
+    const id=crypto.randomUUID(),pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now()});
+    const inserted=await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)")
+      .bind(id,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),now(),data.context.id,identity.revision,identity.token).run();
+    if(!inserted.meta.changes)return {status:"pending" as const,revision:identity.revision,inputSha256};
+    await finishDerivedEvaluation(data,id,pending);
+    return readDerivedEvaluation(data,identity,inputSha256,false);
+  }
+  let envelope:unknown;try{envelope=JSON.parse(rows[0].payload);}catch{return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
+  if(!isDerivedEvaluation(envelope)||envelope.storageToken!==identity.token||envelope.inputSha256!==inputSha256||envelope.revision!==identity.revision||envelope.engineVersion!==EXECUTION_CONTRACT_VERSION)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+  if(envelope.status==="pending"){
+    if(!retryPending)return {status:"pending" as const,revision:identity.revision,inputSha256,storageToken:identity.token};
+    await finishDerivedEvaluation(data,rows[0].id,envelope);
+    return readDerivedEvaluation(data,identity,inputSha256,false);
+  }
+  if(envelope.execution){
+    const bytes=new TextEncoder().encode(JSON.stringify(envelope.execution));
+    if(!envelope.evaluationSha256||await sha256(bytes)!==envelope.evaluationSha256)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    return {...envelope,status:"complete" as const,execution:envelope.execution};
+  }
+  if(envelope.executionPointer){
+    const prefix=`cases/${data.context.id}/evaluations/${identity.revision}-${identity.token}-`;
+    if(!envelope.executionPointer.key.startsWith(prefix)||!/^[a-f0-9-]{36}\.json$/.test(envelope.executionPointer.key.slice(prefix.length)))return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    const object=await bucket().get(envelope.executionPointer.key);if(!object)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    const bytes=new Uint8Array(await object.arrayBuffer()),hash=await sha256(bytes);if(hash!==envelope.executionPointer.sha256||hash!==envelope.evaluationSha256)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    try{return {...envelope,status:"complete" as const,execution:JSON.parse(new TextDecoder().decode(bytes))};}catch{return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
+  }
+  return {status:"pending" as const,revision:identity.revision,inputSha256};
 }
 export async function event(caseId:string,type:string,detail:unknown){
   await db().prepare("INSERT INTO events (id,case_id,actor,type,detail,at) VALUES (?,?,?,?,?,?)")
@@ -85,15 +163,18 @@ export async function requireUploadedSource(data:CaseData,source:{documentId?:st
 }
 export async function caseExtras(data:CaseData){
   const id=data.context.id;
+  const identity=caseSnapshots.get(data),inputSha256=await sha256(new TextEncoder().encode(JSON.stringify(data))),calculatorInputSha256=await snapshotSha256(data);
   const currentFiles=new Set((data.exportManifest?.files??[]).filter(f=>f.status==="current").map(f=>f.id));
-  const [j,a,e,processingReadiness,usage]=await Promise.all([
+  const [j,a,e,processingReadiness,usage,derivedEvaluation]=await Promise.all([
     jobs(id),db().prepare("SELECT id,revision,name,kind,hash,mime FROM artifacts WHERE case_id = ? ORDER BY created_at DESC").bind(id).all(),
-    db().prepare("SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? ORDER BY at DESC LIMIT 10").bind(id,data.context.revision).all<{id:string,revision:number,type:string,payload:string,at:string}>(),
+    db().prepare("SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? AND type <> 'derived_evaluation' ORDER BY at DESC LIMIT 10").bind(id,data.context.revision).all<{id:string,revision:number,type:string,payload:string,at:string}>(),
     getProcessingReadiness(data),
     db().prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(CAST(json_extract(detail,'$.inputTokens') AS INTEGER)),0) AS inputTokens,COALESCE(SUM(CAST(json_extract(detail,'$.outputTokens') AS INTEGER)),0) AS outputTokens,MIN(at) AS startedAt,MAX(at) AS completedAt FROM events WHERE case_id = ? AND type = 'model.call' AND json_extract(detail,'$.model') = ?").bind(id,AI_MODEL).first<{attempts:number,inputTokens:number,outputTokens:number,startedAt:string|null,completedAt:string|null}>(),
+    readDerivedEvaluation(data,identity,inputSha256),
   ]);
   const execution:CaseData["execution"]=usage&&usage.attempts>0?{model:AI_MODEL,attempts:usage.attempts,inputTokens:usage.inputTokens,outputTokens:usage.outputTokens,...(usage.startedAt?{startedAt:usage.startedAt}:{}),...(usage.completedAt?{completedAt:usage.completedAt}:{})}:data.execution;
-  return {jobs:j,processingReadiness,execution,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses:e.results.map(x=>({...x,payload:JSON.parse(x.payload)}))};
+  const analyses=e.results.flatMap(x=>{try{const payload=JSON.parse(x.payload);if(x.type==="legal_advisory"&&payload?.calculatorExecution?.inputSha256!==calculatorInputSha256)return [];return [{...x,payload}];}catch{return [];}});
+  return {jobs:j,processingReadiness,execution,derivedEvaluation,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
 }
 export function errorResponse(error:unknown){
   const status=error instanceof HttpError?error.status:500;

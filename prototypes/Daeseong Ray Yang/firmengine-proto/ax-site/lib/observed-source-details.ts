@@ -1,4 +1,4 @@
-import { currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
+import { currentFacts, describeStructuredSourceRefs, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
 import type { CaseData, CaseReadIndex, Fact } from "./domain.ts";
 
 export interface ObservedDetailTable { title: string; headers: string[]; rows: string[][] }
@@ -14,8 +14,9 @@ const value = (data: CaseData, fact: Fact) => {
 };
 
 function usable(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
+  const linked = fact.structuredRefs !== undefined ? factHasValidStructuredRefs(data, fact) : fact.refs.length > 0 && fact.refs.every(ref => validSourceRef(data, ref,index));
   return fact.state !== "disputed" && fact.recognition !== "rejected" &&
-    fact.refs.length > 0 && fact.refs.every(ref => validSourceRef(data, ref,index)) &&
+    linked &&
     !fact.validation.some(item => item.severity === "error" ||
       ["UNCERTAIN_READING", "NORMALIZATION_REVIEW"].includes(item.code)) &&
     !factSourceLineageIssues(data, [fact.id],index).some(issue => issue !== "SOURCE_VERIFICATION_REQUIRED");
@@ -36,7 +37,7 @@ export function observedSourceDetails(data: CaseData, kinds: string[],index?:Cas
   }
   const rows = selected.map(fact => {
     const refs = fact.refs.filter(ref => validSourceRef(data, ref,index))
-      .map(ref => `${data.documents.find(doc => doc.id === ref.documentId)?.name ?? ref.documentId}, p.${ref.page}: “${ref.quote}”`).join(" / ");
+      .map(ref => `${data.documents.find(doc => doc.id === ref.documentId)?.name ?? ref.documentId}, p.${ref.page}: “${ref.quote}”`).concat(describeStructuredSourceRefs(data,fact)).join(" / ");
     const conflictKey = fact.key === "statement.text" && fact.logicalId.includes(":paragraph:")
       ? fact.subjectId + "\0" + fact.logicalId
       : fact.subjectId + "\0" + fact.key;

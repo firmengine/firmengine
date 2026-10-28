@@ -100,6 +100,7 @@ test("held-out/admin jobs, source hash mismatch, missing uploads and active proc
   const admin = fixture("administrative"); assert.throws(() => admin.prepare(), /분리 페이지/);
   const mismatch = fixture(); assert.throws(() => mismatch.prepare({ job: { ...mismatch.job, cacheKey: JSON.stringify(["doc-1", "f".repeat(64), [1], "income", "p", "gpt-6-luna", "rules"]) } }), /출처/);
   const pending = fixture(); assert.throws(() => pending.prepare({ job: { ...pending.job, status: "pending", stage: "extract" } }), /판독이 완료/);
+  const failedHold = fixture(); assert.throws(() => failedHold.prepare({ job: { ...failedHold.job, status: "review_required", stage: "failed" } }), /판독이 완료/);
   const missingOriginal = fixture(); assert.throws(() => missingOriginal.prepare({ originalReady: false }), /원본 파일/);
   const missingImage = fixture(); assert.throws(() => missingImage.prepare({ imageReady: false }), /원본 파일/);
   const busy = fixture(); assert.throws(() => busy.prepare({ activeProcessingJobs: 1 }), /다른 페이지 처리/);

@@ -1,18 +1,19 @@
-import { assessCase } from "./assessment";
 import { CURRENT_RULESET, LEGAL_CATALOG, RISK_CATALOG } from "./legal-rules";
 import { caseExtras, getCase, jobs, persistedRescuePlans } from "./server-store";
 import type { CaseData } from "./domain";
-import { evaluateWorkflow } from "./workflow-rules";
-import { scanTransactions } from "./transaction-review";
 import { applyProcessingGate } from "./processing-readiness";
 import { samplePageRole } from "./sample-manifest";
 import { rescuePlanInScope,assertProcessJobRows,isCurrentEvidenceJob } from "./process-job-scope";
+import { executeCaseNodes } from "./case-execution";
 export async function caseResponse(data:CaseData|string){
   const c=typeof data==="string"?await getCase(data):data;
   const extras=await caseExtras(c);
-  const assessment=assessCase(c,CURRENT_RULESET);
+  const {derivedEvaluation,...publicExtras}=extras;
+  const execution=derivedEvaluation?.status==="complete"&&derivedEvaluation.execution?derivedEvaluation.execution:executeCaseNodes(c,{includeDocumentBindings:true}),assessment=execution.assessment;
+  const evaluationReceipt=derivedEvaluation?Object.fromEntries(Object.entries(derivedEvaluation).filter(([key])=>!["execution","executionPointer","storageToken"].includes(key))):{status:"pending",revision:c.context.revision};
+  const gatedAssessment=applyProcessingGate(assessment,extras.processingReadiness);
   const documents=c.documents.map(document=>{const rows=extras.jobs.filter(j=>j.documentId===document.id);const active=rows.filter(j=>!["held","withdrawn"].includes(String(j.status)));const extractionStatus=active.some(j=>["error","review_required"].includes(String(j.status)))?"failed":active.some(j=>j.status==="processing")?"processing":rows.length&&active.every(j=>j.status==="completed")?"completed":"pending";return {...document,extractionStatus};});
-  return {case:{...c,documents,execution:extras.execution??c.execution},assessment:applyProcessingGate(assessment,extras.processingReadiness),...extras,workflow:evaluateWorkflow(c,assessment),transactionReview:scanTransactions(c),rules:CURRENT_RULESET,legalCatalog:LEGAL_CATALOG,riskCatalog:RISK_CATALOG};
+  return {case:{...c,documents,execution:extras.execution??c.execution},assessment:gatedAssessment,...publicExtras,derivedEvaluation:evaluationReceipt,workflow:execution.workflow,executionPlan:{...execution.plan,generationGate:gatedAssessment.generationGate,processingReadiness:extras.processingReadiness},documentBindings:execution.formBindings,documentPayloads:execution.documentPayloads,transactionReview:execution.transactionReview,rules:CURRENT_RULESET,legalCatalog:LEGAL_CATALOG,riskCatalog:RISK_CATALOG};
 }
 
 export async function caseProgress(caseId:string,result:{remaining?:number;stage?:string;page?:number;error?:string;warnings?:unknown[];checks?:{status?:string}[];disagreements?:number;rescue?:{planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[]}},jobIds?:string[]){

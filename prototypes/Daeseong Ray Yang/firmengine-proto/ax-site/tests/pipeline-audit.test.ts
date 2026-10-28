@@ -32,7 +32,7 @@ test("검증 응답 스키마가 단위 판독을 명시적으로 수집한다",
   assert.deepEqual((properties.categoryStatus as {enum:string[]}).enum,["supported","wrong_category","unclear"]);
   assert.ok("bbox" in properties);
   assert.deepEqual((properties.meaningStatus as {enum:string[]}).enum,["supported","wrong_field","unclear"]);
-  assert.match(PROMPT_VERSION,/3\.20\.0$/);
+  assert.match(PROMPT_VERSION,/3\.21\.0$/);
 });
 
 test("값·단위·인용이 같아도 의미가 wrong_field면 확인 완료나 source receipt 기반 투영에 쓰지 않는다",()=>{
@@ -46,7 +46,7 @@ test("값·단위·인용이 같아도 의미가 wrong_field면 확인 완료나
 test("bbox는 좌상단 원점의 유효한 모서리 좌표만 허용하고 추출 지침에 width/height가 아님을 명시한다",()=>{
   assert.equal(isValidSourceBBox([.1,.2,.3,.4]),true);
   for(const bad of [[.2,.2,.1,.4],[.1,.4,.3,.2],[.1,.2,.1,.4],[-.1,.2,.3,.4],[.1,.2,1.1,.4],[.1,.2,Number.NaN,.4]])assert.equal(isValidSourceBBox(bad),false);
-  assert.match(EXTRACT_INSTRUCTIONS,/left, top, right, bottom/);assert.match(EXTRACT_INSTRUCTIONS,/좌표 끝점이지 x\/y\/너비\/높이가 아니다/);
+  assert.match(EXTRACT_INSTRUCTIONS,/left,top,right,bottom/);assert.match(EXTRACT_INSTRUCTIONS,/좌표 끝점이며 좌상단이 원점/);
 });
 
 test("잘못된 bbox는 자동변환하지 않고 bbox 전용 재확인으로 보내며 인용된 명확한 값을 보존한다",()=>{

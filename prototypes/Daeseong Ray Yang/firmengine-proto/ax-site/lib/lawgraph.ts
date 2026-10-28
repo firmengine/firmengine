@@ -1,6 +1,8 @@
 import exceptions from "./legal-exceptions.json" with { type: "json" };
 import { WORKFLOW_RULES } from "./workflow-rules.ts";
 import { LEGAL_CATALOG, RULE_RESEARCH_METADATA } from "./legal-rules.ts";
+import { CALCULATION_SPECS, EXECUTION_CONTRACT_VERSION, WORKFLOW_CALCULATIONS } from "./execution-catalog.ts";
+import { AGENT_NODE_CONTRACTS } from "./case-agent-contracts.ts";
 
 export type ExecutionCategory = "document_route_evaluator" | "deterministic_calculation_source_gate" | "static_only";
 export type FeatureMapping = "exact_workflow_key" | "curated_alias" | "unmapped";
@@ -16,6 +18,7 @@ export interface LawGraphScenario extends ExceptionScenario {
   matchedWorkflowRules:WFInfo[];
   sources:{id:string;title:string;url:string;effective:string;scope:string;verification:string;courtApplicability:"unknown_pending_case_court_and_date"}[];
   nodeIds:string[]; edgeIds:string[];
+  calculationIds:string[];
 }
 
 const catalogRules=LEGAL_CATALOG as CatalogRule[];
@@ -69,6 +72,33 @@ for(const rule of WORKFLOW_RULES){
   });
 }
 
+// These are executable tool contracts. Case-specific applicability is still resolved
+// from the latest stored case, not inferred from a shared legal-rule reference.
+const calculationParts=new Map<string,{nodeIds:Set<string>;edgeIds:Set<string>}>();
+for(const calculation of CALCULATION_SPECS){
+  const part={nodeIds:new Set<string>(),edgeIds:new Set<string>()};calculationParts.set(calculation.id,part);
+  const cid=addNode({id:`calculation:${calculation.id}`,type:"calculation",label:calculation.title,metadata:{...calculation,contractVersion:EXECUTION_CONTRACT_VERSION}});part.nodeIds.add(cid);
+  const tool=calculation.id==="disposal_conservation"?"calculate_disposal":["form_projection","installment_distribution"].includes(calculation.id)?"build_document_payload":"calculate_case";
+  const tid=addNode({id:`mcp-tool:${tool}`,type:"mcp_tool",label:tool,metadata:{endpoint:"/mcp",readonly:true,dispatcher:"lib/calculator-tools.ts:callCalculatorTool"}});part.nodeIds.add(tid);part.edgeIds.add(addEdge(tid,cid,"executes_calculation"));
+  for(const key of calculation.inputs){const fid=addNode({id:`calculation-input:${key}`,type:"calculation_input",label:key,metadata:{key}});part.nodeIds.add(fid);part.edgeIds.add(addEdge(fid,cid,"required_input"));}
+  for(const output of calculation.resultPaths){const oid=addNode({id:`calculation-result:${calculation.id}:${output}`,type:"calculation_result",label:output});part.nodeIds.add(oid);part.edgeIds.add(addEdge(cid,oid,"returns_result"));}
+  for(const binding of calculation.formBindings){const bid=addNode({id:`form-binding:${binding}`,type:"form_binding",label:binding});part.nodeIds.add(bid);part.edgeIds.add(addEdge(cid,bid,"binds_form_field"));}
+  for(const kind of calculation.documents){const did=addNode({id:`artifact:${kind}`,type:"artifact",label:kind});part.nodeIds.add(did);part.edgeIds.add(addEdge(cid,did,"supports_document"));}
+}
+for(const calculation of CALCULATION_SPECS)for(const dependency of calculation.dependsOn){const part=calculationParts.get(calculation.id)!;part.nodeIds.add(`calculation:${dependency}`);part.edgeIds.add(addEdge(`calculation:${dependency}`,`calculation:${calculation.id}`,"calculation_dependency"));}
+for(const [workflowId,ids] of Object.entries(WORKFLOW_CALCULATIONS))for(const calculationId of ids){const part=workflowParts.get(workflowId)!;const calculation=calculationParts.get(calculationId)!;calculation.nodeIds.forEach(id=>part.nodeIds.add(id));calculation.edgeIds.forEach(id=>part.edgeIds.add(id));part.edgeIds.add(addEdge(`workflow-rule:${workflowId}`,`calculation:${calculationId}`,"selects_calculation"));}
+for(const node of AGENT_NODE_CONTRACTS){
+  const id=addNode({id:`agent:${node.id}`,type:"agent_node",label:node.responsibility,metadata:{...node}});
+  const toolId=`mcp-tool:${node.tool}`;
+  if(!nodes.has(toolId))addNode({id:toolId,type:node.tool.startsWith("existing_")?"existing_capability":"mcp_tool",label:node.tool,metadata:{readonly:!node.tool.startsWith("existing_")}});
+  addEdge(id,toolId,"invokes");
+}
+addNode({id:"case-database",type:"case_database",label:"사건 DB 최신 판본",metadata:{revisionAndInputHashBound:true}});
+addEdge("case-database","agent:case_planner","recheck_after_committed_change");
+for(const [from,to] of [["case_planner","source_reconciler"],["source_reconciler","calculator"],["calculator","legal_review"],["calculator","document_binding"],["document_binding","document_review"]])addEdge(`agent:${from}`,`agent:${to}`,"feeds_current_snapshot");
+addEdge("agent:case_planner","agent:evidence_collector","requests_missing_features");
+addEdge("agent:evidence_collector","case-database","commits_sourced_observations");
+
 const scenarios:LawGraphScenario[]=exceptionRows.map(s=>{
   const localNodes=new Set<string>(); const localEdges=new Set<string>();
   const scenarioNode=addNode({id:`scenario:${s.id}`,type:"exception_scenario",label:`${s.id} · ${s.trigger}`,metadata:{decisionBoundary:s.decisionBoundary,implementedIn:s.implementedIn,coverageGap:s.coverageGap}}); localNodes.add(scenarioNode);
@@ -110,17 +140,19 @@ const scenarios:LawGraphScenario[]=exceptionRows.map(s=>{
   for(const ruleRef of s.ruleRefs) if(curatedRuleExecution[ruleRef]&&!executionCategories.includes(curatedRuleExecution[ruleRef].category)) executionCategories.push(curatedRuleExecution[ruleRef].category);
   if(!executionCategories.length) executionCategories.push("static_only");
   const sources=linkedSources.map(id=>{const src=catalogSources.find(x=>x.id===id);return src?{id:src.id,title:src.title,url:src.url,effective:src.edition_effective_date??src.effectiveFrom??"Unknown",scope:src.authority??"Unknown",verification:src.status??"Unknown",courtApplicability:"unknown_pending_case_court_and_date" as const}:null;}).filter(Boolean) as LawGraphScenario["sources"];
-  return {...s,executionCategories,featureMappings,matchedWorkflowRules:[...related].map(([id,linkTypes])=>({id,title:WORKFLOW_RULES.find(w=>w.id===id)?.title??id,linkTypes:[...linkTypes]})),sources,nodeIds:[...localNodes],edgeIds:[...localEdges]};
+  return {...s,executionCategories,featureMappings,calculationIds:[...new Set([...related.keys()].flatMap(id=>WORKFLOW_CALCULATIONS[id]??[]))],matchedWorkflowRules:[...related].map(([id,linkTypes])=>({id,title:WORKFLOW_RULES.find(w=>w.id===id)?.title??id,linkTypes:[...linkTypes]})),sources,nodeIds:[...localNodes],edgeIds:[...localEdges]};
 });
 
 const uniqueSourceIds=[...new Set(catalogRules.flatMap(r=>r.source_ids ?? []))];
 const danglingSourceIds=uniqueSourceIds.filter(id=>!catalogSources.some(s=>s.id===id));
 export const LAWGRAPH={
-  id:"kr-personal-rehabilitation-lawgraph-v2",asOf:exceptions.checkedAt,jurisdiction:exceptions.jurisdiction,
+  id:"kr-personal-rehabilitation-lawgraph-v3",asOf:exceptions.checkedAt,jurisdiction:exceptions.jurisdiction,
   scope:"Inspectable evidence-to-rule map for research and workflow coverage. Not legal advice, eligibility adjudication, or an automated approval prediction. A workflow link is not proof of execution; only the curated registrations below identify code paths. Court applicability and historical edition selection remain unknown until reviewed for the case.",
   runtimeRuleset:RULE_RESEARCH_METADATA.scope,scenarios,count:scenarios.length,nodes:[...nodes.values()],edges:[...edges.values()],
   ruleCatalog:catalogRules.map(r=>({id:r.id,title:r.title,article:r.article??"Unknown",sourceRefs:r.source_ids??[],implementationScope:r.implementation_scope??"Unknown"})),
   availableWorkflowRules:WORKFLOW_RULES.map(w=>({id:w.id,title:w.title})),
+  calculationContracts:CALCULATION_SPECS,agentNodes:AGENT_NODE_CONTRACTS,executionContractVersion:EXECUTION_CONTRACT_VERSION,
+  calculatorConnection:{mcpEndpoint:"/mcp",stdioCommand:"npm run mcp:calculator",caseToolInput:["caseId","expectedRevision"],agentExecutor:"lib/case-agent.ts:runCaseCalculatorNode",dispatcher:"lib/calculator-tools.ts:callCalculatorTool",updateHook:"lib/server-store.ts:saveCase",storedEvaluation:"derived_evaluation"},
   curatedExecutionRegistry:{workflowDocumentRoute:workflowEvaluator,featureAliases:curatedFeatureAliases,legalRules:curatedRuleExecution},
   sourceAudit:{catalogSourceCount:catalogSources.length,uniqueRuleReferencedSourceIds:uniqueSourceIds.length,danglingSourceIds,sourceIdsAreExplicit:true,courtApplicability:"unknown_pending_case_court_and_date"},
   sourceScopeNote:"Only explicit legal-catalog source_ids create rule→source edges. Effective edition metadata is not a case-specific applicability decision. Unknown case facts and court scope remain unknown until sourced and reviewed.",

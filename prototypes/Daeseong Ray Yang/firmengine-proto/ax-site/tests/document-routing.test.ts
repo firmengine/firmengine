@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { documentFamily, equivalentDocumentTypes } from "../lib/document-routing.ts";
-import { clampDocumentParallelism, compactFamilyFieldContract, continuationRelationship, createDocumentTaskEnvelope, documentFieldContract, documentTypeMatchesFamily, mapBounded, routeDocumentTask } from "../lib/document-agent-registry.ts";
+import { buildDownstreamDemand, clampDocumentParallelism, compactFamilyFieldContract, continuationRelationship, createDocumentTaskEnvelope, documentFieldContract, documentTypeMatchesFamily, mapBounded, routeDocumentTask } from "../lib/document-agent-registry.ts";
 import { projectPage, type ReadField, type PageRead } from "../lib/extraction.ts";
 
 test("source families survive printed title spacing, qualifiers and English synonyms", () => {
@@ -71,6 +71,20 @@ test("parallelism is bounded and adjacent pages remain unverified continuation c
   assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:2,familyId:"credit_report"}),"boundary_conflict_pending");
   // Equal-looking values do not participate in the relationship decision.
   assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:3,familyId:"debt_certificate"}),"page_only_unverified");
+});
+
+test("downstream demand is bounded metadata for matching output families and includes no answer values",()=>{
+  const requests=[
+    {documentType:"debt_certificate",sourceFamilyId:"debt_certificate",fields:[{key:"debt.principal",status:"missing",targets:[{section:"채권",field:"원금"}]}]},
+    {documentType:"lease",sourceFamilyId:"lease",fields:[{key:"asset.grossValue",status:"pass",targets:[{section:"재산",field:"평가액"}]}]},
+  ];
+  const demand=buildDownstreamDemand({familyId:"debt_certificate",requests});
+  assert.deepEqual(demand,{version:"downstream-demand-1",targetDocumentTypes:["debt_certificate"],featureIds:["debt.principal"],targetFields:[{documentType:"debt_certificate",section:"채권",field:"원금",featureId:"debt.principal",status:"missing"}]});
+  assert.equal(buildDownstreamDemand({familyId:"unknown",requests}),undefined);
+  const task=createDocumentTaskEnvelope({runId:"run",taskId:"task",taskRole:"family_extractor",caseId:"case",pageJobId:"job",documentId:"doc",sourceSha256:"a".repeat(64),imageSha256:"b".repeat(64),page:4,familyId:"debt_certificate",promptVersion:"prompt-v",model:"gpt-6-luna",downstreamDemand:demand});
+  assert.equal(task.downstreamDemand?.targetFields[0]?.status,"missing");
+  assert.equal(JSON.stringify(task).includes('"value"'),false);
+  assert.equal(task.legalApproval,"not_provided");
 });
 test("family prompt carries source conditions without converting case conditions into applicability decisions",()=>{
   const contract=documentFieldContract("bank_account_balance");

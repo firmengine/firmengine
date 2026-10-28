@@ -26,6 +26,16 @@ export interface SourceRef {
   quote: string;
   sourceHash?: string;
 }
+/** A JSON pointer into explicitly assumed-extracted synthetic scenario data; never a PDF citation. */
+export interface StructuredSourceRef {
+  sourceRecordId: string;
+  jsonPointer: string;
+}
+export interface StructuredTestProvenance {
+  mode: "assumed_extracted_synthetic";
+  scenarioId?: string;
+  sourceRecords: { id: string; recordType: string; recordId: string; data: Json }[];
+}
 export interface EvidenceDocument {
   id: string;
   parentId?: string;
@@ -67,6 +77,7 @@ export interface Fact {
   state: FactState;
   recognition: Recognition;
   refs: SourceRef[];
+  structuredRefs?: StructuredSourceRef[];
   validation: { code: string; message: string; severity: "info" | "warning" | "error" }[];
   reviewer?: string;
   reviewReason?: string;
@@ -238,6 +249,23 @@ export interface ExportManifest {
   files: ExportFile[];
   reviews: { caseworker: ReviewRecord | null; lawyer: ReviewRecord | null };
 }
+export interface ReferenceTestProvenance {
+  mode: "synthetic_reference_only";
+  sourceCaseId: string;
+  datasetVersion: string;
+  datasetSha256: string;
+  projectedDatasetSha256: string;
+  projectionVersion: "reference-case-projection/v1";
+  sourceBindingsSha256: string;
+  importedAt: string;
+  importedBy: string;
+  importReason: string;
+  finalSubmissionProhibited: true;
+  fields: { fieldId: string; canonicalKey: string; rawSourceKey: string; presenceState: "present" | "absent" | "unknown" | "masked" | "conflict"; factId: string; groupKey?: string; rowIndex?: number; sourceMetadata?: { familyId: string; localId: string; partyRole?: string; temporalRole?: string; amountRole?: string; sourceLabel?: string; origin?: string; sourceRowId?: string; normalizedValue: Json | null } }[];
+  objectCounts: { incomes: number; debts: number; assets: number; transactions: number };
+  importHistory: { datasetVersion: string; datasetSha256: string; importedAt: string; importedBy: string; importReason: string; retiredFactCount: number }[];
+  archivedSnapshots: { datasetVersion: string; datasetSha256: string; archivedAt: string; objects: { incomes: IncomeSource[]; debts: Debt[]; assets: Asset[]; transactions: Transaction[]; household: Household }; contextReviewState: Pick<CaseContext, "inventoryComplete" | "ruleApplicationReviewed" | "incomePeriodReviewed" | "assetValuationBasisReviewed" | "presentValueReviewed" | "allocationBasisReviewed" | "eligibility"> }[];
+}
 export interface CaseData {
   context: CaseContext;
   documents: EvidenceDocument[];
@@ -249,6 +277,8 @@ export interface CaseData {
   household: Household;
   transactions: Transaction[];
   exportManifest?: ExportManifest;
+  referenceTest?: ReferenceTestProvenance;
+  structuredTest?: StructuredTestProvenance;
   extractionWarnings?: string[];
   execution?: { model: typeof AI_MODEL; attempts: number; inputTokens: number; outputTokens: number; startedAt?: string; completedAt?: string; calls?: { agent: string; attempt: number; status: "completed" | "failed"; inputTokens: number; outputTokens: number; durationMs: number }[] };
   historyIntegrityRepairs?: { operation: "restore_historical_source_proof_metadata_v1"; reason: "Restore historical proof metadata only; no OCR or human review"; baselineKey: string; baselineObjectSha256: string; baselineFactsSha256: string; documentId: string; page: number; sourceSha256: string; baselineRevision: number; beforeRevision: number; afterRevision: number; selectedCount: number; selectedIdsSha256: string; activeFactsChanged: 0; humanFactReviewsChanged: 0; activeExportFilesInvalidated: number; priorReviewsCleared: number; priorReviewFingerprintsSha256: string; actor: string; actorKind: "human" | "private-site-service"; at: string }[];
@@ -274,11 +304,11 @@ export interface RuleSet {
 }
 
 export const REQUIRED_ARTIFACT_KINDS: ArtifactKind[] = ["application", "creditors", "assets", "income_expense", "repayment_plan", "statement", "evidence_index"];
-export function requiredKindsForCase(data: Pick<CaseData, "documents" | "pages" | "facts">): ArtifactKind[] {
+export function requiredKindsForCase(data: Pick<CaseData, "documents" | "pages" | "facts"> & Partial<Pick<CaseData,"assets"|"incomes"|"transactions">>): ArtifactKind[] {
   const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
   const source = JSON.stringify([data.documents.filter(d => d.status === "active").map(d => d.type ?? ""),data.pages.filter(p=>p.role==="evidence").map(p=>p.documentType??""),currentFacts(data).map(f => f.key)]).toLowerCase();
-  if (/bank.?account|계좌|예금|bank_account/.test(source)) kinds.push("bank_accounts");
-  if (/lease|임대차|임대계약/.test(source)) kinds.push("leases");
+  if (/bank.?account|계좌|예금|bank_account/.test(source) || data.assets?.some(a=>a.kind==="deposit") || data.transactions?.some(t=>!!t.accountId)) kinds.push("bank_accounts");
+  if (/lease|임대차|임대계약/.test(source) || data.assets?.some(a=>a.kind==="lease_deposit") || data.incomes?.some(i=>i.kind==="rent")) kinds.push("leases");
   return [...new Set(kinds)];
 }
 export const AI_MODEL = "gpt-6-luna" as const;
@@ -371,6 +401,102 @@ export function validSourceRef(data: CaseData, ref: SourceRef, index?:CaseReadIn
   return result;
 }
 
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a < b ? -1 : a > b ? 1 : 0).map(([key, item]) => `${JSON.stringify(key)}:${stableJson(item)}`).join(",")}}`;
+  return JSON.stringify(value);
+}
+
+/**
+ * Validate a synthetic source pointer without treating it as documentary proof.
+ * Only own properties are traversed; prototype-related path segments are rejected.
+ */
+export function validStructuredSourceRef(data: CaseData, fact: Fact, ref: StructuredSourceRef): boolean {
+  const provenance = data.structuredTest;
+  if (provenance?.mode !== "assumed_extracted_synthetic" || !Array.isArray(provenance.sourceRecords) || fact.refs.length !== 0 || fact.sourceVerification !== undefined || fact.state === "verified" || fact.recognition === "accepted") return false;
+  if (!ref || typeof ref.sourceRecordId !== "string" || !ref.sourceRecordId.trim() || typeof ref.jsonPointer !== "string" || !ref.jsonPointer.startsWith("/") || !ref.jsonPointer.endsWith("/value")) return false;
+  if (provenance.sourceRecords.some(record => !record || typeof record.id !== "string" || !record.id.trim() || typeof record.recordType !== "string" || !record.recordType.trim() || typeof record.recordId !== "string" || !record.recordId.trim()) || new Set(provenance.sourceRecords.map(record => record.id)).size !== provenance.sourceRecords.length) return false;
+  const record = provenance.sourceRecords.find(item => item.id === ref.sourceRecordId);
+  if (!record || typeof record.recordType !== "string" || !record.recordType.trim() || record.recordId !== fact.subjectId) return false;
+  const encoded = ref.jsonPointer.slice(1).split("/");
+  const segments: string[] = [];
+  for (const part of encoded) {
+    if (/~(?![01])/u.test(part)) return false;
+    const segment = part.replace(/~1/g, "/").replace(/~0/g, "~");
+    if (segment === "__proto__" || segment === "prototype" || segment === "constructor") return false;
+    segments.push(segment);
+  }
+  if (segments.length < 2 || segments.at(-1) !== "value") return false;
+  let current: unknown = record.data;
+  for (const segment of segments) {
+    if (Array.isArray(current)) {
+      if (!/^(?:0|[1-9]\d*)$/u.test(segment)) return false;
+      const position = Number(segment);
+      if (!Number.isSafeInteger(position) || position >= current.length) return false;
+      current = current[position];
+    } else if (current && typeof current === "object" && Object.hasOwn(current, segment)) current = (current as Record<string, unknown>)[segment];
+    else return false;
+  }
+  const wrapper: unknown = (() => {
+    let parent: unknown = record.data;
+    for (const segment of segments.slice(0, -1)) {
+      if (Array.isArray(parent)) parent = parent[Number(segment)];
+      else if (parent && typeof parent === "object" && Object.hasOwn(parent, segment)) parent = (parent as Record<string, unknown>)[segment];
+      else return undefined;
+    }
+    return parent;
+  })();
+  if (!wrapper || typeof wrapper !== "object" || Array.isArray(wrapper) || !Object.hasOwn(wrapper, "presence") || (wrapper as Record<string, unknown>).presence !== "present" || current === null || current === undefined) return false;
+  const envelope = wrapper as Record<string, unknown>;
+  const normalizedKey = (value: string) => value.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+  if (typeof envelope.fieldId !== "string" || normalizedKey(envelope.fieldId) !== normalizedKey(fact.key)) return false;
+  if (stableJson(current) !== stableJson(fact.value)) return false;
+  if (fact.numeric) {
+    const unit = typeof envelope.sourceUnit === "string" ? envelope.sourceUnit : null;
+    if (!unit || unit !== fact.numeric.unit || fact.sourceUnit !== unit) return false;
+    const objectValue = current && typeof current === "object" && !Array.isArray(current) ? current as Record<string, unknown> : null;
+    const explicitCurrency = typeof objectValue?.currency === "string" ? objectValue.currency : typeof envelope.currency === "string" ? envelope.currency : null;
+    if (!explicitCurrency || explicitCurrency.toUpperCase() !== fact.numeric.currency.toUpperCase()) return false;
+    if (objectValue) {
+      const minorUnits = objectValue.minorUnits;
+      const amount = objectValue.amount;
+      if (minorUnits !== undefined && String(minorUnits) !== fact.numeric.amountWon) return false;
+      if (amount !== undefined && String(amount) !== fact.numeric.amountWon) return false;
+      if (objectValue.unit !== undefined && objectValue.unit !== unit) return false;
+      if (minorUnits === undefined && amount === undefined) return false;
+    }
+    const raw = Object.hasOwn(envelope, "rawValue") ? envelope.rawValue : current;
+    if (raw === null || raw === undefined || (typeof raw !== "string" && typeof raw !== "number")) return false;
+    if (fact.numeric.rawValue === null || String(raw) !== String(fact.numeric.rawValue)) return false;
+    const normalized = normalizeMoney(raw, unit, explicitCurrency);
+    if (normalized.normalizationStatus !== fact.numeric.normalizationStatus || normalized.amountWon !== fact.numeric.amountWon || moneyValue(fact.numeric) === null) return false;
+  }
+  return true;
+}
+
+export function factHasValidStructuredRefs(data: CaseData, fact: Fact): boolean {
+  return Array.isArray(fact.structuredRefs) && fact.structuredRefs.length > 0 && fact.structuredRefs.every(ref => validStructuredSourceRef(data, fact, ref));
+}
+
+/** Stable, row-scoped synthetic source identity for calculation and reconciliation. */
+export function structuredSourceRowKeys(data: CaseData, fact: Fact): string[] {
+  if (!factHasValidStructuredRefs(data, fact)) return [];
+  const records = data.structuredTest!.sourceRecords;
+  return [...new Set(fact.structuredRefs!.map(ref => {
+    const record = records.find(item => item.id === ref.sourceRecordId)!;
+    return `${record.recordType}\0${record.recordId}`;
+  }))];
+}
+
+export function describeStructuredSourceRefs(data: CaseData, fact: Fact): string[] {
+  if (!factHasValidStructuredRefs(data, fact)) return [];
+  const records = data.structuredTest!.sourceRecords;
+  return fact.structuredRefs!.map(ref => {
+    const record = records.find(item => item.id === ref.sourceRecordId)!;
+    return `합성 가정추출 · ${record.recordType} / ${record.recordId} / ${ref.jsonPointer}`;
+  });
+}
+
 const SOURCE_RECEIPT_BBOX_IOU=0.5;
 function sourceReceiptBBoxIoU(a:unknown,b:unknown):number{
   if(!isValidSourceBBox(a)||!isValidSourceBBox(b))return 0;
@@ -391,7 +517,8 @@ export function factSourceLineageIssues(data: CaseData, ids: string[], index?:Ca
     const fact = active.get(id);
     if (!fact) { issues.add("STALE_OR_RETRACTED_FACT");index?.lineageById.set(id,["STALE_OR_RETRACTED_FACT"]);continue; }
     if (fact.state === "disputed" || fact.recognition === "rejected") factIssues.add("DISPUTED_OR_REJECTED_FACT");
-    if (!fact.refs.length || fact.refs.some((ref) => !validSourceRef(data, ref,index))) factIssues.add("SOURCE_REFERENCE_INVALID");
+    const validStructured = factHasValidStructuredRefs(data, fact);
+    if (fact.structuredRefs !== undefined ? !validStructured : !fact.refs.length || fact.refs.some((ref) => !validSourceRef(data, ref,index))) factIssues.add("SOURCE_REFERENCE_INVALID");
     if (fact.state !== "verified") factIssues.add("SOURCE_VERIFICATION_REQUIRED");
     const proof = fact.sourceVerification;
     if (proof) {

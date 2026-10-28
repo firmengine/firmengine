@@ -1,5 +1,5 @@
 import type { ArtifactKind, CaseData, Fact, Json, SourceRef } from "./domain.ts";
-import { currentFacts, factSourceLineageIssues, validSourceRef } from "./domain.ts";
+import { currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, validSourceRef } from "./domain.ts";
 import { assessCase, type Assessment } from "./assessment.ts";
 import { CURRENT_RULESET, LEGAL_CATALOG } from "./legal-rules.ts";
 
@@ -235,7 +235,7 @@ function objectValue(data: CaseData, subject: Subject, key: string): unknown {
 function computeCell(data: CaseData, subject: Subject, key: string, index: WorkflowIndex, aliases: string[] = [], activation = false): Cell {
   const facts = sourceFacts(data, subject, key, index, aliases);
   const valid = facts.filter(f => {
-    if (!index.sourceValid.has(f.id)) index.sourceValid.set(f.id, f.state !== "retracted" && f.recognition !== "rejected" && f.refs.length > 0 && f.refs.every(ref => validSourceRef(data, ref)));
+    if (!index.sourceValid.has(f.id)) index.sourceValid.set(f.id, f.state !== "retracted" && f.recognition !== "rejected" && (f.structuredRefs !== undefined ? factHasValidStructuredRefs(data,f) : f.refs.length > 0 && f.refs.every(ref => validSourceRef(data, ref))));
     return index.sourceValid.get(f.id);
   });
   const values = valid.map(f => jsonValue(f.numeric ?? f.value)).filter(v => v !== null);
@@ -308,7 +308,7 @@ function fieldResult(data: CaseData, subject: Subject, spec: WorkflowField, inde
     if (spec.validation === "ownership_bps" && (!/^\d+$/.test(value) || BigInt(value) > 10000n)) { result.status = "fail"; result.reason = "소유지분은 0~10000 basis points입니다. 원문 비율 단위를 확인하세요."; }
     if (spec.validation === "date" && (!/^\d{4}-\d{2}-\d{2}$/.test(value) || Number.isNaN(Date.parse(value)))) { result.status = "fail"; result.reason = "유효한 ISO 날짜가 필요합니다."; }
   }
-  return { ...spec, status: result.status, value: result.value, reason: result.reason, factIds: result.facts.map(f => f.id), refs: result.facts.flatMap(f => f.refs) };
+  return { ...spec, status: result.status, value: result.value, reason: result.reason, factIds: result.facts.map(f => f.id), refs: result.facts.flatMap(f => f.refs), structuredRefs: result.facts.flatMap(f => f.structuredRefs ?? []) };
 }
 function subjects(data: CaseData, scope: Scope): Subject[] {
   if (scope === "case") return [{ id: data.context.id, scope, value: data.context as unknown as Record<string, unknown>, factIds: [] }];
@@ -363,7 +363,8 @@ export function evaluateWorkflow(data: CaseData, existingAssessment?: Assessment
         const refs = fields.flatMap(f => f.refs);
         const documentIds = [...new Set(refs.map(ref => ref.documentId))];
         const checks = crossCheckResults(data, subject, fields);
-        return { ...spec, status: applicability === "not_applicable" ? "not_applicable" as WorkflowStatus : aggregate([...fields.map(f => f.status), ...checks.map(c => c.status)]), documentIds, fields, crossCheckResults: checks };
+        const sourceRecordIds = [...new Set(fields.flatMap(f => f.structuredRefs.map(ref => ref.sourceRecordId)))];
+        return { ...spec, status: applicability === "not_applicable" ? "not_applicable" as WorkflowStatus : aggregate([...fields.map(f => f.status), ...checks.map(c => c.status)]), documentIds, ...(sourceRecordIds.length ? { sourceRecordIds, sourceBasis: "assumed_extracted_synthetic" as const } : {}), fields, crossCheckResults: checks };
       });
       const legalChecks = rule.ruleIds.map(ruleId => {
         const definition = legalMap.get(ruleId);

@@ -1,0 +1,38 @@
+import type { CaseData } from "./domain.ts";
+import type { DerivedEvaluationEnvelope, ExecutionSnapshot } from "./reactive-evaluation.ts";
+
+export interface DocumentWriterReceipt {
+  schemaVersion:"document-writer-receipt/1";
+  caseId:string;
+  caseRevision:number;
+  inputSha256:string;
+  requiredKinds:string[];
+  bindingsSha256:string;
+  mode:"draft"|"final";
+  status:"ready"|"review_required";
+  generatedAt:string;
+  courtApprovalInferred:false;
+}
+export interface PreparedDocumentWrite { execution:ExecutionSnapshot; receipt:DocumentWriterReceipt; }
+const digest=async(value:unknown)=>{
+  const bytes=new TextEncoder().encode(JSON.stringify(value));
+  return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(v=>v.toString(16).padStart(2,"0")).join("");
+};
+
+/** Validates and prepares a document write from the current trusted, persisted evaluation. */
+export async function prepareDocumentWrite(input:{data:CaseData;evaluation:DerivedEvaluationEnvelope|{status:"pending";revision:number;inputSha256:string;storageToken?:string}|null|undefined;processingComplete:boolean;mode:"draft"|"final";requiredKinds:string[];now?:string}):Promise<PreparedDocumentWrite>{
+  const {data,evaluation,mode}=input;
+  if(!evaluation||evaluation.status!=="complete"||!evaluation.execution)throw new Error("DOCUMENT_EVALUATION_PENDING");
+  const execution=evaluation.execution;
+  if(evaluation.revision!==data.context.revision||execution.caseRevision!==data.context.revision||execution.caseId!==data.context.id)throw new Error("DOCUMENT_EVALUATION_STALE");
+  const inputSha256=await digest(data);
+  if(evaluation.inputSha256!==inputSha256)throw new Error("DOCUMENT_EVALUATION_INPUT_MISMATCH");
+  if(!execution.formBindings||!execution.documentPayloads)throw new Error("DOCUMENT_BINDINGS_MISSING");
+  if(data.referenceTest?.finalSubmissionProhibited||data.structuredTest?.mode==="assumed_extracted_synthetic"){
+    if(mode==="final")throw new Error("SYNTHETIC_FINAL_PROHIBITED");
+  }
+  if(!execution.assessment.generationGate.canGenerateDraft)throw new Error("DOCUMENT_DRAFT_GATE_BLOCKED");
+  if(mode==="final"&&(!input.processingComplete||!execution.assessment.generationGate.canFinalize))throw new Error("DOCUMENT_FINAL_REVIEW_REQUIRED");
+  const bindingsSha256=await digest({formBindings:execution.formBindings,documentPayloads:execution.documentPayloads});
+  return {execution,receipt:{schemaVersion:"document-writer-receipt/1",caseId:data.context.id,caseRevision:data.context.revision,inputSha256,requiredKinds:[...input.requiredKinds],bindingsSha256,mode,status:mode==="final"?"ready":"review_required",generatedAt:input.now??new Date().toISOString(),courtApprovalInferred:false}};
+}

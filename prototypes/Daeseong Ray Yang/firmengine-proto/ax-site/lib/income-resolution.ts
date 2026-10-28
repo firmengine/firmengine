@@ -1,4 +1,4 @@
-import { currentFacts, validSourceRef, type CaseData, type IncomeSource } from "./domain.ts";
+import { currentFacts, factHasValidStructuredRefs, structuredSourceRowKeys, validSourceRef, type CaseData, type IncomeSource } from "./domain.ts";
 
 export interface IncomeResolution {
   rows: IncomeSource[];
@@ -20,8 +20,8 @@ function sourceIdentity(data: CaseData, source: IncomeSource, active: Map<string
   if (!id) return null;
   const facts = source.factIds.map(fid => active.get(fid)).filter((fact): fact is NonNullable<typeof fact> => !!fact);
   const candidates = facts.filter(fact => fact.key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase() === "income.payer_identity_id");
-  if (!candidates.length || candidates.some(fact => fact.state === "disputed" || fact.recognition === "rejected" || fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || String(fact.value).normalize("NFKC").trim() !== source.payerIdentityId?.normalize("NFKC").trim() || !fact.refs.length || fact.refs.some(ref => !ref.sourceHash || !validSourceRef(data, ref)))) return null;
-  if (candidates.some(fact => fact.refs.every(ref => !ref.quote.normalize("NFKC").replace(/[\s().\-‐‑‒–—/]/gu, "").toLocaleUpperCase("en-US").includes(id)))) return null;
+  if (!candidates.length || candidates.some(fact => fact.state === "disputed" || fact.recognition === "rejected" || fact.validation.some(v => v.severity === "error" || v.code === "UNCERTAIN_READING") || String(fact.value).normalize("NFKC").trim() !== source.payerIdentityId?.normalize("NFKC").trim() || !(fact.structuredRefs !== undefined ? factHasValidStructuredRefs(data,fact) : fact.refs.length > 0 && fact.refs.every(ref => !!ref.sourceHash && validSourceRef(data, ref))))) return null;
+  if (candidates.some(fact => fact.structuredRefs === undefined && fact.refs.every(ref => !ref.quote.normalize("NFKC").replace(/[\s().\-‐‑‒–—/]/gu, "").toLocaleUpperCase("en-US").includes(id)))) return null;
   return id;
 }
 
@@ -30,7 +30,14 @@ function observationCore(source: IncomeSource) {
 }
 function sourceObservationSignature(data: CaseData, source: IncomeSource, active: Map<string, ReturnType<typeof currentFacts>[number]>): string | null {
   const facts = source.factIds.map(id => active.get(id));
-  if (!facts.length || facts.some(fact => !fact || !fact.refs.length || fact.refs.some(ref => !ref.sourceHash || !validSourceRef(data, ref)))) return null;
+  if (!facts.length || facts.some(fact => !fact || !(fact.structuredRefs !== undefined ? factHasValidStructuredRefs(data,fact) : fact.refs.length > 0 && fact.refs.every(ref => !!ref.sourceHash && validSourceRef(data, ref))))) return null;
+  if (facts.every(fact => fact?.structuredRefs !== undefined)) {
+    const rowKeys = facts.flatMap(fact => structuredSourceRowKeys(data, fact!));
+    const distinctRows = [...new Set(rowKeys)];
+    if (distinctRows.length !== 1) return null;
+    return JSON.stringify(facts.map(fact => [fact!.key, fact!.value, fact!.numeric?.rawValue ?? null, fact!.numeric?.unit ?? null, distinctRows[0]]).sort((a,b) => JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  }
+  if (facts.some(fact => fact?.structuredRefs !== undefined)) return null;
   const canonicalKey = (key: string) => key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
   const occurrenceFields = facts.filter(fact => ["income.net", "income.gross", "income.period_start", "income.period_end"].includes(canonicalKey(fact!.key)));
   // Cross-fact dedup needs row-level provenance: same page/quote/value can occur in two rows.
