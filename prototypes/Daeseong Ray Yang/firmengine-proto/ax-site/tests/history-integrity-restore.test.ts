@@ -8,6 +8,7 @@ const root=new URL("../",import.meta.url), sourceHash="a".repeat(64), imageHash=
 if(!globalThis.crypto)Object.assign(globalThis,{crypto:webcrypto});
 const hash=async(value:Uint8Array|ArrayBuffer|string)=>{const bytes=typeof value==="string"?new TextEncoder().encode(value):value instanceof ArrayBuffer?new Uint8Array(value):value;const exact=bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength) as ArrayBuffer;return Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256",exact))).map(x=>x.toString(16).padStart(2,"0")).join("");};
 function fact(id:string,proof=true):any{return {id,logicalId:id,version:1,subjectId:"case",key:"income.synthetic",value:"value",state:"retracted",recognition:"rejected",refs:[{documentId:doc,page:2,quote:"synthetic",sourceHash}],validation:[{code:"OTHER",message:"keep",severity:"info" as const},...(proof?[{code:"MACHINE_SOURCE_VERIFIED",message:"machine",severity:"info" as const}]:[])],...(proof?{sourceVerification:{method:"independent_luna_cross_read",model:"gpt-6-luna",promptVersion:"synthetic",verifiedAt:"2026-01-01T00:00:00.000Z",source:{documentId:doc,page:2,sha256:sourceHash},field:{recordCategory:"synthetic",key:"income.synthetic",value:"value",unit:null,quote:"synthetic"},extractionReading:{value:"value",unit:null,quote:"synthetic"},verificationQuotes:["synthetic"],fieldFingerprint:"synthetic",proofReadIndexes:[],proofReads:[],recognition:"unreviewed",factBinding:{id,logicalId:id,version:1}}}:{}),};}
+function directChain(){const predecessor=fact("predecessor-synthetic");predecessor.state="verified";predecessor.recognition="unreviewed";const tombstone=structuredClone(predecessor);tombstone.id="tombstone-synthetic";tombstone.version=2;tombstone.supersedes=predecessor.id;tombstone.state="retracted";tombstone.recognition="rejected";return {predecessor,tombstone};}
 function snapshot(revision:number,facts:any[]):any{return {context:{id:caseId,revision,caseName:"synthetic"},documents:[{id:doc,status:"active",sha256:sourceHash,pages:[2]}],pages:[{documentId:doc,page:2,role:"evidence"}],facts,incomes:[],debts:[],assets:[],household:{},transactions:[]};}
 function loadHelper({current,objects,listedTruncated=false,jobOverrides={}}:{current:any;objects:any[];listedTruncated?:boolean;jobOverrides?:any}){
  const source=readFileSync(new URL("../lib/history-integrity-restore.ts",import.meta.url),"utf8"),output=ts.transpileModule(source,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,mod={exports:{} as any};let getCount=0,loadedCurrent=false;
@@ -46,6 +47,29 @@ test("intact rows are no-ops, baseline duplicate IDs fail globally, and byte has
  const repaired=snapshot(498,[intact]);repaired.historyIntegrityRepairs=[{baselineRevision:496,documentId:doc,page:2} as any];const replay=loadHelper({current:repaired,objects:[await storedObject(baseline)]});await assert.rejects(replay.api.buildRestorePlan(caseId,{...input,baselineFactsSha256}),/이미 있습니다/);
  const duplicate=snapshot(496,[intact,{...irrelevant,id:intact.id,refs:[{documentId:"other-doc",page:1,quote:"irrelevant"}]}]),duplicateHash=await hash(JSON.stringify(duplicate.facts));
  const rejected=loadHelper({current:snapshot(498,[intact]),objects:[await storedObject(duplicate)]});await assert.rejects(rejected.api.buildRestorePlan(caseId,{...input,baselineFactsSha256:duplicateHash}),/ID가 중복/);
+});
+test("direct predecessor proof history is accepted unchanged only for an exact verified version chain",async()=>{
+ const {predecessor,tombstone}=directChain(),baseline=snapshot(496,[predecessor,tombstone]),baselineFactsSha256=await hash(JSON.stringify(baseline.facts)),currentTombstone=structuredClone(tombstone);delete currentTombstone.sourceVerification;currentTombstone.validation=currentTombstone.validation.filter((x:any)=>x.code!=="MACHINE_SOURCE_VERIFIED");
+ const helper=loadHelper({current:snapshot(498,[predecessor,currentTombstone]),objects:[await storedObject(baseline)]}),plan=await helper.api.buildRestorePlan(caseId,{...input,baselineFactsSha256});assert.equal(plan.candidates.length,1);assert.equal(plan.candidates[0].id,tombstone.id);assert.deepEqual(plan.candidates[0].sourceVerification.factBinding,{id:predecessor.id,logicalId:predecessor.logicalId,version:predecessor.version});
+});
+test("direct predecessor lineage rejects missing, ambiguous, cross-logical, altered, wrong-source, or non-direct chains",async()=>{
+ const cases:Array<[string,(pair:ReturnType<typeof directChain>)=>any[]]>=[
+  ["missing predecessor",({tombstone})=>[tombstone]],
+  ["ambiguous predecessor",({predecessor,tombstone})=>[predecessor,structuredClone(predecessor),tombstone]],
+  ["cross logical ID",({predecessor,tombstone})=>[{...predecessor,logicalId:"other-logical"},tombstone]],
+  ["wrong predecessor version",({predecessor,tombstone})=>[{...predecessor,version:4},tombstone]],
+  ["changed tombstone value",({predecessor,tombstone})=>[predecessor,{...tombstone,value:"changed"}]],
+  ["changed raw value",({predecessor,tombstone})=>[predecessor,{...tombstone,rawValue:"changed"}]],
+  ["changed period metadata",({predecessor,tombstone})=>[predecessor,{...tombstone,periodStart:"changed"}]],
+  ["changed reference",({predecessor,tombstone})=>[predecessor,{...tombstone,refs:[{...tombstone.refs[0],quote:"changed"}]}]],
+  ["changed proof bytes",({predecessor,tombstone})=>[predecessor,{...tombstone,sourceVerification:{...tombstone.sourceVerification,fieldFingerprint:"changed"}}]],
+  ["wrong proof source",({predecessor,tombstone})=>[predecessor,{...tombstone,sourceVerification:{...tombstone.sourceVerification,source:{...tombstone.sourceVerification.source,sha256:"f".repeat(64)}}}]],
+  ["non-direct supersedes",({predecessor,tombstone})=>[predecessor,{...tombstone,supersedes:"other-version"}]],
+  ["unverified predecessor",({predecessor,tombstone})=>[{...predecessor,state:"extracted"},tombstone]],
+  ["human-reviewed predecessor",({predecessor,tombstone})=>[{...predecessor,reviewer:"reviewer-synthetic"},tombstone]],
+ ];
+ for(const [name,make] of cases){const facts=make(directChain()),baseline=snapshot(496,facts),digest=await hash(JSON.stringify(facts)),helper=loadHelper({current:snapshot(498,[facts.at(-1)]),objects:[await storedObject(baseline)]});await assert.rejects(helper.api.buildRestorePlan(caseId,{...input,baselineFactsSha256:digest}),name);}
+ const pair=directChain(),collision=snapshot(496,[pair.predecessor,{...pair.tombstone,id:pair.predecessor.id}]),collisionHash=await hash(JSON.stringify(collision.facts)),helper=loadHelper({current:snapshot(498,[pair.tombstone]),objects:[await storedObject(collision)]});await assert.rejects(helper.api.buildRestorePlan(caseId,{...input,baselineFactsSha256:collisionHash}),/ID가 중복/);
 });
 test("large synthetic baseline snapshot fits a 128 MiB heap without duplicating the full facts serialization",async()=>{
  const target=fact("fact-synthetic"),other={...fact("large-unrelated",false),refs:[{documentId:"another-doc",page:1,quote:"synthetic"}],rawValue:"x".repeat(22_700_000)},baseline=snapshot(496,[target,other]),baselineFactsSha256=await hash(JSON.stringify(baseline.facts)),object=await storedObject(baseline);

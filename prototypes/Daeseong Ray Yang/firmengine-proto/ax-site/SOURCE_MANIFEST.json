@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "2c36aa64801716dfe39b3be6aae4cedbb91d8e5afa3bab79cc2e06b31fbb935a",
+  "source_digest": "7bc57ec70936f6360fd8974b4bd45ada973916c9f3ca3ef27fb2e9fbc2f828ec",
   "files": [
     {
       "path": ".gitignore",
@@ -883,8 +883,8 @@
     },
     {
       "path": "lib/history-integrity-restore.ts",
-      "sha256": "ad3417a59fb20fe3e7f373a00c97ef231fceadf62adbc7811334f973b8034a2f",
-      "bytes": 10787,
+      "sha256": "5ef8326fdb59f6aabdbda50444008d8651d979e79cefc3024af0a137dbc1c970",
+      "bytes": 12117,
       "mode": "100644"
     },
     {
@@ -1567,8 +1567,8 @@
     },
     {
       "path": "tests/history-integrity-restore.test.ts",
-      "sha256": "946cafb7292ca52a157cfb037c60125dfd6739c63691cc250b4498c27b1c0e9b",
-      "bytes": 18494,
+      "sha256": "7d67e0c4f308922a349f76e8e3625de08c4bc76919997fc2c5c400aa812e5cc6",
+      "bytes": 22216,
       "mode": "100644"
     },
     {

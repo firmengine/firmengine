@@ -13,9 +13,17 @@ export function parseRestoreInput(value:unknown):RestoreInput {
   if(!Number.isSafeInteger(x.expectedRevision)||!Number.isSafeInteger(x.baselineRevision)||Number(x.baselineRevision)>=Number(x.expectedRevision)||typeof x.documentId!=="string"||!x.documentId.trim()||x.documentId.length>200||!Number.isSafeInteger(x.page)||Number(x.page)<1||typeof x.sourceSha256!=="string"||!HEX.test(x.sourceSha256)||typeof x.baselineFactsSha256!=="string"||!HEX.test(x.baselineFactsSha256))throw new HttpError(400,"복구 미리보기 입력을 확인하세요.");
   return {expectedRevision:Number(x.expectedRevision),baselineRevision:Number(x.baselineRevision),documentId:x.documentId,page:Number(x.page),sourceSha256:x.sourceSha256,baselineFactsSha256:x.baselineFactsSha256};
 }
-function verifyFact(f:Fact, id:string, page:number, hash:string){
-  const p=f.sourceVerification, b=p?.factBinding;
-  return f.state==="retracted"&&f.recognition==="rejected"&&!f.reviewer&&f.refs?.some(r=>r.documentId===id&&r.page===page&&r.sourceHash===hash)&&!!p&&p.source.documentId===id&&p.source.page===page&&p.source.sha256===hash&&b?.id===f.id&&b.logicalId===f.logicalId&&b.version===f.version;
+function baselineProofEligible(f:Fact,all:Fact[],id:string,page:number,hash:string){
+  const proof=f.sourceVerification,binding=proof?.factBinding;
+  if(f.state!=="retracted"||f.recognition!=="rejected"||f.reviewer!==undefined||!proof||proof.recognition!=="unreviewed"||!f.refs?.some(r=>r.documentId===id&&r.page===page&&r.sourceHash===hash)||proof.source.documentId!==id||proof.source.page!==page||proof.source.sha256!==hash)return false;
+  if(binding?.id===f.id&&binding.logicalId===f.logicalId&&binding.version===f.version)return true;
+  const predecessors=all.filter(candidate=>candidate.id===binding?.id);
+  if(predecessors.length!==1)return false;
+  const predecessor=predecessors[0];
+  if(predecessor.id===f.id||f.supersedes!==predecessor.id||f.logicalId!==predecessor.logicalId||f.version!==predecessor.version+1||binding?.logicalId!==predecessor.logicalId||binding.version!==predecessor.version||predecessor.state!=="verified"||predecessor.recognition!=="unreviewed"||predecessor.reviewer!==undefined||!predecessor.sourceVerification||predecessor.sourceVerification.recognition!=="unreviewed"||JSON.stringify(predecessor.sourceVerification)!==JSON.stringify(proof))return false;
+  if(predecessor.sourceVerification.source.documentId!==id||predecessor.sourceVerification.source.page!==page||predecessor.sourceVerification.source.sha256!==hash)return false;
+  const lineageFields=new Set(["id","version","supersedes","state","recognition","reviewReason","createdAt"]), omit=(fact:Fact)=>{const copy=structuredClone(fact) as unknown as Record<string,unknown>;for(const key of lineageFields)delete copy[key];return copy;};
+  return JSON.stringify(omit(predecessor))===JSON.stringify(omit(f));
 }
 function expectedCurrent(baseline:Fact):Fact {
   const result=structuredClone(baseline);delete result.sourceVerification;result.validation=result.validation.filter(v=>v.code!=="MACHINE_SOURCE_VERIFIED");return result;
@@ -52,9 +60,9 @@ async function findBaseline(caseId:string,input:RestoreInput,requestedAt:string)
     const baselineIds=new Set<string>();for(const fact of snapshot.facts){if(baselineIds.has(fact.id))throw new HttpError(409,"기준 스냅샷의 사실 ID가 중복되었습니다.");baselineIds.add(fact.id);}
     // Retain only matching historical tombstones; discard the large parsed snapshot before loading current state.
     const matching=snapshot.facts.filter(f=>f.refs?.some(r=>r.documentId===input.documentId&&r.page===input.page));
-    if(matching.some(f=>f.state==="retracted"&&f.recognition==="rejected"&&!f.reviewer&&f.sourceVerification&&!verifyFact(f,input.documentId,input.page,input.sourceSha256)))throw new HttpError(409,"기준 스냅샷의 원문 proof 연결이 일치하지 않습니다.");
-    const facts=matching.filter(f=>verifyFact(f,input.documentId,input.page,input.sourceSha256)),revision=snapshot.context.revision;snapshot=null as unknown as CaseData;
-    return {key:item.key,objectSha256:objectSha,factsSha256:factsSha,revision,facts};
+    const eligible:Fact[]=[];for(const fact of matching){if(fact.state==="retracted"&&fact.recognition==="rejected"&&fact.reviewer===undefined&&fact.sourceVerification){if(!baselineProofEligible(fact,snapshot.facts,input.documentId,input.page,input.sourceSha256))throw new HttpError(409,"기준 스냅샷의 원문 proof 연결이 일치하지 않습니다.");eligible.push(fact);}}
+    const revision=snapshot.context.revision;snapshot=null as unknown as CaseData;
+    return {key:item.key,objectSha256:objectSha,factsSha256:factsSha,revision,facts:eligible};
   }
   throw new HttpError(409,"서버가 보유한 제한 범위 안에서 기준 스냅샷을 확인할 수 없습니다.");
 }
