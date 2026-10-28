@@ -87,15 +87,42 @@ test("reverify refuses incomplete, held-out, leased, source-mismatched, or incom
   const missingOriginal=fixture({sourceObjectMismatch:true});missingOriginal.job.result=JSON.stringify({read:{documentType:"income",records:[],warnings:[],complete:true},extractionPasses:[{model:"gpt-6-luna",promptVersion:"old",promptHash:"c".repeat(64),sourceHash:missingOriginal.data.documents[0].sha256,baseImageHash:missingOriginal.job.image_hash,verifiedAt:"2026-10-26T00:00:00.000Z"}]});await assert.rejects(missingOriginal.reverify(),/찾을 수 없어/);assert.equal(missingOriginal.archives.length,0);
 });
 
-test("reverify clears only old machine receipts for the selected source page and retains human-reviewed facts",()=>{
-  const proof={source:{documentId:"doc",page:1,sha256:"a".repeat(64)}};
+test("reverify clears only matching current unreviewed machine receipts and preserves reviewed or historical facts",()=>{
+  const proof=(documentId="doc",page=1,sha256="a".repeat(64))=>({source:{documentId,page,sha256}});
+  const fact=(id:string,logicalId:string,version:number,options:any={})=>({id,logicalId,version,state:options.state??"verified",...(options.recognition!=="missing"?{recognition:options.recognition??"unreviewed"}:{}),...(options.reviewer?{reviewer:options.reviewer}:{}),sourceVerification:options.sourceVerification??proof(),validation:[{code:"MACHINE_SOURCE_VERIFIED"},{code:"OTHER"}]});
   const data:any={facts:[
-    {id:"machine-page",state:"verified",sourceVerification:proof,validation:[{code:"MACHINE_SOURCE_VERIFIED"},{code:"OTHER"}]},
-    {id:"manual-page",state:"verified",reviewer:{actor:"synthetic"},validation:[{code:"OTHER"}]},
-    {id:"other-page",state:"verified",sourceVerification:{source:{documentId:"doc",page:2,sha256:"a".repeat(64)}},validation:[{code:"MACHINE_SOURCE_VERIFIED"}]},
+    fact("machine-page","machine-page",1),
+    fact("extracted-page","extracted-page",1,{state:"extracted"}),
+    fact("disputed-page","disputed-page",1,{state:"disputed"}),
+    fact("legacy-no-recognition","legacy-no-recognition",1,{recognition:"missing"}),
+    fact("manual-page","manual-page",1,{recognition:"accepted",reviewer:"synthetic"}),
+    fact("rejected-page","rejected-page",1,{recognition:"rejected"}),
+    fact("historical-v1","historical-slot",1,{state:"retracted",recognition:"rejected"}),
+    fact("current-v2","historical-slot",2),
+    fact("other-page","other-page",1,{sourceVerification:proof("doc",2)}),
+    fact("other-document","other-document",1,{sourceVerification:proof("other-doc",1)}),
+    fact("other-hash","other-hash",1,{sourceVerification:proof("doc",1,"b".repeat(64))}),
   ]};
-  const next=pageRefresh.clearAutomatedPageReceipts(data,"doc",1,"a".repeat(64));
-  assert.equal(next.facts[0].state,"extracted");assert.equal(next.facts[0].sourceVerification,undefined);assert.deepEqual(next.facts[0].validation,[{code:"OTHER"}]);
-  assert.equal(next.facts[1].reviewer.actor,"synthetic");assert.equal(next.facts[1].state,"verified");
-  assert.ok(next.facts[2].sourceVerification);assert.notEqual(next,data);
+  const before=structuredClone(data),next=pageRefresh.clearAutomatedPageReceipts(data,"doc",1,"a".repeat(64));
+  const byId=(id:string)=>next.facts.find((item:any)=>item.id===id);
+  for(const id of ["machine-page","extracted-page","disputed-page","legacy-no-recognition","current-v2"]){
+    assert.equal(byId(id).sourceVerification,undefined,`${id} machine receipt must be invalidated`);
+    assert.deepEqual(byId(id).validation,[{code:"OTHER"}]);
+  }
+  assert.equal(byId("machine-page").state,"extracted");
+  assert.equal(byId("extracted-page").state,"extracted");
+  assert.equal(byId("disputed-page").state,"disputed");
+  assert.equal(byId("legacy-no-recognition").state,"extracted");
+  assert.equal(byId("current-v2").state,"extracted");
+  for(const id of ["manual-page","rejected-page","historical-v1","other-page","other-document","other-hash"]){
+    assert.deepEqual(byId(id),before.facts.find((item:any)=>item.id===id),`${id} must remain unchanged`);
+  }
+  assert.deepEqual(data,before,"the input snapshot is immutable");
+});
+
+test("reverify fails closed on an unknown current recognition value without changing input",()=>{
+  const data:any={facts:[{id:"unknown-recognition",logicalId:"slot",version:1,state:"verified",recognition:"future-state",sourceVerification:{source:{documentId:"doc",page:1,sha256:"a".repeat(64)}},validation:[{code:"MACHINE_SOURCE_VERIFIED"}]}]};
+  const before=structuredClone(data);
+  assert.throws(()=>pageRefresh.clearAutomatedPageReceipts(data,"doc",1,"a".repeat(64)),/반영 상태/);
+  assert.deepEqual(data,before);
 });

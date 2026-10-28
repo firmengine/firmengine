@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "a376641dffbc50eb8667633a4a18f09bf0d121579818e47bf6a7a2c721fc2ed6",
+  "source_digest": "2c36aa64801716dfe39b3be6aae4cedbb91d8e5afa3bab79cc2e06b31fbb935a",
   "files": [
     {
       "path": ".gitignore",
@@ -55,8 +55,8 @@
     },
     {
       "path": "app/api/cases/[id]/route.ts",
-      "sha256": "4479e4546a52f5c4af1836b3211addc620ad816d4fc5212d11596f43fa0626f6",
-      "bytes": 7515,
+      "sha256": "225c3d8499195ddde95d582f89220d90b13e1ebd882eac905ad74f9d21b8e537",
+      "bytes": 12380,
       "mode": "100644"
     },
     {
@@ -847,8 +847,8 @@
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "dcf0ad49ec56ddfe07921ca24f8d65252a65bb64279e5a3c5238a25b639ca0d2",
-      "bytes": 55010,
+      "sha256": "5e31a79f4c7d55ae9c6835243f83b3a619a8a274d35898c44f935d9b078428d6",
+      "bytes": 55664,
       "mode": "100644"
     },
     {
@@ -879,6 +879,12 @@
       "path": "lib/form-template-data.ts",
       "sha256": "d82f2443055a00ef8d35c318d6750c8407475c97d2c334dd33851696a24907cb",
       "bytes": 395255,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/history-integrity-restore.ts",
+      "sha256": "ad3417a59fb20fe3e7f373a00c97ef231fceadf62adbc7811334f973b8034a2f",
+      "bytes": 10787,
       "mode": "100644"
     },
     {
@@ -973,8 +979,8 @@
     },
     {
       "path": "lib/page-refresh.ts",
-      "sha256": "d9b64c6be3bbda5f36d30256bbc337298f8295fdd604d4ef66dbaf157e32e0ca",
-      "bytes": 2884,
+      "sha256": "da4c7d65a8668469fb1e4689801dc138a783913bd4dfddd67df3880bf916dd28",
+      "bytes": 3349,
       "mode": "100644"
     },
     {
@@ -1560,6 +1566,12 @@
       "mode": "100644"
     },
     {
+      "path": "tests/history-integrity-restore.test.ts",
+      "sha256": "946cafb7292ca52a157cfb037c60125dfd6739c63691cc250b4498c27b1c0e9b",
+      "bytes": 18494,
+      "mode": "100644"
+    },
+    {
       "path": "tests/income-resolution.test.ts",
       "sha256": "d1a445141eb39cff02344f5a3ba686db9e017b009a76f48368bf208a01ece7c7",
       "bytes": 7542,
@@ -1645,8 +1657,8 @@
     },
     {
       "path": "tests/page-refresh-pipeline.test.ts",
-      "sha256": "01e2b8f7ca421845453118fb5e27bd24e77542ec83f594857b01768b52066682",
-      "bytes": 11704,
+      "sha256": "6f734b9573ac7f8842f9de5a815a4520882b5840aa2fb61784a1ee9948f8e764",
+      "bytes": 13673,
       "mode": "100644"
     },
     {
@@ -1723,8 +1735,8 @@
     },
     {
       "path": "tests/server-integrity.test.ts",
-      "sha256": "795d2c8c5fd9f0b467fa91acea29e58f062442952840ecf1604829e1d0757f26",
-      "bytes": 22882,
+      "sha256": "503767ec687821b453f5f584d329423e196d07c2a52303c119dcc8568b2dd751",
+      "bytes": 23125,
       "mode": "100644"
     },
     {

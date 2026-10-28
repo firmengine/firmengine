@@ -245,6 +245,7 @@ export interface CaseData {
   exportManifest?: ExportManifest;
   extractionWarnings?: string[];
   execution?: { model: typeof AI_MODEL; attempts: number; inputTokens: number; outputTokens: number; startedAt?: string; completedAt?: string; calls?: { agent: string; attempt: number; status: "completed" | "failed"; inputTokens: number; outputTokens: number; durationMs: number }[] };
+  historyIntegrityRepairs?: { operation: "restore_historical_source_proof_metadata_v1"; reason: "Restore historical proof metadata only; no OCR or human review"; baselineKey: string; baselineObjectSha256: string; baselineFactsSha256: string; documentId: string; page: number; sourceSha256: string; baselineRevision: number; beforeRevision: number; afterRevision: number; selectedCount: number; selectedIdsSha256: string; activeFactsChanged: 0; humanFactReviewsChanged: 0; activeExportFilesInvalidated: number; priorReviewsCleared: number; priorReviewFingerprintsSha256: string; actor: string; actorKind: "human" | "private-site-service"; at: string }[];
 }
 export interface RuleSource {
   id: string;
