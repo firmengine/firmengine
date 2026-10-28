@@ -245,6 +245,18 @@ test("current review view hides stale records without deleting history and requi
   assert.throws(() => reviewExport(staleStaffRevision, "lawyer", "합성 변호사", manifestFingerprint(staleStaffRevision.exportManifest!)), /담당자 검수/);
   assert.equal(staleStaffRevision.exportManifest!.reviews.caseworker!.caseRevision, data.context.revision - 1, "failed lawyer review leaves the saved historical record intact");
 
+  const legacyServiceReview = structuredClone(lawyer);
+  legacyServiceReview.exportManifest!.reviews.caseworker!.actor = " private-site-service ";
+  assert.equal(currentExportReviews(legacyServiceReview).caseworker, null, "legacy service review is not a current human approval");
+  assert.equal(currentExportReviews(legacyServiceReview).lawyer, null, "lawyer review depends on a current human caseworker review");
+  assert.equal(legacyServiceReview.exportManifest!.reviews.caseworker!.actor, " private-site-service ", "stored review history remains unchanged");
+  assert.throws(() => reviewExport(legacyServiceReview, "lawyer", "합성 변호사", manifestFingerprint(legacyServiceReview.exportManifest!)), /담당자 검수/);
+
+  const legacyBlankReview = structuredClone(lawyer);
+  legacyBlankReview.exportManifest!.reviews.caseworker!.actor = "  ";
+  assert.equal(currentExportReviews(legacyBlankReview).caseworker, null, "blank historical actor is not a current approval");
+  assert.equal(legacyBlankReview.exportManifest!.reviews.caseworker!.actor, "  ", "blank stored history is preserved");
+
   const legacyManifest = { ...lawyer.exportManifest! };
   delete (legacyManifest as Partial<typeof legacyManifest>).mode;
   const legacy = { ...lawyer, exportManifest: legacyManifest };

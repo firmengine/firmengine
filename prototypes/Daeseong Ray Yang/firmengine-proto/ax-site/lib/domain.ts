@@ -1,3 +1,4 @@
+import { observeField, type FieldObservation, type PageFieldCoverage } from "./field-observation.ts";
 import { isSourceMoney,insuranceReviewFieldKey,debtComponentSlotKey } from "./source-quantity.ts";
 import { bboxLocatorFingerprintSegment, fingerprintHasBBoxLocator, isValidSourceBBox, sameSourceBBox, type BBoxReceiptLocator, type SourceBBox } from "./source-verification-identity.ts";
 
@@ -37,6 +38,7 @@ export interface EvidenceDocument {
   extractionStatus?: "pending" | "processing" | "completed" | "failed";
 }
 export interface EvidencePage {
+  fieldCoverage?: PageFieldCoverage;
   documentId: string;
   page: number;
   role: "evidence" | "filed_form" | "administrative" | "unknown";
@@ -45,6 +47,8 @@ export interface EvidencePage {
   documentType?: string;
 }
 export interface Fact {
+  canonicalFieldId?: string;
+  fieldObservation?: FieldObservation;
   id: string;
   logicalId: string;
   version: number;
@@ -458,6 +462,13 @@ export function reviewFact(input: CaseData, id: string, review: { state?: FactSt
   const changed = valueChanged || unitChanged || numeric !== undefined && JSON.stringify(numeric) !== JSON.stringify(prior.numeric);
   const next: Fact = { ...prior, id: crypto.randomUUID(), version: prior.version + 1, supersedes: prior.id, reviewer: review.actor, reviewReason: review.reason, createdAt: new Date().toISOString(), state: review.state ?? (changed ? "reported" : prior.state), recognition: review.recognition ?? (changed ? "unreviewed" : prior.recognition) };
   delete next.sourceVerification;
+  if(changed){delete next.fieldObservation;delete next.canonicalFieldId;}
+  if(changed&&prior.fieldObservation){
+    const old=prior.fieldObservation;
+    for(const page of data.pages)for(const observation of page.fieldCoverage?.observations??[]){
+      if(observation.documentId===old.documentId&&observation.page===old.page&&observation.sourceSha256===old.sourceSha256&&observation.recordIndex===old.recordIndex&&observation.fieldIndex===old.fieldIndex)observation.supersededByHumanFactId=next.id;
+    }
+  }
   if (review.value !== undefined) { next.value = value; if(valueChanged) next.rawValue=typeof value==="string"||typeof value==="number"?String(value):undefined; }
   if (numeric !== undefined) next.numeric = numeric;
   if (unitProvided) next.sourceUnit=sourceUnit??null;
@@ -649,7 +660,9 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
     const id = crypto.randomUUID();
     if (raw.id) idMap.set(raw.id, id);
     const validation = (Array.isArray(raw.validation) ? raw.validation : []).filter((v) => v && typeof v.code === "string" && typeof v.message === "string" && ["info", "warning", "error"].includes(v.severity)).map((v) => ({ code: v.code, message: v.message, severity: v.severity }));
-    const fact: Fact = { id, logicalId, version: (prior?.version ?? 0) + 1, supersedes: prior?.id, subjectId: raw.subjectId, key: raw.key, value: raw.value, rawValue: raw.rawValue, ...(Object.hasOwn(raw,"sourceUnit")?{sourceUnit:raw.sourceUnit as string|null}:{}), numeric: raw.numeric, periodStart: raw.periodStart, periodEnd: raw.periodEnd, asOf: raw.asOf, state: logicalId.includes(":candidate:") ? "disputed" : "extracted", recognition: "unreviewed", refs: raw.refs, validation, createdAt: at };
+    const observed=raw.fieldObservation;
+    const safeObservation=observed&&typeof observed=== "object"&&observed.applicability&&typeof observed.label==="string"&&observed.documentId===raw.refs[0].documentId&&observed.page===raw.refs[0].page&&observed.sourceSha256===raw.refs[0].sourceHash&&observed.rawValue===raw.value&&observed.quote===raw.refs[0].quote&&observed.rawUnit===(raw.sourceUnit??null)&&JSON.stringify(observed.bbox)===JSON.stringify(raw.refs[0].bbox??null)?observeField(data.pages.find(p=>p.documentId===observed.documentId&&p.page===observed.page)?.documentType??"",{key:raw.key,label:observed.label,value:observed.rawValue,unit:observed.rawUnit,quote:observed.quote,bbox:observed.bbox,confidence:observed.extractionState==="value_read"?"clear":"uncertain",canonicalFieldId:observed.canonicalFieldId,sourceState:observed.sourceState,applicability:observed.applicability.sourceClaim,applicabilityQuote:observed.applicability.quote},{documentId:observed.documentId,page:observed.page,sourceSha256:observed.sourceSha256},observed.recordIndex,observed.fieldIndex):undefined;
+    const fact: Fact = { ...(safeObservation?{fieldObservation:safeObservation,canonicalFieldId:safeObservation.canonicalFieldId??undefined}:{}), id, logicalId, version: (prior?.version ?? 0) + 1, supersedes: prior?.id, subjectId: raw.subjectId, key: raw.key, value: raw.value, rawValue: raw.rawValue, ...(Object.hasOwn(raw,"sourceUnit")?{sourceUnit:raw.sourceUnit as string|null}:{}), numeric: raw.numeric, periodStart: raw.periodStart, periodEnd: raw.periodEnd, asOf: raw.asOf, state: logicalId.includes(":candidate:") ? "disputed" : "extracted", recognition: "unreviewed", refs: raw.refs, validation, createdAt: at };
     if (raw.numeric && moneyValue(raw.numeric) === null) fact.validation.push({ code: "NORMALIZATION_REVIEW", message: "원문 금액·통화·단위를 다시 확인하세요.", severity: "warning" });
     data.facts.push(fact);
   }
@@ -726,7 +739,7 @@ export function currentExportReviews(data: CaseData): ExportManifest["reviews"] 
   const none = { caseworker: null, lawyer: null } as const;
   if (!manifest || manifest.mode !== "final" || manifest.caseRevision !== data.context.revision || manifestIssues(data).length) return none;
   const fingerprint = manifestFingerprint(manifest);
-  const isCurrent = (record: ReviewRecord | null | undefined): record is ReviewRecord => !!record && record.caseRevision === data.context.revision && record.manifestFingerprint === fingerprint;
+  const isCurrent = (record: ReviewRecord | null | undefined): record is ReviewRecord => !!record && !!record.actor.trim() && record.actor.trim() !== "private-site-service" && record.caseRevision === data.context.revision && record.manifestFingerprint === fingerprint;
   const caseworker = isCurrent(manifest.reviews?.caseworker) ? manifest.reviews.caseworker : null;
   const lawyer = caseworker && isCurrent(manifest.reviews?.lawyer) ? manifest.reviews.lawyer : null;
   return { caseworker, lawyer };
@@ -740,7 +753,7 @@ export function archiveExport(input: CaseData, id: string): CaseData {
   return data;
 }
 export function reviewExport(input: CaseData, role: "caseworker" | "lawyer", actor: string, expectedFingerprint: string): CaseData {
-  if (!actor.trim()) throw new Error("확인자가 필요합니다.");
+  if (!actor.trim() || actor === "private-site-service") throw new Error("인증된 사용자 확인이 필요합니다.");
   const issues = manifestIssues(input);
   if (issues.length) throw new Error(issues.join(" / "));
   const data = structuredClone(input);

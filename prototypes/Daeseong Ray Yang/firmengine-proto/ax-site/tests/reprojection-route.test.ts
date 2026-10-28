@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import * as processJobScope from "../lib/process-job-scope.ts";
+import * as documentAgentRegistry from "../lib/document-agent-registry.ts";
 
 const root = fileURLToPath(new URL("../", import.meta.url));
 class MockHttpError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
@@ -13,13 +14,14 @@ function loadRoute(overrides: Record<string, unknown> = {}) {
   const loadedModule = { exports: {} as Record<string, unknown> };
   const mocks: Record<string, unknown> = {
     "../../../../../lib/process-job-scope": processJobScope,
+    "../../../../../lib/document-agent-registry": documentAgentRegistry,
     "../../../../../lib/case-response": { caseProgress: async (_id: string, result: { stage?: string }) => ({ caseId: "case-1", remaining: 0, stage: result.stage }) },
     "../../../../../lib/json-response": { jsonResponse: (body: unknown, _request: Request, init?: ResponseInit) => Response.json(body, init) },
     "../../../../../lib/page-job-inspection": { inspectStoredPageJob: async (_id: string, jobId: string) => ({ stored: true, jobId }), reprojectCasePage: async () => ({}) },
     "../../../../../lib/classification-inspection": { inspectClassificationJob: async (_id: string, jobId: string) => ({ classification: true, jobId, modelCalls: 0, mutatesState: false }) },
     "../../../../../lib/reprojection": { PAGE_PROJECTION_VERSION: "synthetic-projection-v1", ReprojectionError: class extends Error { status = 409; }, reprojectStoredPage: () => ({}) },
     "../../../../../lib/server-store": { actor: async () => "synthetic-actor", db: () => ({ prepare: () => ({ bind: () => ({ run: async () => ({ meta: { changes: 1 } }) }) }) }), errorResponse: (error: unknown) => Response.json({ error: error instanceof Error ? error.message : "error" }, { status: 409 }), event: async () => {}, HttpError: MockHttpError, jsonBody: async (request: Request) => request.json(), now: () => "2026-10-27T00:00:00.000Z", requireSameOrigin: () => {}, saveCase: async () => {} },
-    "../../../../../lib/pipeline": { processNext: async () => { throw new Error("paid process path must not run"); }, reconcileCase: async () => ({}), retryFailed: async () => ({}), retryPage: async () => ({}), reverifyPage:async()=>({}),reviewLegal: async () => ({}) },
+    "../../../../../lib/pipeline": { processNext: async () => { throw new Error("paid process path must not run"); }, processNextBatch: async () => { throw new Error("invalid batch must not mutate state"); }, reconcileCase: async () => ({}), retryFailed: async () => ({}), retryPage: async () => ({}), reverifyPage:async()=>({}),reviewLegal: async () => ({}) },
     ...overrides,
   };
   new Function("require", "module", "exports", output)((name: string) => {
@@ -28,6 +30,16 @@ function loadRoute(overrides: Record<string, unknown> = {}) {
   }, loadedModule, loadedModule.exports);
   return loadedModule.exports as { GET(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response>; POST(request: Request, context: { params: Promise<{ id: string }> }): Promise<Response> };
 }
+
+test("invalid batch parallelism returns 400 before entering the batch worker",async()=>{
+  let workerCalls=0;
+  const route=loadRoute({
+    "../../../../../lib/pipeline":{processNextBatch:async()=>{workerCalls++;return {};},processNext:async()=>({}),reconcileCase:async()=>({}),retryFailed:async()=>({}),retryPage:async()=>({}),reverifyPage:async()=>({}),reviewLegal:async()=>({})},
+    "../../../../../lib/server-store":{actor:async()=>"synthetic",db:()=>({prepare:()=>({bind:()=>({run:async()=>{throw new Error("no db writes expected");}})})}),errorResponse:(error:unknown)=>Response.json({error:error instanceof Error?error.message:"error"},{status:(error as {status?:number}).status??500}),event:async()=>{},HttpError:MockHttpError,jsonBody:async(request:Request)=>request.json(),now:()=>"2026-10-28T00:00:00.000Z",requireSameOrigin:()=>{},saveCase:async()=>{throw new Error("no case writes expected");}},
+  });
+  const response=await route.POST(new Request("https://synthetic.invalid/api/cases/case-1/process",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({action:"next_batch",jobIds:["job-1"],parallelism:0})}),{params:Promise.resolve({id:"case-1"})});
+  assert.equal(response.status,400);assert.equal(workerCalls,0);
+});
 
 test("GET job inspection returns only the selected page inspection result", async () => {
   const received: string[] = [];

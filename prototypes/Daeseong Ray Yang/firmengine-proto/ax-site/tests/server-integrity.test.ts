@@ -49,8 +49,9 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
     async run(){if(sql.includes("INSERT INTO page_derivatives")&&beforeDerivativeInsert)beforeDerivativeInsert(sqlite,params);const result=sqlite.prepare(sql).run(...params);return {meta:{changes:Number(result.changes)}};},
     async all(){return {results:sqlite.prepare(sql).all(...params)};},
   };}};},async batch(commands:Array<{run():Promise<unknown>}>){const results=[];for(const command of commands)results.push(await command.run());return results;}};
-  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>({userId:"synthetic-owner"})},"./domain":domain,"./processing-readiness":processingReadiness});
-  return {sqlite,data,objects,store};
+  let authenticatedUser:{userId:string}|null={userId:"synthetic-owner"};
+  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./processing-readiness":processingReadiness});
+  return {sqlite,data,objects,store,setAuthenticatedUser:(user:{userId:string}|null)=>{authenticatedUser=user;}};
 }
 
 test("같은 사건 revision의 보관·검수 경합은 stale 저장을 거부한다",async()=>{
@@ -83,7 +84,16 @@ test("검수 API는 지문 누락과 재생성 전의 지문을 거부하고 현
   const context={params:Promise.resolve({id:prior.context.id})};
   assert.equal((await route.PATCH(request(),context)).status,400);
   assert.equal((await route.PATCH(request(oldFingerprint),context)).status,409);
-  assert.equal((await h.store.getCase(prior.context.id)).exportManifest!.reviews.caseworker,null);
+  h.setAuthenticatedUser(null);
+  assert.equal((await route.PATCH(request(domain.manifestFingerprint(prior.exportManifest!)),context)).status,403);
+  h.setAuthenticatedUser({userId:"private-site-service"});
+  assert.equal((await route.PATCH(request(domain.manifestFingerprint(prior.exportManifest!)),context)).status,403);
+  assert.equal((await route.PATCH(new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_fact",revision:prior.context.revision})}),context)).status,403);
+  assert.equal((await route.PATCH(new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_object",revision:prior.context.revision})}),context)).status,403);
+  const unchanged=await h.store.getCase(prior.context.id);
+  assert.equal(unchanged.context.revision,prior.context.revision);
+  assert.equal(unchanged.exportManifest!.reviews.caseworker,null);
+  h.setAuthenticatedUser({userId:"synthetic-owner"});
   const fingerprint=domain.manifestFingerprint(prior.exportManifest!);
   assert.equal((await route.PATCH(request(fingerprint),context)).status,200);
   assert.equal((await h.store.getCase(prior.context.id)).exportManifest!.reviews.caseworker!.manifestFingerprint,fingerprint);

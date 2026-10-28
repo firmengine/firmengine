@@ -18,6 +18,8 @@ export interface ReviewPass {
   bindingStatus?: "bound" | "unbound";
   bindingIssues?: readonly string[];
   model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string;
+  /** Routing/task provenance only; separate task contexts do not imply model independence. */
+  agentTask?: import("./document-agent-registry.ts").DocumentTaskEnvelope;
 }
 export interface FieldError { recordIndex: number; fieldIndex: number; code: string }
 export interface SourceVerificationInput {

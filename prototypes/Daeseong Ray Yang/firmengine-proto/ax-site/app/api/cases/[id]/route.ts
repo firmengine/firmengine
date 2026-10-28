@@ -3,7 +3,7 @@ import { assessCase } from "../../../../lib/assessment";
 import { CURRENT_RULESET } from "../../../../lib/legal-rules";
 import { caseResponse } from "../../../../lib/case-response";
 import { jsonResponse } from "../../../../lib/json-response";
-import { actor,db,errorResponse,event,getCase,getProcessingReadiness,HttpError,jsonBody,requireSameOrigin,requireUploadedSource,saveCase } from "../../../../lib/server-store";
+import { actor,db,errorResponse,event,getCase,getProcessingReadiness,HttpError,jsonBody,requireHumanActor,requireSameOrigin,requireUploadedSource,saveCase } from "../../../../lib/server-store";
 import { upsertObject,removeObject } from "../../../../lib/object-editor";
 import { samplePageRole } from "../../../../lib/sample-manifest";
 import { parseContextPatch,parseHouseholdPatch } from "../../../../lib/context-validation";
@@ -41,10 +41,11 @@ export async function PATCH(request:Request,{params}:Context){try{
   }else if(body.action==="delete_object"){
     next=removeObject(previous,body.collection,body.objectId,String(body.reason||""),await actor());
   }else if(body.action==="review_fact"){
+    const humanActor=await requireHumanActor();
     if(body.state&&!(["reported","extracted","verified","disputed","retracted"] as FactState[]).includes(body.state))throw new HttpError(400,"확인 상태가 올바르지 않습니다.");
     if(body.recognition&&!(["unreviewed","accepted","rejected"] as Recognition[]).includes(body.recognition))throw new HttpError(400,"법적 반영 상태가 올바르지 않습니다.");
     if(Object.hasOwn(body,"sourceUnit")&&body.sourceUnit!==null&&(typeof body.sourceUnit!=="string"||body.sourceUnit.length>64))throw new HttpError(400,"원문 단위 형식을 확인하세요.");
-    next=reviewFact(previous,body.factId,{state:body.state,recognition:body.recognition,...(body.value!==undefined?{value:body.value}:{}),...(Object.hasOwn(body,"sourceUnit")?{sourceUnit:body.sourceUnit}:{}),actor:await actor(),reason:String(body.reason||"원문 대조 후 확인")});
+    next=reviewFact(previous,body.factId,{state:body.state,recognition:body.recognition,...(body.value!==undefined?{value:body.value}:{}),...(Object.hasOwn(body,"sourceUnit")?{sourceUnit:body.sourceUnit}:{}),actor:humanActor,reason:String(body.reason||"원문 대조 후 확인")});
   }else if(body.action==="retract_document"){
     next=retractDocument(previous,body.documentId);
     for(const doc of next.documents.filter(d=>d.status==="deleted"))jobMutations.push(db().prepare("UPDATE page_jobs SET status = 'withdrawn',lease_until = NULL WHERE document_id = ? AND case_id = ?").bind(doc.id,id));
@@ -58,17 +59,19 @@ export async function PATCH(request:Request,{params}:Context){try{
     if(p.role!=="evidence")for(const f of currentFacts(next).filter(f=>f.refs.some(r=>r.documentId===p.documentId&&r.page===p.page)))next.facts.push({...f,id:crypto.randomUUID(),version:f.version+1,supersedes:f.id,state:"retracted",recognition:"rejected"});
     jobMutations.push(db().prepare("UPDATE page_jobs SET role = ?,status = CASE WHEN ? = 'evidence' AND image_key IS NOT NULL THEN 'pending' WHEN ? = 'evidence' THEN 'awaiting_upload' ELSE 'held' END,error = NULL,lease_until = NULL WHERE document_id = ? AND page = ? AND case_id = ?").bind(p.role,p.role,p.role,p.documentId,p.page,id));
   }else if(body.action==="review_export"){
+    const humanActor=await requireHumanActor();
     if(previous.exportManifest?.mode!=="final")throw new HttpError(409,"검수 기록을 남기려면 현재 사건 버전의 최종 검토본을 먼저 생성하세요.");
     if(!(await getProcessingReadiness(previous)).complete)throw new HttpError(409,"증빙의 업로드·추출·독립 대조를 먼저 완료하세요.");
     const assessment=assessCase(previous,CURRENT_RULESET);
     if(!assessment.generationGate.canFinalize)throw new HttpError(409,"필수 검토와 계산을 먼저 마쳐야 제출본을 확정할 수 있습니다.");
     if(!["caseworker","lawyer"].includes(body.role))throw new HttpError(400,"검토 역할을 확인하세요.");
     if(typeof body.fingerprint!=="string"||!body.fingerprint)throw new HttpError(400,"화면에서 확인한 생성물 지문이 필요합니다. 최신 생성물을 다시 열어 검토하세요.");
-    try{next=reviewExport(previous,body.role,await actor(),body.fingerprint);}
+    try{next=reviewExport(previous,body.role,humanActor,body.fingerprint);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"생성물 검토 상태가 변경되었습니다.");}
     next.context.revision=previous.context.revision;
   }else if(body.action==="archive_export")next=archiveExport(previous,body.fileId);
   else if(body.action==="review_object"){
+    await requireHumanActor();
     if(!["incomes","debts","assets"].includes(body.collection))throw new HttpError(400,"검토 대상을 확인하세요.");
     next=touchCase(previous);const collection=next[body.collection as "incomes"|"debts"|"assets"];
     const item=collection.find(x=>x.id===body.objectId);if(!item)throw new HttpError(404,"항목을 찾을 수 없습니다.");

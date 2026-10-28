@@ -9,6 +9,14 @@ export function db():D1Database { if(!env.DB)throw new HttpError(503,"사건 저
 export function bucket():R2Bucket { if(!env.BUCKET)throw new HttpError(503,"문서 저장소가 준비되지 않았습니다.");return env.BUCKET; }
 export function connection(){return {model:AI_MODEL,apiKeyConfigured:!!env.OPENAI_API_KEY,storageReady:!!env.DB&&!!env.BUCKET};}
 export async function actor(){const user=await getChatGPTUser();return user?.userId??"private-site-service";}
+/** Human-review transitions require the authenticated Site user identity. Site's
+ * service fallback remains valid for operational actions, but cannot stand in
+ * for a person making factual, legal, or export-recognition decisions. */
+export async function requireHumanActor():Promise<string>{
+  const user=await getChatGPTUser();
+  if(!user?.userId||user.userId==="private-site-service")throw new HttpError(403,"이 검토에는 인증된 사용자 계정이 필요합니다.");
+  return user.userId;
+}
 /** This deployment is owner-private. Sites dispatch authenticates browser and service access.
  * Do not make public without replacing this shared-workspace boundary with per-record ACLs. */
 export function requireSameOrigin(request:Request){

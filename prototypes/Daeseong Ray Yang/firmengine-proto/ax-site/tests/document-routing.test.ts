@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { documentFamily, equivalentDocumentTypes } from "../lib/document-routing.ts";
+import { clampDocumentParallelism, continuationRelationship, createDocumentTaskEnvelope, documentFieldContract, documentTypeMatchesFamily, mapBounded, routeDocumentTask } from "../lib/document-agent-registry.ts";
 import { projectPage, type ReadField, type PageRead } from "../lib/extraction.ts";
 
 test("source families survive printed title spacing, qualifiers and English synonyms", () => {
@@ -12,6 +13,8 @@ test("source families survive printed title spacing, qualifiers and English syno
     ["Local_Tax_Assessment_Certificate", "local_tax"],
     ["income_amount_certificate", "tax_income"],
     ["national_pension_contribution_history", "pension"],
+    ["payroll_payslip", "payroll"], ["lease_housing", "lease"], ["insurance_policy_asset", "insurance"],
+    ["bank_account_balance", "bank_account"],
   ]) assert.equal(documentFamily(label), expected, label);
 });
 
@@ -37,6 +40,48 @@ test("workflow aliases connect actual contracts without broad lexical matching",
   assert.ok(equivalentDocumentTypes("부동산임대차계약서(월세)").includes("lease_contract"));
   assert.ok(equivalentDocumentTypes("소득금액증명원").includes("income_amount_certificate"));
   assert.deepEqual(equivalentDocumentTypes("not-catalogued"), ["not-catalogued"]);
+});
+
+test("document agent contracts route known family scopes and keep unknown reads on review",()=>{
+  assert.equal(documentFieldContract("payroll")?.family_id,"payroll_payslip","legacy extraction key remains explicitly mapped to the versioned family");
+  assert.equal(documentTypeMatchesFamily("lease_housing","lease_housing"),true);
+  assert.equal(documentTypeMatchesFamily("unknown","lease_housing"),false);
+  assert.equal(documentTypeMatchesFamily("insurance_policy_asset","lease_housing"),false);
+  assert.deepEqual(routeDocumentTask("debt_certificate","extract"),{familyId:"debt_certificate",taskRole:"family_extractor",reviewRequired:false});
+  assert.deepEqual(routeDocumentTask("unlisted attachment","extract"),{familyId:null,taskRole:"human_review_route",reviewRequired:true});
+  assert.equal(routeDocumentTask("debt_certificate","verify").taskRole,"source_verifier");
+  const task=createDocumentTaskEnvelope({runId:"run",taskId:"task",taskRole:"family_extractor",caseId:"case",pageJobId:"job",documentId:"doc",sourceSha256:"a".repeat(64),imageSha256:"b".repeat(64),page:4,familyId:"debt_certificate",promptVersion:"prompt-v",model:"gpt-6-luna"});
+  assert.equal(task.logicalBoundaryStatus,"page_only_unverified");
+  assert.equal(task.logicalDocumentId,null);
+  assert.equal(task.legalApproval,"not_provided");
+  assert.equal(task.modelContextIndependence,"separate_task_context_same_model");
+  const contract=documentFieldContract("debt_certificate");
+  assert.equal(contract?.family_id,"debt_certificate");
+  assert.ok(contract?.fields.length && contract.fields.every(field=>field.global_field_id.startsWith("debt_certificate::")));
+  assert.ok(contract?.fields.some(field=>field.subject_role && field.temporal_role && field.canonical_unit));
+  assert.equal(documentFieldContract("unlisted attachment"),null);
+});
+
+test("parallelism is bounded and adjacent pages remain unverified continuation candidates",()=>{
+  assert.equal(clampDocumentParallelism(undefined),2);
+  assert.equal(clampDocumentParallelism(99),4);
+  assert.throws(()=>clampDocumentParallelism(0));
+  assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:2,familyId:"debt_certificate"}),"page_only_unverified","adjacent pages alone do not establish a continuation");
+  assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate",boundaryObservation:"continuation_candidate",boundaryQuote:"다음 쪽 계속"},{documentId:"d",page:2,familyId:"debt_certificate"}),"continuation_candidate_unverified");
+  assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:2,familyId:"credit_report"}),"boundary_conflict_pending");
+  // Equal-looking values do not participate in the relationship decision.
+  assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:3,familyId:"debt_certificate"}),"page_only_unverified");
+});
+
+test("bounded job mapper preserves request order while permitting only configured overlap",async()=>{
+  let active=0,maximum=0;
+  const values=await mapBounded(["a","b","c","d"],2,async(value,index)=>{
+    active++;maximum=Math.max(maximum,active);
+    await new Promise(resolve=>setTimeout(resolve,value==="a"?8:1));
+    active--;return `${index}:${value}`;
+  });
+  assert.deepEqual(values,["0:a","1:b","2:c","3:d"]);
+  assert.equal(maximum,2);
 });
 
 const field=(key:string,value:string,unit:string|null=null):ReadField=>({key,label:key,value,unit,quote:`${key}: ${value}${unit??""}`,confidence:"clear",bbox:[0.1,0.1,0.8,0.2]});

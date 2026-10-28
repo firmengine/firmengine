@@ -25,6 +25,21 @@ export const DOCUMENT_FAMILY_ALIASES: Record<string, readonly string[]> = {
   property_search: ["property_ownership_search", "지방세전국재산세과세내역", "부동산소유현황"],
 };
 
+/** Reviewed bridge from catalog family IDs to existing extraction instruction keys. */
+export const CATALOG_FAMILY_DOCUMENT_TYPES: Record<string, string> = {
+  payroll_payslip: "payroll", bank_account_balance: "bank_account", insurance_policy_asset: "insurance",
+  lease_housing: "lease", identity_residence_record: "identity_family", applicant_narrative_statement: "client_statement",
+  pension_contribution_benefit: "pension", pension_benefit_income: "pension_benefit", tax_public_arrear: "tax_arrears",
+  business_sales_vat: "tax_revenue",
+};
+export function documentTypeForCatalogFamily(familyId: string): string {
+  return CATALOG_FAMILY_DOCUMENT_TYPES[familyId] ?? familyId;
+}
+export function catalogFamilyForDocumentType(type: string): string | null {
+  return Object.entries(CATALOG_FAMILY_DOCUMENT_TYPES).find(([, documentType]) => normalizedKey(documentType) === normalizedKey(type))?.[0] ?? null;
+}
+const normalizedKey = (label: string) => label.normalize("NFKC").trim().toLowerCase().replace(/[\s_-]+/g, "");
+
 const normalized = (label: string) => label.normalize("NFKC").trim().toLowerCase().replace(/[\s_-]+/g, "");
 const byAlias = new Map<string, string>();
 for (const [family, aliases] of Object.entries(DOCUMENT_FAMILY_ALIASES)) {
@@ -37,6 +52,8 @@ for (const [family, aliases] of Object.entries(DOCUMENT_FAMILY_ALIASES)) {
 
 /** Accept explicit titles with normal qualifiers; broad words like 보험 or 세금 never suffice. */
 export function documentFamily(label: string): string {
+  const catalogFamily = Object.keys(CATALOG_FAMILY_DOCUMENT_TYPES).find(id => normalizedKey(id) === normalizedKey(label));
+  if (catalogFamily) return documentFamily(CATALOG_FAMILY_DOCUMENT_TYPES[catalogFamily]);
   const direct = byAlias.get(normalized(label));
   if (direct) return direct;
   const text = label.normalize("NFKC").replace(/\s+/g, "").toLowerCase();

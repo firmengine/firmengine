@@ -1,8 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canRecoverClassification, recoveredClassificationRole, observedClassificationRole, canUseRescueRole, CLASSIFICATION_SCHEMA, CLASSIFICATION_INSTRUCTIONS, type ClassificationRecoveryRead } from "../lib/classification-recovery.ts";
+import { canRecoverClassification, recoveredClassificationRole, observedClassificationRole, canUseRescueRole, hasValidClassificationCatalog, CLASSIFICATION_CATALOG_RELEASE, CLASSIFICATION_FAMILY_IDS, CLASSIFICATION_SCHEMA, CLASSIFICATION_INSTRUCTIONS, type ClassificationRecoveryRead } from "../lib/classification-recovery.ts";
 import { rescueSpecs } from "../lib/scan-quality.ts";
-const observation:ClassificationRecoveryRead={role:"evidence",documentType:"payroll",confidence:"high",reason:"visible payroll columns",titleQuote:"임금명세서",issuerQuote:null,structureQuote:"지급총액 공제총액 실지급액",evidenceRowsQuote:"기본급 3,000,000 / 공제액 300,000",administrativeStructureQuote:null,legibility:"clear"};
+const observation:ClassificationRecoveryRead={role:"evidence",familyId:"payroll_payslip",catalogRelease:"catalog-release-v2.2.0",boundaryObservation:"single_page",boundaryQuote:null,confidence:"high",reason:"visible payroll columns",titleQuote:"임금명세서",issuerQuote:null,structureQuote:"지급총액 공제총액 실지급액",evidenceRowsQuote:"기본급 3,000,000 / 공제액 300,000",administrativeStructureQuote:null,legibility:"clear"};
+test("classifier runtime gate requires exact catalog release and family membership",()=>{
+  assert.equal(hasValidClassificationCatalog({catalogRelease:CLASSIFICATION_CATALOG_RELEASE,familyId:CLASSIFICATION_FAMILY_IDS[0]}),true);
+  assert.equal(hasValidClassificationCatalog({catalogRelease:CLASSIFICATION_CATALOG_RELEASE,familyId:null}),true);
+  assert.equal(hasValidClassificationCatalog({catalogRelease:"old-catalog",familyId:CLASSIFICATION_FAMILY_IDS[0]}),false);
+  assert.equal(hasValidClassificationCatalog({catalogRelease:CLASSIFICATION_CATALOG_RELEASE,familyId:"not_a_family"}),false);
+});
 test("classification recovery has a second-call budget, and suspected holdouts never enter rescue",()=>{
   assert.equal(canRecoverClassification({...observation,role:"unknown"},1),true);
   assert.equal(canRecoverClassification({...observation,confidence:"low"},1),true);
@@ -22,7 +28,7 @@ test("evidence recovery requires explicit structural and title/issuer observatio
   assert.equal(recoveredClassificationRole({...observation,role:"filed_form"}),"filed_form");
 });
 test("initial classification requires source-observed structure and does not infer administration from a generic title",()=>{
-  const genericHeading:ClassificationRecoveryRead={...observation,role:"administrative",documentType:"administrative",titleQuote:"급여 안내",evidenceRowsQuote:null,administrativeStructureQuote:null};
+  const genericHeading:ClassificationRecoveryRead={...observation,role:"administrative",familyId:"payroll_payslip",catalogRelease:"catalog-release-v2.2.0",boundaryObservation:"single_page",boundaryQuote:null,titleQuote:"급여 안내",evidenceRowsQuote:null,administrativeStructureQuote:null};
   assert.equal(observedClassificationRole(genericHeading),"unknown","a title alone is insufficient for administrative routing");
   assert.equal(observedClassificationRole({...genericHeading,evidenceRowsQuote:"지급총액 3,000,000 / 공제액 300,000"}),"evidence","concrete evidence rows override a generic 안내 title");
   assert.equal(observedClassificationRole({...genericHeading,administrativeStructureQuote:"제출 서류를 작성해 접수 창구에 제출하십시오",structureQuote:"작성방법 · 제출처 · 확인사항"}),"administrative","separate body instruction and cover structure support administrative routing");
@@ -35,9 +41,11 @@ test("low legibility stays unknown and filed forms never become evidence through
   assert.equal(canRecoverClassification({...observation,role:"filed_form",confidence:"low"},1),false);
 });
 test("first classifier schema requires source quotes and legibility observations",()=>{
-  assert.deepEqual(CLASSIFICATION_SCHEMA.required,["role","documentType","confidence","reason","legibility","titleQuote","issuerQuote","structureQuote","evidenceRowsQuote","administrativeStructureQuote"]);
-  assert.match(CLASSIFICATION_INSTRUCTIONS,/제목.*administrative가 아니다/);
+  assert.deepEqual(CLASSIFICATION_SCHEMA.required,["role","familyId","catalogRelease","boundaryObservation","boundaryQuote","confidence","reason","legibility","titleQuote","issuerQuote","structureQuote","evidenceRowsQuote","administrativeStructureQuote"]);
+  assert.match(CLASSIFICATION_INSTRUCTIONS,/구체 증빙 구조는 administrative 제목보다 우선한다/);
   assert.match(CLASSIFICATION_INSTRUCTIONS,/legibility=low/);
+  assert.equal(CLASSIFICATION_SCHEMA.properties.familyId.enum.length,49);
+  assert.match(CLASSIFICATION_INSTRUCTIONS,/페이지 결합이나 사실 병합을 하지 않는다/);
 });
 test("unknown role permits only a bound classification rescue, never an extraction rescue",()=>{
   assert.equal(canUseRescueRole("unknown","unknown","classification_unknown"),true);
