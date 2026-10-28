@@ -24,7 +24,7 @@ test("source-nature prompt keeps classifier claims untrusted and preserves match
   assert.match(EXTRACT_INSTRUCTIONS,/untrusted/);
   assert.match(EXTRACT_INSTRUCTIONS,/Do not discard a legitimate field value/);
   assert.match(EXTRACT_INSTRUCTIONS,/actual image and field contract support it/);
-  assert.equal(PROMPT_VERSION,"luna-evidence-3.19.0");
+  assert.equal(PROMPT_VERSION,"luna-evidence-3.20.0");
 
   const read={documentType:"debt_certificate",complete:true,warnings:[],records:[{
     category:"debt" as const,label:"issuer row",fields:[{

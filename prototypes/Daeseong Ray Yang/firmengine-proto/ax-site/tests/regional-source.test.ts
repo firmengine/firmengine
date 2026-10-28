@@ -12,7 +12,7 @@ const page:[number,number,number,number]=[.35,.35,.45,.45];
 
 test("regional reads and verifier checks use page coordinates for receipts; raw audit checks stay local",()=>{
   const localRead:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[{key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"clear",bbox:local}]}]};
-  const rawCheck={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:local,reason:"region source read"};
+  const rawCheck={recordIndex:0,fieldIndex:0,categoryStatus:"supported" as const,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:local,reason:"region source read"};
   const localPass:ReviewPass={kind:"verify",checks:[rawCheck],originalChecks:[rawCheck],model:AI_MODEL,promptVersion,promptHash,verifiedAt,bindingStatus:"bound"};
   const mappedRead=pageCoordinateRead(localRead,crop),mappedPass=pageCoordinateReviewPass(localPass,crop);
   assert.deepEqual(mappedRead.records[0].fields[0].bbox,page);
@@ -31,7 +31,7 @@ test("regional reads and verifier checks use page coordinates for receipts; raw 
 
 test("invalid crop or source geometry is converted to null and cannot mint a receipt",()=>{
   const invalidRead:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[{key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"clear",bbox:[.8,.2,.4,.3]}]}]};
-  const invalidCheck={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:[.2,.2,.4,.4],reason:"source read"};
+  const invalidCheck={recordIndex:0,fieldIndex:0,categoryStatus:"supported" as const,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:[.2,.2,.4,.4],reason:"source read"};
   const badRegion=pageCoordinateRead(invalidRead,[.8,.2,.4,.7]);
   assert.equal(badRegion.records[0].fields[0].bbox,null);
   assert.equal(pageCoordinateRead(invalidRead,crop).records[0].fields[0].bbox,null);

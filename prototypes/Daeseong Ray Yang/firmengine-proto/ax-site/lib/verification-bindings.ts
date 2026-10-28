@@ -29,6 +29,7 @@ export function bindVerificationChecks(
   read: PageRead,
   rawChecks: unknown,
   allowedTargets?: readonly Pick<FieldReviewCheck, "recordIndex" | "fieldIndex">[],
+  options: { requireCategoryStatus?: boolean } = {},
 ): VerificationBindingResult {
   if (!Array.isArray(rawChecks)) return { checks: [], bindingIssues: ["CHECKS_NOT_ARRAY"] };
 
@@ -44,6 +45,8 @@ export function bindVerificationChecks(
       continue;
     }
     const check = value as Partial<FieldReviewCheck>;
+    if(options.requireCategoryStatus&&check.categoryStatus===undefined)issues.add("CATEGORY_STATUS_MISSING:"+checkIndex);
+    if(check.categoryStatus!==undefined&&!(["supported","wrong_category","unclear"] as unknown[]).includes(check.categoryStatus))issues.add("CATEGORY_STATUS_INVALID:"+checkIndex);
     const ri = check.recordIndex, fi = check.fieldIndex;
     if (!Number.isSafeInteger(ri) || !Number.isSafeInteger(fi) || (ri as number) < 0 || (fi as number) < 0) {
       issues.add(`CHECK_COORDINATE_INVALID:${checkIndex}`);
@@ -68,6 +71,7 @@ export function bindVerificationChecks(
     return {
       recordIndex: check.recordIndex,
       fieldIndex: check.fieldIndex,
+      ...(check.categoryStatus === undefined ? {} : { categoryStatus: check.categoryStatus }),
       ...(check.meaningStatus === undefined ? {} : { meaningStatus: check.meaningStatus }),
       status: check.status,
       value: check.value,

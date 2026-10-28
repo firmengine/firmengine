@@ -27,7 +27,7 @@ function fixture(){
       const bbox:[number,number,number,number]=[.1,.1,.9,.2];
       const read={documentType:"client_statement",complete:true,records:[{category:"statement",fields:[{key:key.slice("statement.".length),value,unit:null,quote,bbox,confidence:"clear" as const}]}]};
       const verifiedAt="2026-10-27T10:00:00.000Z";
-      const [receipt]=createSourceVerificationReceipts({documentId,page,sourceHash:hash,promptVersion:PROMPT_VERSION,verifiedAt,originalRead:read,read,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value,unit:null,quote,bbox}]}]});
+      const [receipt]=createSourceVerificationReceipts({documentId,page,sourceHash:hash,promptVersion:PROMPT_VERSION,verifiedAt,originalRead:read,read,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,categoryStatus:"supported",meaningStatus:"supported",status:"agrees",value,unit:null,quote,bbox}]}]});
       const fact={id,logicalId:id,version:1,subjectId,key,value,rawValue:value,state:"verified" as const,recognition:"unreviewed" as const,refs:[{documentId,page,quote,bbox,sourceHash:hash}],validation:[],sourceVerification:{...receipt,factBinding:{id,logicalId:id,version:1}}};
       data.facts.push(fact);
     };
@@ -44,7 +44,7 @@ function verifiedStatementFact(input:{id:string;subjectId:string;key:string;valu
   const key=input.key.replace(/^statement\./,"");
   const read:PageRead={documentType:"client_statement",complete:true,warnings:[],records:[{category:"statement",label:"synthetic statement record",fields:[{key,label:key,value:input.value,unit:null,quote:input.quote,bbox:input.bbox,confidence:"clear"}]}]};
   const verifiedAt="2026-10-27T10:00:00.000Z";
-  const [receipt]=createSourceVerificationReceipts({documentId:input.documentId,page:1,sourceHash:input.hash,promptVersion:PROMPT_VERSION,verifiedAt,originalRead:read,read,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:input.value,unit:null,quote:input.quote,bbox:input.bbox}]}]});
+  const [receipt]=createSourceVerificationReceipts({documentId:input.documentId,page:1,sourceHash:input.hash,promptVersion:PROMPT_VERSION,verifiedAt,originalRead:read,read,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,categoryStatus:"supported",meaningStatus:"supported",status:"agrees",value:input.value,unit:null,quote:input.quote,bbox:input.bbox}]}]});
   assert.ok(receipt,`synthetic ${input.key} receipt must be constructible`);
   const fact={id:input.id,logicalId:input.id,version:1,subjectId:input.subjectId,key:input.key,value:input.value,rawValue:input.value,state:"verified" as const,recognition:"unreviewed" as const,refs:[{documentId:input.documentId,page:1,quote:input.quote,bbox:input.bbox,sourceHash:input.hash}],validation:[],sourceVerification:{...receipt,factBinding:{id:input.id,logicalId:input.id,version:1}}};
   return fact as Fact;
@@ -184,7 +184,7 @@ test("scope relation extraction metadata binds the opening source quote and bbox
   const projected=projectPage(read,"source-doc",1,"d".repeat(64)),fact=projected.facts?.find(item=>item.key==="statement.scope_relation");
   assert.ok(fact&&fact.refs,"typed relation is carried into the source fact ledger");
   assert.equal(fact.refs[0].quote,opening);assert.deepEqual(fact.refs[0].bbox,bbox);assert.equal(fact.refs[0].sourceHash,"d".repeat(64));
-  assert.equal(PROMPT_VERSION,"luna-evidence-3.19.0");
+  assert.equal(PROMPT_VERSION,"luna-evidence-3.20.0");
   assert.ok(sourceInstructions("client_statement").includes("relation 필드의 별도 quote는 openingQuote와 같게"));
   assert.ok(STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS.includes("원문에 인쇄된 문자열이 아니라"));
 });
@@ -223,7 +223,7 @@ test("a complete page reread with changed record IDs and bboxes supersedes exact
     assert.ok(bbox);
     const receiptRead={documentType:"client_statement",complete:true,records:[{category:"statement",fields:[{key,value,unit:null,quote:factQuote,bbox,confidence:"clear" as const}]}]};
     const verifiedAt="2026-10-27T10:00:00.000Z";
-    const [receipt]=createSourceVerificationReceipts({documentId:"statement",page:1,sourceHash:"a".repeat(64),promptVersion:PROMPT_VERSION,verifiedAt,originalRead:receiptRead,read:receiptRead,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value,unit:null,quote:factQuote,bbox}]}]});
+    const [receipt]=createSourceVerificationReceipts({documentId:"statement",page:1,sourceHash:"a".repeat(64),promptVersion:PROMPT_VERSION,verifiedAt,originalRead:receiptRead,read:receiptRead,passes:[{kind:"verify",model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:"c".repeat(64),verifiedAt,checks:[{recordIndex:0,fieldIndex:0,categoryStatus:"supported",meaningStatus:"supported",status:"agrees",value,unit:null,quote:factQuote,bbox}]}]});
     fact.state="verified";fact.sourceVerification={...receipt,factBinding:{id:fact.id,logicalId:fact.logicalId,version:fact.version}};
   }
   assert.ok(refreshed.facts.some(fact=>fact.state==="retracted"&&fact.reviewReason==="완전한 페이지 재추출로 이전 자동 후보 철회"&&fact.key==="statement.text"));

@@ -59,3 +59,11 @@ node --test --test-isolation=none tests/*.test.ts
 ```
 
 합성 성능 비교는 `scripts/benchmark-workflow.ts`로 수행합니다. 동일 입력의 전체 결과가 같은지 비교하며, 지표는 코드 점검 단계의 지연시간입니다. 전체 OCR 실행시간이나 실제 사건 정확도를 대신하지 않습니다.
+
+
+## OCR 분류 검증 계약 갱신
+
+`luna-evidence-3.20.0`은 공통 record category 정의를 추출기와 검증기에 함께 제공하고, `categoryStatus`와 개별 필드의 `meaningStatus`를 별도로 확인합니다. 문서 종류만으로 허용 category를 추정하거나 원문 category를 자동 변경하지 않습니다. 같은 record 안에서 분류 판단이 충돌하면 해당 record의 새로운 source receipt와 typed projection을 보류하며, 실제 필드 의미·주체·행/열·시점·단위·인용 검증도 계속 적용합니다.
+
+새 검증 기록은 category 상태를 명시해야 하고, 유효한 이전 prompt 버전의 기록은 기존 의미로 읽습니다. 페이지 재투영 계약은 `source-projection-2026-10-28.17`로 갱신했습니다. 이 변경과 소프트웨어 회귀 검사는 추출 정확도나 사람·법적 승인 완료를 뜻하지 않습니다.
+

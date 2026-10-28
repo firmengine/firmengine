@@ -25,9 +25,9 @@ function fixture(role: "evidence" | "filed_form" | "administrative" = "evidence"
 }
 
 function proofFixture(){
-  const f=fixture(),readCopy=structuredClone(read),promptVersion="synthetic-cross-read-1.0",verifiedAt="2026-10-27T00:00:00.000Z",promptHash="f".repeat(64);
+  const f=fixture(),readCopy=structuredClone(read),promptVersion="luna-evidence-3.20.0",verifiedAt="2026-10-27T00:00:00.000Z",promptHash="f".repeat(64);
   const payload=projectPage(readCopy,"doc-1",1,hash),data=applyExtraction(f.data,payload);
-  const checks=readCopy.records.flatMap((record,recordIndex)=>record.fields.map((field,fieldIndex)=>({recordIndex,fieldIndex,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:field.quote,bbox:field.bbox})));
+  const checks=readCopy.records.flatMap((record,recordIndex)=>record.fields.map((field,fieldIndex)=>({recordIndex,fieldIndex,categoryStatus:"supported" as const,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:field.quote,bbox:field.bbox})));
   const receipts=createSourceVerificationReceipts({documentId:"doc-1",page:1,sourceHash:hash,promptVersion,verifiedAt,originalRead:readCopy,read:readCopy,passes:[{kind:"verify",checks,model:"gpt-6-luna",promptVersion,promptHash,verifiedAt}]});
   for(const receipt of receipts){
     const location=sourceVerificationFieldLocation(receipt,readCopy)!;
@@ -133,11 +133,11 @@ test("exact historical machine receipts survive trusted reprojection with only f
 test("bbox-located equal source fields preserve the exact row proof across reprojection",()=>{
   const boxes:[[number,number,number,number],[number,number,number,number],[number,number,number,number]]=[[0.05,0.1,0.2,0.2],[0.3,0.1,0.45,0.2],[0.6,0.1,0.75,0.2]];
   const duplicateRead:PageRead={documentType:"insurance",complete:true,warnings:[],records:boxes.map((bbox,index)=>({category:"asset",label:`synthetic insurance row ${index+1}`,fields:[{key:"gross_value",label:"surrender amount",value:"7250",unit:"원",quote:"환급가액 7,250원",confidence:"clear",bbox}]}))};
-  const data=createCase("Synthetic duplicate source rows","synthetic-duplicate-case","2026-10-27"),image="e".repeat(64),promptVersion="synthetic-cross-read-1.0",promptHash="f".repeat(64),verifiedAt="2026-10-27T00:00:00.000Z";
+  const data=createCase("Synthetic duplicate source rows","synthetic-duplicate-case","2026-10-27"),image="e".repeat(64),promptVersion="luna-evidence-3.20.0",promptHash="f".repeat(64),verifiedAt="2026-10-27T00:00:00.000Z";
   data.documents=[{id:"doc-duplicate",name:"synthetic.pdf",sha256:hash,status:"active",pages:[1],type:"insurance"}];
   data.pages=[{documentId:"doc-duplicate",page:1,role:"evidence",documentType:"insurance",text:duplicateRead.records.map(record=>record.fields[0].quote).join("\n"),imageUrl:"/synthetic"}];
   const payload=projectPage(duplicateRead,"doc-duplicate",1,hash),projected=applyExtraction(data,payload);
-  const checks=duplicateRead.records.map((record,recordIndex)=>({recordIndex,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:record.fields[0].value,unit:record.fields[0].unit,quote:record.fields[0].quote,bbox:boxes[recordIndex]}));
+  const checks=duplicateRead.records.map((record,recordIndex)=>({recordIndex,fieldIndex:0,categoryStatus:"supported" as const,meaningStatus:"supported",status:"agrees" as const,value:record.fields[0].value,unit:record.fields[0].unit,quote:record.fields[0].quote,bbox:boxes[recordIndex]}));
   const verifier:ReviewPass={kind:"verify",checks,bindingStatus:"bound",model:"gpt-6-luna",promptVersion,promptHash,verifiedAt};
   const receipts=createSourceVerificationReceipts({documentId:"doc-duplicate",page:1,sourceHash:hash,promptVersion,verifiedAt,originalRead:duplicateRead,read:duplicateRead,passes:[verifier]});
   assert.equal(receipts.length,3);
@@ -160,6 +160,7 @@ test("historical value-unit-quote receipts stay explicitly legacy through reproj
   const f=proofFixture();
   for(const fact of currentFacts(f.data)){
     const proof=fact.sourceVerification;if(!proof)continue;
+    proof.promptVersion="luna-evidence-3.19.0";for(const read of proof.proofReads)read.promptVersion="luna-evidence-3.19.0";for(const read of proof.geometry?.verifierReads??[])read.promptVersion="luna-evidence-3.19.0";
     delete proof.verificationScope;
     delete proof.geometry;delete proof.field.locator;delete proof.extractionReading.bbox;
     for(const read of proof.proofReads){delete read.meaningStatus;delete read.bbox;}

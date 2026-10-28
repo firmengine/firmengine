@@ -9,9 +9,9 @@ import type { CaseData, Fact } from "../lib/domain.ts";
 const hash = "a".repeat(64), docId = "proof-doc", pageNum = 1;
 const promptHash = "c".repeat(64), at = "2026-10-27T10:00:00.000Z";
 const field = (key:string,value:string,unit:string|null,quote:string,confidence:"clear"|"uncertain"|"unreadable"="clear")=>({key,value,unit,quote,confidence,bbox:[.1,.2,.4,.25]});
-const check=(ri:number,fi:number,status:Check["status"],value:string|null,unit:string|null,quote:string|null,meaningStatus:Check["meaningStatus"]="supported"):Check=>({recordIndex:ri,fieldIndex:fi,meaningStatus,status,value,unit,quote,bbox:[.1,.2,.4,.25]});
-const pass=(kind:"verify"|"repair",checks:Check[]):ReviewPass=>({kind,checks,model:AI_MODEL,promptVersion:"luna-evidence-3.11.0",promptHash,verifiedAt:at});
-function sourceInput(read:PageRead,passes:ReviewPass[],sourceHash=hash,errors?:{recordIndex:number;fieldIndex:number;code:string}[]){return{documentId:docId,page:pageNum,sourceHash,promptVersion:"luna-evidence-3.11.0",verifiedAt:at,originalRead:read,read,passes,errors};}
+const check=(ri:number,fi:number,status:Check["status"],value:string|null,unit:string|null,quote:string|null,meaningStatus:Check["meaningStatus"]="supported"):Check=>({recordIndex:ri,fieldIndex:fi,categoryStatus:"supported",meaningStatus,status,value,unit,quote,bbox:[.1,.2,.4,.25]});
+const pass=(kind:"verify"|"repair",checks:Check[]):ReviewPass=>({kind,checks,model:AI_MODEL,promptVersion:"luna-evidence-3.20.0",promptHash,verifiedAt:at});
+function sourceInput(read:PageRead,passes:ReviewPass[],sourceHash=hash,errors?:{recordIndex:number;fieldIndex:number;code:string}[]){return{documentId:docId,page:pageNum,sourceHash,promptVersion:"luna-evidence-3.20.0",verifiedAt:at,originalRead:read,read,passes,errors};}
 function fixture():CaseData{const d=createCase("합성", "c", "2026-10-27");d.documents=[{id:docId,name:"synthetic",sha256:hash,status:"active",pages:[pageNum]}];d.pages=[{documentId:docId,page:pageNum,role:"evidence"}];return d;}
 function rawFact(value:string,quote:string):Partial<Fact>{return{id:"model-id",logicalId:"debt-source",subjectId:"loan",key:"debt.principal",value,rawValue:value,numeric:normalizeMoney(value,"만원"),state:"verified",recognition:"accepted",sourceVerification:{fake:true} as never,refs:[{documentId:docId,page:pageNum,quote,sourceHash:hash,bbox:[.1,.2,.4,.25]}],validation:[]};}
 
@@ -27,6 +27,29 @@ test("verified agreement receipt is bound to current source and exact fact versi
   assert.equal(sourceVerificationReceiptMatches(receipts[0],{documentId:docId,page:pageNum,sourceHash:"b".repeat(64),read}),false);
   const strippedScope=structuredClone(receipts[0]);delete strippedScope.verificationScope;
   assert.equal(sourceVerificationReceiptMatches(strippedScope,{documentId:docId,page:pageNum,sourceHash:hash,read}),false,"meaning status and fingerprint marker cannot be stripped to masquerade as a legacy receipt");
+});
+
+
+test("v3.20 receipt creation fails closed for missing or unsupported record category consensus",()=>{
+  const read:PageRead={documentType:"synthetic",complete:true,records:[{category:"transaction",fields:[field("principal","500","만원","입금 500만원"),field("creditor","A",null,"상대방 A")]}]};
+  const mixed=[check(0,0,"agrees","500","만원","입금 500만원"),{...check(0,1,"agrees","A",null,"상대방 A"),categoryStatus:"wrong_category" as const}];
+  assert.deepEqual(createSourceVerificationReceipts(sourceInput(read,[pass("verify",mixed)])),[]);
+  const missing={...check(0,0,"agrees","500","만원","입금 500만원")};delete (missing as Partial<Check>).categoryStatus;
+  assert.deepEqual(createSourceVerificationReceipts(sourceInput(read,[pass("verify",[missing])])),[]);
+});
+
+
+test("receipt matcher requires category status when any embedded read uses v3.20, even with a legacy parent",()=>{
+  const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};
+  const [receipt]=createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees","500","만원","원금 500만원")])]));
+  const tampered=structuredClone(receipt);tampered.promptVersion="luna-evidence-3.19.0";delete tampered.proofReads[0].categoryStatus;delete tampered.geometry!.verifierReads[0].categoryStatus;
+  assert.equal(sourceVerificationReceiptMatches(tampered,{documentId:docId,page:pageNum,sourceHash:hash,read}),false);
+});
+
+test("well-formed pre-v3.20 receipts retain historical category-status omission",()=>{
+  const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};
+  const oldPass={...pass("verify",[{...check(0,0,"agrees","500","만원","원금 500만원")}]),promptVersion:"luna-evidence-3.19.0"};delete oldPass.checks[0].categoryStatus;
+  const oldInput={...sourceInput(read,[oldPass]),promptVersion:"luna-evidence-3.19.0"};assert.equal(createSourceVerificationReceipts(oldInput).length,1);
 });
 
 test("new receipts require verifier quotes to overlap the extracted field quote literally",()=>{
@@ -176,6 +199,12 @@ test("bbox-located receipt lineage requires the exact source-ref bbox and an int
   assert.ok(factSourceLineageIssues(strippedGeometry,[strippedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"),"an extended bbox fingerprint cannot be treated as legacy after every geometry property is stripped");
   const forged=structuredClone(data),forgedFact=forged.facts[2];forgedFact.sourceVerification!.fieldFingerprint="[]";
   assert.ok(factSourceLineageIssues(forged,[forgedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+  const missingCategory=structuredClone(data),missingCategoryFact=missingCategory.facts[0],missingCategoryProof=missingCategoryFact.sourceVerification!;delete missingCategoryProof.proofReads[0].categoryStatus;delete missingCategoryProof.geometry!.verifierReads[0].categoryStatus;
+  assert.ok(factSourceLineageIssues(missingCategory,[missingCategoryFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"),"modern lineage requires category status on both proof and geometry reads");
+  const wrongCategory=structuredClone(data),wrongCategoryFact=wrongCategory.facts[0];(wrongCategoryFact.sourceVerification!.proofReads[0] as unknown as {categoryStatus:string}).categoryStatus="wrong_category";
+  assert.ok(factSourceLineageIssues(wrongCategory,[wrongCategoryFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+  const modernEmbeddedLegacyParent=structuredClone(data),embeddedFact=modernEmbeddedLegacyParent.facts[0],embeddedProof=embeddedFact.sourceVerification!;embeddedProof.promptVersion="luna-evidence-3.19.0";delete embeddedProof.proofReads[0].categoryStatus;embeddedProof.geometry!.verifierReads[0].promptVersion="luna-evidence-3.20.0";delete embeddedProof.geometry!.verifierReads[0].categoryStatus;
+  assert.ok(factSourceLineageIssues(modernEmbeddedLegacyParent,[embeddedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"),"embedded modern geometry cannot inherit its legacy parent exemption");
   const validGeometryProof=data.facts[0].sourceVerification!.geometry!.verifierReads[0];
   const unrelatedQuote=structuredClone(data),unrelatedFact=unrelatedQuote.facts[0],unrelatedProof=unrelatedFact.sourceVerification!;
   unrelatedProof.proofReads[0].quote="채권자 7250원";unrelatedProof.verificationQuotes[0]=unrelatedProof.proofReads[0].quote;

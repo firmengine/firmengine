@@ -10,7 +10,7 @@ const read:PageRead={documentType:"synthetic",complete:true,warnings:[],records:
     {key:"applicant_intent",label:"applicant intent",value:"I apply",unit:null,quote:"I apply",confidence:"clear",bbox:null},
   ]},
 ]};
-const check=(recordIndex:number,fieldIndex:number,value:string)=>({recordIndex,fieldIndex,meaningStatus:"supported",status:"agrees",value,unit:null,quote:value,reason:"synthetic"});
+const check=(recordIndex:number,fieldIndex:number,value:string)=>({recordIndex,fieldIndex,categoryStatus:"supported",meaningStatus:"supported",status:"agrees",value,unit:null,quote:value,reason:"synthetic"});
 
 test("verifier serialization carries explicit zero-based record and field coordinates",()=>{
   const indexed=indexedVerificationRead(read);
@@ -43,4 +43,11 @@ test("one negative or out-of-range coordinate discards every check in that pass"
 test("duplicate coordinates discard the entire pass instead of accepting a usable-looking subset",()=>{
   const result=bindVerificationChecks(read,[check(1,0,"applicant"),check(1,0,"applicant")]);
   assert.deepEqual(result.checks,[]);assert.ok(result.bindingIssues.includes("DUPLICATE_CHECK_COORDINATE:1:0"));
+});
+
+
+test("v3.20 binding requires a valid category status",()=>{
+  const missing={...check(0,0,"Synthetic title")} as Record<string,unknown>;delete missing.categoryStatus;
+  const result=bindVerificationChecks(read,[missing as never],undefined,{requireCategoryStatus:true});assert.deepEqual(result.checks,[]);assert.ok(result.bindingIssues.includes("CATEGORY_STATUS_MISSING:0"));
+  const invalid=bindVerificationChecks(read,[{...check(0,0,"Synthetic title"),categoryStatus:"transaction"} as never],undefined,{requireCategoryStatus:true});assert.deepEqual(invalid.checks,[]);assert.ok(invalid.bindingIssues.includes("CATEGORY_STATUS_INVALID:0"));
 });

@@ -3,8 +3,9 @@ import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type 
 import { isSourceMoney,isDebtComponentSlot,debtComponentSlotKey,INSURANCE_SURRENDER_KEYS,isInsuranceSurrenderQuote,quotedInsuranceSurrenderAmount } from "./source-quantity.ts";
 import { documentFamily } from "./document-routing.ts";
 import { SOURCE_NATURE_HANDOFF_INSTRUCTIONS } from "./source-nature-context.ts";
+import { RECORD_CATEGORIES, RECORD_CATEGORY_POLICY_INSTRUCTIONS, RECORD_CATEGORY_STATUS_PROMPT_VERSION, type RecordCategory } from "./category-contract.ts";
 export { SOURCE_BBOX_INSTRUCTIONS } from "./field-observation.ts";
-export const PROMPT_VERSION="luna-evidence-3.19.0";
+export const PROMPT_VERSION=RECORD_CATEGORY_STATUS_PROMPT_VERSION;
 const APPLICANT_ROLE_EVIDENCE_RULE="person.role=applicant은 작성 주체가 문서에서 신청인 본인으로 명시되고, 같은 주체가 1인칭으로 개인회생 신청 의사를 직접 밝히며, 본인이 실제로 서명/날인한 근거가 각각 원문 quote로 확인되는 자필·본인 진술서에서만 source fact 후보로 기록한다. 작성자와 범위가 원문에 명시된 하나의 진술은 가능하면 anchor와 여러 statement.text 필드를 한 statement record에 모으되, 각 문단의 값·quote·bbox·순서는 독립적으로 보존한다. 서로 다른 작성자 또는 범위는 별도 record로 분리한다. 작성자 소개나 신청 의사 문장이 원문의 서술 문단이면 anchor 필드로 추출했어도 그 문단 전체를 statement.text로 함께 보존하여 본문을 누락하지 않는다. 자동 서식 연결을 위해서만 statement.author_role=applicant(신청인 본인이 작성자라는 명시 근거), statement.applicant_intent(같은 작성자의 1인칭 개인회생 신청 의사), statement.author_signature(같은 작성자의 실제 서명/날인 근거)를 각 근거 quote와 함께 별도 사실로 추출한다. 가능하면 세 anchor 사실을 한 statement record에 모은다. anchor나 문단이 여러 record로 나뉘면 statement.scope_relation v2에 openingQuote, intentQuote, closingQuote, 실제 signatureQuote와 동일 범위에 포함되는 모든 statement.text의 정확한 members quote를 빠짐없이 연결하고, relation 필드 자체의 quote와 bbox는 openingQuote 원문 영역을 가리킨다. relation은 보이는 source link의 추출 후보일 뿐이며 독립 검증에서 전체 relation이 지원되기 전에는 연결 근거가 아니다. 이 경우 record마다 scope를 복사하지 않는다. typed relation이 없을 때에만 anchor와 각 문단 record의 statement.author_scope를 각각 원문에서 직접 확인해 정확히 같은 작성 범위를 연결한다. scope는 원문에서 작성자의 진술 범위를 명시하는 연결 문장이나 구획을 직접 인용한다. 단순한 진술서 제목은 작성자와 문단의 연결 근거가 아니다. 원문이 아래 내용 또는 특정 문단 묶음을 같은 본인의 진술이라고 명시할 때만 그 범위를 연결하며, scope를 임의로 만들거나 페이지 전체에 넓혀 붙이지 않는다. 세 작성자 근거가 한 문서/같은 페이지의 같은 인물에 명확히 연결되고 각 문단이 typed relation 또는 independently verified identical author_scope로 귀속되는 경우만 자동 연결 후보이며, 사람 이름·record 순서·근접성만으로 연결하지 않는다. 인물 혼재, 작성자 누락/모호함, 실제 서명 근거 없음, 철회/상충, 다른 scope이면 연결을 보류한다. 이 사실은 unreviewed 원문 후보이지 법적 승인이나 신원 자동확정이 아니다. 채무잔액증명서의 채무자/차주 표기, 가족증명서의 본인, 유일한 성명, 주소 일치, 타인의 대리/제3자 서명만으로 신청인을 추정하지 않는다.";
 export const STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS="statement.scope_relation은 자동 연결을 위한 typed source fact 후보이며 법적 승인이나 신원 확정이 아니다. value의 JSON은 원문에 인쇄된 문자열이 아니라 원문 인용 사이의 관계를 표현하는 metadata다. relation 필드 자체의 quote와 bbox는 반드시 openingQuote가 있는 원문 영역을 가리켜야 하며, JSON 전체가 인쇄된 것처럼 인용하거나 bbox를 만들지 않는다. version=2라면 openingQuote와 같은 작성자의 intentQuote, closingQuote, 실제 signatureQuote, 모든 members quote를 각각 확인한다. legacy version=1에는 intentQuote가 없으며 그대로 인정하지 말고 role·intent·signature anchor가 동일 record에 귀속될 때만 호환한다. 원본 페이지 이미지 전체에서 openingQuote가 작성자의 명시적 자기작성 선언을 정확히 인용하는지, intentQuote가 신청 의사를 정확히 인용하는지, closingQuote가 그 동일 작성 범위의 앞선 내용을 명시적으로 가리키는 문구인지, signatureQuote가 해당 작성자의 실제 서명 근거인지, members의 모든 quote가 실제 statement.text 문단을 각각 정확하고 고유하게 인용하는지, 현재 read에서 빠진 해당 범위 문단이나 다른 작성자/별도 범위 문단이 더 있는지 독립적으로 확인한다. 각 인용은 원문에 직접 대응해야 하며, 인접 제목·이름·record 위치·페이지 근접성만으로 관계를 지지하지 않는다. 인쇄된 서명 문구, 빈 서명선, '(서명)' 표기만으로 실제 서명을 확인하지 않는다. 인용·작성자·범위·문단 경계·실제 서명 중 하나라도 원문 이미지에서 불명확하거나 relation JSON이 잘못되면 meaningStatus=unclear 또는 wrong_field이며 supported로 검증하지 않는다. relation은 원문에서 직접 확인할 수 있는 연결만 표현하고, 원문 밖의 범위를 추정하지 않는다.";
 const STATEMENT_SCOPE_RELATION_RULE="원문에서 하나의 명시적 작성자 진술 범위가 분명하고 작성자 소개, 신청 의사, 그 범위를 명시적으로 가리키는 끝맺음, 같은 작성자의 실제 서명, 모든 해당 문단의 경계를 정확히 연결할 수 있으면 statement.scope_relation key의 value에 다음 형태의 JSON 문자열을 추출한다: {\"version\":2,\"openingQuote\":\"작성자의 명시적 자기작성 선언 원문 인용\",\"intentQuote\":\"같은 작성자의 명시적 신청 의사 원문 인용\",\"closingQuote\":\"위 내용처럼 앞선 동일 범위를 명시적으로 가리키는 끝맺음 원문 인용\",\"signatureQuote\":\"같은 작성자의 실제 서명/날인 원문 인용\",\"members\":[{\"quote\":\"포함되는 각 statement.text 필드의 정확한 원문 quote\"}]}. opening/intent/closing/signature quote와 members quote는 새 문장으로 만들거나 바꾸지 말고 원문 quote를 그대로 쓴다. relation 필드의 별도 quote는 openingQuote와 같게 하고 bbox는 openingQuote 원문 영역의 bbox로 둔다. JSON value 자체는 원문에 인쇄된 내용이 아니므로 JSON 전체에 bbox를 붙이지 않는다. members에는 동일 범위에 속하는 모든 현재 statement.text 문단을 원문 순서대로 한 번씩만 나열하며, 각 quote는 고유한 한 문단을 식별해야 한다. statement.author_scope는 원문이 그 scope를 직접 명시할 때만 추출한다. 진술 범위의 관계는 원문이 명시한 연결을 statement.scope_relation quote들로 표현할 수 있으며, scope 문구를 반복 생성해 각 record에 붙여 범위를 만들거나 입증하지 않는다. 다른 작성자, 다른 진술 범위, 모호/철회/상충/누락 문단, 불명확한 문단 경계, 실제 서명이 확인되지 않는 경우, 페이지가 다른 문단은 relation에 넣지 말고 관계 사실 자체를 생략한다. 이 relation은 제안일 뿐이며 독립 원문 의미 대조가 supported일 때만 사용할 수 있다. 근거가 없으면 동일 문구를 반복해 scope를 만들거나 same-page만으로 author scope를 추정하지 않는다.";
@@ -34,13 +35,13 @@ export const DOC_FIELDS:Record<string,string>={
   bank_account:"계좌증빙 원문 사실만 추출: bank(은행), account_holder(명의인), account_holder_id(원문에 보이는 식별번호; 마스킹은 그대로), account_number(계좌번호; 마스킹은 그대로), as_of(잔액 기준일), active_status(활성/해지 등 상태), balance(잔액이 실제로 기재된 경우만), encumbrance_status/seizure_status/pledge_status(압류·질권·담보 상태). 각 필드에 quote를 연결하고 명시 금액 단위를 붙인다. 개설증명서에 잔액이 없으면 balance=0으로 만들지 말고 잔액 미기재로 남긴다. 상태·명의·잔액은 원문에 명시된 경우만 기록한다. 압류·질권 상태가 기재되지 않았으면 없음으로 만들지 않는다. 개설/해지 기록만으로 현재 잔액, 소득, 자산 귀속을 추정하지 않는다.",
   unknown:"문서 성격에 맞는 원시 사실을 가능한 전부 추출하되, 판단/계산/보간 없이 문서에 직접 보이는 내용만. 표의 행·열과 단위를 보존.",
 };
-export function sourceInstructions(type:string){return DOC_FIELDS[type]||DOC_FIELDS[documentFamily(type)]||DOC_FIELDS.unknown;}
+export function sourceInstructions(type:string){return `${DOC_FIELDS[type]||DOC_FIELDS[documentFamily(type)]||DOC_FIELDS.unknown}\n${RECORD_CATEGORY_POLICY_INSTRUCTIONS}`;}
 // Common Korean and English labels route to one canonical family. The printed
 // title belongs in a quoted source fact (`document_title`), not documentType.
 for(const alias of ["debt_balance_certificate","debt_balance","채무잔액증명서","부채증명서","채무확인서"])DOC_FIELDS[alias]=DOC_FIELDS.debt_certificate;
 for(const alias of ["신용정보조회서","신용 정보 조회서","credit_information_report"])DOC_FIELDS[alias]=DOC_FIELDS.credit_report;
 for(const alias of ["건강보험료 미납내역서","보험료 미납내역서","health_insurance_premium_arrears"])DOC_FIELDS[alias]=DOC_FIELDS.health_insurance_arrears;
-export type ExtractCategory="person"|"income"|"debt"|"asset"|"transaction"|"household"|"business"|"statement"|"other";
+export type ExtractCategory=RecordCategory;
 export interface ReadField extends ObservationInput {}
 export interface ReadRecord {category:ExtractCategory;label:string;fields:ReadField[];}
 export interface PageRead {documentType:string;records:ReadRecord[];warnings:string[];complete:boolean;}
@@ -48,25 +49,34 @@ export const PAGE_COMPLETENESS_INSTRUCTIONS="완전성과 행 누락은 지금 �
 const obj=(properties:Record<string,unknown>)=>({type:"object",additionalProperties:false,properties,required:Object.keys(properties)});
 const nullable=(type:string)=>({type:[type,"null"]});
 const bboxSchema={anyOf:[{type:"array",items:{type:"number"},minItems:4,maxItems:4},{type:"null"}]};
-export const PAGE_SCHEMA=obj({documentType:{type:"string"},records:{type:"array",items:obj({category:{type:"string",enum:["person","income","debt","asset","transaction","household","business","statement","other"]},label:{type:"string"},fields:{type:"array",items:obj({key:{type:"string"},label:{type:"string"},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),confidence:{type:"string",enum:["clear","uncertain","unreadable"]},bbox:bboxSchema,canonicalFieldId:nullable("string"),sourceState:{type:"string",enum:SOURCE_STATES},applicability:{type:"string",enum:["applicable","not_applicable","unknown"]},applicabilityQuote:nullable("string")})}})},warnings:{type:"array",items:{type:"string"}},complete:{type:"boolean"}});
+export const PAGE_SCHEMA=obj({documentType:{type:"string"},records:{type:"array",items:obj({category:{type:"string",enum:[...RECORD_CATEGORIES]},label:{type:"string"},fields:{type:"array",items:obj({key:{type:"string"},label:{type:"string"},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),confidence:{type:"string",enum:["clear","uncertain","unreadable"]},bbox:bboxSchema,canonicalFieldId:nullable("string"),sourceState:{type:"string",enum:SOURCE_STATES},applicability:{type:"string",enum:["applicable","not_applicable","unknown"]},applicabilityQuote:nullable("string")})}})},warnings:{type:"array",items:{type:"string"}},complete:{type:"boolean"}});
 export const CLASSIFY_SCHEMA=obj({role:{type:"string",enum:["evidence","filed_form","administrative","unknown"]},documentType:{type:"string"},confidence:{type:"string",enum:["high","low"]},reason:{type:"string"}});
 export const VERIFY_SCHEMA=obj({
-  checks:{type:"array",items:obj({recordIndex:{type:"integer"},fieldIndex:{type:"integer"},meaningStatus:{type:"string",enum:["supported","wrong_field","unclear"]},status:{type:"string",enum:["agrees","corrected","unreadable","ambiguous"]},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),bbox:bboxSchema,reason:{type:"string"}})},
+  checks:{type:"array",items:obj({recordIndex:{type:"integer"},fieldIndex:{type:"integer"},categoryStatus:{type:"string",enum:["supported","wrong_category","unclear"]},meaningStatus:{type:"string",enum:["supported","wrong_field","unclear"]},status:{type:"string",enum:["agrees","corrected","unreadable","ambiguous"]},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),bbox:bboxSchema,reason:{type:"string"}})},
   missingFields:{type:"array",items:obj({canonicalFieldId:nullable("string"),sourceState:{type:"string",enum:["present","blank","masked","illegible","explicit_none"]},quote:nullable("string"),bbox:bboxSchema})},
   omittedRows:{type:"boolean"},warnings:{type:"array",items:{type:"string"}},
 });
 /** A correction needs a second matching value/unit reading, with a source quote from each pass. */
-export function applyConfirmedCorrection(field:ReadField,prior:{status:string;meaningStatus?:string;value:string|null;unit:string|null;quote:string|null}|undefined,current:{status:string;meaningStatus?:string;value:string|null;unit:string|null;quote:string|null}):boolean{
-  if(current.status!=="corrected"||current.meaningStatus!=="supported"||prior?.status!=="corrected"||prior.meaningStatus!=="supported"||current.value===null||current.value!==prior.value||current.unit?.trim()!==prior.unit?.trim()||!current.quote?.trim()||!prior.quote?.trim())return false;
+export function applyConfirmedCorrection(field:ReadField,prior:{status:string;categoryStatus?:string;meaningStatus?:string;value:string|null;unit:string|null;quote:string|null}|undefined,current:{status:string;categoryStatus?:string;meaningStatus?:string;value:string|null;unit:string|null;quote:string|null}):boolean{
+  if(current.status!=="corrected"||(current.categoryStatus!==undefined&&current.categoryStatus!=="supported")||current.meaningStatus!=="supported"||prior?.status!=="corrected"||(prior.categoryStatus!==undefined&&prior.categoryStatus!=="supported")||prior.meaningStatus!=="supported"||current.value===null||current.value!==prior.value||current.unit?.trim()!==prior.unit?.trim()||!current.quote?.trim()||!prior.quote?.trim())return false;
   field.value=current.value;field.unit=current.unit;field.quote=current.quote;field.confidence="clear";return true;
 }
-export type FieldReviewCheck={recordIndex:number;fieldIndex:number;meaningStatus?:string;status:"agrees"|"corrected"|"unreadable"|"ambiguous";value:string|null;unit:string|null;quote:string|null;bbox?:number[]|null;reason:string};
+export type FieldReviewCheck={recordIndex:number;fieldIndex:number;categoryStatus?:"supported"|"wrong_category"|"unclear";meaningStatus?:string;status:"agrees"|"corrected"|"unreadable"|"ambiguous";value:string|null;unit:string|null;quote:string|null;bbox?:number[]|null;reason:string};
 export interface RepairTarget extends FieldReviewCheck {missingFirstCheck:boolean;bboxIssue?:boolean;bboxOnly?:boolean;bboxConflict?:boolean;sourceBBox?:number[]|null;bboxReference?:number[]|null;}
 function checksFor(checks:readonly FieldReviewCheck[]|undefined,ri:number,fi:number){return (checks??[]).filter(c=>c.recordIndex===ri&&c.fieldIndex===fi);}
-function validAgreement(field:ReadField,check:FieldReviewCheck){return check.meaningStatus==="supported"&&check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim();}
+function recordCategoryStatus(checks:readonly FieldReviewCheck[]|undefined,ri:number):"supported"|"wrong_category"|"unclear"|undefined{
+  const statuses=(checks??[]).filter(check=>check.recordIndex===ri).map(check=>check.categoryStatus).filter(status=>status!==undefined);
+  if(!statuses.length)return undefined;
+  if(statuses.includes("wrong_category"))return "wrong_category";
+  if(statuses.some(status=>status!=="supported"))return "unclear";
+  return "supported";
+}
+function validAgreement(field:ReadField,check:FieldReviewCheck){return (check.categoryStatus===undefined||check.categoryStatus==="supported")&&check.meaningStatus==="supported"&&check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim();}
 function anchoredNullClaim(field:ReadField){return field.value===null&&["blank","masked","illegible","explicit_none"].includes(field.sourceState??"")&&!!field.quote?.trim()&&isValidSourceBBox(field.bbox);}
 function verifierDisposition(check:FieldReviewCheck|undefined,missing=false):VerificationState{
   if(!check)return missing?"missing_check":"unverified";
+  if(check.categoryStatus==="wrong_category")return "wrong_field";
+  if(check.categoryStatus==="unclear")return "unclear";
   if(check.meaningStatus==="wrong_field")return "wrong_field";
   if(check.status==="unreadable")return "unreadable";
   if(check.meaningStatus==="unclear"||check.status==="ambiguous")return "unclear";
@@ -75,6 +85,8 @@ function verifierDisposition(check:FieldReviewCheck|undefined,missing=false):Ver
   return "unclear";
 }
 function unresolvedDisposition(first:FieldReviewCheck|undefined,second:FieldReviewCheck|undefined,missingFirst:boolean):VerificationState{
+  if(first?.categoryStatus==="wrong_category"||second?.categoryStatus==="wrong_category")return "wrong_field";
+  if(second?.categoryStatus==="unclear")return "unclear";
   if(first?.meaningStatus==="wrong_field"||second?.meaningStatus==="wrong_field")return "wrong_field";
   if(first?.status==="unreadable"||second?.status==="unreadable")return "unreadable";
   if(first&&second&&(first.status==="corrected"||second.status==="corrected")&&(first.value!==second.value||first.unit?.trim()!==second.unit?.trim()))return "conflicting";
@@ -107,7 +119,8 @@ export function getRepairTargets(read:PageRead,checks:readonly FieldReviewCheck[
     const firstBBox=isValidSourceBBox(first?.bbox)?[...first!.bbox!]:null;
     const bboxConflict=!!sourceBBox&&!!firstBBox&&bboxIoU(sourceBBox,firstBBox)<BBOX_CORROBORATION_IOU;
     const bboxIssue=!isValidSourceBBox(field.bbox)||!!first&&first.bbox!==undefined&&!isValidSourceBBox(first.bbox)||bboxConflict;
-    const agreed=matches.length===1&&validAgreement(field,matches[0]);
+    const categoryStatus=recordCategoryStatus(checks,recordIndex),categoryBlocked=categoryStatus!==undefined&&categoryStatus!=="supported";
+    const agreed=!categoryBlocked&&matches.length===1&&validAgreement(field,matches[0]);
     if(agreed&&!bboxIssue)return;
     targets.push({...first??{recordIndex,fieldIndex,meaningStatus:"unclear" as const,status:"ambiguous" as const,value:null,unit:null,quote:null,reason:matches.length>1?"검증 응답이 중복되었습니다.":"첫 검증에서 이 필드 응답이 누락되었습니다."},missingFirstCheck:matches.length!==1,bboxIssue,bboxOnly:bboxIssue&&agreed,bboxConflict,sourceBBox,bboxReference:firstBBox??sourceBBox});
   }));
@@ -116,14 +129,17 @@ export function getRepairTargets(read:PageRead,checks:readonly FieldReviewCheck[
 /** Apply first-pass agreements and isolate every disagreement or missing check for one repair pass. */
 export function applyFirstVerification(read:PageRead,checks:readonly FieldReviewCheck[]|undefined):{read:PageRead;targets:RepairTarget[]}{
   const next=structuredClone(read);
-  next.records.forEach((record,ri)=>record.fields.forEach((field,fi)=>{
-    if(field.value===null&&!anchoredNullClaim(field))return;
-    const matches=checksFor(checks,ri,fi);
-    const first=matches.length===1?matches[0]:undefined;
-    const agreement=!!first&&validAgreement(field,first)&&(field.value!==null||isValidSourceBBox(first.bbox));
-    if(agreement){field.confidence="clear";field.verificationState="supported";}
-    else {field.confidence=first?.status==="unreadable"?"unreadable":"uncertain";field.verificationState=verifierDisposition(first,matches.length===0);}
-  }));
+  next.records.forEach((record,ri)=>{
+    record.fields.forEach((field,fi)=>{
+      if(field.value===null&&!anchoredNullClaim(field))return;
+      const matches=checksFor(checks,ri,fi),first=matches.length===1?matches[0]:undefined;
+      const agreement=!!first&&validAgreement(field,first)&&(field.value!==null||isValidSourceBBox(first.bbox));
+      if(agreement){field.confidence="clear";field.verificationState="supported";}
+      else {field.confidence=first?.status==="unreadable"?"unreadable":"uncertain";field.verificationState=verifierDisposition(first,matches.length===0);}
+    });
+    const categoryStatus=recordCategoryStatus(checks,ri);
+    if(categoryStatus==="wrong_category"||categoryStatus==="unclear")for(const field of record.fields){field.confidence="uncertain";field.verificationState=categoryStatus==="wrong_category"?"wrong_field":"unclear";}
+  });
   refreshBBoxWarning(next);
   const targets=getRepairTargets(next,checks);
   // Regional verification can commit without a targeted repair pass. Keep a
@@ -168,6 +184,10 @@ export function applyTargetedRepair(read:PageRead,firstChecks:readonly FieldRevi
     if(target.bboxIssue&&!geometryAgrees){field.bbox=null;field.confidence="uncertain";field.verificationState="conflicting";next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 원문 위치와 재판독 위치가 일치하지 않아 bbox 및 원문 검증을 보류합니다. 값·인용은 별도로 보존합니다.`);}
     next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 두 차례 원문 판독이 값·단위·인용에서 합의하지 못했습니다.${second?.value!==null&&second?.value!==undefined?` (재판독 후보: ${second.value}${second.unit?` ${second.unit}`:""})`:""}`);
   }
+  next.records.forEach((record,ri)=>{
+    const categoryStatus=recordCategoryStatus([...(firstChecks??[]),...(repairChecks??[])],ri);
+    if(categoryStatus==="wrong_category"||categoryStatus==="unclear")for(const field of record.fields){field.confidence="uncertain";field.verificationState=categoryStatus==="wrong_category"?"wrong_field":"unclear";}
+  });
   refreshBBoxWarning(next);
   return {read:next,disagreements};
 }
@@ -178,6 +198,8 @@ export function preserveAgreedFieldsAfterOmission(baseline:PageRead,baselineChec
   const anchor=(record:ReadRecord,ri:number)=>record.fields.filter((f,fi)=>anchorKeys.has(fieldLocal(record,f))&&checksFor(baselineChecks,ri,fi).length===1&&validAgreement(f,checksFor(baselineChecks,ri,fi)[0])&&f.value!==null).map(f=>[canonicalKey(f.key),f.value?.trim().normalize("NFKC")]);
   let incomplete=false;
   baseline.records.forEach((old,ri)=>{
+    const categoryStatus=recordCategoryStatus(baselineChecks,ri);
+    if(categoryStatus==="wrong_category"||categoryStatus==="unclear"){incomplete=true;return;}
     const confirmed=old.fields.filter((f,fi)=>f.value!==null&&checksFor(baselineChecks,ri,fi).length===1&&validAgreement(f,checksFor(baselineChecks,ri,fi)[0]));
     if(!confirmed.length)return;
     const oldAnchors=anchor(old,ri),candidates=next.records.map((record,index)=>({record,index,score:record.category!==old.category||taken.has(index)?0:oldAnchors.filter(([key,value])=>record.fields.some(f=>canonicalKey(f.key)===key&&f.value?.trim().normalize("NFKC")===value)).length})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);

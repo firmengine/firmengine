@@ -5,7 +5,7 @@ import { applyExtraction,createCase,currentFacts,extractionCacheKey } from "../l
 import { observedSourceDetails } from "../lib/observed-source-details.ts";
 import type { PageRead,ReadField } from "../lib/extraction.ts";
 
-const reading=(value:string,unit:string|null,quote:string)=>({meaningStatus:"supported",status:"corrected",value,unit,quote});
+const reading=(value:string,unit:string|null,quote:string)=>({categoryStatus:"supported",meaningStatus:"supported",status:"corrected",value,unit,quote});
 function source():ReadField{return {key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"uncertain",bbox:[0,0,1,1]};}
 
 test("단위가 다른 재판독 교정은 숫자가 같아도 확정하지 않는다",()=>{
@@ -29,9 +29,10 @@ test("독립 재판독이 값·단위·인용을 모두 반복해야 금액 단�
 test("검증 응답 스키마가 단위 판독을 명시적으로 수집한다",()=>{
   const properties=(VERIFY_SCHEMA.properties as {checks:{items:{properties:Record<string,unknown>}}}).checks.items.properties;
   assert.ok("unit" in properties);
+  assert.deepEqual((properties.categoryStatus as {enum:string[]}).enum,["supported","wrong_category","unclear"]);
   assert.ok("bbox" in properties);
   assert.deepEqual((properties.meaningStatus as {enum:string[]}).enum,["supported","wrong_field","unclear"]);
-  assert.match(PROMPT_VERSION,/3\.19\.0$/);
+  assert.match(PROMPT_VERSION,/3\.20\.0$/);
 });
 
 test("값·단위·인용이 같아도 의미가 wrong_field면 확인 완료나 source receipt 기반 투영에 쓰지 않는다",()=>{
@@ -226,4 +227,13 @@ test("누락행 재추출은 기존 합의 필드를 새 행에 보존하고 연
   assert.equal(reread.records[0].fields.some(f=>f.key==="principal"),false,"원시 누락행 재추출 snapshot은 baseline 필드 병합으로 변형되지 않아야 합니다.");
   const unmatched=preserveAgreedFieldsAfterOmission(baseline,checks,{...reread,records:[{...reread.records[0],fields:[confirmed("contract_id","C-2")]}]});
   assert.equal(unmatched.complete,false);assert.ok(unmatched.warnings.length);
+});
+
+
+test("record-level unsupported category blocks every typed field and correction",()=>{
+  const read:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"transaction",label:"행",fields:[{key:"principal",label:"원금",value:"500",unit:"만원",quote:"입금 500만원",confidence:"clear" as const,bbox:[0,0,1,1]},{key:"creditor",label:"상대방",value:"A",unit:null,quote:"상대방 A",confidence:"clear" as const,bbox:[0,0,1,1]}]}]};
+  const checks=[{recordIndex:0,fieldIndex:0,categoryStatus:"wrong_category" as const,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"만원",quote:"입금 500만원",reason:"synthetic"},{recordIndex:0,fieldIndex:1,categoryStatus:"supported" as const,meaningStatus:"supported",status:"agrees" as const,value:"A",unit:null,quote:"상대방 A",reason:"synthetic"}];
+  const applied=applyFirstVerification(read,checks).read;assert.ok(applied.records[0].fields.every(f=>f.confidence==="uncertain"));
+  assert.ok(applied.records[0].fields.every(f=>f.verificationState==="wrong_field"));
+  const corrected=source();assert.equal(applyConfirmedCorrection(corrected,{...reading("500","원","원금 500원"),categoryStatus:"wrong_category"},reading("500","원","원금 500원")),false);
 });
