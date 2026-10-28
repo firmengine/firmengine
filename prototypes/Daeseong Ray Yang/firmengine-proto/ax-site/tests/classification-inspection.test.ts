@@ -58,6 +58,16 @@ test("classification observations never create missing historical attempt or mod
     assert.equal(out.provenance.recoverySourceBound, false);
   }
 });
+test("classification diagnostics retain catalog identity and source nature independently", async () => {
+  const out=await fixture({classification:{role:"evidence",familyId:"payroll_payslip",catalogRelease:"catalog-release-v2.2.0",boundaryObservation:"single_page",boundaryQuote:null,sourceNature:"synthetic_example",sourceNatureQuote:"예시 자료",confidence:"high",legibility:"clear"}}).inspect();
+  assert.equal(out.classification.familyId,"payroll_payslip");
+  assert.equal(out.classification.catalogRelease,"catalog-release-v2.2.0");
+  assert.equal(out.classification.sourceNature,"synthetic_example");
+  assert.equal(out.classification.sourceNatureQuote,"예시 자료");
+  assert.equal(out.classification.boundaryObservation,"single_page");
+  assert.equal(out.mutatesState,false);
+  assert.equal(out.modelCalls,0);
+});
 
 test("inactive or mismatched source, page, image, and recovery bindings block diagnostics", async () => {
   const edits = [

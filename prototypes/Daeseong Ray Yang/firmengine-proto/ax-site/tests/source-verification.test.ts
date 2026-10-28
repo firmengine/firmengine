@@ -8,12 +8,12 @@ import type { CaseData, Fact } from "../lib/domain.ts";
 
 const hash = "a".repeat(64), docId = "proof-doc", pageNum = 1;
 const promptHash = "c".repeat(64), at = "2026-10-27T10:00:00.000Z";
-const field = (key:string,value:string,unit:string|null,quote:string,confidence:"clear"|"uncertain"|"unreadable"="clear")=>({key,value,unit,quote,confidence});
-const check=(ri:number,fi:number,status:Check["status"],value:string|null,unit:string|null,quote:string|null,meaningStatus:Check["meaningStatus"]="supported"):Check=>({recordIndex:ri,fieldIndex:fi,meaningStatus,status,value,unit,quote});
+const field = (key:string,value:string,unit:string|null,quote:string,confidence:"clear"|"uncertain"|"unreadable"="clear")=>({key,value,unit,quote,confidence,bbox:[.1,.2,.4,.25]});
+const check=(ri:number,fi:number,status:Check["status"],value:string|null,unit:string|null,quote:string|null,meaningStatus:Check["meaningStatus"]="supported"):Check=>({recordIndex:ri,fieldIndex:fi,meaningStatus,status,value,unit,quote,bbox:[.1,.2,.4,.25]});
 const pass=(kind:"verify"|"repair",checks:Check[]):ReviewPass=>({kind,checks,model:AI_MODEL,promptVersion:"luna-evidence-3.11.0",promptHash,verifiedAt:at});
 function sourceInput(read:PageRead,passes:ReviewPass[],sourceHash=hash,errors?:{recordIndex:number;fieldIndex:number;code:string}[]){return{documentId:docId,page:pageNum,sourceHash,promptVersion:"luna-evidence-3.11.0",verifiedAt:at,originalRead:read,read,passes,errors};}
 function fixture():CaseData{const d=createCase("합성", "c", "2026-10-27");d.documents=[{id:docId,name:"synthetic",sha256:hash,status:"active",pages:[pageNum]}];d.pages=[{documentId:docId,page:pageNum,role:"evidence"}];return d;}
-function rawFact(value:string,quote:string):Partial<Fact>{return{id:"model-id",logicalId:"debt-source",subjectId:"loan",key:"debt.principal",value,rawValue:value,numeric:normalizeMoney(value,"만원"),state:"verified",recognition:"accepted",sourceVerification:{fake:true} as never,refs:[{documentId:docId,page:pageNum,quote,sourceHash:hash}],validation:[]};}
+function rawFact(value:string,quote:string):Partial<Fact>{return{id:"model-id",logicalId:"debt-source",subjectId:"loan",key:"debt.principal",value,rawValue:value,numeric:normalizeMoney(value,"만원"),state:"verified",recognition:"accepted",sourceVerification:{fake:true} as never,refs:[{documentId:docId,page:pageNum,quote,sourceHash:hash,bbox:[.1,.2,.4,.25]}],validation:[]};}
 
 test("verified agreement receipt is bound to current source and exact fact version but stays legally unreviewed",()=>{
   const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};
@@ -21,6 +21,9 @@ test("verified agreement receipt is bound to current source and exact fact versi
   assert.equal(receipts.length,1);assert.equal(receipts[0].model,AI_MODEL);assert.equal(receipts[0].recognition,"unreviewed");assert.equal(receipts[0].verificationScope,"field_meaning_v1");
   assert.equal(receipts[0].proofReads.length,1);assert.equal(receipts[0].proofReads[0].promptHash,promptHash);
   assert.equal(sourceVerificationReceiptMatches(receipts[0],{documentId:docId,page:pageNum,sourceHash:hash,read}),true);
+  assert.ok(receipts[0].geometry?.verifierReads.length===1,"the actual location read is bound into the receipt");
+  const strippedGeometry=structuredClone(receipts[0]);delete strippedGeometry.geometry;
+  assert.equal(sourceVerificationReceiptMatches(strippedGeometry,{documentId:docId,page:pageNum,sourceHash:hash,read}),false,"a geometry-bound fingerprint cannot be stripped and accepted as a historical receipt");
   assert.equal(sourceVerificationReceiptMatches(receipts[0],{documentId:docId,page:pageNum,sourceHash:"b".repeat(64),read}),false);
   const strippedScope=structuredClone(receipts[0]);delete strippedScope.verificationScope;
   assert.equal(sourceVerificationReceiptMatches(strippedScope,{documentId:docId,page:pageNum,sourceHash:hash,read}),false,"meaning status and fingerprint marker cannot be stripped to masquerade as a legacy receipt");
@@ -148,6 +151,13 @@ test("bbox-located receipt lineage requires the exact source-ref bbox and an int
   assert.ok(factSourceLineageIssues(strippedGeometry,[strippedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"),"an extended bbox fingerprint cannot be treated as legacy after every geometry property is stripped");
   const forged=structuredClone(data),forgedFact=forged.facts[2];forgedFact.sourceVerification!.fieldFingerprint="[]";
   assert.ok(factSourceLineageIssues(forged,[forgedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+  const validGeometryProof=data.facts[0].sourceVerification!.geometry!.verifierReads[0];
+  for(const malformedReads of [null,[null],[{...validGeometryProof,recordIndex:0.5}],[validGeometryProof,{...validGeometryProof}]]){
+    const malformed=structuredClone(data),malformedFact=malformed.facts[0];malformedFact.sourceVerification!.geometry!.verifierReads=malformedReads as never;
+    assert.doesNotThrow(()=>factSourceLineageIssues(malformed,[malformedFact.id]));
+    assert.ok(factSourceLineageIssues(malformed,[malformedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+    assert.equal(sourceVerificationReceiptMatches(malformedFact.sourceVerification as never,{documentId:docId,page:pageNum,sourceHash:hash,read}),false);
+  }
 });
 
 test("omission reread reuses only baseline-agreed fields still present verbatim after row-index drift",()=>{

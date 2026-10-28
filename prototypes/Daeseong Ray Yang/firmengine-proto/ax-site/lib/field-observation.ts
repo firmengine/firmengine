@@ -1,14 +1,17 @@
 import { documentFieldContract, FIELD_CATALOG_RELEASE, FIELD_CATALOG_RELEASE_SHA256 } from "./document-agent-registry.ts";
 
-export const FIELD_OBSERVATION_VERSION = "field-observation-1" as const;
+export const FIELD_OBSERVATION_VERSION = "field-observation-2" as const;
 export const SOURCE_STATES = ["present", "blank", "masked", "illegible", "not_seen", "conflicting", "explicit_none", "unknown"] as const;
 export type SourceState = typeof SOURCE_STATES[number];
 export type ApplicabilityClaim = "applicable" | "not_applicable" | "unknown";
+export const VERIFICATION_STATES = ["unverified", "supported", "corrected", "wrong_field", "unreadable", "conflicting", "value_mismatch", "unclear", "missing_check"] as const;
+export type VerificationState = typeof VERIFICATION_STATES[number];
 export interface ObservationInput {
   key: string; label: string; value: string | null; unit: string | null; quote: string | null;
   bbox: number[] | null; confidence: "clear" | "uncertain" | "unreadable";
   canonicalFieldId?: string | null; sourceState?: SourceState;
   applicability?: ApplicabilityClaim; applicabilityQuote?: string | null;
+  verificationState?: VerificationState;
 }
 export interface FieldObservation {
   version: typeof FIELD_OBSERVATION_VERSION;
@@ -26,7 +29,7 @@ export interface FieldObservation {
   extractionState: "value_read" | "source_empty" | "source_obscured" | "not_observed" | "conflict" | "uncertain";
   applicability: { sourceClaim: ApplicabilityClaim; quote: string | null; caseDecision: "unreviewed" };
   subjectRole: string | null; temporalRole: string | null;
-  verificationState: "unverified";
+  verificationState: VerificationState;
   issues: string[];
 }
 export interface PageFieldCoverage {
@@ -58,14 +61,18 @@ export function observeField(type: string, field: ObservationInput, source: {doc
   if (state === "present" && (field.value === null || !field.value.trim())) { state = "unknown"; issues.push("present_without_value"); }
   if (["blank", "not_seen", "illegible"].includes(state) && field.value !== null) { state = "unknown"; issues.push("state_value_conflict"); }
   if (["blank", "masked", "explicit_none"].includes(state) && (!field.quote?.trim() || !bboxValid(field.bbox))) { state = "unknown"; issues.push("state_anchor_missing"); }
-  if (state === "explicit_none" && (field.value === null || !field.value.trim())) { state = "unknown"; issues.push("explicit_none_without_source_token"); }
+  if (state === "explicit_none" && field.value !== null && !field.value.trim()) { state = "unknown"; issues.push("explicit_none_without_source_token"); }
   let claim: ApplicabilityClaim = ["applicable", "not_applicable"].includes(field.applicability ?? "") ? field.applicability! : "unknown";
   const quote = field.applicabilityQuote?.trim() || null;
   // It is only a quoted source claim, never a reviewed case-level decision.
   // Require its evidence in this exact field citation, not a free-floating assertion.
   if (claim !== "unknown" && (!quote || !field.quote?.includes(quote) || !bboxValid(field.bbox))) { claim = "unknown"; issues.push("applicability_evidence_missing"); }
   if (claim === "not_applicable" && state === "present") { claim = "unknown"; issues.push("applicability_value_conflict"); }
-  const extractionState = recordIndex === null ? "not_observed" : state === "present" || state === "explicit_none" ? (field.confidence === "clear" ? "value_read" : "uncertain") : state === "blank" ? "source_empty" : state === "masked" || state === "illegible" ? "source_obscured" : state === "not_seen" ? "not_observed" : state === "conflicting" ? "conflict" : "uncertain";
+  // A missing or empty slot does not establish that the field is inapplicable.
+  // Require an explicit source-none token; case-level applicability remains a
+  // separate, unreviewed decision even when the document makes that claim.
+  if (claim === "not_applicable" && state !== "explicit_none") { claim = "unknown"; issues.push("not_applicable_without_explicit_none"); }
+  const extractionState = recordIndex === null ? "not_observed" : state === "present" ? (field.confidence === "clear" ? "value_read" : "uncertain") : state === "blank" || state === "explicit_none" ? "source_empty" : state === "masked" || state === "illegible" ? "source_obscured" : state === "not_seen" ? "not_observed" : state === "conflicting" ? "conflict" : "uncertain";
   return { version: FIELD_OBSERVATION_VERSION, ...source, recordIndex, fieldIndex, origin: recordIndex === null ? "catalog_gap" : "source_read",
     canonicalFieldId: definition?.global_field_id ?? null, familyId: contract?.family_id ?? null,
     catalogRelease: FIELD_CATALOG_RELEASE, catalogSha256: FIELD_CATALOG_RELEASE_SHA256,
@@ -74,7 +81,7 @@ export function observeField(type: string, field: ObservationInput, source: {doc
     bbox: bboxValid(field.bbox) ? [...field.bbox!] : null, sourceState: state, extractionState,
     applicability: { sourceClaim: claim, quote: claim === "unknown" ? null : quote, caseDecision: "unreviewed" },
     subjectRole: definition?.subject_role ?? null, temporalRole: definition?.temporal_role ?? null,
-    verificationState: "unverified", issues };
+    verificationState: VERIFICATION_STATES.includes(field.verificationState as VerificationState) ? field.verificationState! : "unverified", issues };
 }
 
 export function pageFieldCoverage(read: {documentType: string; complete: boolean; records: {fields: ObservationInput[]}[]}, source: {documentId: string; page: number; sourceSha256: string}): PageFieldCoverage {
@@ -91,4 +98,4 @@ export function pageFieldCoverage(read: {documentType: string; complete: boolean
     completeReadClaim: read.complete, observations };
 }
 
-export const FIELD_OBSERVATION_INSTRUCTIONS = `각 필드의 canonicalFieldId는 현재 family 계약의 global_field_id 중 정확히 대응하는 것만 쓰고 대응하지 않으면 null로 둔다. field.key는 기존 원문 의미 key를 유지하며 global ID로 대체하지 않는다. 원문 상태 sourceState는 present(값 명시), blank(보이는 칸이 빈칸), masked(가림), illegible(판독불가), not_seen(현재 이미지에서 관찰 안 됨), conflicting(명시적 상충), explicit_none(원문에 없음 명시), unknown을 구별한다. blank/illegible/not_seen의 value는 null이다. masked 값은 보이는 마스킹 그대로 남긴다. explicit_none은 원문의 없음 표시를 그대로 value에 남기며 0으로 바꾸지 않는다. blank는 해당 빈칸의 표제/행 quote와 bbox가 필요하다. bbox는 quote/값이 실제 인쇄된 정확한 셀의 범위로 잡고 행 전체 또는 표제 영역으로 넓히지 않는다. applicability는 해당 주체·기간·항목에 대해 원문이 명시한 applicable/not_applicable/unknown 주장만 기록하고 그 구절을 applicabilityQuote 및 해당 field.quote에 함께 포함한다. 빈칸, 누락, 서류 미제출, 값 0만으로 not_applicable이라 하지 않는다. 근거 없는 applicability는 unknown이다. 문서의 비해당 표시는 검토 전 원문 주장으로 저장되며 사건 전체의 법적 비대상 결정이나 사람 승인으로 쓰지 않는다. 계약 필드가 목록에 있다는 이유로 문서에 존재하는 칸을 만들지 않는다. 같은 필드가 여러 행이면 행마다 별도 occurrence로 보존한다.`;
+export const FIELD_OBSERVATION_INSTRUCTIONS = `각 필드의 canonicalFieldId는 현재 family 계약의 global_field_id 중 정확히 대응하는 것만 쓰고 대응하지 않으면 null로 둔다. field.key는 기존 원문 의미 key를 유지하며 global ID로 대체하지 않는다. 원문 상태 sourceState는 present(값 명시), blank(보이는 칸이 빈칸), masked(가림), illegible(판독불가), not_seen(현재 이미지에서 관찰 안 됨), conflicting(명시적 상충), explicit_none(원문에 없음 명시), unknown을 구별한다. blank/illegible/not_seen의 value는 null이다. masked 값은 보이는 마스킹 그대로 남긴다. explicit_none은 원문에 표시된 literal을 value에 담거나, 별도 값 없이 비해당 문구만 있는 경우 value=null로 두고 해당 문구를 quote와 bbox에 보존한다. 이를 0으로 바꾸지 않는다. blank는 해당 빈칸의 표제/행 quote와 bbox가 필요하다. bbox는 quote/값이 실제 인쇄된 정확한 셀의 범위로 잡고 행 전체 또는 표제 영역으로 넓히지 않는다. applicability는 해당 주체·기간·항목에 대해 원문이 명시한 applicable/not_applicable/unknown 주장만 기록하고 그 구절을 applicabilityQuote 및 해당 field.quote에 함께 포함한다. not_applicable은 원문이 명시한 없음 토큰이나 비해당 문구를 quote와 bbox로 직접 확인할 수 있을 때 sourceState=explicit_none으로 기록한다. 빈칸, 누락, 서류 미제출, 값 0만으로 not_applicable이라 하지 않는다. 근거 없는 applicability는 unknown이다. 문서의 비해당 표시는 검토 전 원문 주장으로 저장되며 사건 전체의 법적 비대상 결정이나 사람 승인을 뜻하지 않는다. 계약 필드가 목록에 있다는 이유로 문서에 존재하는 칸을 만들지 않는다. 같은 필드가 여러 행이면 행마다 별도 occurrence로 보존한다.`;

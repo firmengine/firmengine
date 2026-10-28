@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { documentFamily, equivalentDocumentTypes } from "../lib/document-routing.ts";
-import { clampDocumentParallelism, continuationRelationship, createDocumentTaskEnvelope, documentFieldContract, documentTypeMatchesFamily, mapBounded, routeDocumentTask } from "../lib/document-agent-registry.ts";
+import { clampDocumentParallelism, compactFamilyFieldContract, continuationRelationship, createDocumentTaskEnvelope, documentFieldContract, documentTypeMatchesFamily, mapBounded, routeDocumentTask } from "../lib/document-agent-registry.ts";
 import { projectPage, type ReadField, type PageRead } from "../lib/extraction.ts";
 
 test("source families survive printed title spacing, qualifiers and English synonyms", () => {
@@ -71,6 +71,17 @@ test("parallelism is bounded and adjacent pages remain unverified continuation c
   assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:2,familyId:"credit_report"}),"boundary_conflict_pending");
   // Equal-looking values do not participate in the relationship decision.
   assert.equal(continuationRelationship({documentId:"d",page:1,familyId:"debt_certificate"},{documentId:"d",page:3,familyId:"debt_certificate"}),"page_only_unverified");
+});
+test("family prompt carries source conditions without converting case conditions into applicability decisions",()=>{
+  const contract=documentFieldContract("bank_account_balance");
+  const view=compactFamilyFieldContract(contract);
+  assert.ok(view);
+  assert.equal(view.applicabilityDecision,"source_claim_only_case_unreviewed");
+  assert.ok(view.caseCondition);
+  assert.ok(view.sourceAvailability);
+  assert.equal(view.fields.length,contract!.fields.length);
+  assert.ok(view.fields.every(field=>field.sourceCondition&&field.id.startsWith("bank_account_balance::")));
+  assert.equal(compactFamilyFieldContract(null),null);
 });
 
 test("bounded job mapper preserves request order while permitting only configured overlap",async()=>{

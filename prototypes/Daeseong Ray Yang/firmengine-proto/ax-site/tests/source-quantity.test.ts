@@ -49,7 +49,7 @@ test("날짜·수량·전화번호는 KRW 단위처럼 보이는 메타데이터
 
 test("source receipt and projection use the same monetary classification",()=>{
   const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("coverage_amount","25","천원","가입금액 25천원"),field("phone_number","01012345678",null,"연락처 01012345678")]}]};
-  const checks:Check[]=read.records[0].fields.map((f,fieldIndex)=>({recordIndex:0,fieldIndex,meaningStatus:"supported",status:"agrees",value:f.value,unit:f.unit,quote:f.quote}));
+  const checks:Check[]=read.records[0].fields.map((f,fieldIndex)=>({recordIndex:0,fieldIndex,meaningStatus:"supported",status:"agrees",value:f.value,unit:f.unit,quote:f.quote,bbox:f.bbox}));
   const pass:ReviewPass={kind:"verify",checks,model:AI_MODEL,promptVersion:"luna-evidence-test",promptHash,verifiedAt:when};
   const receipts=createSourceVerificationReceipts({documentId:sourceId,page:1,sourceHash:hash,promptVersion:pass.promptVersion,verifiedAt:when,originalRead:read,read,passes:[pass]});
   assert.deepEqual(receipts.map(r=>r.field.key),["coverage_amount","phone_number"]);
@@ -69,11 +69,11 @@ test("source receipt and projection use the same monetary classification",()=>{
 test("sourceUnit changes create a new fact version and invalidate the prior machine proof",()=>{
   const data=createCase("synthetic","court","2026-10-27");data.documents=[{id:sourceId,name:"synthetic",sha256:hash,status:"active",pages:[1]}];data.pages=[{documentId:sourceId,page:1,role:"evidence"}];
   const quote="가입금액 25천원";
-  const make=(unit:string):Partial<Fact>=>({id:"model-fact",logicalId:"asset:coverage",subjectId:"asset",key:"asset.coverage_amount",value:"25",rawValue:"25",sourceUnit:unit,numeric:normalizeMoney("25",unit),state:"extracted",recognition:"unreviewed",refs:[{documentId:sourceId,page:1,quote,sourceHash:hash}],validation:[]});
+  const make=(unit:string):Partial<Fact>=>({id:"model-fact",logicalId:"asset:coverage",subjectId:"asset",key:"asset.coverage_amount",value:"25",rawValue:"25",sourceUnit:unit,numeric:normalizeMoney("25",unit),state:"extracted",recognition:"unreviewed",refs:[{documentId:sourceId,page:1,quote,sourceHash:hash,bbox:[.1,.2,.4,.25]}],validation:[]});
   let saved=applyExtraction(data,{facts:[make("천원")]});
   let fact=currentFacts(saved)[0];
   const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[field("coverage_amount","25","천원",quote)]}]};
-  const pass:ReviewPass={kind:"verify",checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"25",unit:"천원",quote}],model:AI_MODEL,promptVersion:"luna-evidence-test",promptHash,verifiedAt:when};
+  const pass:ReviewPass={kind:"verify",checks:[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"25",unit:"천원",quote,bbox:[.1,.2,.4,.25]}],model:AI_MODEL,promptVersion:"luna-evidence-test",promptHash,verifiedAt:when};
   const [receipt]=createSourceVerificationReceipts({documentId:sourceId,page:1,sourceHash:hash,promptVersion:pass.promptVersion,verifiedAt:when,originalRead:read,read,passes:[pass]});
   fact.state="verified";fact.sourceVerification={...receipt,factBinding:{id:fact.id,logicalId:fact.logicalId,version:fact.version}};
   assert.deepEqual(factSourceLineageIssues(saved,[fact.id]),[]);

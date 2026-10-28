@@ -16,6 +16,29 @@ A reprojected fact does not receive a new independent verification merely becaus
 
 The request deadline is bounded. An unfinished whole-page read can become a durable four-region rescue plan, including when the hosting request was canceled before its error handler could run. Normal clear pages retain the original processing path. This mechanism does not establish that every illegible scan is recoverable.
 
+## Document scope and field coverage
+
+Document family and source nature are separate observations. A copy, self-reported record, or visibly marked example may still have a recognizable document family and extractable source fields. The classifier retains that source-nature observation and its quotation. It does not infer authenticity, legal admissibility, or accepted amounts from a structural family match. Filed forms and excluded pages retain their processing boundary.
+
+Each family exposes its exact field IDs, semantic definitions, source conditions, and case conditions to the extractor and verifier. A catalog obligation does not prove that its field is visible on every page or that a case satisfies the underlying condition.
+
+| Source observation | Extraction treatment | Case applicability |
+|---|---|---|
+| Readable value | Preserve the raw value, unit, quote, and location; independently check field meaning | Remains a separate reviewed decision |
+| Visible empty cell | `blank`; no invented zero or value | Does not imply not applicable |
+| Masked or unreadable region | `masked` or `illegible` with the visible source anchor | Does not imply not applicable |
+| Explicit source statement of absence | `explicit_none` with the supporting quote and location | A source claim, not automatic case approval |
+| Catalog field without a visible occurrence | An unresolved coverage gap | Does not create an absence assertion |
+| Value attributed to another field or column | `wrong_field`; preserve the disputed raw reading for review | Does not receive machine verification |
+
+Anchored null observations can enter independent verification and a bounded repair. Recovering a readable value requires two supporting readings with matching value and unit. A verification of an empty or masked source region is an observation-state check and is not counted as a successfully extracted value.
+
+The verifier can identify a missing occurrence using an exact family field ID, a source-state claim, a quotation, and normalized page coordinates. These are recovery cues, not facts. The server rejects wrong-family IDs and unanchored cues, removes overlapping duplicates, preserves separate row regions, and limits each pass to 32 cues. One omission reread is allowed independently of classification and derivative-upload attempts. Stored-read reverification never initiates this extraction retry. Remaining omission cues keep the page incomplete, including after targeted field repair or regional merging.
+
+Field coverage displays source state, source-claimed applicability, independent verification disposition, and missing source coordinates separately. `supported`, `corrected`, `wrong_field`, `unreadable`, `conflicting`, `value_mismatch`, `unclear`, and `missing_check` describe the observed verification result. These states do not change a case's legal recognition status.
+
+New verification receipts require corroborated source geometry. A verifier must support the field's meaning, value, unit, quotation, and location. If extraction and verification disagree on location, a second verifier reading must corroborate the final box with intersection-over-union of at least 0.5. Missing extraction coordinates also require two verifier readings. The receipt retains the extraction box, final box, and qualifying verifier evidence in its fingerprint; the field's source reference must still match the final box. Regional reads and preserved omission baselines use the same gate. Unresolved geometry keeps the raw reading available for review but cannot acquire a new source-verification receipt. Previously stored receipts retain their historical validation rules; they are not relabeled as having new geometry evidence.
+
 ## Generalization evaluation
 
 `scripts/SYNTHETIC-OCR-EVALUATION.md` describes a seeded set of four independent cases, each with clean, changed-layout, and degraded-image variants. Generated PDFs and gold values stay outside the source checkout. The live runner receives only input PDFs, uses normal application classification, and cannot access the gold directory. A shared processing budget charges calls before sending them, including failed mutations; it does not retry a mutation whose outcome is uncertain.

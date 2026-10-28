@@ -1,5 +1,6 @@
 import { catalogFamilyForDocumentType, documentFamily } from "./document-routing.ts";
 import fieldContracts from "./document-agent-field-contracts.json" with { type: "json" };
+import applicabilityContracts from "./field-applicability-contracts.json" with { type: "json" };
 
 export const DOCUMENT_AGENT_REGISTRY_VERSION = "document-agent-registry-1.0.0";
 export const FIELD_CATALOG_RELEASE = "document-field-catalog-v2.2.0";
@@ -61,7 +62,8 @@ export function documentFamilyContract(familyId: string | null | undefined): Fam
 /** Compact prompt view: retain field identity and meaning while omitting repeated boilerplate. */
 export function compactFamilyFieldContract(contract: FamilyFieldContract | null) {
   if (!contract) return null;
-  return { familyId: contract.family_id, canonicalType: contract.canonical_type, fields: contract.fields.map(field => ({ id: field.global_field_id, localKey: field.local_id, label: field.label, definition: field.semantic_definition, datatype: field.datatype, subjectRole: field.subject_entity_role, partyRole: field.party_value_role, temporalRole: field.temporal_role, amountOwnerRole: field.amount_owner_role, unit: field.canonical_unit })) };
+  const conditions=applicabilityContracts.families[contract.family_id as keyof typeof applicabilityContracts.families];
+  return { familyId: contract.family_id, canonicalType: contract.canonical_type, caseCondition:conditions?.caseCondition??null, sourceAvailability:conditions?.sourceAvailability??null, applicabilityDecision:"source_claim_only_case_unreviewed", fields: contract.fields.map(field => ({ id: field.global_field_id, localKey: field.local_id, label: field.label, definition: field.semantic_definition, datatype: field.datatype, subjectRole: field.subject_entity_role, partyRole: field.party_value_role, temporalRole: field.temporal_role, amountOwnerRole: field.amount_owner_role, unit: field.canonical_unit, sourceCondition:conditions?.fields.find(condition=>condition.id===field.global_field_id)?.sourceCondition??null })) };
 }
 
 export function documentFieldContract(type: string | null | undefined): FamilyFieldContract | null {

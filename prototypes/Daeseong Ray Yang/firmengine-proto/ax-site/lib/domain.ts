@@ -84,6 +84,7 @@ export interface Fact {
     fieldFingerprint: string;
     proofReadIndexes: { pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }[];
     proofReads: { pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string; bbox?: SourceBBox }[];
+    geometry?: { version: "bbox_corroboration_v1"; extractionBBox: SourceBBox | null; finalBBox: SourceBBox; verifierReads: {pass:"verify"|"repair";model:typeof AI_MODEL;promptVersion:string;promptHash:string;verifiedAt:string;recordIndex:number;fieldIndex:number;meaningStatus:"supported";status:"agrees"|"corrected";value:string;unit:string|null;quote:string;bbox:SourceBBox}[] };
     recognition: "unreviewed";
     factBinding: { id: string; logicalId: string; version: number };
   };
@@ -369,6 +370,14 @@ export function validSourceRef(data: CaseData, ref: SourceRef, index?:CaseReadIn
   return result;
 }
 
+const SOURCE_RECEIPT_BBOX_IOU=0.5;
+function sourceReceiptBBoxIoU(a:unknown,b:unknown):number{
+  if(!isValidSourceBBox(a)||!isValidSourceBBox(b))return 0;
+  const intersection=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));
+  const areaA=(a[2]-a[0])*(a[3]-a[1]),areaB=(b[2]-b[0])*(b[3]-b[1]),union=areaA+areaB-intersection;
+  return union>0?intersection/union:0;
+}
+
 export function factSourceLineageIssues(data: CaseData, ids: string[], index?:CaseReadIndex): string[] {
   if(index&&index.owner!==data)throw new Error("source index belongs to a different case snapshot");
   if (!ids.length) return ["SOURCE_FACTS_MISSING"];
@@ -399,17 +408,29 @@ export function factSourceLineageIssues(data: CaseData, ids: string[], index?:Ca
       const validNumeric = !fact.numeric || fact.numeric.normalizationStatus === "exact" && fact.numeric.amountWon !== null && typeof proof.field?.unit === "string" && fact.numeric.unit.normalize("NFKC").trim() === proof.field.unit.normalize("NFKC").trim() && normalizeMoney(raw, proof.field.unit).amountWon === fact.numeric.amountWon;
       const validSourceUnit = !Object.hasOwn(fact,"sourceUnit") || (fact.sourceUnit===null ? proof.field?.unit===null : typeof fact.sourceUnit==="string" && typeof proof.field?.unit==="string" && fact.sourceUnit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim());
       const validProofIndexBinding = Array.isArray(proof.proofReadIndexes) && Array.isArray(proof.proofReads) && Array.isArray(proof.verificationQuotes) && proof.proofReads.every((p,i)=>p.pass===proof.proofReadIndexes[i]?.pass&&p.recordIndex===proof.proofReadIndexes[i]?.recordIndex&&p.fieldIndex===proof.proofReadIndexes[i]?.fieldIndex&&p.quote===proof.verificationQuotes[i]);
-      const fingerprintHasMeaningScope=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)&&(parsed.at(-1)==="field_meaning_v1"||parsed.at(-2)==="field_meaning_v1");}catch{return false;}})();
+      const parsedFingerprint=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)?parsed:null;}catch{return null;}})();
+      const fingerprintHasMeaningScope=!!parsedFingerprint&&parsedFingerprint[10]==="field_meaning_v1";
       const hasMeaningReadMetadata=Array.isArray(proof.proofReads)&&proof.proofReads.some(p=>Object.hasOwn(p,"meaningStatus"));
       let validLocator=true;
       if(locator){
         const locatorSegment=(()=>{if(locator.version!=="bbox_v1"||!isValidSourceBBox(locator.bbox)||!isValidSourceBBox(proof.extractionReading?.bbox)||!sameSourceBBox(proof.extractionReading.bbox,locator.bbox)||!Array.isArray(proof.proofReads)||proof.proofReads.some(p=>!isValidSourceBBox(p.bbox)||!sameSourceBBox(p.bbox,locator.bbox)))return null;return bboxLocatorFingerprintSegment({locator,extractionBBox:proof.extractionReading.bbox,proofBBoxes:proof.proofReads.map(p=>p.bbox!)});})();
         validLocator=!!locatorSegment&&bboxBoundRef&&fingerprintHasBBoxLocator(proof.fieldFingerprint,locatorSegment);
       }else{
-        const hasExtendedLocatorMarker=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)&&parsed.at(-2)==="field_meaning_v1";}catch{return false;}})();
+        const hasExtendedLocatorMarker=!!parsedFingerprint&&!!parsedFingerprint[11]&&typeof parsedFingerprint[11]==="object"&&Object.hasOwn(parsedFingerprint[11],"locatorVersion");
         if(proof.extractionReading?.bbox!==undefined||Array.isArray(proof.proofReads)&&proof.proofReads.some(p=>p.bbox!==undefined)||hasExtendedLocatorMarker)validLocator=false;
       }
-      const validFieldMeaning=proof.verificationScope==="field_meaning_v1"?fingerprintHasMeaningScope&&Array.isArray(proof.proofReads)&&proof.proofReads.length>0&&proof.proofReads.every(p=>p.meaningStatus==="supported")&&validLocator:proof.verificationScope===undefined&&!fingerprintHasMeaningScope&&!hasMeaningReadMetadata&&!locator&&validLocator;
+      const fingerprintGeometry=parsedFingerprint?.find(item=>!!item&&typeof item==="object"&&Object.hasOwn(item,"bbox_corroboration")) as {bbox_corroboration?:unknown}|undefined;
+      let validGeometry=!proof.geometry&&!fingerprintGeometry;
+      if(proof.geometry){
+        const geometry=proof.geometry,geometryMarker=!!fingerprintGeometry&&JSON.stringify(fingerprintGeometry.bbox_corroboration)===JSON.stringify(geometry);
+        const validGeometryShape=geometry.version==="bbox_corroboration_v1"&&isValidSourceBBox(geometry.finalBBox)&&(geometry.extractionBBox===null||isValidSourceBBox(geometry.extractionBBox))&&Array.isArray(geometry.verifierReads)&&geometry.verifierReads.length>0;
+        const validGeometryReads=validGeometryShape&&geometry.verifierReads.every(read=>!!read&&typeof read==="object"&&["verify","repair"].includes(read.pass)&&read.model===AI_MODEL&&typeof read.promptVersion==="string"&&!!read.promptVersion.trim()&&/^[a-f0-9]{64}$/i.test(read.promptHash)&&Number.isFinite(Date.parse(read.verifiedAt))&&Number.isSafeInteger(read.recordIndex)&&read.recordIndex>=0&&Number.isSafeInteger(read.fieldIndex)&&read.fieldIndex>=0&&read.meaningStatus==="supported"&&["agrees","corrected"].includes(read.status)&&read.value===proof.field?.value&&(read.unit===null?proof.field?.unit===null:typeof proof.field?.unit==="string"&&read.unit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim())&&typeof read.quote==="string"&&!!read.quote.trim()&&isValidSourceBBox(read.bbox)&&sourceReceiptBBoxIoU(read.bbox,geometry.finalBBox)>=SOURCE_RECEIPT_BBOX_IOU);
+        const geometryRefBound=fact.refs.some(ref=>ref.documentId===sourceDocumentId&&ref.page===sourcePage&&ref.quote.normalize("NFKC").trim()===quote.normalize("NFKC").trim()&&ref.sourceHash===sourceHash&&sameSourceBBox(ref.bbox,geometry.finalBBox));
+        const needsTwoReads=!geometry.extractionBBox||sourceReceiptBBoxIoU(geometry.extractionBBox,geometry.finalBBox)<SOURCE_RECEIPT_BBOX_IOU;
+        const passKinds=new Set(Array.isArray(geometry.verifierReads)?geometry.verifierReads.filter(read=>!!read&&typeof read==="object").map(read=>read.pass):[]);
+        validGeometry=geometryMarker&&validGeometryReads&&Array.isArray(geometry.verifierReads)&&passKinds.size===geometry.verifierReads.length&&geometryRefBound&&(!needsTwoReads||geometry.verifierReads.length>=2&&passKinds.size>=2);
+      }
+      const validFieldMeaning=proof.verificationScope==="field_meaning_v1"?fingerprintHasMeaningScope&&Array.isArray(proof.proofReads)&&proof.proofReads.length>0&&proof.proofReads.every(p=>p.meaningStatus==="supported")&&validLocator&&validGeometry:proof.verificationScope===undefined&&!fingerprintHasMeaningScope&&!hasMeaningReadMetadata&&!locator&&validLocator&&validGeometry;
       if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || !validFieldMeaning || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
     }
     const normalized=[...factIssues];index?.lineageById.set(id,normalized);for(const issue of normalized)issues.add(issue);
@@ -661,7 +682,7 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
     if (raw.id) idMap.set(raw.id, id);
     const validation = (Array.isArray(raw.validation) ? raw.validation : []).filter((v) => v && typeof v.code === "string" && typeof v.message === "string" && ["info", "warning", "error"].includes(v.severity)).map((v) => ({ code: v.code, message: v.message, severity: v.severity }));
     const observed=raw.fieldObservation;
-    const safeObservation=observed&&typeof observed=== "object"&&observed.applicability&&typeof observed.label==="string"&&observed.documentId===raw.refs[0].documentId&&observed.page===raw.refs[0].page&&observed.sourceSha256===raw.refs[0].sourceHash&&observed.rawValue===raw.value&&observed.quote===raw.refs[0].quote&&observed.rawUnit===(raw.sourceUnit??null)&&JSON.stringify(observed.bbox)===JSON.stringify(raw.refs[0].bbox??null)?observeField(data.pages.find(p=>p.documentId===observed.documentId&&p.page===observed.page)?.documentType??"",{key:raw.key,label:observed.label,value:observed.rawValue,unit:observed.rawUnit,quote:observed.quote,bbox:observed.bbox,confidence:observed.extractionState==="value_read"?"clear":"uncertain",canonicalFieldId:observed.canonicalFieldId,sourceState:observed.sourceState,applicability:observed.applicability.sourceClaim,applicabilityQuote:observed.applicability.quote},{documentId:observed.documentId,page:observed.page,sourceSha256:observed.sourceSha256},observed.recordIndex,observed.fieldIndex):undefined;
+    const safeObservation=observed&&typeof observed=== "object"&&observed.applicability&&typeof observed.label==="string"&&observed.documentId===raw.refs[0].documentId&&observed.page===raw.refs[0].page&&observed.sourceSha256===raw.refs[0].sourceHash&&observed.rawValue===raw.value&&observed.quote===raw.refs[0].quote&&observed.rawUnit===(raw.sourceUnit??null)&&JSON.stringify(observed.bbox)===JSON.stringify(raw.refs[0].bbox??null)?observeField(data.pages.find(p=>p.documentId===observed.documentId&&p.page===observed.page)?.documentType??"",{key:raw.key,label:observed.label,value:observed.rawValue,unit:observed.rawUnit,quote:observed.quote,bbox:observed.bbox,confidence:observed.extractionState==="value_read"?"clear":"uncertain",canonicalFieldId:observed.canonicalFieldId,sourceState:observed.sourceState,applicability:observed.applicability.sourceClaim,applicabilityQuote:observed.applicability.quote,verificationState:observed.verificationState},{documentId:observed.documentId,page:observed.page,sourceSha256:observed.sourceSha256},observed.recordIndex,observed.fieldIndex):undefined;
     const fact: Fact = { ...(safeObservation?{fieldObservation:safeObservation,canonicalFieldId:safeObservation.canonicalFieldId??undefined}:{}), id, logicalId, version: (prior?.version ?? 0) + 1, supersedes: prior?.id, subjectId: raw.subjectId, key: raw.key, value: raw.value, rawValue: raw.rawValue, ...(Object.hasOwn(raw,"sourceUnit")?{sourceUnit:raw.sourceUnit as string|null}:{}), numeric: raw.numeric, periodStart: raw.periodStart, periodEnd: raw.periodEnd, asOf: raw.asOf, state: logicalId.includes(":candidate:") ? "disputed" : "extracted", recognition: "unreviewed", refs: raw.refs, validation, createdAt: at };
     if (raw.numeric && moneyValue(raw.numeric) === null) fact.validation.push({ code: "NORMALIZATION_REVIEW", message: "원문 금액·통화·단위를 다시 확인하세요.", severity: "warning" });
     data.facts.push(fact);

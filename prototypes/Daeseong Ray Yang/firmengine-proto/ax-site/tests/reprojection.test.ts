@@ -7,12 +7,12 @@ import { createSourceVerificationReceipts, sourceVerificationFieldLocation, type
 
 const hash = "d".repeat(64), imageHash = "e".repeat(64);
 const read: PageRead = { documentType: "synthetic_income", complete: true, warnings: [], records: [{ category: "income", label: "synthetic salary row", fields: [
-  { key: "label", label: "income source", value: "monthly salary", unit: null, quote: "synthetic source monthly salary", confidence: "clear", bbox: null },
-  { key: "employer", label: "employer", value: "Synthetic Co", unit: null, quote: "synthetic source Synthetic Co", confidence: "clear", bbox: null },
-  { key: "net", label: "net", value: "3000000", unit: "원", quote: "synthetic source net 3000000원", confidence: "clear", bbox: null },
-  { key: "period_start", label: "start", value: "2026-01-01", unit: null, quote: "synthetic start 2026-01-01", confidence: "clear", bbox: null },
-  { key: "period_end", label: "end", value: "2026-01-31", unit: null, quote: "synthetic end 2026-01-31", confidence: "clear", bbox: null },
-  { key: "amount_basis", label: "basis", value: "monthly", unit: null, quote: "synthetic monthly", confidence: "clear", bbox: null },
+  { key: "label", label: "income source", value: "monthly salary", unit: null, quote: "synthetic source monthly salary", confidence: "clear", bbox: [.1,.1,.9,.2] },
+  { key: "employer", label: "employer", value: "Synthetic Co", unit: null, quote: "synthetic source Synthetic Co", confidence: "clear", bbox: [.1,.1,.9,.2] },
+  { key: "net", label: "net", value: "3000000", unit: "원", quote: "synthetic source net 3000000원", confidence: "clear", bbox: [.1,.1,.9,.2] },
+  { key: "period_start", label: "start", value: "2026-01-01", unit: null, quote: "synthetic start 2026-01-01", confidence: "clear", bbox: [.1,.1,.9,.2] },
+  { key: "period_end", label: "end", value: "2026-01-31", unit: null, quote: "synthetic end 2026-01-31", confidence: "clear", bbox: [.1,.1,.9,.2] },
+  { key: "amount_basis", label: "basis", value: "monthly", unit: null, quote: "synthetic monthly", confidence: "clear", bbox: [.1,.1,.9,.2] },
 ] }] };
 function fixture(role: "evidence" | "filed_form" | "administrative" = "evidence") {
   const data = createCase("Synthetic reprojection", "synthetic-case", "2026-10-27");
@@ -27,7 +27,7 @@ function fixture(role: "evidence" | "filed_form" | "administrative" = "evidence"
 function proofFixture(){
   const f=fixture(),readCopy=structuredClone(read),promptVersion="synthetic-cross-read-1.0",verifiedAt="2026-10-27T00:00:00.000Z",promptHash="f".repeat(64);
   const payload=projectPage(readCopy,"doc-1",1,hash),data=applyExtraction(f.data,payload);
-  const checks=readCopy.records.flatMap((record,recordIndex)=>record.fields.map((field,fieldIndex)=>({recordIndex,fieldIndex,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:field.quote})));
+  const checks=readCopy.records.flatMap((record,recordIndex)=>record.fields.map((field,fieldIndex)=>({recordIndex,fieldIndex,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:field.quote,bbox:field.bbox})));
   const receipts=createSourceVerificationReceipts({documentId:"doc-1",page:1,sourceHash:hash,promptVersion,verifiedAt,originalRead:readCopy,read:readCopy,passes:[{kind:"verify",checks,model:"gpt-6-luna",promptVersion,promptHash,verifiedAt}]});
   for(const receipt of receipts){
     const location=sourceVerificationFieldLocation(receipt,readCopy)!;
@@ -161,7 +161,8 @@ test("historical value-unit-quote receipts stay explicitly legacy through reproj
   for(const fact of currentFacts(f.data)){
     const proof=fact.sourceVerification;if(!proof)continue;
     delete proof.verificationScope;
-    for(const read of proof.proofReads)delete read.meaningStatus;
+    delete proof.geometry;delete proof.field.locator;delete proof.extractionReading.bbox;
+    for(const read of proof.proofReads){delete read.meaningStatus;delete read.bbox;}
     const norm=(value:string)=>value.normalize("NFKC").trim();
     proof.fieldFingerprint=JSON.stringify([proof.source.sha256.toLowerCase(),proof.source.documentId,proof.source.page,norm(proof.field.recordCategory),proof.field.key,norm(proof.field.value),proof.field.unit===null?null:norm(proof.field.unit),norm(proof.field.quote),proof.verificationQuotes.map(norm),[norm(proof.extractionReading.value),proof.extractionReading.unit===null?null:norm(proof.extractionReading.unit),norm(proof.extractionReading.quote)]]);
   }

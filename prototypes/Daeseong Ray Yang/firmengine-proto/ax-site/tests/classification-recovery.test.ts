@@ -41,11 +41,23 @@ test("low legibility stays unknown and filed forms never become evidence through
   assert.equal(canRecoverClassification({...observation,role:"filed_form",confidence:"low"},1),false);
 });
 test("first classifier schema requires source quotes and legibility observations",()=>{
-  assert.deepEqual(CLASSIFICATION_SCHEMA.required,["role","familyId","catalogRelease","boundaryObservation","boundaryQuote","confidence","reason","legibility","titleQuote","issuerQuote","structureQuote","evidenceRowsQuote","administrativeStructureQuote"]);
+  assert.deepEqual(CLASSIFICATION_SCHEMA.required,["role","familyId","catalogRelease","boundaryObservation","boundaryQuote","confidence","reason","legibility","titleQuote","issuerQuote","structureQuote","evidenceRowsQuote","administrativeStructureQuote","sourceNature","sourceNatureQuote"]);
   assert.match(CLASSIFICATION_INSTRUCTIONS,/구체 증빙 구조는 administrative 제목보다 우선한다/);
   assert.match(CLASSIFICATION_INSTRUCTIONS,/legibility=low/);
   assert.equal(CLASSIFICATION_SCHEMA.properties.familyId.enum.length,49);
   assert.match(CLASSIFICATION_INSTRUCTIONS,/페이지 결합이나 사실 병합을 하지 않는다/);
+});
+test("source nature never substitutes for structural evidence or legal recognition",()=>{
+  for(const sourceNature of ["copy","self_report","synthetic_example","official_record_claim","unknown"] as const){
+    const source={...observation,sourceNature,sourceNatureQuote:"자료의 출처에 대한 원문 표시"};
+    assert.equal(observedClassificationRole(source),"evidence","readable observations remain routable irrespective of an authenticity claim");
+    assert.equal(observedClassificationRole({...source,structureQuote:null}),"unknown","source nature cannot supply missing structural evidence");
+    assert.equal(observedClassificationRole({...source,familyId:null}),"unknown","source nature cannot manufacture a catalog family");
+    assert.equal(observedClassificationRole({...source,legibility:"low"}),"unknown");
+    assert.equal(observedClassificationRole({...source,role:"filed_form"}),"filed_form","source nature never releases a protected filed form");
+  }
+  assert.match(CLASSIFICATION_INSTRUCTIONS,/공식 발급 여부가 확인되지 않았다는 이유만으로 보이는 구조를 unknown으로 바꾸지 않는다/);
+  assert.match(CLASSIFICATION_INSTRUCTIONS,/official_record_claim도 발급·진위 검증 완료가 아니다/);
 });
 test("unknown role permits only a bound classification rescue, never an extraction rescue",()=>{
   assert.equal(canUseRescueRole("unknown","unknown","classification_unknown"),true);

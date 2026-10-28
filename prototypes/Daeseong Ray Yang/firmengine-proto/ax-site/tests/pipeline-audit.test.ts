@@ -31,7 +31,7 @@ test("검증 응답 스키마가 단위 판독을 명시적으로 수집한다",
   assert.ok("unit" in properties);
   assert.ok("bbox" in properties);
   assert.deepEqual((properties.meaningStatus as {enum:string[]}).enum,["supported","wrong_field","unclear"]);
-  assert.match(PROMPT_VERSION,/3\.17\.0$/);
+  assert.match(PROMPT_VERSION,/3\.18\.0$/);
 });
 
 test("값·단위·인용이 같아도 의미가 wrong_field면 확인 완료나 source receipt 기반 투영에 쓰지 않는다",()=>{
@@ -54,9 +54,9 @@ test("잘못된 bbox는 자동변환하지 않고 bbox 전용 재확인으로 �
   const validated=validatePageRead(read);assert.deepEqual(validated.records[0].fields[0].bbox,[.5,.4,.2,.6]);assert.ok(validated.warnings.length);
   const projection=projectPage(validated,"synthetic-bbox",1,"a".repeat(64));assert.equal(projection.facts?.[0].refs?.[0].bbox,undefined,"malformed geometry never reaches source references");
   const first=[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"synthetic",unit:"원",quote:"synthetic quote",reason:"값 확인"}];
-  const checked=applyFirstVerification(validated,first);assert.equal(checked.read.records[0].fields[0].value,"synthetic");assert.equal(checked.read.records[0].fields[0].confidence,"clear");assert.equal(checked.targets[0]?.bboxOnly,true);assert.equal(checked.targets[0]?.bboxIssue,true);
+  const checked=applyFirstVerification(validated,first);assert.equal(checked.read.records[0].fields[0].value,"synthetic");assert.equal(checked.read.records[0].fields[0].confidence,"uncertain");assert.equal(checked.targets[0]?.bboxOnly,true);assert.equal(checked.targets[0]?.bboxIssue,true);
   const repaired=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.1,.2,.3,.4]}]);
-  assert.equal(repaired.disagreements,0);assert.equal(repaired.read.records[0].fields[0].value,"synthetic");assert.equal(repaired.read.records[0].fields[0].confidence,"clear");assert.deepEqual(repaired.read.records[0].fields[0].bbox,[.1,.2,.3,.4]);assert.equal(repaired.read.warnings.some(w=>w.includes("bbox")),false);
+  assert.equal(repaired.disagreements,1);assert.equal(repaired.read.records[0].fields[0].value,"synthetic");assert.equal(repaired.read.records[0].fields[0].confidence,"uncertain");assert.equal(repaired.read.records[0].fields[0].verificationState,"conflicting");assert.equal(repaired.read.records[0].fields[0].bbox,null);assert.equal(repaired.read.warnings.some(w=>w.includes("bbox")),true);
 });
 
 test("bbox-only repair null은 허용하고 잘못된 수리 좌표는 값을 살린 채 review 상태로 남긴다",()=>{
@@ -64,21 +64,33 @@ test("bbox-only repair null은 허용하고 잘못된 수리 좌표는 값을 �
   const read:PageRead={documentType:"insurance",complete:true,warnings:[],records:[{category:"asset",label:"synthetic",fields:[f]}]};
   const first=[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"synthetic",unit:"원",quote:"synthetic quote",reason:"값 확인"}];
   const checked=applyFirstVerification(read,first);
-  const noBox=applyTargetedRepair(checked.read,first,[{...first[0],bbox:null}]);assert.equal(noBox.disagreements,0);assert.equal(noBox.read.records[0].fields[0].bbox,null);assert.equal(noBox.read.records[0].fields[0].value,"synthetic");assert.equal(noBox.read.records[0].fields[0].confidence,"clear");
+  const noBox=applyTargetedRepair(checked.read,first,[{...first[0],bbox:null}]);assert.equal(noBox.disagreements,1);assert.equal(noBox.read.records[0].fields[0].bbox,null);assert.equal(noBox.read.records[0].fields[0].value,"synthetic");assert.equal(noBox.read.records[0].fields[0].confidence,"uncertain");
   for(const meaningStatus of [undefined,"wrong_field","unclear"] as const){
     const unsupportedMeaning=applyTargetedRepair(checked.read,first,[{...first[0],meaningStatus,bbox:null}]);
-    assert.equal(unsupportedMeaning.disagreements,1);assert.equal(unsupportedMeaning.read.records[0].fields[0].bbox,null);assert.equal(unsupportedMeaning.read.records[0].fields[0].confidence,"clear","bbox-only failure preserves the already supported value without promoting semantic status");
+    assert.equal(unsupportedMeaning.disagreements,1);assert.equal(unsupportedMeaning.read.records[0].fields[0].bbox,null);assert.equal(unsupportedMeaning.read.records[0].fields[0].confidence,"uncertain","bbox-only failure preserves the raw value but blocks source verification");
   }
-  const invalid=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.6,.4,.2,.7]}]);assert.equal(invalid.disagreements,1);assert.equal(invalid.read.records[0].fields[0].bbox,null);assert.equal(invalid.read.records[0].fields[0].value,"synthetic");assert.equal(invalid.read.records[0].fields[0].confidence,"clear");assert.ok(invalid.read.warnings.some(w=>w.includes("bbox")&&w.includes("보존")));
+  const invalid=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.6,.4,.2,.7]}]);assert.equal(invalid.disagreements,1);assert.equal(invalid.read.records[0].fields[0].bbox,null);assert.equal(invalid.read.records[0].fields[0].value,"synthetic");assert.equal(invalid.read.records[0].fields[0].confidence,"uncertain");assert.ok(invalid.read.warnings.some(w=>w.includes("bbox")&&w.includes("보존")));
+});
+
+test("독립 판독 위치가 분리되거나 조금만 겹치면 값 합의와 분리해 위치를 재확인한다",()=>{
+  const f:ReadField={key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"clear",bbox:[.1,.1,.2,.2]};
+  const read:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"synthetic",fields:[f]}]};
+  const first={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:[.7,.7,.8,.8],reason:"값은 일치하지만 위치는 다름"};
+  const checked=applyFirstVerification(read,[first]);
+  assert.equal(checked.read.records[0].fields[0].confidence,"uncertain");assert.equal(checked.targets.length,1);assert.equal(checked.targets[0].bboxOnly,true);assert.equal(checked.targets[0].bboxConflict,true);
+  const confirmed=applyTargetedRepair(checked.read,[first],[{...first,bbox:[.71,.71,.81,.81]}]);
+  assert.equal(confirmed.disagreements,0);assert.equal(confirmed.read.records[0].fields[0].value,"500");assert.deepEqual(confirmed.read.records[0].fields[0].bbox,[.71,.71,.81,.81]);
+  const unresolved=applyTargetedRepair(checked.read,[first],[{...first,bbox:[.79,.79,.89,.89]}]);
+  assert.equal(unresolved.disagreements,1);assert.equal(unresolved.read.records[0].fields[0].value,"500");assert.equal(unresolved.read.records[0].fields[0].bbox,null);assert.equal(unresolved.read.records[0].fields[0].confidence,"uncertain");
 });
 
 test("bbox 문제와 값 문제를 함께 가진 대상은 정상 이중 교정을 허용하되 잘못된 좌표는 계속 review로 남긴다",()=>{
   const f:ReadField={key:"text",label:"synthetic",value:"old reading",unit:null,quote:"old quote",confidence:"clear",bbox:[.5,.6,.2,.8]};
   const read:PageRead={documentType:"statement",complete:true,warnings:[],records:[{category:"statement",label:"synthetic",fields:[f]}]};
-  const first=[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"corrected" as const,value:"corrected text",unit:null,quote:"source quote pass one",reason:"값과 단위 확인"}];
+  const first=[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"corrected" as const,value:"corrected text",unit:null,quote:"source quote pass one",bbox:[.1,.2,.3,.4],reason:"값과 단위 확인"}];
   const checked=applyFirstVerification(read,first);assert.equal(checked.targets[0]?.bboxIssue,true);assert.equal(checked.targets[0]?.bboxOnly,false);
-  const fixed=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.1,.2,.3,.4]}]);assert.equal(fixed.disagreements,0);assert.equal(fixed.read.records[0].fields[0].value,"corrected text");assert.equal(fixed.read.records[0].fields[0].confidence,"clear");assert.deepEqual(fixed.read.records[0].fields[0].bbox,[.1,.2,.3,.4]);
-  const unresolved=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.6,.8,.2,.3]}]);assert.equal(unresolved.disagreements,1);assert.equal(unresolved.read.records[0].fields[0].value,"corrected text");assert.equal(unresolved.read.records[0].fields[0].confidence,"clear");assert.equal(unresolved.read.records[0].fields[0].bbox,null);assert.ok(unresolved.read.warnings.some(w=>w.includes("좌표")));
+  const fixed=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.11,.21,.31,.41]}]);assert.equal(fixed.disagreements,0);assert.equal(fixed.read.records[0].fields[0].value,"corrected text");assert.equal(fixed.read.records[0].fields[0].confidence,"clear");assert.deepEqual(fixed.read.records[0].fields[0].bbox,[.11,.21,.31,.41]);
+  const unresolved=applyTargetedRepair(checked.read,first,[{...first[0],bbox:[.6,.8,.7,.9]}]);assert.equal(unresolved.disagreements,1);assert.equal(unresolved.read.records[0].fields[0].value,"old reading");assert.equal(unresolved.read.records[0].fields[0].confidence,"uncertain");assert.equal(unresolved.read.records[0].fields[0].bbox,null);assert.ok(unresolved.read.warnings.some(w=>w.includes("위치")));
 });
 
 test("statement.text는 서로 다른 원문 bbox를 가진 문단마다 독립 fact로 보존한다",()=>{
@@ -200,8 +212,8 @@ test("첫 agrees의 값·단위·인용 검증이 추출값과 다르면 확정�
     {recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"500",unit:"원",quote:"원금 500원",reason:"원문 일치"},
     {recordIndex:0,fieldIndex:1,meaningStatus:"supported",status:"agrees",value:"0",unit:"원",quote:"이자 0원",reason:"누락된 첫 검증을 보완"},
   ]);
-  assert.equal(repaired.read.records[0].fields[0].confidence,"uncertain");
-  assert.equal(repaired.read.records[0].fields[1].confidence,"clear");
+  assert.equal(repaired.read.records[0].fields[0].confidence,"uncertain","a second value read cannot verify geometry when the extraction supplied no valid bbox baseline");
+  assert.equal(repaired.read.records[0].fields[1].confidence,"uncertain","one verifier agreement cannot repair a null source bbox without a valid geometry baseline");
 });
 
 test("누락행 재추출은 기존 합의 필드를 새 행에 보존하고 연결할 수 없으면 페이지를 partial로 남긴다",()=>{

@@ -16,7 +16,7 @@ function observation(value: unknown) {
   if (!read) return null;
   const output: Record<string, string | boolean | null> = {};
   let truncated = false;
-  for (const key of ["role", "documentType", "confidence", "legibility", "reason", "titleQuote", "issuerQuote", "structureQuote", "evidenceRowsQuote", "administrativeStructureQuote"]) {
+  for (const key of ["role", "documentType", "familyId", "catalogRelease", "boundaryObservation", "boundaryQuote", "sourceNature", "sourceNatureQuote", "confidence", "legibility", "reason", "titleQuote", "issuerQuote", "structureQuote", "evidenceRowsQuote", "administrativeStructureQuote"]) {
     const text = read[key];
     if (typeof text === "string") {
       output[key] = text.slice(0, 4000);

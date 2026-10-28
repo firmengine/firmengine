@@ -45,8 +45,8 @@ export function fingerprintHasBBoxLocator(
 ): boolean {
   try {
     const parsed: unknown = JSON.parse(fingerprint);
-    if (!Array.isArray(parsed) || parsed.at(-2) !== "field_meaning_v1") return false;
-    return JSON.stringify(parsed.at(-1)) === JSON.stringify(expected);
+    if (!Array.isArray(parsed)) return false;
+    return parsed.some((item,index)=>parsed[index-1]==="field_meaning_v1"&&JSON.stringify(item)===JSON.stringify(expected));
   } catch {
     return false;
   }

@@ -1,8 +1,8 @@
-import { observeField, pageFieldCoverage, SOURCE_STATES, FIELD_OBSERVATION_INSTRUCTIONS, type ObservationInput } from "./field-observation.ts";
+import { observeField, pageFieldCoverage, SOURCE_STATES, VERIFICATION_STATES, FIELD_OBSERVATION_INSTRUCTIONS, type ObservationInput, type VerificationState } from "./field-observation.ts";
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
 import { isSourceMoney,isDebtComponentSlot,debtComponentSlotKey,INSURANCE_SURRENDER_KEYS,isInsuranceSurrenderQuote,quotedInsuranceSurrenderAmount } from "./source-quantity.ts";
 import { documentFamily } from "./document-routing.ts";
-export const PROMPT_VERSION="luna-evidence-3.17.0";
+export const PROMPT_VERSION="luna-evidence-3.18.0";
 const APPLICANT_ROLE_EVIDENCE_RULE="person.role=applicant은 작성 주체가 문서에서 신청인 본인으로 명시되고, 같은 주체가 1인칭으로 개인회생 신청 의사를 직접 밝히며, 본인이 실제로 서명/날인한 근거가 각각 원문 quote로 확인되는 자필·본인 진술서에서만 source fact 후보로 기록한다. 작성자와 범위가 원문에 명시된 하나의 진술은 가능하면 anchor와 여러 statement.text 필드를 한 statement record에 모으되, 각 문단의 값·quote·bbox·순서는 독립적으로 보존한다. 서로 다른 작성자 또는 범위는 별도 record로 분리한다. 작성자 소개나 신청 의사 문장이 원문의 서술 문단이면 anchor 필드로 추출했어도 그 문단 전체를 statement.text로 함께 보존하여 본문을 누락하지 않는다. 자동 서식 연결을 위해서만 statement.author_role=applicant(신청인 본인이 작성자라는 명시 근거), statement.applicant_intent(같은 작성자의 1인칭 개인회생 신청 의사), statement.author_signature(같은 작성자의 실제 서명/날인 근거)를 각 근거 quote와 함께 별도 사실로 추출한다. 가능하면 세 anchor 사실을 한 statement record에 모은다. anchor나 문단이 여러 record로 나뉘면 statement.scope_relation v2에 openingQuote, intentQuote, closingQuote, 실제 signatureQuote와 동일 범위에 포함되는 모든 statement.text의 정확한 members quote를 빠짐없이 연결하고, relation 필드 자체의 quote와 bbox는 openingQuote 원문 영역을 가리킨다. relation은 보이는 source link의 추출 후보일 뿐이며 독립 검증에서 전체 relation이 지원되기 전에는 연결 근거가 아니다. 이 경우 record마다 scope를 복사하지 않는다. typed relation이 없을 때에만 anchor와 각 문단 record의 statement.author_scope를 각각 원문에서 직접 확인해 정확히 같은 작성 범위를 연결한다. scope는 원문에서 작성자의 진술 범위를 명시하는 연결 문장이나 구획을 직접 인용한다. 단순한 진술서 제목은 작성자와 문단의 연결 근거가 아니다. 원문이 아래 내용 또는 특정 문단 묶음을 같은 본인의 진술이라고 명시할 때만 그 범위를 연결하며, scope를 임의로 만들거나 페이지 전체에 넓혀 붙이지 않는다. 세 작성자 근거가 한 문서/같은 페이지의 같은 인물에 명확히 연결되고 각 문단이 typed relation 또는 independently verified identical author_scope로 귀속되는 경우만 자동 연결 후보이며, 사람 이름·record 순서·근접성만으로 연결하지 않는다. 인물 혼재, 작성자 누락/모호함, 실제 서명 근거 없음, 철회/상충, 다른 scope이면 연결을 보류한다. 이 사실은 unreviewed 원문 후보이지 법적 승인이나 신원 자동확정이 아니다. 채무잔액증명서의 채무자/차주 표기, 가족증명서의 본인, 유일한 성명, 주소 일치, 타인의 대리/제3자 서명만으로 신청인을 추정하지 않는다.";
 export const STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS="statement.scope_relation은 자동 연결을 위한 typed source fact 후보이며 법적 승인이나 신원 확정이 아니다. value의 JSON은 원문에 인쇄된 문자열이 아니라 원문 인용 사이의 관계를 표현하는 metadata다. relation 필드 자체의 quote와 bbox는 반드시 openingQuote가 있는 원문 영역을 가리켜야 하며, JSON 전체가 인쇄된 것처럼 인용하거나 bbox를 만들지 않는다. version=2라면 openingQuote와 같은 작성자의 intentQuote, closingQuote, 실제 signatureQuote, 모든 members quote를 각각 확인한다. legacy version=1에는 intentQuote가 없으며 그대로 인정하지 말고 role·intent·signature anchor가 동일 record에 귀속될 때만 호환한다. 원본 페이지 이미지 전체에서 openingQuote가 작성자의 명시적 자기작성 선언을 정확히 인용하는지, intentQuote가 신청 의사를 정확히 인용하는지, closingQuote가 그 동일 작성 범위의 앞선 내용을 명시적으로 가리키는 문구인지, signatureQuote가 해당 작성자의 실제 서명 근거인지, members의 모든 quote가 실제 statement.text 문단을 각각 정확하고 고유하게 인용하는지, 현재 read에서 빠진 해당 범위 문단이나 다른 작성자/별도 범위 문단이 더 있는지 독립적으로 확인한다. 각 인용은 원문에 직접 대응해야 하며, 인접 제목·이름·record 위치·페이지 근접성만으로 관계를 지지하지 않는다. 인쇄된 서명 문구, 빈 서명선, '(서명)' 표기만으로 실제 서명을 확인하지 않는다. 인용·작성자·범위·문단 경계·실제 서명 중 하나라도 원문 이미지에서 불명확하거나 relation JSON이 잘못되면 meaningStatus=unclear 또는 wrong_field이며 supported로 검증하지 않는다. relation은 원문에서 직접 확인할 수 있는 연결만 표현하고, 원문 밖의 범위를 추정하지 않는다.";
 const STATEMENT_SCOPE_RELATION_RULE="원문에서 하나의 명시적 작성자 진술 범위가 분명하고 작성자 소개, 신청 의사, 그 범위를 명시적으로 가리키는 끝맺음, 같은 작성자의 실제 서명, 모든 해당 문단의 경계를 정확히 연결할 수 있으면 statement.scope_relation key의 value에 다음 형태의 JSON 문자열을 추출한다: {\"version\":2,\"openingQuote\":\"작성자의 명시적 자기작성 선언 원문 인용\",\"intentQuote\":\"같은 작성자의 명시적 신청 의사 원문 인용\",\"closingQuote\":\"위 내용처럼 앞선 동일 범위를 명시적으로 가리키는 끝맺음 원문 인용\",\"signatureQuote\":\"같은 작성자의 실제 서명/날인 원문 인용\",\"members\":[{\"quote\":\"포함되는 각 statement.text 필드의 정확한 원문 quote\"}]}. opening/intent/closing/signature quote와 members quote는 새 문장으로 만들거나 바꾸지 말고 원문 quote를 그대로 쓴다. relation 필드의 별도 quote는 openingQuote와 같게 하고 bbox는 openingQuote 원문 영역의 bbox로 둔다. JSON value 자체는 원문에 인쇄된 내용이 아니므로 JSON 전체에 bbox를 붙이지 않는다. members에는 동일 범위에 속하는 모든 현재 statement.text 문단을 원문 순서대로 한 번씩만 나열하며, 각 quote는 고유한 한 문단을 식별해야 한다. statement.author_scope는 원문이 그 scope를 직접 명시할 때만 추출한다. 진술 범위의 관계는 원문이 명시한 연결을 statement.scope_relation quote들로 표현할 수 있으며, scope 문구를 반복 생성해 각 record에 붙여 범위를 만들거나 입증하지 않는다. 다른 작성자, 다른 진술 범위, 모호/철회/상충/누락 문단, 불명확한 문단 경계, 실제 서명이 확인되지 않는 경우, 페이지가 다른 문단은 relation에 넣지 말고 관계 사실 자체를 생략한다. 이 relation은 제안일 뿐이며 독립 원문 의미 대조가 supported일 때만 사용할 수 있다. 근거가 없으면 동일 문구를 반복해 scope를 만들거나 same-page만으로 author scope를 추정하지 않는다.";
@@ -50,6 +50,7 @@ export const PAGE_SCHEMA=obj({documentType:{type:"string"},records:{type:"array"
 export const CLASSIFY_SCHEMA=obj({role:{type:"string",enum:["evidence","filed_form","administrative","unknown"]},documentType:{type:"string"},confidence:{type:"string",enum:["high","low"]},reason:{type:"string"}});
 export const VERIFY_SCHEMA=obj({
   checks:{type:"array",items:obj({recordIndex:{type:"integer"},fieldIndex:{type:"integer"},meaningStatus:{type:"string",enum:["supported","wrong_field","unclear"]},status:{type:"string",enum:["agrees","corrected","unreadable","ambiguous"]},value:nullable("string"),unit:nullable("string"),quote:nullable("string"),bbox:bboxSchema,reason:{type:"string"}})},
+  missingFields:{type:"array",items:obj({canonicalFieldId:nullable("string"),sourceState:{type:"string",enum:["present","blank","masked","illegible","explicit_none"]},quote:nullable("string"),bbox:bboxSchema})},
   omittedRows:{type:"boolean"},warnings:{type:"array",items:{type:"string"}},
 });
 /** A correction needs a second matching value/unit reading, with a source quote from each pass. */
@@ -58,30 +59,55 @@ export function applyConfirmedCorrection(field:ReadField,prior:{status:string;me
   field.value=current.value;field.unit=current.unit;field.quote=current.quote;field.confidence="clear";return true;
 }
 export type FieldReviewCheck={recordIndex:number;fieldIndex:number;meaningStatus?:string;status:"agrees"|"corrected"|"unreadable"|"ambiguous";value:string|null;unit:string|null;quote:string|null;bbox?:number[]|null;reason:string};
-export interface RepairTarget extends FieldReviewCheck {missingFirstCheck:boolean;bboxIssue?:boolean;bboxOnly?:boolean;}
+export interface RepairTarget extends FieldReviewCheck {missingFirstCheck:boolean;bboxIssue?:boolean;bboxOnly?:boolean;bboxConflict?:boolean;sourceBBox?:number[]|null;bboxReference?:number[]|null;}
 function checksFor(checks:readonly FieldReviewCheck[]|undefined,ri:number,fi:number){return (checks??[]).filter(c=>c.recordIndex===ri&&c.fieldIndex===fi);}
 function validAgreement(field:ReadField,check:FieldReviewCheck){return check.meaningStatus==="supported"&&check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim();}
+function anchoredNullClaim(field:ReadField){return field.value===null&&["blank","masked","illegible","explicit_none"].includes(field.sourceState??"")&&!!field.quote?.trim()&&isValidSourceBBox(field.bbox);}
+function verifierDisposition(check:FieldReviewCheck|undefined,missing=false):VerificationState{
+  if(!check)return missing?"missing_check":"unverified";
+  if(check.meaningStatus==="wrong_field")return "wrong_field";
+  if(check.status==="unreadable")return "unreadable";
+  if(check.meaningStatus==="unclear"||check.status==="ambiguous")return "unclear";
+  if(check.status==="corrected")return "value_mismatch";
+  if(check.meaningStatus==="supported"&&check.status==="agrees")return "supported";
+  return "unclear";
+}
+function unresolvedDisposition(first:FieldReviewCheck|undefined,second:FieldReviewCheck|undefined,missingFirst:boolean):VerificationState{
+  if(first?.meaningStatus==="wrong_field"||second?.meaningStatus==="wrong_field")return "wrong_field";
+  if(first?.status==="unreadable"||second?.status==="unreadable")return "unreadable";
+  if(first&&second&&(first.status==="corrected"||second.status==="corrected")&&(first.value!==second.value||first.unit?.trim()!==second.unit?.trim()))return "conflicting";
+  if(second&&(second.meaningStatus==="unclear"||second.status==="ambiguous"))return "unclear";
+  return verifierDisposition(first,missingFirst);
+}
 export function isValidSourceBBox(bbox:unknown):bbox is [number,number,number,number]{return Array.isArray(bbox)&&bbox.length===4&&bbox.every(v=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=1)&&bbox[0]<bbox[2]&&bbox[1]<bbox[3];}
+// Re-located source geometry needs substantial area agreement across reads.
+// This uses the frozen bbox acceptance threshold rather than treating any
+// incidental edge overlap as corroboration.
+const BBOX_CORROBORATION_IOU=0.5;
+function bboxIoU(a:unknown,b:unknown){
+  if(!isValidSourceBBox(a)||!isValidSourceBBox(b))return 0;
+  const width=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0])),height=Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));
+  const intersection=width*height,areaA=(a[2]-a[0])*(a[3]-a[1]),areaB=(b[2]-b[0])*(b[3]-b[1]),union=areaA+areaB-intersection;
+  return union>0?intersection/union:0;
+}
 const INVALID_BBOX_WARNING="원문 bbox의 좌표 순서가 올바르지 않아 재확인이 필요합니다.";
 function refreshBBoxWarning(read:PageRead){
   read.warnings=read.warnings.filter(w=>w!==INVALID_BBOX_WARNING);
   if(read.records.some(record=>record.fields.some(field=>field.bbox!==null&&!isValidSourceBBox(field.bbox))))read.warnings.push(INVALID_BBOX_WARNING);
 }
-function applyBBoxCheck(field:ReadField,check:FieldReviewCheck){
-  if(field.bbox!==null&&isValidSourceBBox(field.bbox))return;
-  if(isValidSourceBBox(check.bbox))field.bbox=[...check.bbox];
-  else if(check.bbox===null)field.bbox=null;
-}
 export function getRepairTargets(read:PageRead,checks:readonly FieldReviewCheck[]|undefined):RepairTarget[]{
   const targets:RepairTarget[]=[];
   read.records.forEach((record,recordIndex)=>record.fields.forEach((field,fieldIndex)=>{
-    if(field.value===null) return;
+    if(field.value===null&&!anchoredNullClaim(field)) return;
     const matches=checksFor(checks,recordIndex,fieldIndex);
-    const bboxIssue=field.bbox!==null&&!isValidSourceBBox(field.bbox);
+    const first=matches.length===1?matches[0]:undefined;
+    const sourceBBox=isValidSourceBBox(field.bbox)?[...field.bbox]:null;
+    const firstBBox=isValidSourceBBox(first?.bbox)?[...first!.bbox!]:null;
+    const bboxConflict=!!sourceBBox&&!!firstBBox&&bboxIoU(sourceBBox,firstBBox)<BBOX_CORROBORATION_IOU;
+    const bboxIssue=!isValidSourceBBox(field.bbox)||!!first&&first.bbox!==undefined&&!isValidSourceBBox(first.bbox)||bboxConflict;
     const agreed=matches.length===1&&validAgreement(field,matches[0]);
     if(agreed&&!bboxIssue)return;
-    const first=matches.length===1?matches[0]:undefined;
-    targets.push({...first??{recordIndex,fieldIndex,meaningStatus:"unclear" as const,status:"ambiguous" as const,value:null,unit:null,quote:null,reason:matches.length>1?"검증 응답이 중복되었습니다.":"첫 검증에서 이 필드 응답이 누락되었습니다."},missingFirstCheck:matches.length!==1,bboxIssue,bboxOnly:bboxIssue&&agreed});
+    targets.push({...first??{recordIndex,fieldIndex,meaningStatus:"unclear" as const,status:"ambiguous" as const,value:null,unit:null,quote:null,reason:matches.length>1?"검증 응답이 중복되었습니다.":"첫 검증에서 이 필드 응답이 누락되었습니다."},missingFirstCheck:matches.length!==1,bboxIssue,bboxOnly:bboxIssue&&agreed,bboxConflict,sourceBBox,bboxReference:firstBBox??sourceBBox});
   }));
   return targets;
 }
@@ -89,13 +115,22 @@ export function getRepairTargets(read:PageRead,checks:readonly FieldReviewCheck[
 export function applyFirstVerification(read:PageRead,checks:readonly FieldReviewCheck[]|undefined):{read:PageRead;targets:RepairTarget[]}{
   const next=structuredClone(read);
   next.records.forEach((record,ri)=>record.fields.forEach((field,fi)=>{
-    if(field.value===null)return;
+    if(field.value===null&&!anchoredNullClaim(field))return;
     const matches=checksFor(checks,ri,fi);
-    if(matches.length===1&&validAgreement(field,matches[0])){field.confidence="clear";applyBBoxCheck(field,matches[0]);}
-    else field.confidence=matches.length===1&&matches[0].status==="unreadable"?"unreadable":"uncertain";
+    const first=matches.length===1?matches[0]:undefined;
+    const agreement=!!first&&validAgreement(field,first)&&(field.value!==null||isValidSourceBBox(first.bbox));
+    if(agreement){field.confidence="clear";field.verificationState="supported";}
+    else {field.confidence=first?.status==="unreadable"?"unreadable":"uncertain";field.verificationState=verifierDisposition(first,matches.length===0);}
   }));
   refreshBBoxWarning(next);
-  return {read:next,targets:getRepairTargets(next,checks)};
+  const targets=getRepairTargets(next,checks);
+  // Regional verification can commit without a targeted repair pass. Keep a
+  // value agreement separate from unresolved geometry before any receipt is made.
+  for(const target of targets)if(target.bboxOnly){
+    const field=next.records[target.recordIndex].fields[target.fieldIndex];
+    field.confidence="uncertain";field.verificationState="conflicting";
+  }
+  return {read:next,targets};
 }
 /** A targeted repair can change only fields that disagreed or were omitted in the first review. */
 export function applyTargetedRepair(read:PageRead,firstChecks:readonly FieldReviewCheck[]|undefined,repairChecks:readonly FieldReviewCheck[]|undefined):{read:PageRead;disagreements:number}{
@@ -104,13 +139,17 @@ export function applyTargetedRepair(read:PageRead,firstChecks:readonly FieldRevi
     const field=next.records[target.recordIndex]?.fields[target.fieldIndex];if(!field)continue;
     const matches=checksFor(repairChecks,target.recordIndex,target.fieldIndex),second=matches.length===1?matches[0]:undefined;
     if(target.bboxOnly){
-      if(second&&validAgreement(field,second)&&(second.bbox===null||isValidSourceBBox(second.bbox))){field.bbox=second.bbox===null?null:[...second.bbox];continue;}
+      const geometryAgrees=!!second&&isValidSourceBBox(target.bboxReference)&&isValidSourceBBox(second.bbox)&&bboxIoU(target.bboxReference,second.bbox)>=BBOX_CORROBORATION_IOU;
+      if(second&&validAgreement(field,second)&&isValidSourceBBox(second.bbox)&&geometryAgrees){field.bbox=[...second.bbox];field.confidence="clear";field.verificationState="supported";continue;}
       // Geometry repair failure does not invalidate an independently agreed
-      // value or quote; clear malformed geometry and keep the page review flag.
-      field.bbox=null;disagreements++;next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 원문 bbox를 검증하지 못했습니다. 값·인용은 보존합니다.`);continue;
+      // value or quote; clear geometry, mark the field unresolved, and preserve
+      // the raw reading without allowing it to receive a source receipt.
+      field.bbox=null;field.confidence="uncertain";field.verificationState="conflicting";disagreements++;next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 원문 bbox를 독립 재판독으로 확인하지 못했습니다. 값·인용은 보존하지만 원문 검증은 보류합니다.`);continue;
     }
     const first=target.missingFirstCheck?undefined:target;
-    if(first&&second&&applyConfirmedCorrection(field,first,second)){
+    const geometryAgrees=!target.bboxIssue||!!second&&isValidSourceBBox(target.bboxReference)&&isValidSourceBBox(second.bbox)&&bboxIoU(target.bboxReference,second.bbox)>=BBOX_CORROBORATION_IOU;
+    if(first&&second&&geometryAgrees&&applyConfirmedCorrection(field,first,second)){
+      field.sourceState="present";field.applicability="unknown";field.applicabilityQuote=null;field.verificationState="corrected";
       if(isValidSourceBBox(second.bbox))field.bbox=[...second.bbox];else if(target.bboxIssue&&second.bbox===null)field.bbox=null;
       if(target.bboxIssue&&!isValidSourceBBox(field.bbox)){field.bbox=null;disagreements++;next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 교정된 값은 보존했지만 bbox 좌표를 확인하지 못했습니다.`);}
       continue;
@@ -118,12 +157,13 @@ export function applyTargetedRepair(read:PageRead,firstChecks:readonly FieldRevi
     // A missing first check is not a contradictory reading. The extractor's
     // value plus one independent source agreement can resolve it, but only if
     // the verifier repeats the same value and explicit unit with a citation.
-    if(target.missingFirstCheck&&second&&validAgreement(field,second)){
-      field.confidence="clear";if(isValidSourceBBox(second.bbox))field.bbox=[...second.bbox];else if(target.bboxIssue&&second.bbox===null)field.bbox=null;
+    if(target.missingFirstCheck&&second&&validAgreement(field,second)&&geometryAgrees){
+      field.confidence="clear";field.verificationState="supported";if(isValidSourceBBox(second.bbox))field.bbox=[...second.bbox];else if(target.bboxIssue&&second.bbox===null)field.bbox=null;
       if(target.bboxIssue&&!isValidSourceBBox(field.bbox)){field.bbox=null;disagreements++;next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 값은 보존했지만 bbox 좌표를 확인하지 못했습니다.`);}
       continue;
     }
-    disagreements++;field.confidence=second?.status==="unreadable"?"unreadable":"uncertain";
+    disagreements++;field.confidence=second?.status==="unreadable"?"unreadable":"uncertain";field.verificationState=target.bboxConflict?"conflicting":unresolvedDisposition(first,second,target.missingFirstCheck);
+    if(target.bboxIssue&&!geometryAgrees){field.bbox=null;field.confidence="uncertain";field.verificationState="conflicting";next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 원문 위치와 재판독 위치가 일치하지 않아 bbox 및 원문 검증을 보류합니다. 값·인용은 별도로 보존합니다.`);}
     next.warnings.push(`${target.recordIndex+1}행 ${field.label}: 두 차례 원문 판독이 값·단위·인용에서 합의하지 못했습니다.${second?.value!==null&&second?.value!==undefined?` (재판독 후보: ${second.value}${second.unit?` ${second.unit}`:""})`:""}`);
   }
   refreshBBoxWarning(next);
@@ -381,7 +421,7 @@ export function validatePageRead(raw:unknown):PageRead{
     if(!["person","income","debt","asset","transaction","household","business","statement","other"].includes(x.category)||typeof x.label!=="string"||!Array.isArray(x.fields)||x.fields.length>200)throw new Error("추출 필드 형식을 확인하세요.");
     for(const f of x.fields){
       if(!f||typeof f.key!=="string"||!f.key.trim()||typeof f.label!=="string"||!(f.value===null||typeof f.value==="string")||!(f.unit===null||typeof f.unit==="string")||!(f.quote===null||typeof f.quote==="string")||!["clear","uncertain","unreadable"].includes(f.confidence)||!(f.bbox===null||(Array.isArray(f.bbox)&&f.bbox.length===4&&f.bbox.every(v=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=1))))throw new Error("원문 필드 형식을 올바르게 확인하세요.");
-      if(f.canonicalFieldId!==undefined&&f.canonicalFieldId!==null&&typeof f.canonicalFieldId!=="string"||f.sourceState!==undefined&&!SOURCE_STATES.includes(f.sourceState)||f.applicability!==undefined&&!["applicable","not_applicable","unknown"].includes(f.applicability)||f.applicabilityQuote!==undefined&&f.applicabilityQuote!==null&&typeof f.applicabilityQuote!=="string")throw new Error("피처 식별자·기재 상태·적용 근거 형식을 확인하세요.");
+      if(f.canonicalFieldId!==undefined&&f.canonicalFieldId!==null&&typeof f.canonicalFieldId!=="string"||f.sourceState!==undefined&&!SOURCE_STATES.includes(f.sourceState)||f.applicability!==undefined&&!["applicable","not_applicable","unknown"].includes(f.applicability)||f.applicabilityQuote!==undefined&&f.applicabilityQuote!==null&&typeof f.applicabilityQuote!=="string"||f.verificationState!==undefined&&!VERIFICATION_STATES.includes(f.verificationState))throw new Error("피처 식별자·기재 상태·적용 근거 형식을 확인하세요.");
       if(f.bbox!==null&&!isValidSourceBBox(f.bbox)&&!r.warnings.includes(INVALID_BBOX_WARNING))r.warnings.push(INVALID_BBOX_WARNING);
     }
   }

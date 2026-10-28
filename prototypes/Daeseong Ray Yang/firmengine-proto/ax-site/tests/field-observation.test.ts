@@ -30,6 +30,17 @@ test("state claims need anchors and cannot contradict a value", () => {
   assert.equal(observeField("debt_certificate", field({sourceState: "blank", value: null, quote: null}), source, 0, 0).sourceState, "unknown");
   assert.equal(observeField("debt_certificate", field({sourceState: "present", value: null}), source, 0, 0).sourceState, "unknown");
 });
+test("N/A source claims require explicit source-none evidence, not a blank, missing slot, or zero", () => {
+  const blank = observeField("debt_certificate", field({value: null, sourceState: "blank", quote: "현재 원금잔액 [빈칸]", applicability: "not_applicable", applicabilityQuote: "현재 원금잔액"}), source, 0, 0);
+  assert.equal(blank.sourceState, "blank"); assert.equal(blank.applicability.sourceClaim, "unknown");
+  const missing = observeField("debt_certificate", field({value: null, sourceState: "not_seen", quote: "현재 원금잔액", applicability: "not_applicable", applicabilityQuote: "현재 원금잔액"}), source, 0, 0);
+  assert.equal(missing.applicability.sourceClaim, "unknown");
+  const zero = observeField("debt_certificate", field({value: "0", quote: "현재 원금잔액 0원", applicability: "not_applicable", applicabilityQuote: "현재 원금잔액 0원"}), source, 0, 0);
+  assert.equal(zero.sourceState, "present"); assert.equal(zero.applicability.sourceClaim, "unknown");
+  const explicit = observeField("debt_certificate", field({value: null, sourceState: "explicit_none", quote: "현재 원금잔액 해당 없음", applicability: "not_applicable", applicabilityQuote: "해당 없음"}), source, 0, 0);
+  assert.equal(explicit.sourceState, "explicit_none"); assert.equal(explicit.rawValue, null); assert.equal(explicit.applicability.sourceClaim, "not_applicable");
+  assert.equal(explicit.extractionState, "source_empty", "an explicit absence claim is not a successfully extracted value");
+});
 test("canonical binding rejects cross-family and same-family wrong-key claims", () => {
   assert.equal(observeField("debt_certificate", field(), source, 0, 0).canonicalFieldId, "debt_certificate::creditor");
   assert.equal(observeField("payroll_payslip", field(), source, 0, 0).canonicalFieldId, null);
@@ -48,6 +59,10 @@ test("all null-state observations survive projection and persistence with their 
   const f = currentFacts(data)[0];
   assert.ok(f); assert.equal(f.value, null); assert.equal(f.canonicalFieldId, "debt_certificate::creditor"); assert.equal(f.fieldObservation?.sourceState, "blank"); assert.equal(f.recognition, "unreviewed"); assert.equal(f.numeric, undefined);
   assert.equal(data.pages[0].fieldCoverage?.sourceSha256, source.sourceSha256); assert.equal(data.debts.length, 0);
+});
+test("independent verification disposition survives the guarded persistence roundtrip", () => {
+  const data = persist([field({verificationState: "wrong_field"})]);
+  assert.equal(currentFacts(data)[0]?.fieldObservation?.verificationState, "wrong_field");
 });
 test("manual changes preserve prior reading but invalidate current automated observation", () => {
   const data = persist([field()]), prior = currentFacts(data)[0];

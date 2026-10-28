@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { DOC_FIELDS,EXTRACT_INSTRUCTIONS,applyFirstVerification,applyTargetedRepair,projectPage,type FieldReviewCheck,type PageRead,type ReadField } from "../lib/extraction.ts";
-import { createSourceVerificationReceipts,sourceVerificationFieldLocation } from "../lib/source-verification.ts";
+import { createPreservedOmissionReceipts,createSourceVerificationReceipts,sourceVerificationFieldLocation } from "../lib/source-verification.ts";
 
 const sha="e".repeat(64);
 const f=(key:string,value:string,quote:string,unit:string|null=null):ReadField=>({key,label:key,value,quote,unit,confidence:"clear",bbox:[.1,.2,.4,.25]});
@@ -180,10 +180,105 @@ test("lease facts without explicit applicant role do not become rent income or o
   assert.equal(projectPage(incomeRead,"synthetic-lease",3,sha).incomes?.length,1);
 });
 
+test("verification preserves false extraction, OCR error, conflict, and missing-check dispositions",()=>{
+  const source=f("principal","120","원금 120원","원");
+  const base:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[source]}]};
+  const wrong=applyFirstVerification(base,[{recordIndex:0,fieldIndex:0,meaningStatus:"wrong_field",status:"ambiguous",value:null,unit:null,quote:null,reason:"다른 열 의미"}]);
+  assert.equal(wrong.read.records[0].fields[0].verificationState,"wrong_field");
+  const unreadable=applyFirstVerification(base,[{recordIndex:0,fieldIndex:0,meaningStatus:"unclear",status:"unreadable",value:null,unit:null,quote:null,reason:"판독불가"}]);
+  assert.equal(unreadable.read.records[0].fields[0].verificationState,"unreadable");
+  const conflict=applyFirstVerification(base,[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"corrected",value:"121",unit:"원",quote:"원금 121원",reason:"값 불일치"}]);
+  assert.equal(conflict.read.records[0].fields[0].verificationState,"value_mismatch");
+  const omitted=applyFirstVerification(base,[]);
+  assert.equal(omitted.read.records[0].fields[0].verificationState,"missing_check");
+});
+
+test("anchored blank claims are checked and can be corrected only by two matching source reads",()=>{
+  const blank:ReadField={key:"principal",label:"원금잔액",value:null,unit:null,quote:"현재 원금잔액 [빈칸]",confidence:"uncertain",bbox:[.1,.2,.4,.25],sourceState:"blank"};
+  const read:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[blank]}]};
+  const first=[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"corrected" as const,value:"120",unit:"원",quote:"현재 원금잔액 120원",reason:"값이 보임"}];
+  const checked=applyFirstVerification(read,first);
+  assert.equal(checked.targets.length,1);assert.equal(checked.read.records[0].fields[0].verificationState,"value_mismatch");
+  const repaired=applyTargetedRepair(checked.read,first,[{...first[0],quote:"원금잔액 120원"}]);
+  assert.equal(repaired.disagreements,0);assert.equal(repaired.read.records[0].fields[0].value,"120");
+  assert.equal(repaired.read.records[0].fields[0].sourceState,"present");assert.equal(repaired.read.records[0].fields[0].verificationState,"corrected");
+  const unsupported=applyFirstVerification(read,[]);
+  assert.equal(unsupported.targets.length,1);assert.equal(unsupported.read.records[0].fields[0].sourceState,"blank");
+  const oneRead=applyTargetedRepair(unsupported.read,[],[{recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"corrected",value:"120",unit:"원",quote:"원금잔액 120원",reason:"단일 재판독"}]);
+  assert.equal(oneRead.disagreements,1);assert.equal(oneRead.read.records[0].fields[0].value,null);
+});
+
+test("a recovered null extraction remains unverified and cannot receive a source receipt",()=>{
+  const original:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[{key:"principal",label:"원금",value:null,unit:null,quote:"원금 [빈칸]",confidence:"uncertain",bbox:[.1,.2,.4,.25],sourceState:"blank"}]}]};
+  const corrected:PageRead={...original,records:[{...original.records[0],fields:[{...original.records[0].fields[0],value:"120",unit:"원",quote:"원금 120원",confidence:"clear",bbox:[.1,.2,.4,.25],sourceState:"present"}]}]};
+  const check={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"corrected" as const,value:"120",unit:"원",quote:"원금 120원",bbox:[.1,.2,.4,.25],reason:"독립 판독"};
+  const pass=(kind:"verify"|"repair")=>({kind,checks:[check],model:"gpt-6-luna" as const,promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"});
+  const receipts=createSourceVerificationReceipts({documentId:"synthetic",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:original,read:corrected,passes:[pass("verify"),pass("repair")]});
+  assert.deepEqual(receipts,[]);
+});
+
+test("unresolved bbox geometry suppresses source receipts but corroborated relocation preserves them",()=>{
+  const original:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[{key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"clear",bbox:[.1,.1,.2,.2]}]}]};
+  const first={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:[.7,.7,.8,.8],reason:"원문 값 판독"};
+  const checked=applyFirstVerification(original,[first]);
+  assert.equal(checked.targets[0]?.bboxConflict,true);
+  assert.equal(checked.read.records[0].fields[0].confidence,"uncertain");
+  assert.equal(checked.read.records[0].fields[0].verificationState,"conflicting");
+  assert.deepEqual(createSourceVerificationReceipts({documentId:"synthetic-region",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:original,read:checked.read,passes:[{kind:"verify",checks:[first],model:"gpt-6-luna",promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"}]}),[],"regional verification cannot mint a receipt before geometry repair");
+  const unresolved=applyTargetedRepair(checked.read,[first],[{...first,bbox:[.79,.79,.89,.89]}]);
+  const pass=(kind:"verify"|"repair",check:typeof first)=>({kind,checks:[check],model:"gpt-6-luna" as const,promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"});
+  const receiptsFor=(result:PageRead,repair:typeof first)=>createSourceVerificationReceipts({documentId:"synthetic-bbox",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:original,read:result,passes:[pass("verify",first),pass("repair",repair)]});
+  assert.equal(unresolved.read.records[0].fields[0].value,"500","raw value remains available for review");
+  assert.equal(unresolved.read.records[0].fields[0].confidence,"uncertain");
+  assert.equal(unresolved.read.records[0].fields[0].verificationState,"conflicting");
+  assert.deepEqual(receiptsFor(unresolved.read,{...first,bbox:[.79,.79,.89,.89]}),[]);
+
+  const corroboratedRepair={...first,bbox:[.71,.71,.81,.81]};
+  const corroborated=applyTargetedRepair(checked.read,[first],[corroboratedRepair]);
+  assert.equal(corroborated.disagreements,0);assert.equal(corroborated.read.records[0].fields[0].confidence,"clear");
+  assert.deepEqual(corroborated.read.records[0].fields[0].bbox,[.71,.71,.81,.81]);
+  assert.equal(receiptsFor(corroborated.read,corroboratedRepair).length,1);
+});
+
+test("missing verifier bbox evidence cannot turn an unlocated extraction into a verified fact",()=>{
+  const original:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[{key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"clear",bbox:null}]}]};
+  const second={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:[.4,.4,.5,.5],reason:"첫 검증 누락 후 재판독"};
+  const checked=applyFirstVerification(original,[]);
+  const repaired=applyTargetedRepair(checked.read,[],[second]);
+  assert.equal(repaired.disagreements,1);assert.equal(repaired.read.records[0].fields[0].value,"500");
+  assert.equal(repaired.read.records[0].fields[0].confidence,"uncertain");assert.equal(repaired.read.records[0].fields[0].verificationState,"conflicting");assert.equal(repaired.read.records[0].fields[0].bbox,null);
+  const passes=[
+    {kind:"verify" as const,checks:[],model:"gpt-6-luna" as const,promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"},
+    {kind:"repair" as const,checks:[second],model:"gpt-6-luna" as const,promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"},
+  ];
+  const receipts=createSourceVerificationReceipts({documentId:"synthetic-unlocated",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:original,read:repaired.read,passes});
+  assert.deepEqual(receipts,[]);
+  const noRepairBox=applyTargetedRepair(checked.read,[],[{...second,bbox:null}]);
+  assert.equal(noRepairBox.disagreements,1);assert.equal(noRepairBox.read.records[0].fields[0].confidence,"uncertain");
+});
+
+test("receipt creation rejects uncorroborated geometry in first-pass and preserved-omission paths",()=>{
+  const original:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"row",fields:[{key:"principal",label:"원금",value:"500",unit:"원",quote:"원금 500원",confidence:"clear",bbox:[.1,.1,.2,.2]}]}]};
+  const check={recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:"500",unit:"원",quote:"원금 500원",bbox:[.7,.7,.8,.8],reason:"값은 일치하지만 위치는 불일치"};
+  const pass={kind:"verify" as const,checks:[check],model:"gpt-6-luna" as const,promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"};
+  const input={documentId:"synthetic-geometry-receipt",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:original,read:original,passes:[pass]};
+  assert.deepEqual(createSourceVerificationReceipts(input),[],"a value agreement cannot receipt a disjoint source location");
+  assert.deepEqual(createPreservedOmissionReceipts({documentId:input.documentId,page:1,sourceHash:sha,promptVersion:"test",verifiedAt:input.verifiedAt,baselineRead:original,baselinePass:pass,mergedRead:original}),[],"the baseline omission-preservation path must apply the same geometry gate");
+
+  const alignedPass={...pass,checks:[{...check,bbox:[.11,.11,.21,.21]}]};
+  assert.equal(createPreservedOmissionReceipts({documentId:input.documentId,page:1,sourceHash:sha,promptVersion:"test",verifiedAt:input.verifiedAt,baselineRead:original,baselinePass:alignedPass,mergedRead:original}).length,1,"an extraction box corroborated by a verifier remains receipt-eligible");
+
+  const unlocated:PageRead={...original,records:[{...original.records[0],fields:[{...original.records[0].fields[0],bbox:null}]}]};
+  const relocated:PageRead={...unlocated,records:[{...unlocated.records[0],fields:[{...unlocated.records[0].fields[0],bbox:[.4,.4,.5,.5]}]}]};
+  const first={...pass,checks:[{...check,bbox:[.41,.41,.51,.51]}]},second={...pass,kind:"repair" as const,checks:[{...check,bbox:[.41,.41,.51,.51]}]};
+  assert.equal(createSourceVerificationReceipts({...input,originalRead:unlocated,read:relocated,passes:[first,second]}).length,1,"two independent verifier locations can corroborate a missing extraction box");
+  assert.deepEqual(createSourceVerificationReceipts({...input,originalRead:unlocated,read:relocated,passes:[first]}),[],"one verifier cannot establish a location when extraction supplied no bbox");
+});
+
 test("alias source receipts attach by exact original field location after canonical projection",()=>{
   const field=f("debt.principal_balance","120","현재 원금잔액 120만원","만원");
   const read:PageRead={documentType:"debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"힌트",fields:[f("debt.creditor_name","합성은행","채권자 합성은행"),field]}]};
-  const check={recordIndex:0,fieldIndex:1,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:"원문에 현재 원금잔액 120만원",reason:"명시됨"};
+  const check={recordIndex:0,fieldIndex:1,meaningStatus:"supported",status:"agrees" as const,value:field.value,unit:field.unit,quote:"원문에 현재 원금잔액 120만원",bbox:field.bbox,reason:"명시됨"};
   const receipts=createSourceVerificationReceipts({documentId:"synthetic",page:1,sourceHash:sha,promptVersion:"test",verifiedAt:"2026-01-01T00:00:00.000Z",originalRead:read,read,passes:[{kind:"verify",checks:[{...check,recordIndex:0,fieldIndex:0,meaningStatus:"supported",status:"agrees",value:"합성은행",unit:null,quote:"채권자 합성은행"},check],model:"gpt-6-luna",promptVersion:"test",promptHash:sha,verifiedAt:"2026-01-01T00:00:00.000Z"}]});
   const receipt=receipts.find(r=>r.field.key==="debt.principal_balance");assert.ok(receipt);
   assert.deepEqual(sourceVerificationFieldLocation(receipt!,read),{recordIndex:0,fieldIndex:1});
