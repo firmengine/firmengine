@@ -17,7 +17,7 @@ function rawFact(value:string,quote:string):Partial<Fact>{return{id:"model-id",l
 
 test("verified agreement receipt is bound to current source and exact fact version but stays legally unreviewed",()=>{
   const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};
-  const receipts=createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees","500","만원","원금 잔액 500만원")])]));
+  const receipts=createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees","500","만원","원금 500만원")])]));
   assert.equal(receipts.length,1);assert.equal(receipts[0].model,AI_MODEL);assert.equal(receipts[0].recognition,"unreviewed");assert.equal(receipts[0].verificationScope,"field_meaning_v1");
   assert.equal(receipts[0].proofReads.length,1);assert.equal(receipts[0].proofReads[0].promptHash,promptHash);
   assert.equal(sourceVerificationReceiptMatches(receipts[0],{documentId:docId,page:pageNum,sourceHash:hash,read}),true);
@@ -27,6 +27,31 @@ test("verified agreement receipt is bound to current source and exact fact versi
   assert.equal(sourceVerificationReceiptMatches(receipts[0],{documentId:docId,page:pageNum,sourceHash:"b".repeat(64),read}),false);
   const strippedScope=structuredClone(receipts[0]);delete strippedScope.verificationScope;
   assert.equal(sourceVerificationReceiptMatches(strippedScope,{documentId:docId,page:pageNum,sourceHash:hash,read}),false,"meaning status and fingerprint marker cannot be stripped to masquerade as a legacy receipt");
+});
+
+test("new receipts require verifier quotes to overlap the extracted field quote literally",()=>{
+  const make=(fieldQuote:string,verifyQuote:string,value="500",unit:string|null="만원",key="principal")=>{
+    const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field(key,value,unit,fieldQuote)]}]};
+    return {read,receipts:createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees",value,unit,verifyQuote)])]))};
+  };
+  assert.equal(make("원금 500만원","채권자 500만원").receipts.length,0,"same value and bbox cannot make an unrelated source quote valid");
+  assert.equal(make("원금 500만원","원금 500만원").receipts.length,1,"exact quote remains accepted");
+  assert.equal(make("원금\n500만원","원금 500만원").receipts.length,1,"whitespace-normalized quote remains accepted");
+  assert.equal(make("대출 원금은 500만원이고 납부기한은 3월입니다","원금은 500만원").receipts.length,1,"a shortened literal excerpt remains accepted");
+  assert.equal(make("원금 500만원","채무자의 원금 500만원은 현재 잔액입니다").receipts.length,1,"a longer literal excerpt remains accepted");
+  assert.equal(make("거래내역\n2026-10-01 입금 500만원","2026-10-01 입금 500만원","500","만원","transaction_amount").receipts.length,1,"multiline statement-scope evidence remains accepted when text overlaps");
+  const {receipts}=make("원금 500만원","원금 500만원");
+  const tampered=structuredClone(receipts[0]);tampered.proofReads[0].quote="채권자 500만원";tampered.verificationQuotes[0]=tampered.proofReads[0].quote;
+  assert.equal(sourceVerificationReceiptMatches(tampered,{documentId:docId,page:pageNum,sourceHash:hash,read:make("원금 500만원","원금 500만원").read}),false,"persisted new proof is rechecked even if quote/index fields are changed together");
+});
+
+test("corrected proof reads must both remain anchored to the final extraction quote",()=>{
+  const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원; 잔액 기준")]}]};
+  const original:PageRead={...read,records:[{category:"debt",fields:[field("principal","450","만원","최초 기재 450만원","uncertain")]}]};
+  const valid=[pass("verify",[check(0,0,"corrected","500","만원","원금 500만원")]),pass("repair",[check(0,0,"corrected","500","만원","원금 500만원; 잔액 기준")])];
+  assert.equal(createSourceVerificationReceipts({...sourceInput(read,valid),originalRead:original}).length,1,"two distinct but overlapping reads remain valid");
+  const unrelated=[pass("verify",[check(0,0,"corrected","500","만원","계좌번호 500만원")]),pass("repair",[check(0,0,"corrected","500","만원","잔액 기준: 원금 500만원")])];
+  assert.equal(createSourceVerificationReceipts({...sourceInput(read,unrelated),originalRead:original}).length,0,"a corrected value cannot legitimize an unrelated quote from the same page");
 });
 
 test("wrong, unclear, or missing field meaning never receives a new semantic receipt",()=>{
@@ -40,7 +65,7 @@ test("first corrected disagreement needs second identical value+unit correction;
   const read:PageRead={documentType:"x",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","잔액 500만원")] }]};
   const wrongFirst=[pass("verify",[check(0,0,"corrected","500","원","원금 500원")]),pass("repair",[check(0,0,"corrected","500","만원","잔액 500만원")])];
   assert.equal(createSourceVerificationReceipts(sourceInput(read,wrongFirst)).length,0);
-  const corrected=[pass("verify",[check(0,0,"corrected","500","만원","원금 500만원")]),pass("repair",[check(0,0,"corrected","500","만원","잔액 500만원")])];
+  const corrected=[pass("verify",[check(0,0,"corrected","500","만원","잔액 500만원")]),pass("repair",[check(0,0,"corrected","500","만원","잔액 500만원")])];
   const original:PageRead={...read,records:[{category:"debt",fields:[field("principal","450","만원","최초 원금 450만원","uncertain")] }]};
   const correctedReceipt=createSourceVerificationReceipts({...sourceInput(read,corrected),originalRead:original});
   assert.equal(correctedReceipt.length,1);assert.equal(correctedReceipt[0].extractionReading.value,"450");assert.equal(correctedReceipt[0].field.value,"500");
@@ -71,8 +96,8 @@ test("receipt identity survives index drift but current receipt remains fact-ver
 });
 
 test("same quote and numeric value on different source keys retain distinct receipt identity and target the right fact",()=>{
-  const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","100","원","잔액 100원"),field("interest","100","원","잔액 100원")]}]};
-  const receipts=createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees","100","원","원금 100원"),check(0,1,"agrees","100","원","이자 100원")])]));
+  const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","100","원","원금과 이자 잔액 100원"),field("interest","100","원","원금과 이자 잔액 100원")]}]};
+  const receipts=createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees","100","원","원금과 이자 잔액 100원"),check(0,1,"agrees","100","원","원금과 이자 잔액 100원")])]));
   assert.equal(receipts.length,2);
   assert.deepEqual(receipts.map(r=>r.field.key).sort(),["interest","principal"]);
   assert.deepEqual(receipts.map(r=>sourceVerificationFieldLocation(r,read)).sort((a,b)=>(a?.fieldIndex??-1)-(b?.fieldIndex??-1)),[{recordIndex:0,fieldIndex:1},{recordIndex:0,fieldIndex:0}].sort((a,b)=>a.fieldIndex-b.fieldIndex));
@@ -152,6 +177,12 @@ test("bbox-located receipt lineage requires the exact source-ref bbox and an int
   const forged=structuredClone(data),forgedFact=forged.facts[2];forgedFact.sourceVerification!.fieldFingerprint="[]";
   assert.ok(factSourceLineageIssues(forged,[forgedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
   const validGeometryProof=data.facts[0].sourceVerification!.geometry!.verifierReads[0];
+  const unrelatedQuote=structuredClone(data),unrelatedFact=unrelatedQuote.facts[0],unrelatedProof=unrelatedFact.sourceVerification!;
+  unrelatedProof.proofReads[0].quote="채권자 7250원";unrelatedProof.verificationQuotes[0]=unrelatedProof.proofReads[0].quote;
+  unrelatedProof.geometry!.verifierReads[0].quote=unrelatedProof.proofReads[0].quote;
+  const quoteFingerprint=JSON.parse(unrelatedProof.fieldFingerprint);quoteFingerprint[8]=unrelatedProof.verificationQuotes;const geometryFingerprint=quoteFingerprint.find((part:unknown)=>!!part&&typeof part==="object"&&Object.hasOwn(part,"bbox_corroboration"));geometryFingerprint.bbox_corroboration=unrelatedProof.geometry;
+  unrelatedProof.fieldFingerprint=JSON.stringify(quoteFingerprint);
+  assert.ok(factSourceLineageIssues(unrelatedQuote,[unrelatedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"),"persisted fact lineage rejects internally fingerprint-consistent but text-unrelated verifier quotes");
   for(const malformedReads of [null,[null],[{...validGeometryProof,recordIndex:0.5}],[validGeometryProof,{...validGeometryProof}]]){
     const malformed=structuredClone(data),malformedFact=malformed.facts[0];malformedFact.sourceVerification!.geometry!.verifierReads=malformedReads as never;
     assert.doesNotThrow(()=>factSourceLineageIssues(malformed,[malformedFact.id]));
@@ -162,7 +193,7 @@ test("bbox-located receipt lineage requires the exact source-ref bbox and an int
 
 test("omission reread reuses only baseline-agreed fields still present verbatim after row-index drift",()=>{
   const baseline:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("contract_id","C-1",null,"계약번호 C-1"),field("principal","500","만원","잔액 500만원")]}]};
-  const baselinePass=pass("verify",[check(0,0,"agrees","C-1",null,"계약번호 C-1"),check(0,1,"agrees","500","만원","원금잔액 500만원")]);
+  const baselinePass=pass("verify",[check(0,0,"agrees","C-1",null,"계약번호 C-1"),check(0,1,"agrees","500","만원","잔액 500만원")]);
   const merged:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"income",fields:[field("net","200","만원","급여 200만원")]},{category:"debt",fields:[field("contract_id","C-1",null,"계약번호 C-1"),field("principal","500","만원","잔액 500만원")]}]};
   const receipts=createPreservedOmissionReceipts({documentId:docId,page:pageNum,sourceHash:hash,promptVersion:baselinePass.promptVersion,verifiedAt:baselinePass.verifiedAt,baselineRead:baseline,baselinePass,mergedRead:merged});
   assert.equal(receipts.length,2);assert.deepEqual(receipts.map(r=>r.field.key).sort(),["contract_id","principal"]);

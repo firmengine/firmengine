@@ -31,7 +31,7 @@ test("검증 응답 스키마가 단위 판독을 명시적으로 수집한다",
   assert.ok("unit" in properties);
   assert.ok("bbox" in properties);
   assert.deepEqual((properties.meaningStatus as {enum:string[]}).enum,["supported","wrong_field","unclear"]);
-  assert.match(PROMPT_VERSION,/3\.18\.0$/);
+  assert.match(PROMPT_VERSION,/3\.19\.0$/);
 });
 
 test("값·단위·인용이 같아도 의미가 wrong_field면 확인 완료나 source receipt 기반 투영에 쓰지 않는다",()=>{

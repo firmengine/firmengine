@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { canRecoverClassification, recoveredClassificationRole, observedClassificationRole, canUseRescueRole, hasValidClassificationCatalog, CLASSIFICATION_CATALOG_RELEASE, CLASSIFICATION_FAMILY_IDS, CLASSIFICATION_SCHEMA, CLASSIFICATION_INSTRUCTIONS, type ClassificationRecoveryRead } from "../lib/classification-recovery.ts";
+import { canRecoverClassification, recoveredClassificationRole, observedClassificationRole, canUseRescueRole, hasValidClassificationCatalog, CLASSIFICATION_CATALOG_RELEASE, CLASSIFICATION_FAMILY_IDS, CLASSIFICATION_FAMILY_CATALOG, CLASSIFICATION_SCHEMA, CLASSIFICATION_INSTRUCTIONS, CLASSIFICATION_RECOVERY_INSTRUCTIONS, type ClassificationRecoveryRead } from "../lib/classification-recovery.ts";
+import contracts from "../lib/document-agent-field-contracts.json" with { type: "json" };
 import { rescueSpecs } from "../lib/scan-quality.ts";
 const observation:ClassificationRecoveryRead={role:"evidence",familyId:"payroll_payslip",catalogRelease:"catalog-release-v2.2.0",boundaryObservation:"single_page",boundaryQuote:null,confidence:"high",reason:"visible payroll columns",titleQuote:"임금명세서",issuerQuote:null,structureQuote:"지급총액 공제총액 실지급액",evidenceRowsQuote:"기본급 3,000,000 / 공제액 300,000",administrativeStructureQuote:null,legibility:"clear"};
 test("classifier runtime gate requires exact catalog release and family membership",()=>{
@@ -46,6 +47,25 @@ test("first classifier schema requires source quotes and legibility observations
   assert.match(CLASSIFICATION_INSTRUCTIONS,/legibility=low/);
   assert.equal(CLASSIFICATION_SCHEMA.properties.familyId.enum.length,49);
   assert.match(CLASSIFICATION_INSTRUCTIONS,/페이지 결합이나 사실 병합을 하지 않는다/);
+});
+test("family signatures are exact contract-derived keys and labels, used only as routing cues",()=>{
+  assert.equal(CLASSIFICATION_FAMILY_CATALOG.length,48);
+  assert.equal(CLASSIFICATION_FAMILY_CATALOG.reduce((n,f)=>n+f.sourceFields.length,0),524);
+  for(const entry of CLASSIFICATION_FAMILY_CATALOG){
+    const contract=contracts.families[entry.familyId as keyof typeof contracts.families];
+    assert.ok(contract,"catalog family must exist in the public field contract");
+    assert.deepEqual(entry.sourceFields,contract.fields.map(field=>({key:field.local_id,label:field.label})));
+    assert.ok(entry.sourceFields.every(field=>field.key&&field.label));
+  }
+  for(const instructions of [CLASSIFICATION_INSTRUCTIONS,CLASSIFICATION_RECOVERY_INSTRUCTIONS]){
+    assert.match(instructions,/여러 필드\/열의 조합/);
+    assert.match(instructions,/주체·기간·단위/);
+    assert.match(instructions,/보이지 않는 필드의 존재·값·단위·주체·기간을 추정/);
+    assert.match(instructions,/값 추출 체크리스트가 아니다/);
+    assert.match(instructions,/합성·예시 표시가 있어도 표제와 필드\/행 구조가 명확하면/);
+    assert.match(instructions,/official_record_claim도 발급·진위 검증 완료가 아니다/);
+    assert.match(instructions,/법원 제출용 원본 서식|제출용 법원 서식/);
+  }
 });
 test("source nature never substitutes for structural evidence or legal recognition",()=>{
   for(const sourceNature of ["copy","self_report","synthetic_example","official_record_claim","unknown"] as const){

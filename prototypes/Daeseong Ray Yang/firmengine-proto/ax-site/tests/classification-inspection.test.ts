@@ -91,3 +91,16 @@ test("diagnostic payloads are bounded and invalid job identifiers are rejected",
   await assert.rejects(fixture().inspect(" "), (error: any) => error.status === 400);
   await assert.rejects(fixture().inspect("other-job"), (error: any) => error.status === 404);
 });
+
+test("held family disagreement exposes bounded routing types without exposing field values or granting a completed read", async () => {
+  const f = fixture({read:{documentType:"credit_report",records:[{fields:[{value:"PRIVATE_SYNTHETIC_FIELD_VALUE"}]}]}},(row,data)=>{
+    row.document_type="debt_certificate";row.role="evidence";row.stage="failed";data.pages[0].role="evidence";
+  });
+  const result=await f.inspect();
+  assert.deepEqual(result.routing,{routedDocumentType:"debt_certificate",observedDocumentType:"credit_report",observedTypeTruncated:false,observationOnly:true});
+  assert.equal(result.job.stage,"failed");assert.equal(result.job.status,"review_required");
+  assert.equal(JSON.stringify(result).includes("PRIVATE_SYNTHETIC_FIELD_VALUE"),false);
+  assert.equal(result.modelCalls,0);assert.equal(result.mutatesState,false);assert.equal(f.counts().writes,0);
+  const bounded=await fixture({rawRead:{documentType:"x".repeat(200)}}).inspect();
+  assert.equal(bounded.routing.observedDocumentType.length,160);assert.equal(bounded.routing.observedTypeTruncated,true);
+});

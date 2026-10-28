@@ -56,11 +56,14 @@ export async function inspectClassificationJob(caseId: string, jobId: string) {
   if (plan && (plan.documentId !== row.document_id || plan.page !== row.page || plan.sourceHash !== document.sha256 || plan.baseImageHash !== row.image_hash)) throw new HttpError(409, "분류 복구 계획이 현재 페이지와 연결되지 않습니다.");
   const attempts = typeof saved.classificationAttempts === "number" && Number.isSafeInteger(saved.classificationAttempts) && saved.classificationAttempts >= 0 ? saved.classificationAttempts : null;
   const hashes = Array.isArray(recovery?.imageHashes) ? recovery.imageHashes.filter((value): value is string => typeof value === "string" && /^[a-f0-9]{64}$/i.test(value)).slice(0, 5) : [];
+  const storedRead = object(saved.read) ?? object(saved.rawRead);
+  const observedType = typeof storedRead?.documentType === "string" ? storedRead.documentType : null;
   return {
     mode: "classification_diagnostic" as const, modelCalls: 0, mutatesState: false,
     job: { id: row.id, documentId: row.document_id, page: row.page, role: row.role, documentType: row.document_type, status: row.status, stage: row.stage, claimAttempts: row.attempts },
     source: { sha256: document.sha256, imageHash: row.image_hash },
     classification: observation(saved.classification), recovery: observation(recovery?.read),
+    routing: { routedDocumentType: row.document_type, observedDocumentType: observedType?.slice(0, 160) ?? null, observedTypeTruncated: (observedType?.length ?? 0) > 160, observationOnly: true },
     provenance: { storedClassificationAttempts: attempts, hasStoredExtraction: !!saved.read, initialObservationBinding: "stored_job_only" as const, recoverySourceBound: !!recovery, recoveryImageHashes: hashes },
     rescuePlan: plan ? { planId: typeof plan.planId === "string" ? plan.planId : null, reason: typeof plan.reason === "string" ? plan.reason : null, recipeVersion: typeof plan.recipeVersion === "string" ? plan.recipeVersion : null } : null,
   };

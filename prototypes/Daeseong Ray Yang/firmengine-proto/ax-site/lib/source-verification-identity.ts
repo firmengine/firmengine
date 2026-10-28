@@ -3,6 +3,14 @@
 // runtime guard below enforces four normalized endpoints before use.
 export type SourceBBox = number[];
 
+/** True only when two quotes identify overlapping literal source text after Unicode/whitespace normalization. */
+export function sourceQuotesOverlap(a: unknown, b: unknown): boolean {
+  if (typeof a !== "string" || typeof b !== "string") return false;
+  const left = a.normalize("NFKC").replace(/\s+/gu, " ").trim();
+  const right = b.normalize("NFKC").replace(/\s+/gu, " ").trim();
+  return !!left && !!right && (left === right || left.includes(right) || right.includes(left));
+}
+
 export interface BBoxReceiptLocator {
   version: "bbox_v1";
   bbox: SourceBBox;

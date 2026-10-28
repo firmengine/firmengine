@@ -1,6 +1,6 @@
 import { AI_MODEL, normalizeMoney } from "./domain.ts";
 import { isSourceMoney } from "./source-quantity.ts";
-import { bboxLocatorFingerprintSegment, isValidSourceBBox, sameSourceBBox, sourceBBoxesAreDistinctAndDisjoint, type BBoxReceiptLocator, type SourceBBox } from "./source-verification-identity.ts";
+import { bboxLocatorFingerprintSegment, isValidSourceBBox, sameSourceBBox, sourceBBoxesAreDistinctAndDisjoint, sourceQuotesOverlap, type BBoxReceiptLocator, type SourceBBox } from "./source-verification-identity.ts";
 
 /** Trusted server-side cross-read proof; it never grants legal recognition. */
 export const SOURCE_VERIFICATION_METHOD = "independent_luna_cross_read" as const;
@@ -51,7 +51,7 @@ const fieldKey = (f: ReadField) => canonicalKey(f.key);
 const isMonetary = (key: string,unit:string|null) => isSourceMoney(key,unit);
 const fieldAt = (read: PageRead, ri: number, fi: number) => read.records[ri]?.fields[fi];
 const checksAt = (pass: ReviewPass, ri: number, fi: number) => pass.checks.filter(c => c.recordIndex === ri && c.fieldIndex === fi);
-function matchingAgreement(check: Check, field: ReadField) { return check.meaningStatus === "supported" && check.status === "agrees" && check.value !== null && check.value === field.value && sameUnit(check.unit, field.unit) && nonempty(check.quote); }
+function matchingAgreement(check: Check, field: ReadField) { return check.meaningStatus === "supported" && check.status === "agrees" && check.value !== null && check.value === field.value && sameUnit(check.unit, field.unit) && sourceQuotesOverlap(check.quote, field.quote); }
 
 const RECEIPT_BBOX_IOU = 0.5;
 function bboxIoU(a: unknown, b: unknown): number {
@@ -78,7 +78,7 @@ function corroboratedGeometry(original: ReadField, current: ReadField, passes: r
     const checks = checksAt(pass, ri, fi);
     if (checks.length > 1) return null;
     const check = checks[0];
-    if (!check || check.meaningStatus !== "supported" || !(check.status === "agrees" || check.status === "corrected") || check.value !== current.value || !sameUnit(check.unit, current.unit) || !nonempty(check.quote) || !isValidSourceBBox(check.bbox)) continue;
+    if (!check || check.meaningStatus !== "supported" || !(check.status === "agrees" || check.status === "corrected") || check.value !== current.value || !sameUnit(check.unit, current.unit) || !nonempty(check.quote) || !sourceQuotesOverlap(check.quote, current.quote) || !isValidSourceBBox(check.bbox)) continue;
     verifierReads.push({pass:pass.kind,model:pass.model,promptVersion:pass.promptVersion,promptHash:pass.promptHash,verifiedAt:pass.verifiedAt,recordIndex:ri,fieldIndex:fi,meaningStatus:"supported",status:check.status,value:normalize(check.value),unit:check.unit===null?null:normalize(check.unit),quote:normalize(check.quote),bbox:[...check.bbox]});
   }
   if (!verifierReads.length || verifierReads.some(read => bboxIoU(read.bbox, current.bbox) < RECEIPT_BBOX_IOU)) return null;
@@ -108,7 +108,7 @@ function proofFor(read: PageRead, passes: readonly ReviewPass[], ri: number, fi:
   const seconds=checksAt(repairs[0],ri,fi);
   if(seconds.length!==1)return null;
   const second=seconds[0];
-  if(first.meaningStatus!=="supported"||second.meaningStatus!=="supported"||second.status!=="corrected"||first.value===null||first.value!==second.value||first.value!==field.value||!sameUnit(first.unit,second.unit)||!sameUnit(second.unit,field.unit)||!nonempty(first.quote)||!nonempty(second.quote))return null;
+  if(first.meaningStatus!=="supported"||second.meaningStatus!=="supported"||second.status!=="corrected"||first.value===null||first.value!==second.value||first.value!==field.value||!sameUnit(first.unit,second.unit)||!sameUnit(second.unit,field.unit)||!sourceQuotesOverlap(first.quote,field.quote)||!sourceQuotesOverlap(second.quote,field.quote)||!sourceQuotesOverlap(first.quote,second.quote))return null;
   return [{pass:verifies[0],check:first},{pass:repairs[0],check:second}];
 }
 function fingerprint(input: SourceVerificationInput, category: string, key: string, value: string, unit: string | null, quote: string, proofQuotes: string[], extractionReading:{value:string;unit:string|null;quote:string;bbox?:SourceBBox},verificationScope?:"field_meaning_v1",locatorSegment?:ReturnType<typeof bboxLocatorFingerprintSegment>,geometry?:SourceVerificationReceipt["geometry"]) {
@@ -174,6 +174,7 @@ export function sourceVerificationReceiptMatches(receipt: SourceVerificationRece
   const hasMeaningReadMetadata=receipt.proofReads.some(proof=>Object.hasOwn(proof,"meaningStatus"));
   if(receipt.verificationScope==="field_meaning_v1"){if(!fingerprintHasMeaningScope||!receipt.proofReads.length||receipt.proofReads.some(proof=>proof.meaningStatus!=="supported"))return false;}
   else if(receipt.verificationScope!==undefined||fingerprintHasMeaningScope||hasMeaningReadMetadata)return false;
+  if(receipt.verificationScope==="field_meaning_v1"&&(!Array.isArray(receipt.verificationQuotes)||receipt.verificationQuotes.length!==receipt.proofReads.length||receipt.proofReads.some((proof,index)=>!sourceQuotesOverlap(proof.quote,receipt.field.quote)||!sourceQuotesOverlap(receipt.verificationQuotes[index],receipt.field.quote)||proof.quote!==receipt.verificationQuotes[index])))return false;
   let locatorSegment:ReturnType<typeof bboxLocatorFingerprintSegment>|undefined;
   if(receipt.field.locator){
     if(receipt.field.locator.version!=="bbox_v1"||!isValidSourceBBox(receipt.field.locator.bbox)||!sameSourceBBox(candidate.bbox,receipt.field.locator.bbox)||!isValidSourceBBox(receipt.extractionReading.bbox)||!sameSourceBBox(receipt.extractionReading.bbox,receipt.field.locator.bbox)||receipt.proofReads.some(proof=>!isValidSourceBBox(proof.bbox)||!sameSourceBBox(proof.bbox,receipt.field.locator!.bbox)))return false;
@@ -185,7 +186,7 @@ export function sourceVerificationReceiptMatches(receipt: SourceVerificationRece
     const seenPasses=new Set<string>();
     for(const read of geometry.verifierReads){
       if(!read||typeof read!=="object")return false;
-      if(!["verify","repair"].includes(read.pass)||read.model!==AI_MODEL||typeof read.promptVersion!=="string"||!read.promptVersion.trim()||!Number.isSafeInteger(read.recordIndex)||read.recordIndex<0||!Number.isSafeInteger(read.fieldIndex)||read.fieldIndex<0||!validHash(read.promptHash)||!validInstant(read.verifiedAt)||read.meaningStatus!=="supported"||!(read.status==="agrees"||read.status==="corrected")||read.value!==receipt.field.value||!sameUnit(read.unit,receipt.field.unit)||!nonempty(read.quote)||!isValidSourceBBox(read.bbox)||bboxIoU(read.bbox,geometry.finalBBox)<RECEIPT_BBOX_IOU||seenPasses.has(read.pass))return false;
+      if(!["verify","repair"].includes(read.pass)||read.model!==AI_MODEL||typeof read.promptVersion!=="string"||!read.promptVersion.trim()||!Number.isSafeInteger(read.recordIndex)||read.recordIndex<0||!Number.isSafeInteger(read.fieldIndex)||read.fieldIndex<0||!validHash(read.promptHash)||!validInstant(read.verifiedAt)||read.meaningStatus!=="supported"||!(read.status==="agrees"||read.status==="corrected")||read.value!==receipt.field.value||!sameUnit(read.unit,receipt.field.unit)||!sourceQuotesOverlap(read.quote,receipt.field.quote)||!isValidSourceBBox(read.bbox)||bboxIoU(read.bbox,geometry.finalBBox)<RECEIPT_BBOX_IOU||seenPasses.has(read.pass))return false;
       seenPasses.add(read.pass);
     }
     const needsTwoReads=!geometry.extractionBBox||bboxIoU(geometry.extractionBBox,geometry.finalBBox)<RECEIPT_BBOX_IOU;
