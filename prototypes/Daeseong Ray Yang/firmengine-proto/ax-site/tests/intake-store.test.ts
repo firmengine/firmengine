@@ -1,0 +1,66 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { DatabaseSync } from "node:sqlite";
+import { readFileSync,readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
+import ts from "typescript";
+import { createCase } from "../lib/domain.ts";
+import * as types from "../lib/intake-types.ts";
+import * as engine from "../lib/intake-engine.ts";
+import * as classifier from "../lib/intake-classifier.ts";
+import { INTAKE_CATALOG_SEED } from "../lib/intake-catalog.ts";
+
+const root=fileURLToPath(new URL("../",import.meta.url));
+const storeSource=readFileSync(root+"lib/intake-store.ts","utf8");
+const compiled=ts.transpileModule(storeSource,{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+const SYNTHETIC_PROTECTED_CASE_ID="intake-protected-unit-case";
+const protectedCaseFingerprint=storeSource.match(/^export const PROTECTED_INTAKE_CASE_SHA256 = "([a-f0-9]{64})";$/m)?.[1];
+assert.ok(protectedCaseFingerprint,"protected case fingerprint must remain available for the synthetic guard test");
+class TestError extends Error{status:number;constructor(status:number,message:string){super(message);this.status=status;}}
+function fixture(id="intake-test-case"){
+  const sqlite=new DatabaseSync(":memory:");
+  for(const name of readdirSync(root+"drizzle").filter(n=>n.endsWith(".sql")).sort())sqlite.exec(readFileSync(root+"drizzle/"+name,"utf8"));
+  const data=createCase("상담 체크리스트 테스트",id,"2026-10-29"),at="2026-10-29T00:00:00Z";
+  sqlite.prepare("INSERT INTO cases(id,name,owner,revision,storage_token,payload,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?)").run(id,data.context.caseName,"tester",data.context.revision,"token-1",JSON.stringify(data),at,at);
+  const database={prepare(sql:string){return {bind(...values:unknown[]){const params=values as (string|number|null)[];return {async first(){return sqlite.prepare(sql).get(...params)??null;},async all(){return {results:sqlite.prepare(sql).all(...params)};},async run(){return {meta:{changes:Number(sqlite.prepare(sql).run(...params).changes)}};},_sql:sql,_params:params};},async first(){return sqlite.prepare(sql).get()??null;},async all(){return {results:sqlite.prepare(sql).all()};},_sql:sql,_params:[]};},async batch(statements:{_sql:string;_params:(string|number|null)[]}[]){sqlite.exec("BEGIN");try{const results=statements.map(s=>({meta:{changes:Number(sqlite.prepare(s._sql).run(...s._params).changes)}}));sqlite.exec("COMMIT");return results;}catch(error){sqlite.exec("ROLLBACK");throw error;}}};
+  let calls=0;let onCall:(args:unknown)=>Promise<unknown>=async()=>({claims:[]});const events:unknown[]=[];
+  const dependencies:Record<string,unknown>={
+    "./domain.ts":{AI_MODEL:"gpt-6-luna"},"./intake-types.ts":types,"./intake-engine.ts":engine,"./intake-classifier.ts":classifier,"./intake-catalog.ts":{INTAKE_CATALOG_SEED},
+    "./server-store.ts":{actor:async()=>"tester",connection:()=>({apiKeyConfigured:true}),db:()=>database,event:async(...args:unknown[])=>{events.push(args);},getCase:async(caseId:string)=>{const row=sqlite.prepare("SELECT payload FROM cases WHERE id=?").get(caseId) as {payload:string}|undefined;if(!row)throw new TestError(404,"missing");return JSON.parse(row.payload);},HttpError:TestError,now:()=>new Date().toISOString(),sha256:async(bytes:Uint8Array)=>new TextDecoder().decode(bytes)===SYNTHETIC_PROTECTED_CASE_ID?protectedCaseFingerprint:createHash("sha256").update(bytes).digest("hex")},
+    "./luna.ts":{callLuna:async(args:unknown)=>{calls++;return {value:await onCall(args),usage:{inputTokens:10,outputTokens:10,durationMs:1,model:"gpt-6-luna"}};}},
+  };
+  const module={exports:{} as Record<string,(...args:any[])=>Promise<any>>};new Function("require","module","exports",compiled)((name:string)=>{if(!(name in dependencies))throw new Error("Unexpected import "+name);return dependencies[name];},module,module.exports);
+  const api=module.exports;
+  return {api,sqlite,id,data,events,get calls(){return calls;},setModel(fn:typeof onCall){onCall=fn;},close(){sqlite.close();},async append(text="상담 내용: 현재 상황을 확인 중입니다.",supersedesId:string|null=null){const view=await api.getConsultationView(id);return api.appendConsultation(id,{expectedConsultationRevision:view.consultationRevision,text,occurredAt:"2026-10-29",supersedesId});},async analyze(){const view=await api.getConsultationView(id);return api.analyzeConsultation(id,{expectedConsultationRevision:view.consultationRevision,expectedCaseRevision:view.caseRevision,expectedCatalogVersion:view.catalogVersion});}};
+}
+
+test("intake migrations append tables without recreating existing production tables",()=>{const f=fixture();try{assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('consultation_heads','consultation_notes','consultation_runs','intake_catalog_head','intake_catalog_versions')").get() as {n:number}).n,5);assert.ok(f.sqlite.prepare("SELECT plan_id FROM page_derivatives").all());}finally{f.close();}});
+
+test("catalogue revisions are durable, immutable and compare-and-swap guarded",async()=>{const f=fixture();try{const original=await f.api.getIntakeCatalog();const edited=structuredClone(original.catalog);edited.title="검토한 서류 기준";const saved=await f.api.saveIntakeCatalog(edited,1);assert.equal(saved.catalog.version,2);assert.equal(saved.history.length,2);assert.notEqual(saved.sha256,original.sha256);await assert.rejects(f.api.saveIntakeCatalog(edited,1),{status:409});assert.equal((f.sqlite.prepare("SELECT payload FROM intake_catalog_versions WHERE version=1").get() as {payload:string}).payload,JSON.stringify(original.catalog));}finally{f.close();}});
+
+test("consultation notes do not mutate the case evidence or calculation revision",async()=>{const f=fixture();try{const before=f.sqlite.prepare("SELECT * FROM cases").get();const view=await f.append();assert.equal(view.consultationRevision,1);assert.equal(view.notes.length,1);assert.deepEqual(f.sqlite.prepare("SELECT * FROM cases").get(),before);assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM analyses").get() as {n:number}).n,0);await assert.rejects(f.api.appendConsultation(f.id,{expectedConsultationRevision:0,text:"이전 판본으로 쓰기"}),{status:409});}finally{f.close();}});
+
+test("explicit correction retains original text and removes it only from active classifier input",async()=>{const f=fixture();try{const first=await f.append("처음 상담에서는 사업을 하고 있다고 이야기했습니다.");const next=await f.append("정정: 사업은 폐업했고 현재 급여를 받습니다.",first.notes[0].id);assert.equal(next.notes.length,2);const active=await f.api.activeConsultationNotes(next.notes);assert.equal(active.length,1);assert.equal(active[0].id,next.notes[1].id);await assert.rejects(f.api.appendConsultation(f.id,{expectedConsultationRevision:2,text:"다시 잘못된 정정",supersedesId:first.notes[0].id}),{status:400});}finally{f.close();}});
+
+test("unchanged consultation reuse invokes the paid classifier once",async()=>{const f=fixture();try{await f.append();const before=f.sqlite.prepare("SELECT * FROM cases").get();const one=await f.analyze(),two=await f.analyze();assert.equal(f.calls,1);assert.equal(one.run.id,two.run.id);assert.equal(two.run.stale,false);assert.equal(one.run.model,"gpt-6-luna");assert.deepEqual(f.sqlite.prepare("SELECT * FROM cases").get(),before);assert.ok(one.run.result.questions.length>0);assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM analyses").get() as {n:number}).n,0);}finally{f.close();}});
+
+test("new consultation and changed catalogue mark saved output stale",async()=>{const f=fixture();try{await f.append();await f.analyze();const appended=await f.append("추가 상담입니다.");assert.equal(appended.run.stale,true);assert.ok(appended.run.staleReasons.includes("상담 이력 변경"));const catalog=await f.api.getIntakeCatalog();catalog.catalog.title="새 기준";await f.api.saveIntakeCatalog(catalog.catalog,catalog.catalog.version);const view=await f.api.getConsultationView(f.id);assert.ok(view.run.staleReasons.includes("서류 기준정보 변경"));}finally{f.close();}});
+
+test("same-revision input changes during the model call cannot become current output",async()=>{const f=fixture();try{await f.append();f.setModel(async()=>{const data=structuredClone(f.data);data.context.caseName="동일 revision 새 내용";f.sqlite.prepare("UPDATE cases SET payload=?,storage_token='token-2' WHERE id=?").run(JSON.stringify(data),f.id);return {claims:[]};});await assert.rejects(f.analyze(),{status:409});const view=await f.api.getConsultationView(f.id);assert.equal(view.run.stale,true);assert.ok(view.run.staleReasons.includes("사건 자료 변경"));assert.equal((f.sqlite.prepare("SELECT active_run_id AS id FROM consultation_heads").get() as {id:string|null}).id,null);assert.equal((f.sqlite.prepare("SELECT status FROM consultation_runs").get() as {status:string}).status,"complete");}finally{f.close();}});
+
+test("concurrent identical requests do not duplicate model calls",async()=>{const f=fixture();try{await f.append();let release!:(value:unknown)=>void;let started!:()=>void;const begun=new Promise<void>(r=>{started=r;});f.setModel(async()=>{started();return new Promise(r=>{release=r;});});const pending=f.analyze();await begun;await assert.rejects(f.analyze(),{status:409});release({claims:[]});await pending;assert.equal(f.calls,1);}finally{f.close();}});
+
+test("unsupported model evidence leaves a failed run and no current checklist",async()=>{const f=fixture();try{await f.append();f.setModel(async()=>({claims:[{featureId:"invented.automatic_approval",subjectId:"case",subjectLabel:"신청인",state:"present",temporal:"current",refs:[]}]}));await assert.rejects(f.analyze(),{status:422});assert.equal((f.sqlite.prepare("SELECT status FROM consultation_runs").get() as {status:string}).status,"failed");assert.equal((await f.api.getConsultationView(f.id)).run,null);}finally{f.close();}});
+
+test("protected original and typed evaluation fixtures reject consultation writes and paid calls",async()=>{for(const id of [SYNTHETIC_PROTECTED_CASE_ID,"synthetic-preserved-fixture"]){const f=fixture(id);try{if(id==="synthetic-preserved-fixture"){const data={...f.data,structuredTest:{mode:"assumed_extracted_synthetic",sourceRecords:[]}};f.sqlite.prepare("UPDATE cases SET payload=? WHERE id=?").run(JSON.stringify(data),id);}const view=await f.api.getConsultationView(id);assert.equal(view.readOnly,true);await assert.rejects(f.append(),{status:409});await assert.rejects(f.analyze(),{status:409});assert.equal(f.calls,0);assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM consultation_notes").get() as {n:number}).n,0);}finally{f.close();}}});
+
+test("consultation raw text tampering is rejected before model invocation",async()=>{const f=fixture();try{await f.append();f.sqlite.prepare("UPDATE consultation_notes SET text='변조된 원문'").run();await assert.rejects(f.analyze(),{status:409});assert.equal(f.calls,0);}finally{f.close();}});
+
+test("stored checklist tampering is rejected instead of displayed as a current result",async()=>{const f=fixture();try{await f.append();await f.analyze();const row=f.sqlite.prepare("SELECT payload FROM consultation_runs").get() as {payload:string};const payload=JSON.parse(row.payload);payload.result.requirements=[];payload.result.warnings=["altered"];f.sqlite.prepare("UPDATE consultation_runs SET payload=?").run(JSON.stringify(payload));await assert.rejects(f.api.getConsultationView(f.id),{status:409});}finally{f.close();}});
+
+test("same-revision storage token rotation also invalidates the cached receipt",async()=>{const f=fixture();try{await f.append();await f.analyze();f.sqlite.prepare("UPDATE cases SET storage_token='rotated-token' WHERE id=?").run(f.id);const view=await f.api.getConsultationView(f.id);assert.equal(view.run.stale,true);await f.analyze();assert.equal(f.calls,2);assert.equal((await f.api.getConsultationView(f.id)).run.stale,false);}finally{f.close();}});
+
+test("historical source labels stay bound to the run's immutable catalogue",async()=>{const f=fixture();try{await f.append();const view=await f.analyze();const oldTitle=view.run.catalogSnapshot.sources[0].title;const current=await f.api.getIntakeCatalog();current.catalog.sources[0].title="새 출처 제목";await f.api.saveIntakeCatalog(current.catalog,1);const next=await f.api.getConsultationView(f.id);assert.equal(next.run.catalogSnapshot.sources[0].title,oldTitle);assert.equal(next.run.stale,true);}finally{f.close();}});
+
+test("pending and failed attempts remain visible after reload and an invalid calendar date is rejected",async()=>{const f=fixture();try{await assert.rejects(f.api.appendConsultation(f.id,{expectedConsultationRevision:0,text:"상담",occurredAt:"2026-02-30"}),{status:400});await f.append();let release!:(value:unknown)=>void;let started!:()=>void;const begun=new Promise<void>(r=>{started=r;});f.setModel(async()=>{started();return new Promise(r=>{release=r;});});const pending=f.analyze();await begun;assert.equal((await f.api.getConsultationView(f.id)).latestAttempt.status,"pending");release({claims:[{featureId:"invalid"}]});await assert.rejects(pending,{status:422});const failed=await f.api.getConsultationView(f.id);assert.equal(failed.latestAttempt.status,"failed");assert.equal(failed.latestAttempt.leaseUntil,null);assert.ok(failed.latestAttempt.error);}finally{f.close();}});

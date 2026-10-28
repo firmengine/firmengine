@@ -37,3 +37,31 @@ export const analyses = sqliteTable("analyses", {
   id: text("id").primaryKey(), caseId: text("case_id").notNull(), revision: integer("revision").notNull(),
   type: text("type").notNull(), payload: text("payload").notNull(), at: text("at").notNull(),
 }, t => [index("analyses_case_idx").on(t.caseId)]);
+
+// A separate, versioned reference schema for consultation intake. The payload
+// contains typed feature, document, rule and source collections; case facts and
+// calculation inputs are deliberately not stored or changed by this module.
+export const intakeCatalogVersions = sqliteTable("intake_catalog_versions", {
+  version: integer("version").primaryKey(), schemaVersion:text("schema_version").notNull(),
+  payload:text("payload").notNull(), sha256:text("sha256").notNull(),
+  actor:text("actor").notNull(), createdAt:text("created_at").notNull(),
+});
+export const intakeCatalogHead = sqliteTable("intake_catalog_head", {
+  id:text("id").primaryKey(), version:integer("version").notNull(), sha256:text("sha256").notNull(),
+});
+export const consultationHeads = sqliteTable("consultation_heads", {
+  caseId:text("case_id").primaryKey(), revision:integer("revision").notNull().default(0),
+  activeRunId:text("active_run_id"), updatedAt:text("updated_at").notNull(),
+});
+export const consultationNotes = sqliteTable("consultation_notes", {
+  id:text("id").primaryKey(), caseId:text("case_id").notNull(), sequence:integer("sequence").notNull(),
+  text:text("text").notNull(), textSha256:text("text_sha256").notNull(), occurredAt:text("occurred_at"),
+  supersedesId:text("supersedes_id"), actor:text("actor").notNull(), createdAt:text("created_at").notNull(),
+}, t=>[index("consultation_notes_case_idx").on(t.caseId,t.sequence)]);
+export const consultationRuns = sqliteTable("consultation_runs", {
+  id:text("id").primaryKey(), caseId:text("case_id").notNull(), fingerprint:text("fingerprint").notNull().unique(),
+  caseRevision:integer("case_revision").notNull(), caseStorageToken:text("case_storage_token").notNull(),
+  consultationRevision:integer("consultation_revision").notNull(), catalogVersion:integer("catalog_version").notNull(),
+  status:text("status").notNull(), leaseUntil:text("lease_until"), payload:text("payload"), payloadSha256:text("payload_sha256"), error:text("error"),
+  actor:text("actor").notNull(), createdAt:text("created_at").notNull(), updatedAt:text("updated_at").notNull(),
+},t=>[index("consultation_runs_case_idx").on(t.caseId,t.createdAt)]);

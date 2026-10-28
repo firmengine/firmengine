@@ -1,0 +1,1 @@
+ALTER TABLE `consultation_runs` ADD `payload_sha256` text;
