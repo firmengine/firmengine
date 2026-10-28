@@ -18,7 +18,7 @@ const display=(value:unknown)=>value===null||value===undefined||value===""?"[확
 const rawMoney=(fact:Fact)=>fact.numeric?`${String(fact.numeric.rawValue??"[원문값 없음]")} ${fact.numeric.unit||"[단위 미확인]"}`.trim():display(fact.value);
 const unitKey=(unit:string)=>unit.normalize("NFKC").trim().toLocaleLowerCase();
 
-function exactSourceMoney(fact:Fact):{amount:bigint;display:string}|null{
+function exactSourceMoney(fact:Fact,data:CaseData,index:CaseReadIndex,directionFacts:Fact[]=[],rowContextFacts:Fact[]=[]):{amount:bigint;display:string}|null{
   const numeric=fact.numeric;
   if(!numeric||typeof fact.value!=="string"&&typeof fact.value!=="number")return null;
   const sourceUnit=Object.hasOwn(fact,"sourceUnit")?fact.sourceUnit:numeric.unit;
@@ -34,9 +34,63 @@ function exactSourceMoney(fact:Fact):{amount:bigint;display:string}|null{
   const labelPattern=new RegExp(`(?:${labels})`,"iu");
   const labelledAmount=new RegExp(`^\\s*(?:[:：=]\\s*)?(?:\\(\\s*(백만원|천원|만원|억원|원|KRW|won)\\s*\\)\\s*)?([+-]?\\d[\\d,]*(?:\\.\\d+)?)(?:\\s*(백만원|천원|만원|억원|원|KRW|won))?`,"iu");
   const bareAmount=/^\s*([+-]?\d[\d,]*(?:\.\d+)?)\s*(백만원|천원|만원|억원|원|KRW|won)?\s*$/iu;
+  const transactionAmount=/^transactions?\./iu.test(fact.key)||fact.key==="transaction_amount";
+  const sameSubjectDirections=transactionAmount?directionFacts.filter(candidate=>candidate.subjectId===fact.subjectId):[];
+  const normalizedDirection=(value:unknown):"in"|"out"|null=>{
+    const normalized=String(value??"").normalize("NFKC").trim().toLocaleLowerCase();
+    if(["in","inflow","credit","입금","수입","입금액"].includes(normalized))return "in";
+    if(["out","outflow","debit","출금","지출","출금액"].includes(normalized))return "out";
+    return null;
+  };
+  const directionQuoteSupports=(candidate:Fact,direction:"in"|"out",amountRef:Fact["refs"][number])=>{
+    const terms=direction==="in"?/(?:입금|수입|\b(?:inflow|credit|in)\b)/iu:/(?:출금|지출|\b(?:outflow|debit|out)\b)/iu;
+    const opposite=direction==="in"?/(?:출금|지출|\b(?:outflow|debit|out)\b)/iu:/(?:입금|수입|\b(?:inflow|credit|in)\b)/iu;
+    return candidate.refs.length>0&&candidate.refs.every(ref=>{
+      const quote=ref.quote.normalize("NFKC");
+      return ref.documentId===amountRef.documentId&&ref.page===amountRef.page&&ref.sourceHash===amountRef.sourceHash&&terms.test(quote)&&!opposite.test(quote);
+    });
+  };
   let supported=false;
   for(const ref of fact.refs){
     const quote=ref.quote.normalize("NFKC");
+    if(transactionAmount){
+      if(/[\r\n]/u.test(quote))return null;
+      const cells=quote.split(/[|\t]/u).map(cell=>cell.trim());
+      const directionCells=cells.map((cell,cellIndex)=>({direction:normalizedDirection(cell),cellIndex})).filter(item=>item.direction!==null);
+      if(directionCells.length){
+        if(directionCells.length!==1||!sameSubjectDirections.length)return null;
+        const sourceDirections=sameSubjectDirections.map(candidate=>sourceState(data,candidate,index).displayable&&normalizedDirection(candidate.value)&&directionQuoteSupports(candidate,normalizedDirection(candidate.value)!,ref)?normalizedDirection(candidate.value):null);
+        const direction=directionCells[0]!.direction;
+        if(sourceDirections.some(value=>value===null||value!==direction))return null;
+        const numericCells=cells.map((cell,cellIndex)=>{
+          const parsed=bareAmount.exec(cell);
+          if(!parsed)return null;
+          const amount=normalizeMoney(parsed[1]!,parsed[2]??sourceUnit);
+          return amount.normalizationStatus==="exact"&&amount.amountWon!==null?{cellIndex,amount:BigInt(amount.amountWon),explicitUnit:!!parsed[2]}:null;
+        }).filter((item):item is {cellIndex:number;amount:bigint;explicitUnit:boolean}=>item!==null);
+        const moneyCells=numericCells.filter(item=>item.explicitUnit);
+        const amountCellIndex=moneyCells.length===1?moneyCells[0]!.cellIndex:-1;
+        const rowContextMatches=(cell:string,keys:readonly string[])=>rowContextFacts.some(candidate=>keys.includes(candidate.key)&&candidate.subjectId===fact.subjectId&&sourceState(data,candidate,index).displayable&&candidate.refs.some(candidateRef=>candidateRef.documentId===ref.documentId&&candidateRef.page===ref.page&&candidateRef.sourceHash===ref.sourceHash&&candidateRef.quote.normalize("NFKC").includes(cell)));
+        const dateCellPattern=/^(?:\s*\d{4}\s*년\s*\d{1,2}\s*월\s*\d{1,2}\s*일\s*|\s*\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\s*)$/u;
+        const memoCounterPattern=/\p{N}+\s*(?:회|건|개|명|차례)(?![\p{L}\p{N}])/gu;
+        const extraAmountCell=cells.some((cell,cellIndex)=>{
+          if(cellIndex===amountCellIndex||!/[\p{N}\p{Sc}]/u.test(cell))return false;
+          if(numericCells.some(item=>item.cellIndex===cellIndex))return true;
+          if(/\p{Sc}/u.test(cell)||/(?:잔액|잔고|합계|총액|금액|원금|출금액|입금액|balance|total|amount)/iu.test(cell))return true;
+          if(dateCellPattern.test(cell)&&rowContextMatches(cell,transactionFields.date))return false;
+          if(!/[\p{L}\p{Sc}]/u.test(cell))return /\p{N}.*(?:[.,/／\\\-−–—~〜]\s*\p{N})/u.test(cell);
+          const memoSupported=rowContextMatches(cell,transactionFields.memo);
+          if(memoSupported&&/[\p{L}\p{N}]/u.test(cell)){
+            const withoutCounters=cell.replace(memoCounterPattern,"");
+            if(!/\p{N}/u.test(withoutCounters)&&!/(?:\p{N}\s*[\p{L}]|[A-Za-z]{2,}\s*\p{N})/u.test(withoutCounters))return false;
+          }
+          return /[\p{L}\p{N}]/u.test(cell);
+        });
+        if(moneyCells.length!==1||numericCells.length!==1||extraAmountCell||moneyCells[0]!.cellIndex!==directionCells[0]!.cellIndex+1||moneyCells[0]!.amount!==normalized)return null;
+        supported=true;
+        continue;
+      }
+    }
     const found:bigint[]=[];
     for(const labelMatch of quote.matchAll(new RegExp(labels,"giu"))){
       const adjacent=labelledAmount.exec(quote.slice((labelMatch.index??0)+labelMatch[0].length));
@@ -99,7 +153,7 @@ function refs(data:CaseData,facts:Fact[],index:CaseReadIndex):string{
   const values=facts.flatMap(fact=>fact.refs.map(ref=>validSourceRef(data,ref,index)?`${index.documentsById.get(ref.documentId)?.name??ref.documentId} p.${ref.page}: ${ref.quote}`:null).filter((value):value is string=>!!value));
   return [...new Set(values)].join(" / ")||"[현재 유효한 원문 연결 없음]";
 }
-function fieldObservation(data:CaseData,facts:Fact[],index:CaseReadIndex,amount=false):{value:string;status:string;refs:string}{
+function fieldObservation(data:CaseData,facts:Fact[],index:CaseReadIndex,amount=false,directionFacts:Fact[]=[],rowContextFacts:Fact[]=[]):{value:string;status:string;refs:string}{
   if(!facts.length)return {value:"[관측 없음]",status:"미확인·보류",refs:"[원문 근거 필요]"};
   const current=facts.filter(fact=>index.byId.get(fact.id)===fact);
   if(!current.length)return {value:"[현재 연결 대조 필요]",status:"현재 사실이 없거나 철회·과거 버전·보류",refs:refs(data,facts,index)};
@@ -107,21 +161,21 @@ function fieldObservation(data:CaseData,facts:Fact[],index:CaseReadIndex,amount=
   if(states.some(state=>!state.displayable))return {value:"[값·단위 검토 보류]",status:[...new Set(states.map(state=>state.label))].join("; "),refs:refs(data,current,index)};
   const valid=current;
   const values=valid.map(fact=>{
-    if(amount)return exactSourceMoney(fact)?.display??null;
+    if(amount)return exactSourceMoney(fact,data,index,directionFacts,rowContextFacts)?.display??null;
     return display(fact.value);
   });
   if(values.some(value=>value===null))return {value:"[값·단위 검토 보류]",status:"값 검증 필요·보류",refs:refs(data,facts,index)};
   const distinct=amount
-    ?[...new Set(valid.map(fact=>exactSourceMoney(fact)?.amount.toString()??"invalid"))]
+    ?[...new Set(valid.map(fact=>exactSourceMoney(fact,data,index,directionFacts,rowContextFacts)?.amount.toString()??"invalid"))]
     :[...new Set(values)];
   if(distinct.length>1)return {value:"[상충·선택 보류]",status:"상충·보류",refs:refs(data,facts,index)};
-  const observed=amount?valid.map(fact=>exactSourceMoney(fact)!.display).join("; "):distinct[0]??"[확인 필요]";
+  const observed=amount?valid.map(fact=>exactSourceMoney(fact,data,index,directionFacts,rowContextFacts)!.display).join("; "):distinct[0]??"[확인 필요]";
   return {value:observed,status:[...new Set(states.map(state=>state.label))].join("; "),refs:refs(data,facts,index)};
 }
 
 /** Source observation only. Does not change scanTransactions' acceptance or total gates. */
 export function transactionSourceAnnex(data:CaseData,index:CaseReadIndex):SourceReviewTable{
-  const latest=currentOrLatestFacts(data,index),txFacts=latest.filter(fact=>(fact.key.startsWith("transaction.")||fact.key.startsWith("transactions."))&&!/[.]coverage_complete$/.test(fact.key)&&fact.key!=="coverage.transactions_complete");
+  const latest=currentOrLatestFacts(data,index),latestFactIds=new Set(latest.map(fact=>fact.id)),txFacts=latest.filter(fact=>(fact.key.startsWith("transaction.")||fact.key.startsWith("transactions."))&&!/[.]coverage_complete$/.test(fact.key)&&fact.key!=="coverage.transactions_complete");
   const factsById=new Map(data.facts.map(fact=>[fact.id,fact])),txFactsBySubject=new Map<string,Fact[]>(),transactionsById=new Map<string,Transaction[]>();
   for(const fact of txFacts)txFactsBySubject.set(fact.subjectId,[...(txFactsBySubject.get(fact.subjectId)??[]),fact]);
   for(const tx of data.transactions)transactionsById.set(tx.id,[...(transactionsById.get(tx.id)??[]),tx]);
@@ -132,9 +186,11 @@ export function transactionSourceAnnex(data:CaseData,index:CaseReadIndex):Source
     const links=transactions.flatMap(tx=>tx.factIds.map(id=>factsById.get(id)).filter((fact):fact is Fact=>!!fact));
     const wrongLinked=links.some(fact=>fact.subjectId!==subjectId);
     const allFacts=[...new Map([...subjectFacts,...links.filter(fact=>fact.subjectId===subjectId)].map(fact=>[fact.id,fact])).values()];
+    const directionFacts=allFacts.filter(fact=>latestFactIds.has(fact.id)&&transactionFields.direction.includes(fact.key as never));
+    const rowContextFacts=allFacts.filter(fact=>latestFactIds.has(fact.id)&&(transactionFields.date.includes(fact.key as never)||transactionFields.memo.includes(fact.key as never)));
     const resolved=Object.entries(transactionFields).map(([field,keys])=>{
       const selected=allFacts.filter(fact=>(keys as readonly string[]).includes(fact.key));
-      const observation=fieldObservation(data,selected,index,field==="amount");
+      const observation=fieldObservation(data,selected,index,field==="amount",directionFacts,rowContextFacts);
       return observation;
     });
     const states=resolved.map(item=>item.status),requiredStates=states.slice(0,3);
@@ -172,7 +228,7 @@ export function guaranteeSourceAnnex(data:CaseData,index:CaseReadIndex):SourceRe
       const slot=(slotFacts.get(fact.key)??[]).filter(candidate=>index.byId.get(candidate.id)===candidate);
       const states=slot.map(candidate=>sourceState(data,candidate,index));
       const moneyKey=!!fact.numeric||/(?:guarantee_(?:limit|amount)|보증.*(?:한도|금액|액)|(?:limit|amount))/iu.test(fact.key);
-      const sourceValues=slot.map(candidate=>moneyKey?exactSourceMoney(candidate)?.amount.toString()??"INVALID":JSON.stringify(candidate.value));
+      const sourceValues=slot.map(candidate=>moneyKey?exactSourceMoney(candidate,data,index)?.amount.toString()??"INVALID":JSON.stringify(candidate.value));
       const fingerprints=slot.map(candidate=>JSON.stringify([candidate.value,Object.hasOwn(candidate,"sourceUnit")?candidate.sourceUnit:null,candidate.numeric?.rawValue??null,candidate.numeric?.unit??null,candidate.numeric?.amountWon??null]));
       const conflict=new Set(fingerprints).size>1;
       const sourceInvalid=sourceValues.some(value=>value==="INVALID");

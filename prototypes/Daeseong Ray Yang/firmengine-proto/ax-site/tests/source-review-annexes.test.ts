@@ -204,6 +204,75 @@ test("a recognized unit can be followed by spaced Korean source prose",()=>{
   assert.equal(annex.rows.find(row=>row[0]==="korean-prose-row")![2],"100 원");
 });
 
+test("a delimited single amount cell is accepted only with same-subject matching direction evidence",()=>{
+  const data=fixture(),tx=transaction(data,"delimited-valid-row","12500");
+  const amount=data.facts.find(item=>item.id===tx.factIds[0])!;
+  amount.refs[0]!.quote="2026-10-01 | 출금 | 12,500원 | synthetic memo";
+  data.pages[0]!.text+=` | ${amount.refs[0]!.quote}`;
+  let row=transactionSourceAnnex(data,createCaseReadIndex(data)).rows.find(item=>item[0]===tx.id)!;
+  assert.equal(row[2],"12500 원");
+
+  const mismatch=fixture(),mismatchTx=transaction(mismatch,"delimited-direction-mismatch","12500");
+  const mismatchAmount=mismatch.facts.find(item=>item.id===mismatchTx.factIds[0])!;
+  mismatchAmount.refs[0]!.quote="2026-10-01 | 입금 | 12,500원 | synthetic memo";
+  mismatch.pages[0]!.text+=` | ${mismatchAmount.refs[0]!.quote}`;
+  row=transactionSourceAnnex(mismatch,createCaseReadIndex(mismatch)).rows.find(item=>item[0]===mismatchTx.id)!;
+  assert.equal(row[2],"[값·단위 검토 보류]");
+
+  const crossSubject=fixture(),crossTx=transaction(crossSubject,"delimited-cross-subject-direction","12500");
+  const crossAmount=crossSubject.facts.find(item=>item.id===crossTx.factIds[0])!,foreignDirection=crossSubject.facts.find(item=>item.id===crossTx.factIds[2])!;
+  crossAmount.refs[0]!.quote="2026-10-01 | 출금 | 12,500원 | synthetic memo";
+  crossSubject.pages[0]!.text+=` | ${crossAmount.refs[0]!.quote}`;
+  foreignDirection.subjectId="different-row";
+  row=transactionSourceAnnex(crossSubject,createCaseReadIndex(crossSubject)).rows.find(item=>item[0]===crossTx.id)!;
+  assert.equal(row[2],"[값·단위 검토 보류]");
+});
+
+test("delimited amount rows can retain source-proven Korean dates and numeric memo counters",()=>{
+  for(const [id,date] of [["delimited-korean-row","2026년 10월 1일"],["delimited-iso-row","2026-10-01"]] as const){
+    const data=fixture(),tx=transaction(data,id,"12500"),quote=`${date} | 출금 | 12,500원 | 관리비 2회`;
+    for(const factId of tx.factIds){const rowFact=data.facts.find(item=>item.id===factId)!;rowFact.refs[0]!.quote=quote;}
+    data.pages[0]!.text+=` | ${quote}`;
+    const row=transactionSourceAnnex(data,createCaseReadIndex(data)).rows.find(item=>item[0]===tx.id)!;
+    assert.equal(row[2],"12500 원");assert.equal(row[3],"2026-10-01");assert.equal(row[8],"Synthetic transaction memo");
+  }
+});
+
+test("delimited transaction amounts hold on extra monetary cells, malformed amount cells, and ambiguous direction cells",()=>{
+  const quotes=[
+    "2026-10-01 | 출금 | 12,500원 | 잔액 90,000원",
+    "2026-10-01 | 출금 | 12,500원 | 90000",
+    "2026-10-01 | 출금 | 12,500-13,000원 | synthetic memo",
+    "2026-10-01 | 입금 | 출금 | 12,500원 | synthetic memo",
+  ];
+  for(const [index,quote] of quotes.entries()){
+    const data=fixture(),tx=transaction(data,`delimited-invalid-${index}`,"12500");
+    const amount=data.facts.find(item=>item.id===tx.factIds[0])!;
+    amount.refs[0]!.quote=quote;data.pages[0]!.text+=` | ${quote}`;
+    const row=transactionSourceAnnex(data,createCaseReadIndex(data)).rows.find(item=>item[0]===tx.id)!;
+    assert.equal(row[2],"[값·단위 검토 보류]",quote);
+  }
+});
+
+test("a delimited amount cannot borrow direction evidence from a different page or a retracted current competitor",()=>{
+  const otherPage=fixture(),pageTx=transaction(otherPage,"delimited-other-page-direction","12500");
+  otherPage.documents[0]!.pages.push(2);
+  otherPage.pages.push({documentId:"doc",page:2,role:"evidence",text:"Synthetic other page direction"});
+  const pageAmount=otherPage.facts.find(item=>item.id===pageTx.factIds[0])!,pageDirection=otherPage.facts.find(item=>item.id===pageTx.factIds[2])!;
+  pageAmount.refs[0]!.quote="2026-10-01 | 출금 | 12,500원 | synthetic memo";otherPage.pages[0]!.text+=` | ${pageAmount.refs[0]!.quote}`;
+  pageDirection.refs=[{documentId:"doc",page:2,sourceHash:hash,quote:"transaction.direction out"}];
+  let row=transactionSourceAnnex(otherPage,createCaseReadIndex(otherPage)).rows.find(item=>item[0]===pageTx.id)!;
+  assert.equal(row[2],"[값·단위 검토 보류]");
+
+  const retracted=fixture(),retractedTx=transaction(retracted,"delimited-retracted-direction","12500");
+  const retractedAmount=retracted.facts.find(item=>item.id===retractedTx.factIds[0])!;
+  retractedAmount.refs[0]!.quote="2026-10-01 | 출금 | 12,500원 | synthetic memo";retracted.pages[0]!.text+=` | ${retractedAmount.refs[0]!.quote}`;
+  const direction=retracted.facts.find(item=>item.id===retractedTx.factIds[2])!;
+  retracted.facts.push({...structuredClone(direction),id:"retracted-direction-current",logicalId:"retracted-direction-current",version:1,state:"retracted"});
+  row=transactionSourceAnnex(retracted,createCaseReadIndex(retracted)).rows.find(item=>item[0]===retractedTx.id)!;
+  assert.equal(row[2],"[값·단위 검토 보류]");
+});
+
 test("malformed source field keys are held safely at the export boundary",()=>{
   const data=fixture();fact(data,"malformed-guarantee-key","malformed-row","debt.guarantee_limit(","100",{numeric:true});
   const annex=buildCourtPackage(data,DRAFT_RULESET).documents.find(document=>document.kind==="creditors")!.tables.find(table=>table.title.includes("보증·연대 원문 관측"))!;
