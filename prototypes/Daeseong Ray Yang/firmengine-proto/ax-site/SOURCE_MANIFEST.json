@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "92a57af0c9498575a6318e3eaa0081ce337e1de7f1073fdbe04e95c88c8dc23b",
+  "source_digest": "a376641dffbc50eb8667633a4a18f09bf0d121579818e47bf6a7a2c721fc2ed6",
   "files": [
     {
       "path": ".gitignore",
@@ -847,8 +847,8 @@
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "2325cca59abedadd789f3268474badf096f274ccb079dc073b6ad53fa6c973bf",
-      "bytes": 53350,
+      "sha256": "dcf0ad49ec56ddfe07921ca24f8d65252a65bb64279e5a3c5238a25b639ca0d2",
+      "bytes": 55010,
       "mode": "100644"
     },
     {
@@ -985,8 +985,8 @@
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "ea1ef47b4862eb53ef935743f2215b6266e45d12fa06dfe00bf83c10dc8e165d",
-      "bytes": 78030,
+      "sha256": "61dea8f943d038f4f975ca42d145bb2c948db511c730427201c8e5b2b5940b3c",
+      "bytes": 78253,
       "mode": "100644"
     },
     {
@@ -1003,8 +1003,8 @@
     },
     {
       "path": "lib/reprojection.ts",
-      "sha256": "ad8a5f4e8f0dd069ce57f9cb6fcb30e95c76691824b5dea775871e57d39f3bd0",
-      "bytes": 14470,
+      "sha256": "4f5d8b7642e4f7ce694e298a8049f8c0782e3e2ab2c7667fa39021d8ca3b43bb",
+      "bytes": 14615,
       "mode": "100644"
     },
     {
@@ -1056,9 +1056,15 @@
       "mode": "100644"
     },
     {
+      "path": "lib/source-verification-identity.ts",
+      "sha256": "e06a1579d7979f804e53ad8b35ce7a2479d301939a1a1c1c57fe11c07701ddbd",
+      "bytes": 2059,
+      "mode": "100644"
+    },
+    {
       "path": "lib/source-verification.ts",
-      "sha256": "1f6fc3fedc97d38d58449bba09d60cf21990ac154f9a1c396226b84c2d38a047",
-      "bytes": 12784,
+      "sha256": "a7e00a7405a9f2f207e97cc4d47148dcf47c6fc781a5e0c3c76da13dce5fabc7",
+      "bytes": 16623,
       "mode": "100644"
     },
     {
@@ -1657,8 +1663,8 @@
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "a187884df1eb4fc221205a582b51dadc540073a76c2d297d321afdbcd745a398",
-      "bytes": 41716,
+      "sha256": "1fcf0dcfcc9d09a700a53d879d69c6b9ec33a75ab350a6f73a253a33f151828f",
+      "bytes": 41862,
       "mode": "100644"
     },
     {
@@ -1699,8 +1705,8 @@
     },
     {
       "path": "tests/reprojection.test.ts",
-      "sha256": "43195bad0e2a561d977bef5fea80b8b1c4d6781e55103e574768920a51f0452d",
-      "bytes": 21546,
+      "sha256": "1b812efb3a5c574ed935cda21df7ba211b26b7383caf6a58167ead3058298006",
+      "bytes": 25345,
       "mode": "100644"
     },
     {
@@ -1741,8 +1747,8 @@
     },
     {
       "path": "tests/source-verification.test.ts",
-      "sha256": "5478220a7c5bfc4639a5f098a9c303a7d5d74eea11b4c006c65205d7ebf3a010",
-      "bytes": 13167,
+      "sha256": "3e4d290dbc532de4cee23b1ff081929774964022d9468a60041d4d12eb5c1a28",
+      "bytes": 21094,
       "mode": "100644"
     },
     {

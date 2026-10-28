@@ -20,6 +20,7 @@ import { reconcileApplicantContext } from "./applicant-identity";
 import { bindVerificationChecks,indexedVerificationRead } from "./verification-bindings";
 import { CLASSIFICATION_RESCUE_RECIPE,type RescueRecipeVersion } from "./scan-quality";
 import { assertProcessJobRows,buildProcessJobSelect,parseProcessJobIds,processJobScopeSql,isCurrentEvidenceJob } from "./process-job-scope";
+import { sameSourceBBox } from "./source-verification-identity";
 
 function documentGuide(type:string){
   const accepted=new Set(equivalentDocumentTypes(type));
@@ -309,7 +310,7 @@ export async function processNext(caseId:string,jobIds?:string[]){
       const location=sourceVerificationFieldLocation(receipt,read);if(!location)return undefined;
       const subjectId=`${j.document_id}:p${j.page}:${receipt.field.recordCategory}:${location.recordIndex}`;
       const sourceFactId=`${subjectId}:f${location.fieldIndex}`;
-      const candidates=projectedFacts.filter(f=>f.id===sourceFactId&&f.subjectId===subjectId&&String(f.rawValue??f.value)===receipt.field.value&&f.refs?.some(ref=>ref.documentId===j.document_id&&ref.page===j.page&&ref.quote===receipt.field.quote&&ref.sourceHash===document.sha256));
+      const candidates=projectedFacts.filter(f=>f.id===sourceFactId&&f.subjectId===subjectId&&String(f.rawValue??f.value)===receipt.field.value&&f.refs?.some(ref=>ref.documentId===j.document_id&&ref.page===j.page&&ref.quote===receipt.field.quote&&ref.sourceHash===document.sha256&&(!receipt.field.locator||sameSourceBBox(ref.bbox,receipt.field.locator.bbox))));
       return candidates.length===1?candidates[0]:undefined;
     };
     let attachedSourceReceiptCount=0;
@@ -323,7 +324,7 @@ export async function processNext(caseId:string,jobIds?:string[]){
       const current=currentFacts(next);
       for(const receipt of receipts){
         const raw=rawForReceipt(receipt);if(!raw?.logicalId)continue;
-        const candidates=current.filter(f=>f.logicalId===raw.logicalId&&f.refs.some(ref=>ref.documentId===j.document_id&&ref.page===j.page&&ref.quote===receipt.field.quote&&ref.sourceHash===document.sha256)&&String(f.numeric?.rawValue??f.value)===receipt.field.value);
+        const candidates=current.filter(f=>f.logicalId===raw.logicalId&&f.refs.some(ref=>ref.documentId===j.document_id&&ref.page===j.page&&ref.quote===receipt.field.quote&&ref.sourceHash===document.sha256&&(!receipt.field.locator||sameSourceBBox(ref.bbox,receipt.field.locator.bbox)))&&String(f.numeric?.rawValue??f.value)===receipt.field.value);
         if(candidates.length!==1)continue;
         const fact=candidates[0];
         // Never replace an explicit human-authored review with an AI receipt.

@@ -1,4 +1,5 @@
 import { isSourceMoney,insuranceReviewFieldKey,debtComponentSlotKey } from "./source-quantity.ts";
+import { bboxLocatorFingerprintSegment, fingerprintHasBBoxLocator, isValidSourceBBox, sameSourceBBox, type BBoxReceiptLocator, type SourceBBox } from "./source-verification-identity.ts";
 
 /** Canonical, JSON-safe evidence ledger. Money arithmetic never uses floating point. */
 export type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -73,12 +74,12 @@ export interface Fact {
     /** Missing means historical value/unit/quote corroboration only; never backfilled as field-semantic proof. */
     verificationScope?: "field_meaning_v1";
     source: { documentId: string; page: number; sha256: string };
-    field: { recordCategory: string; key: string; value: string; unit: string | null; quote: string };
-    extractionReading: { value: string; unit: string | null; quote: string };
+    field: { recordCategory: string; key: string; value: string; unit: string | null; quote: string; locator?: BBoxReceiptLocator };
+    extractionReading: { value: string; unit: string | null; quote: string; bbox?: SourceBBox };
     verificationQuotes: string[];
     fieldFingerprint: string;
     proofReadIndexes: { pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }[];
-    proofReads: { pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string }[];
+    proofReads: { pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string; bbox?: SourceBBox }[];
     recognition: "unreviewed";
     factBinding: { id: string; logicalId: string; version: number };
   };
@@ -385,15 +386,25 @@ export function factSourceLineageIssues(data: CaseData, ids: string[], index?:Ca
       const document = index?.documentsById.get(sourceDocumentId)??data.documents.find((d) => d.id === sourceDocumentId);
       const quote = typeof proof.field?.quote === "string" ? proof.field.quote : "";
       const boundRef = !!quote && fact.refs.some((r) => r.documentId === sourceDocumentId && r.page === sourcePage && r.quote.normalize("NFKC").trim() === quote.normalize("NFKC").trim() && r.sourceHash === sourceHash);
+      const locator=proof.field?.locator;
+      const bboxBoundRef=!!locator&&fact.refs.some(r=>r.documentId===sourceDocumentId&&r.page===sourcePage&&r.quote.normalize("NFKC").trim()===quote.normalize("NFKC").trim()&&r.sourceHash===sourceHash&&sameSourceBBox(r.bbox,locator.bbox));
       const raw = fact.numeric?.rawValue ?? (typeof fact.value === "string" ? fact.value : null);
       const validBinding = proof.factBinding?.id === fact.id && proof.factBinding.logicalId === fact.logicalId && proof.factBinding.version === fact.version;
       const validProofReads = Array.isArray(proof.proofReads) && proof.proofReads.length > 0 && typeof proof.field?.value === "string" && proof.proofReads.every(p => p.model === AI_MODEL && typeof p.promptVersion === "string" && !!p.promptVersion.trim() && typeof p.promptHash === "string" && /^[a-f0-9]{64}$/i.test(p.promptHash) && Number.isFinite(Date.parse(p.verifiedAt)) && p.fieldIndex >= 0 && p.recordIndex >= 0 && ["agrees","corrected"].includes(p.status) && typeof p.value === "string" && p.value.normalize("NFKC").trim() === proof.field.value.normalize("NFKC").trim() && (p.unit===null?proof.field.unit===null:typeof proof.field.unit==="string"&&p.unit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim()) && typeof p.quote === "string" && !!p.quote.trim()) && Array.isArray(proof.proofReadIndexes) && proof.proofReads.length === proof.proofReadIndexes.length;
       const validNumeric = !fact.numeric || fact.numeric.normalizationStatus === "exact" && fact.numeric.amountWon !== null && typeof proof.field?.unit === "string" && fact.numeric.unit.normalize("NFKC").trim() === proof.field.unit.normalize("NFKC").trim() && normalizeMoney(raw, proof.field.unit).amountWon === fact.numeric.amountWon;
       const validSourceUnit = !Object.hasOwn(fact,"sourceUnit") || (fact.sourceUnit===null ? proof.field?.unit===null : typeof fact.sourceUnit==="string" && typeof proof.field?.unit==="string" && fact.sourceUnit.normalize("NFKC").trim()===proof.field.unit.normalize("NFKC").trim());
       const validProofIndexBinding = Array.isArray(proof.proofReadIndexes) && Array.isArray(proof.proofReads) && Array.isArray(proof.verificationQuotes) && proof.proofReads.every((p,i)=>p.pass===proof.proofReadIndexes[i]?.pass&&p.recordIndex===proof.proofReadIndexes[i]?.recordIndex&&p.fieldIndex===proof.proofReadIndexes[i]?.fieldIndex&&p.quote===proof.verificationQuotes[i]);
-      const fingerprintHasMeaningScope=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)&&parsed.at(-1)==="field_meaning_v1";}catch{return false;}})();
+      const fingerprintHasMeaningScope=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)&&(parsed.at(-1)==="field_meaning_v1"||parsed.at(-2)==="field_meaning_v1");}catch{return false;}})();
       const hasMeaningReadMetadata=Array.isArray(proof.proofReads)&&proof.proofReads.some(p=>Object.hasOwn(p,"meaningStatus"));
-      const validFieldMeaning=proof.verificationScope==="field_meaning_v1"?fingerprintHasMeaningScope&&Array.isArray(proof.proofReads)&&proof.proofReads.length>0&&proof.proofReads.every(p=>p.meaningStatus==="supported"):proof.verificationScope===undefined&&!fingerprintHasMeaningScope&&!hasMeaningReadMetadata;
+      let validLocator=true;
+      if(locator){
+        const locatorSegment=(()=>{if(locator.version!=="bbox_v1"||!isValidSourceBBox(locator.bbox)||!isValidSourceBBox(proof.extractionReading?.bbox)||!sameSourceBBox(proof.extractionReading.bbox,locator.bbox)||!Array.isArray(proof.proofReads)||proof.proofReads.some(p=>!isValidSourceBBox(p.bbox)||!sameSourceBBox(p.bbox,locator.bbox)))return null;return bboxLocatorFingerprintSegment({locator,extractionBBox:proof.extractionReading.bbox,proofBBoxes:proof.proofReads.map(p=>p.bbox!)});})();
+        validLocator=!!locatorSegment&&bboxBoundRef&&fingerprintHasBBoxLocator(proof.fieldFingerprint,locatorSegment);
+      }else{
+        const hasExtendedLocatorMarker=(()=>{try{const parsed=JSON.parse(proof.fieldFingerprint);return Array.isArray(parsed)&&parsed.at(-2)==="field_meaning_v1";}catch{return false;}})();
+        if(proof.extractionReading?.bbox!==undefined||Array.isArray(proof.proofReads)&&proof.proofReads.some(p=>p.bbox!==undefined)||hasExtendedLocatorMarker)validLocator=false;
+      }
+      const validFieldMeaning=proof.verificationScope==="field_meaning_v1"?fingerprintHasMeaningScope&&Array.isArray(proof.proofReads)&&proof.proofReads.length>0&&proof.proofReads.every(p=>p.meaningStatus==="supported")&&validLocator:proof.verificationScope===undefined&&!fingerprintHasMeaningScope&&!hasMeaningReadMetadata&&!locator&&validLocator;
       if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || proof.model !== AI_MODEL || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || !validFieldMeaning || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
     }
     const normalized=[...factIssues];index?.lineageById.set(id,normalized);for(const issue of normalized)issues.add(issue);

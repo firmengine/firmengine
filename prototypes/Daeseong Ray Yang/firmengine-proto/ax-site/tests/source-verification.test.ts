@@ -75,6 +75,81 @@ test("same quote and numeric value on different source keys retain distinct rece
   assert.deepEqual(receipts.map(r=>sourceVerificationFieldLocation(r,read)).sort((a,b)=>(a?.fieldIndex??-1)-(b?.fieldIndex??-1)),[{recordIndex:0,fieldIndex:1},{recordIndex:0,fieldIndex:0}].sort((a,b)=>a.fieldIndex-b.fieldIndex));
 });
 
+test("duplicate equal source fields require an exact disjoint bbox locator and survive safe row-order drift",()=>{
+  const boxes:[[number,number,number,number],[number,number,number,number],[number,number,number,number]]=[[0.05,0.1,0.2,0.2],[0.3,0.1,0.45,0.2],[0.6,0.1,0.75,0.2]];
+  const makeRead=(ordered=boxes):PageRead=>({documentType:"synthetic_asset",complete:true,records:ordered.map(bbox=>({category:"asset",fields:[{...field("gross_value","7250","원","환급가액 7,250원"),bbox}]}))});
+  const read=makeRead(),checks=read.records.map((record,recordIndex)=>check(recordIndex,0,"agrees","7250","원","환급가액 7,250원"));
+  checks.forEach((item,index)=>{item.bbox=boxes[index];});
+  const verify=pass("verify",checks);verify.bindingStatus="bound";
+  const receipts=createSourceVerificationReceipts(sourceInput(read,[verify]));
+  assert.equal(receipts.length,3);
+  assert.ok(receipts.every(receipt=>receipt.field.locator?.version==="bbox_v1"));
+  assert.deepEqual(receipts.map(receipt=>sourceVerificationFieldLocation(receipt,read)?.recordIndex),[0,1,2]);
+  assert.ok(receipts.every(receipt=>sourceVerificationReceiptMatches(receipt,{documentId:docId,page:pageNum,sourceHash:hash,read})));
+  const shifted=makeRead([boxes[2],boxes[0],boxes[1]]);
+  assert.deepEqual(receipts.map(receipt=>sourceVerificationFieldLocation(receipt,shifted)?.recordIndex),[1,2,0]);
+  assert.ok(receipts.every(receipt=>sourceVerificationReceiptMatches(receipt,{documentId:docId,page:pageNum,sourceHash:hash,read:shifted})));
+  const stripped=structuredClone(receipts[0]);delete stripped.field.locator;
+  assert.equal(sourceVerificationReceiptMatches(stripped,{documentId:docId,page:pageNum,sourceHash:hash,read}),false);
+  assert.equal(sourceVerificationFieldLocation(stripped,read),null,"location lookup must reject a stripped locator before attachment");
+  const retargeted=structuredClone(receipts[0]);retargeted.field.locator!.bbox=[...boxes[1]];
+  assert.equal(sourceVerificationReceiptMatches(retargeted,{documentId:docId,page:pageNum,sourceHash:hash,read}),false);
+  assert.equal(sourceVerificationFieldLocation(retargeted,read),null,"location lookup must reject a retargeted bbox");
+  const forgedFingerprint=structuredClone(receipts[0]);forgedFingerprint.fieldFingerprint="[]";
+  assert.equal(sourceVerificationFieldLocation(forgedFingerprint,read),null,"location lookup must validate the bbox-bearing fingerprint");
+  const strippedProofBox=structuredClone(receipts[0]);delete strippedProofBox.proofReads[0].bbox;
+  assert.equal(sourceVerificationReceiptMatches(strippedProofBox,{documentId:docId,page:pageNum,sourceHash:hash,read}),false);
+  const strippedGeometry=structuredClone(receipts[0]);delete strippedGeometry.field.locator;delete strippedGeometry.extractionReading.bbox;for(const proof of strippedGeometry.proofReads)delete proof.bbox;
+  assert.equal(sourceVerificationReceiptMatches(strippedGeometry,{documentId:docId,page:pageNum,sourceHash:hash,read}),false,"the extended fingerprint cannot be accepted as a legacy receipt after every locator property is stripped");
+  assert.equal(sourceVerificationFieldLocation(strippedGeometry,read),null);
+
+  const held=(candidate:PageRead, candidatePass=verify, errors?:{recordIndex:number;fieldIndex:number;code:string}[])=>createSourceVerificationReceipts({...sourceInput(candidate,[candidatePass]),errors});
+  const overlap=makeRead([[0.05,0.1,0.3,0.2],[0.2,0.1,0.45,0.2],boxes[2]]);
+  assert.equal(held(overlap).length,0,"overlapping field locations must remain held");
+  const missing=makeRead([[0.05,0.1,0.2,0.2],null as unknown as typeof boxes[number],boxes[2]]);
+  assert.equal(held(missing).length,0,"a missing bbox must not fall back to lexical matching");
+  const mismatchChecks=checks.map(item=>({...item}));mismatchChecks[1].bbox=[0.8,0.6,0.9,0.7];
+  const mismatchPass=pass("verify",mismatchChecks);mismatchPass.bindingStatus="bound";
+  assert.equal(held(read,mismatchPass).length,2,"a mismatched row is held without suppressing independently bound rows");
+  const unboundPass=pass("verify",checks.map(item=>({...item})));unboundPass.bindingStatus="unbound";
+  assert.equal(held(read,unboundPass).length,0,"index-unbound verifier checks cannot distinguish repeated fields");
+  const unclearChecks=checks.map(item=>({...item}));unclearChecks[2].meaningStatus="unclear";
+  const unclearPass=pass("verify",unclearChecks);unclearPass.bindingStatus="bound";
+  assert.equal(held(read,unclearPass).length,2,"an unclear row is held without suppressing independently bound rows");
+  assert.equal(held(read,verify,[{recordIndex:2,fieldIndex:0,code:"FIELD_CONFLICT"}]).length,2,"an errored row is held without suppressing independently bound rows");
+  const oldOriginal=makeRead();oldOriginal.records[1].fields[0].bbox=[0.8,0.6,0.9,0.7];
+  assert.equal(createSourceVerificationReceipts({...sourceInput(read,[verify]),originalRead:oldOriginal}).length,2,"an extraction bbox mismatch holds only its field");
+  const uncertain=makeRead();uncertain.records[2].fields[0].confidence="uncertain";
+  const partialPass=pass("verify",checks.slice(0,2).map(item=>({...item})));partialPass.bindingStatus="bound";
+  assert.equal(held(uncertain,partialPass).length,2,"an unreadable/uncertain row is held while other disjoint rows remain provable");
+});
+
+test("bbox-located receipt lineage requires the exact source-ref bbox and an intact fingerprint",()=>{
+  const boxes:[[number,number,number,number],[number,number,number,number],[number,number,number,number]]=[[0.05,0.1,0.2,0.2],[0.3,0.1,0.45,0.2],[0.6,0.1,0.75,0.2]];
+  const read:PageRead={documentType:"synthetic_asset",complete:true,records:boxes.map(bbox=>({category:"asset",fields:[{...field("gross_value","7250","원","환급가액 7,250원"),bbox}]}))};
+  const checks=read.records.map((_,recordIndex)=>({...check(recordIndex,0,"agrees","7250","원","환급가액 7,250원"),bbox:boxes[recordIndex]}));
+  const verify=pass("verify",checks);verify.bindingStatus="bound";
+  const receipts=createSourceVerificationReceipts(sourceInput(read,[verify]));
+  const data=fixture();
+  const facts:Fact[]=receipts.map((receipt,index)=>{
+    const id=`asset-fact-${index}`,logicalId=`asset-logical-${index}`;
+    const result:Fact={id,logicalId,version:1,subjectId:`asset-row-${index}`,key:"asset.gross_value",value:"7250",rawValue:"7250",sourceUnit:"원",numeric:normalizeMoney("7250","원"),state:"verified",recognition:"unreviewed",refs:[{documentId:docId,page:pageNum,quote:receipt.field.quote,sourceHash:hash,bbox:boxes[index]}],validation:[]};
+    result.sourceVerification={...receipt,factBinding:{id,logicalId,version:1}};
+    return result;
+  });
+  data.facts=facts;
+  assert.ok(facts.every(fact=>factSourceLineageIssues(data,[fact.id]).length===0));
+  const mismatched=structuredClone(data),fact=mismatched.facts[1];fact.refs[0].bbox=[0.8,0.6,0.9,0.7];
+  assert.ok(factSourceLineageIssues(mismatched,[fact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+  const stripped=structuredClone(data),target=stripped.facts[0];delete target.sourceVerification!.field.locator;
+  assert.ok(factSourceLineageIssues(stripped,[target.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+  const strippedGeometry=structuredClone(data),strippedFact=strippedGeometry.facts[0],strippedProof=strippedFact.sourceVerification!;
+  delete strippedProof.field.locator;delete strippedProof.extractionReading.bbox;for(const proofRead of strippedProof.proofReads)delete proofRead.bbox;
+  assert.ok(factSourceLineageIssues(strippedGeometry,[strippedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"),"an extended bbox fingerprint cannot be treated as legacy after every geometry property is stripped");
+  const forged=structuredClone(data),forgedFact=forged.facts[2];forgedFact.sourceVerification!.fieldFingerprint="[]";
+  assert.ok(factSourceLineageIssues(forged,[forgedFact.id]).includes("SOURCE_VERIFICATION_RECEIPT_INVALID"));
+});
+
 test("omission reread reuses only baseline-agreed fields still present verbatim after row-index drift",()=>{
   const baseline:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("contract_id","C-1",null,"계약번호 C-1"),field("principal","500","만원","잔액 500만원")]}]};
   const baselinePass=pass("verify",[check(0,0,"agrees","C-1",null,"계약번호 C-1"),check(0,1,"agrees","500","만원","원금잔액 500만원")]);

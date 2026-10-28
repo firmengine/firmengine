@@ -2,12 +2,13 @@ import { applyExtraction, currentFacts, factSourceLineageIssues, moneyValue, nor
 import { projectPage, validatePageRead, type PageRead } from "./extraction.ts";
 import { samplePageRole } from "./sample-manifest.ts";
 import { sourceVerificationFieldLocation, sourceVerificationReceiptMatches, type SourceVerificationReceipt } from "./source-verification.ts";
+import { sameSourceBBox } from "./source-verification-identity.ts";
 
 export class ReprojectionError extends Error { readonly status = 409; }
 const conflict = (message: string) => new ReprojectionError(message);
 
 /** Bump whenever source-to-fact projection semantics change. This is not a model prompt version. */
-export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-28.13";
+export const PAGE_PROJECTION_VERSION = "source-projection-2026-10-28.14";
 
 export interface StoredPageJobForReprojection {
   id: string;
@@ -134,7 +135,7 @@ function historicalProofIsCurrent(data:CaseData,prior:Fact,raw:NonNullable<Extra
   // preserved first read. Corrected final values are allowed only because the
   // existing receipt separately binds both correction passes to `read`.
   const extractionReading=proof.extractionReading;
-  const originalMatches=prepared.originalRead.records.flatMap(record=>record.fields.map(field=>({record,field}))).filter(({record,field})=>normalized(record.category)===normalized(proof.field.recordCategory)&&normalized(field.key).replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase()===proof.field.key&&field.value!==null&&normalized(field.value)===normalized(extractionReading.value)&&((field.unit===null&&extractionReading.unit===null)||(field.unit!==null&&extractionReading.unit!==null&&normalized(field.unit)===normalized(extractionReading.unit)))&&normalized(field.quote??"")===normalized(extractionReading.quote));
+  const originalMatches=prepared.originalRead.records.flatMap(record=>record.fields.map(field=>({record,field}))).filter(({record,field})=>normalized(record.category)===normalized(proof.field.recordCategory)&&normalized(field.key).replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase()===proof.field.key&&field.value!==null&&normalized(field.value)===normalized(extractionReading.value)&&((field.unit===null&&extractionReading.unit===null)||(field.unit!==null&&extractionReading.unit!==null&&normalized(field.unit)===normalized(extractionReading.unit)))&&normalized(field.quote??"")===normalized(extractionReading.quote)&&(!proof.field.locator||sameSourceBBox(field.bbox,proof.field.locator.bbox)));
   if(originalMatches.length!==1)return false;
   // Validate this one receipt as its active historical version against the full
   // current document/page context. This check has no cross-fact calculation, so

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { applyExtraction, createCase, currentFacts, factSourceLineageIssues, reviewFact } from "../lib/domain.ts";
 import { hasBoundExtractionProvenance, hasCurrentProjection, PAGE_PROJECTION_VERSION, prepareStoredReadReprojection, reprojectStoredPage, requireReprojectionProvenance, type StoredPageJobForReprojection, type StoredReadResult } from "../lib/reprojection.ts";
 import { projectPage,type PageRead } from "../lib/extraction.ts";
-import { createSourceVerificationReceipts, sourceVerificationFieldLocation } from "../lib/source-verification.ts";
+import { createSourceVerificationReceipts, sourceVerificationFieldLocation, type ReviewPass } from "../lib/source-verification.ts";
 
 const hash = "d".repeat(64), imageHash = "e".repeat(64);
 const read: PageRead = { documentType: "synthetic_income", complete: true, warnings: [], records: [{ category: "income", label: "synthetic salary row", fields: [
@@ -128,6 +128,32 @@ test("exact historical machine receipts survive trusted reprojection with only f
     assert.equal(newProof.fieldFingerprint,oldProof.fieldFingerprint);assert.deepEqual(newProof.field,oldProof.field);assert.deepEqual(newProof.verificationQuotes,oldProof.verificationQuotes);assert.deepEqual(newProof.proofReads,oldProof.proofReads);assert.deepEqual(newProof.proofReadIndexes,oldProof.proofReadIndexes);assert.deepEqual(newProof.extractionReading,oldProof.extractionReading);assert.deepEqual(newProof.source,oldProof.source);
     assert.deepEqual(newProof.factBinding,{id:next.id,logicalId:next.logicalId,version:next.version});
   }
+});
+
+test("bbox-located equal source fields preserve the exact row proof across reprojection",()=>{
+  const boxes:[[number,number,number,number],[number,number,number,number],[number,number,number,number]]=[[0.05,0.1,0.2,0.2],[0.3,0.1,0.45,0.2],[0.6,0.1,0.75,0.2]];
+  const duplicateRead:PageRead={documentType:"insurance",complete:true,warnings:[],records:boxes.map((bbox,index)=>({category:"asset",label:`synthetic insurance row ${index+1}`,fields:[{key:"gross_value",label:"surrender amount",value:"7250",unit:"원",quote:"환급가액 7,250원",confidence:"clear",bbox}]}))};
+  const data=createCase("Synthetic duplicate source rows","synthetic-duplicate-case","2026-10-27"),image="e".repeat(64),promptVersion="synthetic-cross-read-1.0",promptHash="f".repeat(64),verifiedAt="2026-10-27T00:00:00.000Z";
+  data.documents=[{id:"doc-duplicate",name:"synthetic.pdf",sha256:hash,status:"active",pages:[1],type:"insurance"}];
+  data.pages=[{documentId:"doc-duplicate",page:1,role:"evidence",documentType:"insurance",text:duplicateRead.records.map(record=>record.fields[0].quote).join("\n"),imageUrl:"/synthetic"}];
+  const payload=projectPage(duplicateRead,"doc-duplicate",1,hash),projected=applyExtraction(data,payload);
+  const checks=duplicateRead.records.map((record,recordIndex)=>({recordIndex,fieldIndex:0,meaningStatus:"supported",status:"agrees" as const,value:record.fields[0].value,unit:record.fields[0].unit,quote:record.fields[0].quote,bbox:boxes[recordIndex]}));
+  const verifier:ReviewPass={kind:"verify",checks,bindingStatus:"bound",model:"gpt-6-luna",promptVersion,promptHash,verifiedAt};
+  const receipts=createSourceVerificationReceipts({documentId:"doc-duplicate",page:1,sourceHash:hash,promptVersion,verifiedAt,originalRead:duplicateRead,read:duplicateRead,passes:[verifier]});
+  assert.equal(receipts.length,3);
+  for(const receipt of receipts){
+    const location=sourceVerificationFieldLocation(receipt,duplicateRead)!;
+    const raw=payload.facts!.find(fact=>fact.id===`doc-duplicate:p1:asset:${location.recordIndex}:f${location.fieldIndex}`)!;
+    const fact=currentFacts(projected).find(item=>item.logicalId===raw.logicalId)!;
+    fact.state="verified";fact.recognition="unreviewed";fact.sourceVerification={...receipt,factBinding:{id:fact.id,logicalId:fact.logicalId,version:fact.version}};
+  }
+  const job:StoredPageJobForReprojection={id:"job-duplicate",caseId:data.context.id,documentId:"doc-duplicate",page:1,role:"evidence",status:"completed",stage:"completed",leaseUntil:null,imageKey:"synthetic/image",imageHash:image,cacheKey:JSON.stringify(["doc-duplicate",hash,[1],"insurance","historical-prompt-1.0","gpt-6-luna","rules-previous"]),result:"{}"};
+  const saved:StoredReadResult={read:duplicateRead,firstRead:duplicateRead,extractionRead:duplicateRead,verifierPasses:[verifier],extractionPasses:[{model:"gpt-6-luna",promptVersion,promptHash,sourceHash:hash,baseImageHash:image,verifiedAt}],sourceReceiptCount:3};
+  const prepared=prepareStoredReadReprojection({data:projected,job,saved,originalReady:true,imageReady:true,activeProcessingJobs:0});
+  const result=reprojectStoredPage(projected,prepared),retained=currentFacts(result.data).filter(fact=>fact.key==="asset.gross_value"&&fact.refs.some(ref=>ref.documentId==="doc-duplicate"&&ref.page===1));
+  assert.equal(result.retainedReceipts,3);assert.equal(result.newReceiptsCreated,0);assert.equal(retained.length,3);
+  assert.deepEqual(retained.map(fact=>fact.sourceVerification?.field.locator?.bbox).sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))),boxes.slice().sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b))));
+  assert.ok(retained.every(fact=>fact.state==="verified"&&fact.recognition==="unreviewed"&&factSourceLineageIssues(result.data,[fact.id]).length===0));
 });
 
 test("historical value-unit-quote receipts stay explicitly legacy through reprojection",()=>{
