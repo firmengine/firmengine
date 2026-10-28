@@ -1,0 +1,860 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>원본 대조 검증</title>
+<!-- 스펙: docs/specs/임태훈-source-verify.md -->
+
+<style>
+:root {
+  --bg: #f4f5f7; --panel: #fff; --line: #d9dde3; --text: #1d2330; --muted: #6b7280;
+  --err: #b42318; --errbg: #fdecea; --warn: #8a4b00; --warnbg: #fff1d6;
+  --hl: #ffe58a; --hlline: #d49b00; --chg: #c9f2da; --accent: #2457c5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+  font: 13px/1.45 system-ui, -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
+button, input, select { font: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 3px 9px; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 16px; margin: 0; flex: 1; }
+header .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; margin-left: 6px; font-weight: normal; }
+
+#flags { margin: 12px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; max-height: 34vh; overflow: auto; }
+.flags-head { display: flex; gap: 14px; align-items: baseline; padding: 10px 12px 6px; position: sticky; top: 0; background: var(--panel); z-index: 1; flex-wrap: wrap; }
+.flags-head h2 { font-size: 14px; margin: 0; }
+.flags-head .hint { color: var(--muted); font-size: 12px; }
+table { border-collapse: collapse; width: 100%; }
+th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.flag-table tr.flag { cursor: pointer; }
+.flag-table tr.flag:hover { background: #f7f9fc; }
+.flag-table tr.sel { background: #fff8db; }
+.flag-table tr.done { opacity: .5; }
+.flag-table td:last-child { white-space: nowrap; }
+.grade { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.g-err { background: var(--errbg); color: var(--err); }
+.g-warn { background: var(--warnbg); color: var(--warn); }
+.ai-note { display: block; color: var(--muted); font-size: 12px; }
+.done-tag { color: var(--muted); }
+tr.editor td { background: #f7f9fc; }
+.editor-box { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.editor-box input { border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; }
+.editor-box .err { color: var(--err); }
+.muted { color: var(--muted); }
+.empty { padding: 8px 12px; color: var(--muted); }
+
+.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 48px; }
+@media (max-width: 900px) { .panes { grid-template-columns: 1fr; } }
+.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
+.pane-head { display: flex; gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: flex-end; }
+.pane-head .label { font-weight: 600; margin: 0 8px 6px 4px; }
+.tab { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; background: none; padding: 5px 10px; color: var(--muted); }
+.tab.on { border-color: var(--line); background: var(--panel); color: var(--text); font-weight: 600; margin-bottom: -1px; }
+.pane-body { padding: 12px; overflow: auto; max-height: 62vh; }
+#right td, #right th { white-space: nowrap; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+tr.sum td { background: #f7f8fa; font-weight: 600; }
+
+.hl { background: var(--hl) !important; outline: 2px solid var(--hlline); outline-offset: -2px; }
+.chg { background: var(--chg); }
+
+/* 원본 양식 3종: 구조와 모양을 서로 다르게 */
+.form { position: relative; padding: 18px; border: 1px solid #bbb; background: #fffefb; }
+.mock { position: absolute; top: 10px; right: 10px; border: 2px solid #c62828; color: #c62828; font-weight: 700; padding: 0 8px; transform: rotate(8deg); }
+.form .virtual { color: var(--muted); font-size: 11px; margin-top: 10px; }
+.form h3 { margin: 0 0 12px; }
+.form.card { border-top: 6px solid #2f5fb3; }
+.form.card h3 { color: #2f5fb3; }
+.form.card .meta { display: flex; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
+.form.card .meta span { padding: 1px 3px; }
+.form.card thead th { background: #e8eef9; color: #1d3b73; }
+.form.bank { border: 4px double #555; font-family: "Batang", "Nanum Myeongjo", serif; }
+.form.bank h3 { text-align: center; letter-spacing: 6px; font-size: 18px; }
+.form.bank table.kv { width: auto; margin-bottom: 12px; }
+.form.bank table.kv th { color: #333; }
+.form.bank table.grid th, .form.bank table.grid td { border: 1px solid #777; }
+.form.health { border-left: 6px solid #2e7d4f; }
+.form.health .org { color: #2e7d4f; font-weight: 700; display: inline-block; padding: 1px 3px; }
+.form.health h3 { margin-top: 6px; }
+.form.health .boxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
+.form.health .box { border: 1px solid #b9d8c6; padding: 4px 8px; }
+.form.health .box b { display: block; font-size: 11px; color: #2e7d4f; }
+.form.health table th { background: #e7f4ec; color: #22573a; }
+.form.health .due { margin-top: 10px; border: 1px dashed #2e7d4f; padding: 6px 8px; display: inline-block; }
+
+.proto { font-size: 10px; font-weight: 600; color: #8a4b00; background: var(--warnbg); border-radius: 8px; padding: 0 6px; margin-left: 4px; }
+.doc-note { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.hist-tools { margin-bottom: 8px; }
+
+#tests { position: fixed; right: 10px; bottom: 8px; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #e6f4ea; color: #1e6b3a; border: 1px solid #b7dfc3; }
+#tests.fail { background: var(--errbg); color: var(--err); border-color: #f0b9b3; }
+</style>
+</head>
+<body>
+<header>
+  <h1>원본 대조 검증 <span class="tag">P0 프로토 · mock AI</span></h1>
+  <label>처리자
+    <select id="processor">
+      <option>사무직원</option>
+      <option>변호사</option>
+    </select>
+  </label>
+  <button data-act="reset">초기화</button>
+</header>
+<section id="flags"></section>
+<div class="panes">
+  <section class="pane" id="left"></section>
+  <section class="pane" id="right"></section>
+</div>
+<div id="tests"></div>
+
+<script>
+'use strict';
+
+// ── 1. 목업 원본 (원본 JSON). 화면의 원본 양식은 이 값으로 그립니다.
+const BASE_DATE = '2026-10-15';
+const DEBTOR = '김가상';
+
+function makeForms() {
+  const card = { 양식ID: 'card', 이름: '한빛카드 부채증명서', cells: {
+    title: '부채증명서', issuer: '한빛카드 주식회사', debtor: DEBTOR, base: BASE_DATE,
+    r1_kind: '카드대금', r1_date: '2024-03-12', r1_principal: 3420000, r1_interest: 186500, r1_fee: 30000,
+    r2_kind: '카드론', r2_date: '2023-11-05', r2_principal: 5000000, r2_interest: 412300, r2_fee: 0,
+  } };
+  const bank = { 양식ID: 'bank', 이름: '새봄은행 부채증명서', cells: {
+    title: '부채잔액증명서', issuer: '새봄은행', debtor: DEBTOR, base: BASE_DATE,
+    r1_acct: '301-12-000101', r1_product: '신용대출', r1_open: '2022-06-20', r1_maturity: '2025-06-20',
+    r1_principal: 12000000, r1_interest: 958000,
+    r2_acct: '301-12-000245', r2_product: '신용대출', r2_open: '2023-02-01', r2_maturity: '2026-02-01',
+    r2_principal: 8000000, r2_interest: 512000,
+  } };
+  const health = { 양식ID: 'health', 이름: '건강보험료 미납내역서', cells: {
+    title: '건강보험료 미납내역서', issuer: '누리건강보험공단 (가상)', debtor: DEBTOR, base: BASE_DATE,
+    kind: '건강보험료', period: '2025-03 ~ 2026-09', premium: 1284000, late: 38520, firstDue: '2025-04-10',
+  } };
+
+  // 합계는 코드로 계산해 넣습니다.
+  const c = card.cells;
+  for (const r of ['r1', 'r2']) c[`${r}_total`] = c[`${r}_principal`] + c[`${r}_interest`] + c[`${r}_fee`];
+  c.sum_total = c.r1_total + c.r2_total;
+  const b = bank.cells;
+  b.sum_principal = b.r1_principal + b.r2_principal;
+  b.sum_interest = b.r1_interest + b.r2_interest;
+  const h = health.cells;
+  h.total = h.premium + h.late;
+
+  return { card, bank, health };
+}
+
+function deepFreeze(o) {
+  Object.values(o).forEach(v => { if (v && typeof v === 'object') deepFreeze(v); });
+  return Object.freeze(o);
+}
+const FORMS = deepFreeze(makeForms());
+
+const CELL_LABEL = {
+  card: { title: '양식명', issuer: '발급사', base: '기준일' },
+  bank: { title: '양식명', issuer: '은행명', base: '기준일' },
+  health: { title: '양식명', issuer: '기관명', base: '기준일', kind: '구분', premium: '보험료', late: '연체금',
+            total: '미납액 계', firstDue: '최초 미납분 납부기한' },
+};
+for (const [i, r] of [[1, 'r1'], [2, 'r2']]) {
+  Object.assign(CELL_LABEL.card, { [`${r}_kind`]: `${i}행 구분`, [`${r}_date`]: `${i}행 이용(대출)일`,
+    [`${r}_principal`]: `${i}행 원금`, [`${r}_interest`]: `${i}행 이자`, [`${r}_fee`]: `${i}행 연회비` });
+  Object.assign(CELL_LABEL.bank, { [`${r}_product`]: `${i}행 상품명`, [`${r}_open`]: `${i}행 신규일자`,
+    [`${r}_maturity`]: `${i}행 만기일`, [`${r}_principal`]: `${i}행 대출잔액`, [`${r}_interest`]: `${i}행 미수이자` });
+}
+
+const CLAIMS = [
+  { id: 'C1', label: '한빛카드 1' },
+  { id: 'C2', label: '한빛카드 2' },
+  { id: 'B1', label: '새봄은행 1' },
+  { id: 'B2', label: '새봄은행 2' },
+  { id: 'H1', label: '건강보험료' },
+];
+const FIELDS = ['채권자명', '채권종류', '원금', '이자', '연회비', '기준일', '발생일', '우선권여부'];
+const GROUPS = ['일반', '우선권', '총합계'];
+const LIST_SUM_COLS = ['원금', '이자', '총채권액'];
+const AMOUNT_COLS = new Set(['원금', '이자', '연회비', '총채권액', '채권액']);
+const DATE_COLS = new Set(['기준일', '발생일']);
+const DOC_NAME = { list: '채권자목록', plan: '변제계획', app: '개시신청서' };
+const COL_LABEL = { 총채권액: '총 채권액' };
+
+// ── 2. 매핑 규칙. P1에서 실제 AI 추출 지침으로 다시 씁니다.
+//    문자열 = 원본 칸ID, null = 해당 양식에 칸 없음, {cell, value} = 규칙으로 정해지는 값
+const cardMap = r => ({ 채권자명: 'issuer', 채권종류: `${r}_kind`, 원금: `${r}_principal`, 이자: `${r}_interest`,
+  연회비: `${r}_fee`, 기준일: 'base',
+  발생일: `${r}_date`,                       // 카드사: 이용일(카드대금) / 대출일(카드론)
+  우선권여부: { cell: 'title', value: false } });
+const bankMap = r => ({ 채권자명: 'issuer', 채권종류: `${r}_product`, 원금: `${r}_principal`, 이자: `${r}_interest`,
+  연회비: null, 기준일: 'base',
+  발생일: `${r}_open`,                       // 은행: 신규일자 (만기일 아님)
+  우선권여부: { cell: 'title', value: false } });
+const SOURCE_MAP = {
+  C1: ['card', cardMap('r1')],
+  C2: ['card', cardMap('r2')],
+  B1: ['bank', bankMap('r1')],
+  B2: ['bank', bankMap('r2')],
+  H1: ['health', { 채권자명: 'issuer', 채권종류: 'kind',
+    원금: 'total',                           // 건보: 원금 = 미납액 계 (보험료 + 연체금)
+    이자: { cell: null, value: 0 },          // 건보: 이자 = 0
+    연회비: null, 기준일: 'base',
+    발생일: 'firstDue',                      // 건보: 최초 미납분 납부기한
+    우선권여부: { cell: 'title', value: true } }],
+};
+
+// ── 3. AI 경계 (P0는 mock). 둘 다 같은 형식을 돌려줍니다:
+//    [{ 채권ID, 필드, 값, 원본: { 양식ID, 칸ID } | null }]
+
+// extract(원본): 고정 JSON. 심은 오류 ①②③이 들어 있습니다. P1에서 실제 AI 호출로 바꿉니다.
+const MOCK_EXTRACT = deepFreeze([
+  {"채권ID":"C1","필드":"채권자명","값":"한빛카드 주식회사","원본":{"양식ID":"card","칸ID":"issuer"}},
+  {"채권ID":"C1","필드":"채권종류","값":"카드대금","원본":{"양식ID":"card","칸ID":"r1_kind"}},
+  {"채권ID":"C1","필드":"원금","값":3420000,"원본":{"양식ID":"card","칸ID":"r1_principal"}},
+  {"채권ID":"C1","필드":"이자","값":186500,"원본":{"양식ID":"card","칸ID":"r1_interest"}},
+  {"채권ID":"C1","필드":"연회비","값":30000,"원본":{"양식ID":"card","칸ID":"r1_fee"}},
+  {"채권ID":"C1","필드":"기준일","값":"2026-10-15","원본":{"양식ID":"card","칸ID":"base"}},
+  {"채권ID":"C1","필드":"발생일","값":"2024-03-12","원본":{"양식ID":"card","칸ID":"r1_date"}},
+  {"채권ID":"C1","필드":"우선권여부","값":false,"원본":{"양식ID":"card","칸ID":"title"}},
+  {"채권ID":"C2","필드":"채권자명","값":"한빛카드 주식회사","원본":{"양식ID":"card","칸ID":"issuer"}},
+  {"채권ID":"C2","필드":"채권종류","값":"카드론","원본":{"양식ID":"card","칸ID":"r2_kind"}},
+  {"채권ID":"C2","필드":"원금","값":5000000,"원본":{"양식ID":"card","칸ID":"r2_principal"}},
+  {"채권ID":"C2","필드":"이자","값":412300,"원본":{"양식ID":"card","칸ID":"r2_interest"}},
+  {"채권ID":"C2","필드":"연회비","값":0,"원본":{"양식ID":"card","칸ID":"r2_fee"}},
+  {"채권ID":"C2","필드":"기준일","값":"2026-10-15","원본":{"양식ID":"card","칸ID":"base"}},
+  {"채권ID":"C2","필드":"발생일","값":"2023-11-05","원본":{"양식ID":"card","칸ID":"r2_date"}},
+  {"채권ID":"C2","필드":"우선권여부","값":false,"원본":{"양식ID":"card","칸ID":"title"}},
+  {"채권ID":"B1","필드":"채권자명","값":"새봄은행","원본":{"양식ID":"bank","칸ID":"issuer"}},
+  {"채권ID":"B1","필드":"채권종류","값":"신용대출","원본":{"양식ID":"bank","칸ID":"r1_product"}},
+  {"채권ID":"B1","필드":"원금","값":12000000,"원본":{"양식ID":"bank","칸ID":"r1_principal"}},
+  {"채권ID":"B1","필드":"이자","값":958000,"원본":{"양식ID":"bank","칸ID":"r1_interest"}},
+  {"채권ID":"B1","필드":"연회비","값":null,"원본":null},
+  {"채권ID":"B1","필드":"기준일","값":"2026-10-15","원본":{"양식ID":"bank","칸ID":"base"}},
+  {"채권ID":"B1","필드":"발생일","값":"2025-06-20","원본":{"양식ID":"bank","칸ID":"r1_maturity"}},
+  {"채권ID":"B1","필드":"우선권여부","값":false,"원본":{"양식ID":"bank","칸ID":"title"}},
+  {"채권ID":"B2","필드":"채권자명","값":"새봄은행","원본":{"양식ID":"bank","칸ID":"issuer"}},
+  {"채권ID":"B2","필드":"채권종류","값":"신용대출","원본":{"양식ID":"bank","칸ID":"r2_product"}},
+  {"채권ID":"B2","필드":"원금","값":800000,"원본":{"양식ID":"bank","칸ID":"r2_principal"}},
+  {"채권ID":"B2","필드":"이자","값":512000,"원본":{"양식ID":"bank","칸ID":"r2_interest"}},
+  {"채권ID":"B2","필드":"연회비","값":null,"원본":null},
+  {"채권ID":"B2","필드":"기준일","값":"2026-10-15","원본":{"양식ID":"bank","칸ID":"base"}},
+  {"채권ID":"B2","필드":"발생일","값":"2023-02-01","원본":{"양식ID":"bank","칸ID":"r2_open"}},
+  {"채권ID":"B2","필드":"우선권여부","값":false,"원본":{"양식ID":"bank","칸ID":"title"}},
+  {"채권ID":"H1","필드":"채권자명","값":"누리건강보험공단 (가상)","원본":{"양식ID":"health","칸ID":"issuer"}},
+  {"채권ID":"H1","필드":"채권종류","값":"건강보험료","원본":{"양식ID":"health","칸ID":"kind"}},
+  {"채권ID":"H1","필드":"원금","값":1322520,"원본":{"양식ID":"health","칸ID":"total"}},
+  {"채권ID":"H1","필드":"이자","값":0,"원본":null},
+  {"채권ID":"H1","필드":"연회비","값":null,"원본":null},
+  {"채권ID":"H1","필드":"기준일","값":"2026-10-15","원본":{"양식ID":"health","칸ID":"base"}},
+  {"채권ID":"H1","필드":"발생일","값":"2025-04-10","원본":{"양식ID":"health","칸ID":"firstDue"}},
+  {"채권ID":"H1","필드":"우선권여부","값":true,"원본":{"양식ID":"health","칸ID":"title"}},
+]);
+
+function extract(forms) {
+  return MOCK_EXTRACT;
+}
+
+// verify 안에서 쓰는 원본 재추출. P1에서는 AI가 원본만 다시 읽습니다 (출력 값은 보여 주지 않음).
+// P0에서는 목업 원본 JSON(정답 값)을 매핑 규칙으로 읽습니다.
+function rereadSource(forms) {
+  const out = [];
+  for (const { id } of CLAIMS) {
+    const [formId, map] = SOURCE_MAP[id];
+    for (const f of FIELDS) {
+      const m = map[f];
+      if (m === null) out.push({ 채권ID: id, 필드: f, 값: null, 원본: null });
+      else if (typeof m === 'string') out.push({ 채권ID: id, 필드: f, 값: forms[formId].cells[m], 원본: { 양식ID: formId, 칸ID: m } });
+      else out.push({ 채권ID: id, 필드: f, 값: m.value, 원본: m.cell ? { 양식ID: formId, 칸ID: m.cell } : null });
+    }
+  }
+  return out;
+}
+
+// ── 4. 출력 문서 3종: 채권자목록 → 변제계획 채권액 → 개시신청서
+function groupOf(row) { return row.우선권여부 ? '우선권' : '일반'; }
+
+function buildDocs(extraction) {
+  const rows = {};
+  for (const { id } of CLAIMS) rows[id] = {};
+  for (const it of extraction) rows[it.채권ID][it.필드] = it.값;
+  const docs = { list: { rows, sums: {} }, plan: { rows: {}, sums: {} }, app: { rows: {}, sums: {} } };
+  propagate(docs);
+  return docs;
+}
+
+// 채권자목록 행 값을 기준으로 총 채권액, 합계, 변제계획, 개시신청서를 다시 채웁니다.
+// 총 채권액 = 원금 + 이자. 연회비(참고)는 합계에 더하지 않습니다.
+function propagate(docs) {
+  const L = docs.list;
+  const sums = {};
+  for (const g of GROUPS) sums[g] = { 원금: 0, 이자: 0, 총채권액: 0 };
+  for (const { id } of CLAIMS) {
+    const r = L.rows[id];
+    r.총채권액 = r.원금 + r.이자;
+    for (const g of [groupOf(r), '총합계']) for (const k of LIST_SUM_COLS) sums[g][k] += r[k];
+    docs.plan.rows[id] = { 채권자명: r.채권자명, 구분: groupOf(r), 채권액: r.총채권액 };
+  }
+  L.sums = sums;
+  for (const g of GROUPS) {
+    docs.plan.sums[g] = { 채권액: sums[g].총채권액 };
+    docs.app.sums[g] = { 채권액: sums[g].총채권액 };
+  }
+}
+
+// ── 5. verify(원본, 출력 문서) → 지적 목록
+function verify(forms, docs) {
+  const flags = [];
+  const truth = rereadSource(forms);
+  const T = {};
+  for (const it of truth) (T[it.채권ID] ??= {})[it.필드] = it;
+  const L = docs.list;
+  const claimSrc = id => [T[id].원금.원본, T[id].이자.원본].filter(Boolean);
+
+  // 5-1. 작성 오류 + 연회비 규칙: 원본 다시 읽은 값 ↔ 출력 값. null 필드는 비교하지 않습니다.
+  for (const it of truth) {
+    if (it.값 === null) continue;
+    const c = it.채권ID, f = it.필드, actual = L.rows[c][f];
+    const base = { claim: c, field: f, out: { doc: 'list', kind: 'rows', row: c, col: f }, actual,
+                   title: `${claimLabel(c)} · ${f}` };
+    const src = it.원본 ? [it.원본] : [];
+    const fee = f === '이자' ? T[c].연회비 : null;
+    if (fee && fee.값 > 0) {
+      // 이자 기대값은 {원본 이자, 원본 이자 + 연회비} 둘 다 허용합니다.
+      const withFee = it.값 + fee.값;
+      if (actual === it.값) {
+        flags.push({ ...base, key: `연회비:${c}`, kind: '연회비', grade: '확인 필요', expected: withFee,
+          accept: [withFee, it.값], src: [...src, fee.원본],
+          msg: `원본에 연회비 ${fmt(fee.값)}원이 있는데 출력 이자에 빠졌습니다. 포함하면 ${fmt(withFee)}원입니다.` });
+      } else if (actual !== withFee) {
+        flags.push({ ...base, key: `작성:${c}:${f}`, kind: '작성', grade: '오류', expected: it.값,
+          accept: [it.값, withFee], src: [...src, fee.원본],
+          msg: `출력 ${fmt(actual)} ≠ 원본 ${fmt(it.값)} (연회비 포함 시 ${fmt(withFee)})` });
+      }
+      continue;
+    }
+    if (actual !== it.값) {
+      flags.push({ ...base, key: `작성:${c}:${f}`, kind: '작성', grade: '오류', expected: it.값,
+        accept: [it.값], src, msg: `출력 ${fmt(actual)} ≠ 원본 ${fmt(it.값)}` });
+    }
+  }
+
+  // 5-2. 문서 간 동일 값: 채권자목록 → 변제계획 → 개시신청서
+  for (const { id } of CLAIMS) {
+    const a = L.rows[id].총채권액, b = docs.plan.rows[id].채권액;
+    if (a !== b) flags.push({ key: `문서간:plan:${id}`, kind: '문서간', grade: '오류',
+      out: { doc: 'plan', kind: 'rows', row: id, col: '채권액' }, actual: b, expected: a, accept: [a],
+      src: claimSrc(id), title: `${claimLabel(id)} · 채권액 (변제계획)`,
+      msg: `변제계획 ${fmt(b)} ≠ 채권자목록 ${fmt(a)}` });
+  }
+  for (const g of GROUPS) {
+    const a = L.sums[g].총채권액;
+    for (const d of ['plan', 'app']) {
+      const b = docs[d].sums[g].채권액;
+      if (a !== b) flags.push({ key: `문서간:${d}:${g}`, kind: '문서간', grade: '오류',
+        out: { doc: d, kind: 'sums', row: g, col: '채권액' }, actual: b, expected: a, accept: [a], src: [],
+        title: `${DOC_NAME[d]} · ${g} 채권액`, msg: `${DOC_NAME[d]} ${fmt(b)} ≠ 채권자목록 ${fmt(a)}` });
+    }
+  }
+
+  // 5-3. 합계 재계산: 일반·우선권·총합계가 항목 합과 같은지
+  const calc = {}, planCalc = {};
+  for (const g of GROUPS) { calc[g] = { 원금: 0, 이자: 0, 총채권액: 0 }; planCalc[g] = 0; }
+  for (const { id } of CLAIMS) {
+    const r = L.rows[id];
+    const exp = r.원금 + r.이자;
+    if (r.총채권액 !== exp) flags.push({ key: `합계:list:${id}:총채권액`, kind: '합계', grade: '오류',
+      out: { doc: 'list', kind: 'rows', row: id, col: '총채권액' }, actual: r.총채권액, expected: exp, accept: [exp],
+      src: claimSrc(id), title: `${claimLabel(id)} · 총 채권액`, msg: `기재 ${fmt(r.총채권액)} ≠ 원금+이자 ${fmt(exp)}` });
+    for (const g of [groupOf(r), '총합계']) for (const k of LIST_SUM_COLS) calc[g][k] += r[k];
+    const p = docs.plan.rows[id];
+    for (const g of [p.구분, '총합계']) planCalc[g] += p.채권액;
+  }
+  for (const g of GROUPS) {
+    for (const k of LIST_SUM_COLS) {
+      const a = L.sums[g][k], e = calc[g][k];
+      if (a !== e) flags.push({ key: `합계:list:${g}:${k}`, kind: '합계', grade: '오류',
+        out: { doc: 'list', kind: 'sums', row: g, col: k }, actual: a, expected: e, accept: [e], src: [],
+        title: `채권자목록 · ${g} 합계 ${colLabel(k)}`, msg: `기재 ${fmt(a)} ≠ 항목 합 ${fmt(e)}` });
+    }
+    const a = docs.plan.sums[g].채권액;
+    if (a !== planCalc[g]) flags.push({ key: `합계:plan:${g}:채권액`, kind: '합계', grade: '오류',
+      out: { doc: 'plan', kind: 'sums', row: g, col: '채권액' }, actual: a, expected: planCalc[g], accept: [planCalc[g]],
+      src: [], title: `변제계획 · ${g} 합계`, msg: `기재 ${fmt(a)} ≠ 항목 합 ${fmt(planCalc[g])}` });
+  }
+  return flags;
+}
+
+// ── 6. 이력: 추가만 됩니다. 수정·삭제 함수는 없고, 항목은 freeze합니다.
+function createHistory() {
+  const entries = [];
+  return {
+    append(e) {
+      const frozen = Object.freeze({ ...e, 원본위치: Object.freeze([...e.원본위치]) });
+      entries.push(frozen);
+      return frozen;
+    },
+    list() { return entries.slice(); },
+  };
+}
+
+// ── 7. 검사 테스트 (페이지 안에서 실행)
+function normalDocs() {
+  // 정상 문서: 원본 그대로 채우고, 연회비까지 이자에 반영한 상태
+  const d = buildDocs(rereadSource(FORMS));
+  d.list.rows.C1.이자 += d.list.rows.C1.연회비;
+  propagate(d);
+  return d;
+}
+const TESTS = [
+  { name: '① 개시신청서 총합계에 예전 값 → 문서 간 불일치 지적', run() {
+    const d = normalDocs();
+    d.app.sums.총합계.채권액 -= d.list.rows.H1.총채권액;
+    return verify(FORMS, d).some(f => f.kind === '문서간' && f.out.doc === 'app' && f.out.row === '총합계');
+  } },
+  { name: '② 채권자목록 합계 ≠ 항목 합 → 합계 오류 지적', run() {
+    const d = normalDocs();
+    d.list.sums.총합계.원금 += 10000;
+    return verify(FORMS, d).some(f => f.kind === '합계' && f.out.doc === 'list' && f.out.row === '총합계');
+  } },
+  { name: '③ 우선권 채권이 일반 합계에 섞임 → 우선권 합계 불일치 지적', run() {
+    const d = normalDocs();
+    const h = d.list.rows.H1;
+    for (const k of LIST_SUM_COLS) { d.list.sums.일반[k] += h[k]; d.list.sums.우선권[k] = 0; }
+    return verify(FORMS, d).some(f => f.kind === '합계' && f.out.doc === 'list' && f.out.row === '우선권');
+  } },
+  { name: '④ 정상 문서 → 지적 0건', run() {
+    return verify(FORMS, normalDocs()).length === 0;
+  } },
+  { name: '⑤ 문서 간·합계 지적 → 수정 승인만 허용 (현행 유지 불가)', run() {
+    const d = normalDocs();
+    d.app.sums.총합계.채권액 -= d.list.rows.H1.총채권액;
+    d.list.sums.총합계.원금 += 10000;
+    const calc = verify(FORMS, d).filter(f => f.kind === '문서간' || f.kind === '합계');
+    const write = verify(FORMS, buildDocs(extract(FORMS)));
+    return calc.length > 0 && calc.every(f => allowedActions(f).join() === '수정 승인')
+      && write.length > 0 && write.every(f => allowedActions(f).includes('현행 유지'));
+  } },
+];
+function runTests() {
+  return TESTS.map(t => {
+    let ok = false;
+    try { ok = t.run() === true; } catch (e) { console.error(t.name, e); }
+    return { name: t.name, ok };
+  });
+}
+
+// ── 8. 표시 도우미
+function fmt(v) {
+  if (v === null || v === undefined) return '—';
+  if (typeof v === 'boolean') return v ? '우선권' : '일반';
+  if (typeof v === 'number') return v.toLocaleString('ko-KR');
+  return String(v);
+}
+function fmtSrc(v) {
+  if (typeof v === 'number') return v.toLocaleString('ko-KR');
+  if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v.replaceAll('-', '.');
+  return String(v);
+}
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+function claimLabel(id) { return CLAIMS.find(c => c.id === id).label; }
+function colLabel(k) { return COL_LABEL[k] || k; }
+function srcLabel(s) { return `${FORMS[s.양식ID].이름} · ${CELL_LABEL[s.양식ID][s.칸ID]}`; }
+function srcId(s) { return `s-${s.양식ID}-${s.칸ID}`; }
+function outId(o) { return `o-${o.doc}-${o.row}-${o.col}`; }
+function getOut(docs, o) { return docs[o.doc][o.kind][o.row][o.col]; }
+function setOut(docs, o, v) { docs[o.doc][o.kind][o.row][o.col] = v; }
+
+function parseValue(col, raw) {
+  const s = String(raw).trim();
+  if (AMOUNT_COLS.has(col)) {
+    const t = s.replace(/[,\s원]/g, '');
+    return /^\d+$/.test(t) ? Number(t) : undefined;
+  }
+  if (DATE_COLS.has(col)) {
+    const t = s.replace(/[./]/g, '-');
+    return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : undefined;
+  }
+  if (col === '우선권여부') return s === '우선권' ? true : s === '일반' ? false : undefined;
+  return s ? s : undefined;
+}
+
+function snapshot(docs) {
+  const m = {};
+  for (const d of ['list', 'plan', 'app']) for (const kind of ['rows', 'sums']) {
+    const t = docs[d][kind];
+    for (const row in t) for (const col in t[row]) m[`o-${d}-${row}-${col}`] = t[row][col];
+  }
+  return m;
+}
+
+// ── 9. 화면 상태와 처리
+let state;
+
+function initialState(processor) {
+  const extraction = extract(FORMS);
+  return {
+    extraction,
+    docs: buildDocs(extraction),
+    resolved: {},          // 지적 key → { value: 처리 시점 값, action, flag }
+    history: createHistory(),
+    processor: processor || '사무직원',
+    leftTab: 'card', rightTab: 'list',
+    selectedKey: null,
+    editing: null, draft: { value: '', reason: '' }, editError: '',
+    changed: {},           // 출력 칸 id → 강조 끝 시각
+    histFilter: '',
+    flags: [],
+  };
+}
+
+function reverify() {
+  state.flags = verify(FORMS, state.docs);
+  // 처리 시점 값과 지금 값이 다르면, 처리 기록을 지우고 지적을 새로 엽니다.
+  for (const f of state.flags) {
+    const r = state.resolved[f.key];
+    if (r && getOut(state.docs, f.out) !== r.value) delete state.resolved[f.key];
+  }
+}
+
+function flagView() {
+  const found = new Set(state.flags.map(f => f.key));
+  const view = state.flags.map(f => state.resolved[f.key]
+    ? { flag: f, status: '처리됨', res: state.resolved[f.key] }
+    : { flag: f, status: '열림' });
+  for (const [k, r] of Object.entries(state.resolved)) {
+    if (!found.has(k) && getOut(state.docs, r.flag.out) === r.value) view.push({ flag: r.flag, status: '처리됨', res: r });
+  }
+  const order = id => { const i = CLAIMS.findIndex(c => c.id === id); return i < 0 ? 99 : i; };
+  return view.sort((a, b) => (a.status === b.status ? 0 : a.status === '열림' ? -1 : 1)
+    || order(a.flag.out.row) - order(b.flag.out.row));
+}
+
+// 문서 간·합계 지적은 계산값이 문서마다 다른 채로 남으면 안 되므로 수정 승인만 허용합니다.
+function allowedActions(flag) {
+  return flag.kind === '문서간' || flag.kind === '합계' ? ['수정 승인'] : ['수정 승인', '현행 유지'];
+}
+
+function applyResolution(flag, action, value, reason) {
+  if (!allowedActions(flag).includes(action)) return false;
+  const before = getOut(state.docs, flag.out);
+  const snapBefore = snapshot(state.docs);
+  if (action === '수정 승인') {
+    if (flag.kind === '작성' || flag.kind === '연회비') setOut(state.docs, flag.out, value);
+    propagate(state.docs);   // 연관 문서 반영 + 합계 재계산
+  }
+  const after = getOut(state.docs, flag.out);
+  const snapAfter = snapshot(state.docs);
+  const changedIds = Object.keys(snapAfter).filter(id => snapAfter[id] !== snapBefore[id]);
+  const changedDocs = [...new Set(changedIds.map(id => DOC_NAME[id.split('-')[1]]))];
+
+  state.resolved[flag.key] = { value: after, action, flag };
+  state.history.append({
+    시각: new Date().toLocaleString('ko-KR'),
+    처리자: state.processor,
+    문서: DOC_NAME[flag.out.doc],
+    필드: flag.title,
+    필드키: outId(flag.out),
+    변경전: before, 변경후: after,
+    원본위치: flag.src.map(srcLabel),
+    구분: action,
+    사유: reason,
+    반영문서: changedDocs.join(', ') || '—',
+  });
+
+  const until = Date.now() + 4000;
+  for (const id of changedIds) state.changed[id] = until;
+  setTimeout(clearChanged, 4100);
+  reverify();
+  return true;
+}
+
+function clearChanged() {
+  const now = Date.now();
+  for (const [id, t] of Object.entries(state.changed)) {
+    if (t <= now) { delete state.changed[id]; document.getElementById(id)?.classList.remove('chg'); }
+  }
+}
+
+function confirmEdit() {
+  const { key, action } = state.editing;
+  const f = state.view.find(v => v.flag.key === key).flag;
+  let value = getOut(state.docs, f.out);
+  if (action === '수정 승인') {
+    if (f.kind === '작성' || f.kind === '연회비') {
+      value = parseValue(f.out.col, state.draft.value);
+      if (value === undefined) { state.editError = '값 형식이 맞지 않습니다.'; return render(); }
+    } else {
+      value = f.expected;
+    }
+  }
+  const reason = state.draft.reason.trim();
+  const needReason = action === '현행 유지' || !f.accept.includes(value);
+  if (needReason && !reason) {
+    state.editError = action === '현행 유지' ? '현행 유지는 사유가 필수입니다.' : '원본과 다른 값으로 바꿀 때는 사유가 필수입니다.';
+    return render();
+  }
+  applyResolution(f, action, value, reason);
+  state.editing = null;
+  state.editError = '';
+  render();
+}
+
+function selectFlag(key, scroll) {
+  state.selectedKey = key;
+  const v = state.view.find(x => x.flag.key === key);
+  if (v) {
+    if (v.flag.src.length) state.leftTab = v.flag.src[0].양식ID;
+    state.rightTab = v.flag.out.doc;
+  }
+  render();
+  if (scroll) {
+    for (const pane of ['#left', '#right']) {
+      document.querySelector(`${pane} .hl`)?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }
+}
+
+// ── 10. 그리기
+let ctx = { hl: new Set(), now: 0 };
+function cls(id, extra = '') {
+  const c = [extra];
+  if (ctx.hl.has(id)) c.push('hl');
+  if (state.changed[id] > ctx.now) c.push('chg');
+  return c.filter(Boolean).join(' ');
+}
+const $ = sel => document.querySelector(sel);
+
+function render() {
+  state.view = flagView();
+  const sel = state.view.find(v => v.flag.key === state.selectedKey);
+  ctx = { hl: new Set(), now: Date.now() };
+  if (sel) { sel.flag.src.forEach(s => ctx.hl.add(srcId(s))); ctx.hl.add(outId(sel.flag.out)); }
+  $('#flags').innerHTML = renderFlags(state.view);
+  $('#left').innerHTML = renderLeft();
+  $('#right').innerHTML = renderRight();
+}
+
+function renderFlags(view) {
+  const open = view.filter(v => v.status === '열림').length;
+  let h = `<div class="flags-head"><h2>지적 목록</h2>
+    <span>열린 지적 <b>${open}</b>건 / 처리됨 <b>${view.length - open}</b>건</span>
+    <span class="hint">지적을 누르면 원본 칸과 출력 칸이 함께 강조됩니다.</span></div>`;
+  if (!view.length) return h + '<p class="empty">지적이 없습니다.</p>';
+  h += `<table class="flag-table"><thead><tr><th>등급</th><th>대상</th><th>내용</th><th>원본 위치</th><th>처리</th></tr></thead><tbody>`;
+  for (const v of view) {
+    const f = v.flag, done = v.status === '처리됨', k = esc(f.key);
+    h += `<tr class="flag ${done ? 'done' : ''} ${f.key === state.selectedKey ? 'sel' : ''}" data-act="select" data-key="${k}">
+      <td><span class="grade ${f.grade === '오류' ? 'g-err' : 'g-warn'}">${f.grade}</span></td>
+      <td>${esc(f.title)}</td>
+      <td>${esc(f.msg)}${aiNote(f)}</td>
+      <td>${esc(f.src.map(srcLabel).join(' + ') || '—')}</td>
+      <td>${done
+        ? `<span class="done-tag">처리됨 · ${esc(v.res.action)}</span>`
+        : allowedActions(f).map(a => `<button data-act="edit" data-action="${a}" data-key="${k}">${a}</button>`).join(' ')}</td></tr>`;
+    if (!done && state.editing && state.editing.key === f.key) h += renderEditor(f);
+  }
+  return h + '</tbody></table>';
+}
+
+function aiNote(f) {
+  if (f.kind !== '작성' || !f.src.length) return '';
+  const it = state.extraction.find(x => x.채권ID === f.claim && x.필드 === f.field);
+  if (!it || !it.원본 || it.원본.칸ID === f.src[0].칸ID) return '';
+  return `<span class="ai-note">AI 추출 위치: ${esc(srcLabel(it.원본))}</span>`;
+}
+
+function renderEditor(f) {
+  const a = state.editing.action;
+  const editable = f.kind === '작성' || f.kind === '연회비';
+  let valuePart;
+  if (a === '현행 유지') valuePart = `<span>값은 그대로 둡니다: <b>${esc(fmt(getOut(state.docs, f.out)))}</b></span>`;
+  else if (editable) valuePart = `<label>바꿀 값 <input data-draft="value" value="${esc(state.draft.value)}" size="14"></label>
+    <span class="muted">기본값 = 원본 값</span>`;
+  else valuePart = `<span>재계산 값 <b>${esc(fmt(f.expected))}</b>으로 반영합니다.</span>`;
+  const reasonLabel = a === '현행 유지' ? '사유 (필수)' : '사유 (원본과 다른 값이면 필수)';
+  return `<tr class="editor" data-act="noop"><td colspan="5"><div class="editor-box">
+    <b>${esc(a)}</b> ${valuePart}
+    <label>${reasonLabel} <input data-draft="reason" value="${esc(state.draft.reason)}" size="28"></label>
+    <button class="primary" data-act="confirm">확인</button>
+    <button data-act="cancel">취소</button>
+    <span class="err">${esc(state.editError)}</span>
+  </div></td></tr>`;
+}
+
+function tabs(side, items, current, label) {
+  return `<div class="pane-head"><span class="label">${label}</span>${items.map(([id, name]) =>
+    `<button class="tab ${id === current ? 'on' : ''}" data-act="${side}" data-tab="${id}">${name}</button>`).join('')}</div>`;
+}
+
+function renderLeft() {
+  const body = { card: renderCard, bank: renderBank, health: renderHealth }[state.leftTab]();
+  return tabs('ltab', [['card', '한빛카드'], ['bank', '새봄은행'], ['health', '건강보험료']], state.leftTab, '원본')
+    + `<div class="pane-body">${body}</div>`;
+}
+
+// 원본 칸: 칸ID로 강조할 수 있게 id를 붙입니다.
+function sc(formId, cellId, tag = 'td', extra = '') {
+  const id = `s-${formId}-${cellId}`;
+  return `<${tag} id="${id}" class="${cls(id, extra)}">${esc(fmtSrc(FORMS[formId].cells[cellId]))}</${tag}>`;
+}
+const VIRTUAL = '<p class="virtual">가상 문서입니다. 실존 기관·금융사와 관계없습니다.</p>';
+
+function renderCard() {
+  const F = 'card', c = FORMS.card.cells;
+  const row = r => `<tr>${sc(F, `${r}_kind`)}${sc(F, `${r}_date`)}${sc(F, `${r}_principal`, 'td', 'num')}
+    ${sc(F, `${r}_interest`, 'td', 'num')}${sc(F, `${r}_fee`, 'td', 'num')}${sc(F, `${r}_total`, 'td', 'num')}</tr>`;
+  return `<div class="form card"><div class="mock">목업</div>
+    ${sc(F, 'title', 'h3')}
+    <div class="meta"><div>발급사 ${sc(F, 'issuer', 'span')}</div><div>채무자 ${esc(c.debtor)}</div><div>기준일 ${sc(F, 'base', 'span')}</div></div>
+    <table><thead><tr><th>구분</th><th>이용(대출)일</th><th class="num">원금</th><th class="num">이자</th><th class="num">연회비</th><th class="num">합계</th></tr></thead>
+    <tbody>${row('r1')}${row('r2')}
+    <tr class="sum"><td colspan="5">합계</td>${sc(F, 'sum_total', 'td', 'num')}</tr></tbody></table>
+    ${VIRTUAL}</div>`;
+}
+
+function renderBank() {
+  const F = 'bank', c = FORMS.bank.cells;
+  const row = r => `<tr><td>${esc(c[`${r}_acct`])}</td>${sc(F, `${r}_product`)}${sc(F, `${r}_open`)}${sc(F, `${r}_maturity`)}
+    ${sc(F, `${r}_principal`, 'td', 'num')}${sc(F, `${r}_interest`, 'td', 'num')}</tr>`;
+  return `<div class="form bank"><div class="mock">목업</div>
+    ${sc(F, 'title', 'h3')}
+    <table class="kv"><tr><th>은행명</th>${sc(F, 'issuer')}</tr><tr><th>고객명</th><td>${esc(c.debtor)}</td></tr><tr><th>기준일</th>${sc(F, 'base')}</tr></table>
+    <table class="grid"><thead><tr><th>계좌번호</th><th>상품명</th><th>신규일자</th><th>만기일</th><th class="num">대출잔액</th><th class="num">미수이자</th></tr></thead>
+    <tbody>${row('r1')}${row('r2')}
+    <tr class="sum"><td colspan="4">합계</td><td class="num">${fmtSrc(c.sum_principal)}</td><td class="num">${fmtSrc(c.sum_interest)}</td></tr></tbody></table>
+    <p>위와 같이 부채 잔액을 증명합니다.</p>${VIRTUAL}</div>`;
+}
+
+function renderHealth() {
+  const F = 'health', c = FORMS.health.cells;
+  return `<div class="form health"><div class="mock">목업</div>
+    ${sc(F, 'issuer', 'span', 'org')}
+    ${sc(F, 'title', 'h3')}
+    <div class="boxes">
+      <div class="box"><b>납부자</b>${esc(c.debtor)}</div>
+      <div class="box"><b>기준일</b>${sc(F, 'base', 'span')}</div>
+      <div class="box"><b>구분</b>${sc(F, 'kind', 'span')}</div>
+      <div class="box"><b>체납기간</b>${esc(c.period)}</div>
+    </div>
+    <table><thead><tr><th class="num">보험료</th><th class="num">연체금</th><th class="num">미납액 계</th></tr></thead>
+    <tbody><tr>${sc(F, 'premium', 'td', 'num')}${sc(F, 'late', 'td', 'num')}${sc(F, 'total', 'td', 'num')}</tr></tbody></table>
+    <div class="due">최초 미납분 납부기한: ${sc(F, 'firstDue', 'span')}</div>
+    ${VIRTUAL}</div>`;
+}
+
+function renderRight() {
+  const body = { list: renderList, plan: renderPlan, app: renderApp, history: renderHistory }[state.rightTab]();
+  return tabs('rtab', [['list', '채권자목록'], ['plan', '변제계획'], ['app', '개시신청서'], ['history', '이력']], state.rightTab, '출력')
+    + `<div class="pane-body">${body}</div>`;
+}
+
+// 출력 칸: (문서, 채권ID 또는 합계 구분, 필드) 고정 규칙으로 id를 정합니다.
+function oc(doc, kind, row, col, extra = '') {
+  const id = outId({ doc, row, col });
+  return `<td id="${id}" class="${cls(id, extra)}">${esc(fmt(state.docs[doc][kind][row][col]))}</td>`;
+}
+
+function renderList() {
+  const d = 'list';
+  let h = `<table><thead><tr><th>번호</th><th>채권자명</th><th>채권종류</th><th>발생일</th><th class="num">원금</th><th class="num">이자</th>
+    <th class="num">연회비(참고)<span class="proto">프로토 전용</span></th><th class="num">총 채권액</th><th>구분</th><th>기준일</th></tr></thead><tbody>`;
+  CLAIMS.forEach(({ id }, i) => {
+    h += `<tr><td>${i + 1}</td>${oc(d, 'rows', id, '채권자명')}${oc(d, 'rows', id, '채권종류')}${oc(d, 'rows', id, '발생일')}
+      ${oc(d, 'rows', id, '원금', 'num')}${oc(d, 'rows', id, '이자', 'num')}${oc(d, 'rows', id, '연회비', 'num')}
+      ${oc(d, 'rows', id, '총채권액', 'num')}${oc(d, 'rows', id, '우선권여부')}${oc(d, 'rows', id, '기준일')}</tr>`;
+  });
+  for (const g of GROUPS) {
+    h += `<tr class="sum"><td colspan="4">${g === '총합계' ? '총합계' : `${g} 채권 합계`}</td>
+      ${oc(d, 'sums', g, '원금', 'num')}${oc(d, 'sums', g, '이자', 'num')}<td></td>${oc(d, 'sums', g, '총채권액', 'num')}<td colspan="2"></td></tr>`;
+  }
+  return `<p class="doc-note">총 채권액 = 원금 + 이자. 연회비(참고)는 합계에 더하지 않습니다.</p>${h}</tbody></table>`;
+}
+
+function renderPlan() {
+  const d = 'plan';
+  let h = `<table><thead><tr><th>채권자명</th><th>구분</th><th class="num">채권액</th></tr></thead><tbody>`;
+  for (const { id } of CLAIMS) h += `<tr>${oc(d, 'rows', id, '채권자명')}${oc(d, 'rows', id, '구분')}${oc(d, 'rows', id, '채권액', 'num')}</tr>`;
+  for (const g of GROUPS) h += `<tr class="sum"><td colspan="2">${g === '총합계' ? '총합계' : `${g} 채권 합계`}</td>${oc(d, 'sums', g, '채권액', 'num')}</tr>`;
+  return `<p class="doc-note">변제계획 · 채권액</p>${h}</tbody></table>`;
+}
+
+function renderApp() {
+  const d = 'app';
+  const label = { 일반: '일반 채권 총액', 우선권: '우선권 채권 총액', 총합계: '채권 총액' };
+  let h = `<table><tbody>`;
+  for (const g of GROUPS) h += `<tr><th>${label[g]}</th>${oc(d, 'sums', g, '채권액', 'num')}</tr>`;
+  return `<p class="doc-note">개시신청서 · 채권액 관련 칸만 보여 줍니다.</p>${h}</tbody></table>`;
+}
+
+function renderHistory() {
+  const all = state.history.list();
+  const keys = [...new Map(all.map(e => [e.필드키, `${e.문서} · ${e.필드}`])).entries()];
+  const rows = all.filter(e => !state.histFilter || e.필드키 === state.histFilter).reverse();
+  let h = `<div class="hist-tools"><label>필드로 보기
+    <select id="histFilter"><option value="">전체</option>${keys.map(([k, l]) =>
+      `<option value="${esc(k)}" ${k === state.histFilter ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
+    <span class="muted">· 이력은 추가만 됩니다.</span></div>`;
+  if (!rows.length) return h + '<p class="muted">아직 처리한 지적이 없습니다.</p>';
+  h += `<table><thead><tr><th>시각</th><th>처리자</th><th>문서·필드</th><th class="num">변경 전</th><th class="num">변경 후</th>
+    <th>원본 위치</th><th>구분</th><th>사유</th><th>반영 문서</th></tr></thead><tbody>`;
+  for (const e of rows) {
+    h += `<tr><td>${esc(e.시각)}</td><td>${esc(e.처리자)}</td><td>${esc(e.문서)} · ${esc(e.필드)}</td>
+      <td class="num">${esc(fmt(e.변경전))}</td><td class="num">${esc(fmt(e.변경후))}</td>
+      <td>${esc(e.원본위치.join(' + ') || '—')}</td><td>${esc(e.구분)}</td><td>${esc(e.사유 || '—')}</td><td>${esc(e.반영문서)}</td></tr>`;
+  }
+  return h + '</tbody></table>';
+}
+
+function renderTests() {
+  const results = runTests();
+  const pass = results.filter(r => r.ok).length;
+  const el = $('#tests');
+  el.textContent = `검사 테스트 ${pass}/${results.length} 통과`;
+  el.className = pass === results.length ? '' : 'fail';
+  el.title = results.map(r => `${r.ok ? '✓' : '✗'} ${r.name}`).join('\n');
+}
+
+// ── 11. 이벤트
+function init() {
+  state = initialState();
+  reverify();
+  render();
+  renderTests();
+
+  document.addEventListener('click', e => {
+    const el = e.target.closest('[data-act]');
+    if (!el) return;
+    const { act, key } = el.dataset;
+    if (act === 'select') return selectFlag(key, true);
+    if (act === 'edit') {
+      const f = state.view.find(v => v.flag.key === key).flag;
+      state.editing = { key, action: el.dataset.action };
+      state.draft = { value: AMOUNT_COLS.has(f.out.col) ? fmt(f.expected) : String(fmt(f.expected)), reason: '' };
+      state.editError = '';
+      return selectFlag(key, true);
+    }
+    if (act === 'confirm') return confirmEdit();
+    if (act === 'cancel') { state.editing = null; state.editError = ''; return render(); }
+    if (act === 'ltab') { state.leftTab = el.dataset.tab; return render(); }
+    if (act === 'rtab') { state.rightTab = el.dataset.tab; return render(); }
+    if (act === 'reset') { state = initialState(state.processor); reverify(); return render(); }
+  });
+  document.addEventListener('input', e => {
+    const k = e.target.dataset && e.target.dataset.draft;
+    if (k) state.draft[k] = e.target.value;
+  });
+  document.addEventListener('change', e => {
+    if (e.target.id === 'processor') state.processor = e.target.value;
+    if (e.target.id === 'histFilter') { state.histFilter = e.target.value; render(); }
+  });
+}
+
+if (typeof document !== 'undefined') init();
+</script>
+</body>
+</html>
