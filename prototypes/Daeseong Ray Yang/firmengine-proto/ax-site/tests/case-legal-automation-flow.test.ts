@@ -67,7 +67,7 @@ test("AI source revision race is superseded and never persists a current legal h
   });
   const result=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
   assert.equal(result.results[0].status,"superseded");
-  assert.equal((await readCaseLegalAutomation(h.db,input.caseId)).status,"waiting_for_calculation");
+  assert.equal((await readCaseLegalAutomation(h.db,input.caseId)).status,"stale");
   assert.equal((h.sqlite.prepare("SELECT COUNT(*) AS n FROM case_legal_review_heads").get() as {n:number}).n,0);
  }finally{h.close();}
 });
