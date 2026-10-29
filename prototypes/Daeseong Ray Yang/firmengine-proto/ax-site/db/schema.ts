@@ -217,6 +217,15 @@ export const caseRequirementFieldPlans = sqliteTable("case_requirement_field_pla
   index("case_requirement_field_plans_case_idx").on(t.caseId,t.consultationRunId,t.documentTypeId),
 ]);
 
+
+export const caseDocumentWorkEvents=sqliteTable("case_document_work_events",{
+  id:integer("id").primaryKey({autoIncrement:true}).notNull(),
+  caseId:text("case_id").notNull().references(()=>cases.id),
+  eventKind:text("event_kind").notNull(),sourceId:text("source_id").notNull(),
+  beforeState:text("before_state"),afterState:text("after_state"),
+  occurredAt:text("occurred_at").notNull(),
+},t=>[index("case_document_work_events_case_cursor_idx").on(t.caseId,t.id)]);
+
 // Immutable source extraction schemas and row observations. These tables do not
 // grant fact verification, legal recognition, or court approval.
 export const extractionSchemaVersions = sqliteTable("extraction_schema_versions", {
