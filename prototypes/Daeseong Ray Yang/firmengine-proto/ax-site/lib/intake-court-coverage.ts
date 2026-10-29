@@ -46,9 +46,9 @@ export const INTAKE_COVERAGE_RULES:IntakeRule[] = [
   need("property_ownership_search","본인 명의 재산 누락 점검을 위한 권장 조회입니다. 해당 관할의 별도 지침과 공동이용 인정여부를 확인합니다.",period.property),
   need("local_tax_assessment","재산 보유·과세 확인용 권장 자료이며 체납 여부를 증명하는 서류와 다릅니다.",period.tax)
  ],{sourceIds:["SRC-SHARED-PROPERTY-SEARCH","SRC-SHARED-GOV-LOCAL-TAX",...office],workflowIds:["WF-03"]}),
- rule(60,"일반 소득이력 확인용 연금 가입내역","income",[
+ rule(60,"관할 확인 전 국민연금 가입이력(권장)","case",[
   need("pension_contribution_statement","고용·소득이력 추가 확인용 권장자료입니다. 국민연금 미가입은 소득 없음의 증명이 아닙니다.",period.pension)
- ],{any:["income.wage","income.business","income.freelance"],sourceIds:["SRC-SHARED-NPS-CONTRIBUTION",...office],workflowIds:["WF-04"]}),
+ ],{sourceIds:["SRC-SHARED-NPS-CONTRIBUTION",...office],workflowIds:["WF-04"]}),
  rule(61,"보유 예금의 계좌 거래흐름 확인","asset",[
   need("bank_statement","예금 잔액자료와 입출금내역은 다릅니다. 서울·부산 실무준칙 제402호 제3조의 직전 1년은 법원이 추가로 명할 수 있는 기간이며 전국 공통 제출의무가 아닙니다.","대상 본인 계좌·필요한 기간을 특정; 법원의 개별 명령이 있으면 명령문 적용")
  ],{all:["asset.deposit"],sourceIds:[...court,...office],workflowIds:["WF-03"],questions:["어느 계좌의 어떤 거래기간이 실제 필요한지 확인해 주세요."]}),
