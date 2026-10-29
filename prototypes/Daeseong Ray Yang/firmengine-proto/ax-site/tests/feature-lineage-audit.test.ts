@@ -37,3 +37,15 @@ test("only expressly reviewed case-required canonical IDs become missing-evidenc
  assert.ok(a.fields.find(f=>f.canonicalFieldId==="debt_certificate::principal_balance")?.blockerCandidates.includes("REQUIRED_CANONICAL_FIELD_NOT_OBSERVED"));
  assert.equal(a.fields.find(f=>f.canonicalFieldId==="debt_certificate::original_principal")?.blockerCandidates.length,0);
 });
+
+test("shared extension IDs repeated across distinct OCR families are merged, not rejected",()=>{
+ const result=buildFeatureLineageAudit(INTAKE_CATALOG_SEED,sha,{limit:1000});
+ const row=result.fields.find(f=>f.canonicalFieldId==="income_source_inventory::income_source_id");
+ assert.ok(row);
+ assert.ok(row.familyIds.includes("employment_relationship"));
+ assert.ok(row.familyIds.includes("current_nonwage_income"));
+ assert.ok(row.familyIds.includes("business_current_income_summary"));
+ assert.equal(new Set(row.familyIds).size,row.familyIds.length);
+ assert.equal(result.summary.canonicalFieldIds,693);
+ assert.equal(result.summary.sourceSlots,1808);
+});

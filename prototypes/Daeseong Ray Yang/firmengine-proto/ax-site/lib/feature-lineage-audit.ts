@@ -70,27 +70,44 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
   for(const f of contract.fields){
    const id=f.global_field_id,source=bindCanonicalSourceField({key:f.local_id,canonicalFieldId:id},contract);
    if(source.canonicalFieldId!==id)throw new Error("FEATURE_LINEAGE_ID_MISMATCH:"+id);
-   const existing=index.get(id);
-   if(existing){
-    if(existing.familyId!==route.familyId||existing.localKey!==f.local_id||existing.datatype!==f.datatype)throw new Error("FEATURE_LINEAGE_ID_COLLISION:"+id);
-    existing.documentTypeIds.push(doc.documentTypeId);
-    existing.sourceSlots++;
-    continue;
-   }
    const typed=categories.flatMap(category=>{
     const key=canonicalProjectionKey(contract,source,category);
-    return key?[{recordCategory:category,key,caseFactKey:category+"."+key,proof:"explicit_converter_declared"}]:[];
+    return key?[{recordCategory:category,key,caseFactKey:category+"."+key,sourceFamilyId:route.familyId,proof:"explicit_converter_declared"}]:[];
    });
    const workflow=WORKFLOW_RULES.filter(w=>w.documents.some(d=>d.type===doc.documentTypeId))
     .map(w=>({id:w.id,ruleIds:[...w.ruleIds],link:"document_type_route_only_not_execution_proof" as const}));
    const linkedRuleIds=new Set(workflow.flatMap(w=>w.ruleIds));
    const risks=RISK_CATALOG.filter(r=>r.current_rule_ids?.some(id=>linkedRuleIds.has(id))).map(r=>({id:r.id,kind:"shared_rule_catalog_candidate" as CandidateStatus}));
    const scope=reviewScope(route.familyId),forms=formCandidates(id,scope.forms),calc=calculatedFrom(typed);
+   const existing=index.get(id);
+   if(existing){
+    // The same document extension ID can validly be declared under several
+    // source families. Keep each family's routing identity; reject semantic collisions.
+    if(existing.localKey!==f.local_id||existing.datatype!==f.datatype||existing.unit!==f.canonical_unit)
+      throw new Error("FEATURE_LINEAGE_ID_COLLISION:"+id);
+    existing.familyIds=distinct([...existing.familyIds,route.familyId]);
+    existing.documentTypeIds.push(doc.documentTypeId);
+    existing.sourceSlots++;
+    for(const item of typed)if(!existing.typedProjections.some((x:any)=>
+      x.recordCategory===item.recordCategory&&x.caseFactKey===item.caseFactKey&&x.sourceFamilyId===item.sourceFamilyId))
+      existing.typedProjections.push(item);
+    existing.calculations=distinct([...existing.calculations.map((x:any)=>x.id),...calc]).map(id=>({id,status:"depends_on_verified_case_objects_not_raw_ocr"}));
+    for(const item of forms)if(!existing.forms.some((x:any)=>x.code===item.code&&x.token===item.token))existing.forms.push(item);
+    existing.legal.referenceReviewCandidates=distinct([...existing.legal.referenceReviewCandidates,...scope.laws]);
+    for(const item of workflow)if(!existing.legal.workflowRouteCandidates.some((x:any)=>x.id===item.id))existing.legal.workflowRouteCandidates.push(item);
+    for(const item of risks)if(!existing.legal.riskCheckCandidates.some((x:any)=>x.id===item.id))existing.legal.riskCheckCandidates.push(item);
+    existing.sourceRequirements.periodIdentity ||= hasPeriod(f.temporal_role,route.familyId);
+    existing.gaps=[...(existing.typedProjections.length?[]:["CASE_TYPED_CONSUMER_NOT_DECLARED"]),
+      ...(existing.forms.some((x:any)=>x.token)?[]:["OFFICIAL_FORM_TOKEN_NOT_EXPLICITLY_LINKED"]),
+      ...(existing.legal.riskCheckCandidates.length?[]:["LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED"]),
+      "OFFICIAL_EFILING_REQUIREDNESS_NOT_VERIFIED"];
+    continue;
+   }
    const gaps=[...(typed.length?[]:["CASE_TYPED_CONSUMER_NOT_DECLARED"]),
      ...(forms.some(x=>x.token)?[]:["OFFICIAL_FORM_TOKEN_NOT_EXPLICITLY_LINKED"]),
      ...(risks.length?[]:["LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED"]),
      "OFFICIAL_EFILING_REQUIREDNESS_NOT_VERIFIED"];
-   index.set(id,{canonicalFieldId:id,familyId:route.familyId,localKey:f.local_id,label:f.label,datatype:f.datatype,
+   index.set(id,{canonicalFieldId:id,familyId:route.familyId,familyIds:[route.familyId],localKey:f.local_id,label:f.label,datatype:f.datatype,
     unit:f.canonical_unit,temporalRole:f.temporal_role,subjectRole:f.subject_entity_role,
     documentTypeIds:[doc.documentTypeId],sourceSlots:1,
     database:{recordTable:"extraction_records",featureTable:"extracted_features",missingTable:"extraction_field_coverage",
@@ -108,7 +125,7 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
  }
  const all=[...index.values()].map((x:any)=>({...x,documentTypeIds:distinct(x.documentTypeIds)}))
   .sort((a:any,b:any)=>a.canonicalFieldId.localeCompare(b.canonicalFieldId));
- const selection=all.filter((x:any)=>(!input.canonicalFieldId||x.canonicalFieldId===input.canonicalFieldId)&&(!input.familyId||x.familyId===input.familyId));
+ const selection=all.filter((x:any)=>(!input.canonicalFieldId||x.canonicalFieldId===input.canonicalFieldId)&&(!input.familyId||x.familyIds.includes(input.familyId)));
  const limit=input.limit??100,offset=input.offset??0;
  if(!Number.isSafeInteger(limit)||limit<1||limit>1000||!Number.isSafeInteger(offset)||offset<0)throw new Error("INVALID_FEATURE_LINEAGE_PAGE");
  const page=selection.slice(offset,offset+limit),unmapped=all.filter((x:any)=>x.typedProjections.length===0);
