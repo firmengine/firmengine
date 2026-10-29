@@ -6,6 +6,7 @@ import type { CaseData } from "./domain.ts";
 import { listCaseDocumentRequirements } from "./case-document-requirement-store.ts";
 import { getCaseDataUpdateState } from "./case-data-watch.ts";
 import { parseDocumentRoute } from "./shared-document-catalog.ts";
+import { buildCaseWorkflowView } from "./case-workflow-view.ts";
 
 export const CASE_REQUIREMENT_MONITOR_VERSION="case-requirement-monitor/1" as const;
 type Instance={documentId:string;page:number;documentTypeId:string|null};
@@ -26,13 +27,16 @@ export async function listCaseDocumentWorkEvents(database:D1Database,input:{case
 
 export async function caseRequirementMonitor(database:D1Database,caseData:CaseData){
   const caseId=caseData.context.id;
-  const [checklist,instances,heads,jobs,changes,workCursor]=await Promise.all([
+  const [checklist,instances,heads,jobs,changes,workCursor,activeIntake,catalogHead,policy]=await Promise.all([
     listCaseDocumentRequirements(database,caseId),
     database.prepare("SELECT source_document_id AS documentId,page,shared_document_type_id AS documentTypeId FROM document_instances WHERE case_id=?").bind(caseId).all<Instance>(),
     database.prepare("SELECT source_document_id AS documentId,page FROM case_extraction_heads WHERE case_id=?").bind(caseId).all<Head>(),
     database.prepare("SELECT document_id AS documentId,page,status,stage,document_type AS documentType FROM page_jobs WHERE case_id=?").bind(caseId).all<Job>(),
     getCaseDataUpdateState(database,{caseId}),
-    database.prepare("SELECT COALESCE(MAX(id),0) AS id FROM case_document_work_events WHERE case_id=?").bind(caseId).first<{id:number}>()
+    database.prepare("SELECT COALESCE(MAX(id),0) AS id FROM case_document_work_events WHERE case_id=?").bind(caseId).first<{id:number}>(),
+    database.prepare("SELECT h.active_run_id AS runId,r.catalog_version AS catalogVersion FROM consultation_heads h LEFT JOIN consultation_runs r ON r.id=h.active_run_id AND r.case_id=h.case_id AND r.status='complete' WHERE h.case_id=?").bind(caseId).first<{runId:string|null;catalogVersion:number|null}>(),
+    database.prepare("SELECT version FROM intake_catalog_head WHERE id='default'").first<{version:number}>(),
+    database.prepare("SELECT (SELECT COUNT(*) FROM legal_monitor_alerts WHERE acknowledged_at IS NULL) AS pending,MAX(created_at) AS latest FROM legal_monitor_alerts").first<{pending:number;latest:string|null}>()
   ]);
   const activeDocs=new Set(caseData.documents.filter(doc=>doc.status==="active").map(doc=>doc.id));
   const pageKey=(id:string,page:number)=>id+":"+page;
@@ -65,14 +69,52 @@ export async function caseRequirementMonitor(database:D1Database,caseData:CaseDa
         subjectAndPeriodVerified:false,requirementFulfilledInferred:false}
     };
   });
+  // The consultation rows use intake requirement IDs; adopted workflow rows use
+  // stable workflow requirement IDs. Never join them by ID or pretend that a
+  // document-type match proves that the same person's duty is satisfied.
+  // Reconcile substitution from CURRENT facts and court/consultation policies,
+  // rather than trusting a stale materialized watcher row.
+  let projected:Awaited<ReturnType<typeof buildCaseWorkflowView>>|null=null;
+  let projectionError:string|null=null;
+  try{
+    const pageTypes=[...perPageTypes].map(([key,ids])=>({
+      documentId:key.slice(0,key.lastIndexOf(":")),page:Number(key.slice(key.lastIndexOf(":")+1)),
+      documentTypeId:ids.size===1?[...ids][0]:null
+    }));
+    projected=await buildCaseWorkflowView(caseData,{
+      catalogVersion:catalogHead?.version??null,
+      pendingCourtPolicyChange:!!policy?.pending,
+      latestCourtPolicyAlertAt:policy?.latest??null,
+      activeIntakeRunId:activeIntake?.runId??null,
+      activeIntakeCatalogVersion:activeIntake?.catalogVersion??null,pageTypes
+    });
+  }catch(error){
+    projectionError=error instanceof Error?error.message:"CASE_REQUEST_PROJECTION_FAILED";
+  }
+  const projectedById=new Map((projected?.requirementStates??[]).map(x=>[x.requirementId,x]));
+  const workflowRequests=(caseData.workflowState?.requirements??[]).map(req=>{
+    const state=projectedById.get(req.requirementId);
+    const activeByPolicy=state?.substitution?.activeRequest!==false;
+    const activeRequest=!req.retired&&!req.waivedByReview&&!req.notApplicableConfirmed&&activeByPolicy;
+    return {
+      requirementId:req.requirementId,intakeRunId:req.intakeRunId,
+      documentTypeId:req.intakeDocumentTypeId,requiredPeriod:req.requiredPeriod,
+      activeRequest,
+      substitutionStatus:state?.substitution?.status??"review_required",
+      substitutionReasons:state?.substitution?.reasonCodes??["LIVE_RECHECK_UNAVAILABLE"],
+      requirementStatus:state?.requirementStatus??"legal_review",
+      sourceProofFields:[...(req.sourceEvidenceFields??[])],
+      statusSource:state?"live_source_and_court_projection":"fail_closed_original_required"
+    };
+  });
   const unclassifiedJobs=jobs.results.filter(job=>activeDocs.has(job.documentId)&&!parseDocumentRoute(job.documentType)).length;
   const workflowAdopted=!!checklist.activeRunId&&(caseData.workflowState?.requirements??[]).some(r=>r.intakeRunId===checklist.activeRunId);
   return {
     schemaVersion:CASE_REQUIREMENT_MONITOR_VERSION,caseId,caseRevision:caseData.context.revision,
     activeRunId:checklist.activeRunId,consultationChecklistMaterialized:!!checklist.activeRunId,
-    workflowAdopted,requirements,unclassifiedPageJobs:unclassifiedJobs,
+    workflowAdopted,requirements,workflowRequests,workflowProjectionStatus:projectionError?"unavailable_fail_closed":"current",workflowProjectionError:projectionError,activeWorkflowRequestCount:workflowRequests.filter(row=>row.activeRequest).length,unclassifiedPageJobs:unclassifiedJobs,
     eventCursor:{dataVersion:changes.dataVersion,lastEventId:changes.lastEventId,isQuiet:changes.isQuiet,documentWorkEventId:workCursor?.id??0},
     legalSufficiencyInferred:false,autoApproval:false,
-    notice:"OCR/서류종류 관측만 표시합니다. 대상자·기간·필수값·갈음·법원 제출 적합성은 별도 검토 대상입니다."
+    notice:"상담 원본 요청과 업무 요청은 서로 다른 ID입니다. 업무 요청의 갈음 상태는 현재 자료·법원 기준으로 재검증하며, 매핑 불명확 시 원본 요청을 유지합니다. OCR 분류만으로 서류 제출이나 법률상 충족이 인정되지 않습니다."
   };
 }
