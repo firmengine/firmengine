@@ -256,7 +256,18 @@ export const extractedFeatures = sqliteTable("extracted_features", {
   canonicalFieldId:text("canonical_field_id"),fieldKey:text("field_key").notNull(),label:text("label").notNull(),rawValueJson:text("raw_value_json").notNull(),unit:text("unit"),
   sourceState:text("source_state"),confidence:text("confidence").notNull(),quote:text("quote"),bboxJson:text("bbox_json").notNull(),rawFieldJson:text("raw_field_json").notNull(),
   bindingStatus:text("binding_status").notNull(),validationStatus:text("validation_status").notNull(),validationJson:text("validation_json").notNull(),
+  projectionKey:text("projection_key"),bindingVersion:text("binding_version").notNull().default("legacy"),
 },t=>[unique("extracted_features_record_ordinal_unique").on(t.recordId,t.ordinal),index("extracted_features_canonical_idx").on(t.schemaId,t.canonicalFieldId)]);
+// Page-level expected-field coverage, without fabricated observed-value rows.
+export const extractionFieldCoverage = sqliteTable("extraction_field_coverage", {
+  runId:text("run_id").notNull().references(()=>extractionRuns.id),
+  schemaId:text("schema_id").notNull().references(()=>extractionSchemaVersions.id),
+  canonicalFieldId:text("canonical_field_id").notNull(),observationStatus:text("observation_status").notNull(),
+  observedCount:integer("observed_count").notNull(),reviewCount:integer("review_count").notNull(),
+  sourceStateCountsJson:text("source_state_counts_json").notNull(),createdAt:text("created_at").notNull(),
+},t=>[primaryKey({columns:[t.runId,t.canonicalFieldId]}),
+  foreignKey({columns:[t.schemaId,t.canonicalFieldId],foreignColumns:[extractionSchemaFields.schemaId,extractionSchemaFields.canonicalFieldId]}),
+  index("extraction_field_coverage_status_idx").on(t.schemaId,t.observationStatus)]);
 export const caseExtractionHeads = sqliteTable("case_extraction_heads", {
   caseId:text("case_id").notNull(),sourceDocumentId:text("source_document_id").notNull(),page:integer("page").notNull(),runId:text("run_id").notNull(),
   caseRevision:integer("case_revision").notNull(),updatedAt:text("updated_at").notNull(),
