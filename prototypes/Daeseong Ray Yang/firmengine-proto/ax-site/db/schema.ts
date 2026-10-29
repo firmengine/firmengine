@@ -299,6 +299,25 @@ export const caseCalculationHeads = sqliteTable("case_calculation_heads", {
   caseId:text("case_id").primaryKey().notNull(),runId:text("run_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
   inputSha256:text("input_sha256").notNull(),updatedAt:text("updated_at").notNull(),
 });
+export const caseLegalAutomationJobs=sqliteTable("case_legal_automation_jobs",{
+ id:text("id").primaryKey(),caseId:text("case_id").notNull().references(()=>cases.id),
+ dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
+ calculationRunId:text("calculation_run_id").notNull().references(()=>caseCalculationRuns.id),
+ inputSha256:text("input_sha256").notNull(),referenceSha256:text("reference_sha256").notNull(),
+ status:text("status").notNull(),attempts:integer("attempts").notNull().default(0),
+ completedChecks:integer("completed_checks").notNull().default(0),expectedChecks:integer("expected_checks").notNull().default(0),
+ leaseToken:text("lease_token"),leaseUntil:text("lease_until"),nextAttemptAt:text("next_attempt_at"),
+ legalReviewRunId:text("legal_review_run_id").references(()=>caseLegalReviewRuns.id),
+ documentRunId:text("document_run_id").references(()=>caseAutomaticDocumentRuns.id),
+ outcomeJson:text("outcome_json").notNull().default("{}"),lastError:text("last_error"),
+ createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[uniqueIndex("case_legal_automation_version_idx").on(t.caseId,t.dataVersion,t.calculationRunId),
+ index("case_legal_automation_due_idx").on(t.status,t.nextAttemptAt,t.leaseUntil)]);
+export const caseLegalAutomationEvents=sqliteTable("case_legal_automation_events",{
+ id:integer("id").primaryKey({autoIncrement:true}),caseId:text("case_id").notNull().references(()=>cases.id),
+ jobId:text("job_id").notNull().references(()=>caseLegalAutomationJobs.id),dataVersion:integer("data_version").notNull(),
+ eventKind:text("event_kind").notNull(),payloadJson:text("payload_json").notNull(),createdAt:text("created_at").notNull(),
+},t=>[index("case_legal_automation_events_case_idx").on(t.caseId,t.id)]);
 export const caseLegalReviewRuns=sqliteTable("case_legal_review_runs",{
   id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
   calculationRunId:text("calculation_run_id").notNull(),inputSha256:text("input_sha256").notNull(),model:text("model").notNull(),status:text("status").notNull(),

@@ -38,14 +38,15 @@ export interface AutomatedDraftEligibilityInput {
   checks:StoredLegalCheck[];expectedCheckIds?:readonly string[];complete:boolean;
   calculationHeadCurrent:boolean;engineCanGenerateDraft:boolean;
   requiredCalculationFields:readonly {outputName:string;value:unknown;status?:string}[];
-  requiredCalculationOutputNames?:readonly string[];explicitFailures?:readonly string[];
+  requiredCalculationOutputNames?:readonly string[];explicitFailures?:readonly string[];allowHumanReviewPendingForDraft?:boolean;
 }
 /** Draft-only mechanical gate. Passing LawGraph does not change the human final gate. */
 export function automatedDraftEligibility(input:AutomatedDraftEligibilityInput){
   const reasons:string[]=[],expected=expectedIds(input.expectedCheckIds),missing=checkCoverage(input.checks,expected);
   if(!input.complete||missing.length)reasons.push("LEGAL_REVIEW_INCOMPLETE");
   if(input.checks.some(c=>c.status==="fail"))reasons.push("LEGAL_CONDITION_FAILED");
-  if(input.checks.some(c=>!["pass","not_applicable"].includes(c.status)))reasons.push("LEGAL_CONDITION_UNRESOLVED");
+  const allowed=input.allowHumanReviewPendingForDraft?["pass","not_applicable","legal_review"]:["pass","not_applicable"];
+  if(input.checks.some(c=>!allowed.includes(c.status)))reasons.push("LEGAL_CONDITION_UNRESOLVED");
   if(!input.calculationHeadCurrent)reasons.push("CALCULATION_HEAD_STALE");
   if(!input.engineCanGenerateDraft)reasons.push("ENGINE_DRAFT_GATE_BLOCKED");
   const required=input.requiredCalculationOutputNames??AUTOMATIC_DRAFT_REQUIRED_OUTPUTS;
@@ -67,7 +68,7 @@ function rows(db:D1Database,table:string,columns:string[],values:SqlValue[][]){
   return out;
 }
 export async function persistCaseLawgraphReview(db:D1Database,input:PersistCaseLawgraphReviewInput){
-  if(!input.caseId||!Number.isSafeInteger(input.dataVersion)||input.dataVersion<0||!Number.isSafeInteger(input.caseRevision)||input.caseRevision<1||!input.calculationRunId||!/^[a-f0-9]{64}$/i.test(input.inputSha256)||input.model!=="gpt-6.1-terra"||typeof input.summary!=="string"||typeof input.complete!=="boolean")throw fault("INVALID_CASE_LEGAL_REVIEW_INPUT");
+  if(!input.caseId||!Number.isSafeInteger(input.dataVersion)||input.dataVersion<0||!Number.isSafeInteger(input.caseRevision)||input.caseRevision<1||!input.calculationRunId||!/^[a-f0-9]{64}$/i.test(input.inputSha256)||!["gpt-6-luna","gpt-6.1-terra"].includes(input.model)||typeof input.summary!=="string"||typeof input.complete!=="boolean")throw fault("INVALID_CASE_LEGAL_REVIEW_INPUT");
   const expected=expectedIds(input.expectedCheckIds),missing=checkCoverage(input.checks,expected),fields=input.documentFields??[];
   if(input.complete&&missing.length)throw fault("LEGAL_REVIEW_COMPLETE_COVERAGE_REQUIRED");
   if(input.checks.length>500||fields.length>5000)throw fault("LEGAL_REVIEW_ROW_COUNT_LIMIT");
