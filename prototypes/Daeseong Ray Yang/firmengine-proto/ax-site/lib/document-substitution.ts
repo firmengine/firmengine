@@ -169,9 +169,10 @@ export function auditSubstitutionCatalog(catalog:IntakeCatalog){
   const entries=catalog.documents.map(document=>{
     const demands=catalog.rules.filter(r=>r.enabled).flatMap(r=>r.documents.filter(n=>n.documentTypeId===document.id));
     const candidates=uniq(demands.flatMap(n=>n.alternatives)).filter(id=>byId.has(id));
-    if(!demands.length)uncovered.push(document.id);
-    return {documentTypeId:document.id,fields:[...document.fields],demandRuleCount:demands.length,alternatives:candidates,
-      policy:candidates.length?"review_required" as const:"original_required" as const};
+    const alternativeIn=catalog.rules.filter(rule=>rule.enabled).flatMap(rule=>rule.documents.filter(n=>n.alternatives.includes(document.id)));
+    if(!demands.length&&!alternativeIn.length)uncovered.push(document.id);
+    return {documentTypeId:document.id,fields:[...document.fields],demandRuleCount:demands.length,alternativeUseCount:alternativeIn.length,alternatives:candidates,
+      policy:!demands.length&&alternativeIn.length?"alternative_only" as const:candidates.length?"review_required" as const:"original_required" as const};
   });
   return {documentCount:entries.length,evaluatedCount:entries.length,orphanedRequestTypes:uncovered,entries};
 }
