@@ -2,14 +2,15 @@
 import type { CaseRequirement, SubstitutionProof, SubstitutionReview } from "./case-requirements.ts";
 import type { Fact } from "./domain.ts";
 import type { IntakeCatalog } from "./intake-types.ts";
+import { substitutionFactFingerprint } from "./substitution-fingerprint.ts";
 const check=(condition:boolean,code:string)=>{if(!condition)throw new Error("SUBSTITUTION_"+code);};
 const record=(value:unknown):value is Record<string,unknown>=>!!value&&typeof value==="object"&&!Array.isArray(value);
 const date=(value:unknown):value is string=>typeof value==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value+"T00:00:00Z"))&&new Date(value+"T00:00:00Z").toISOString().slice(0,10)===value;
 const unique=(ids:string[])=>new Set(ids).size===ids.length;
-export function approveDocumentSubstitution(input:{
+export async function approveDocumentSubstitution(input:{
  requirement:CaseRequirement;proposal:unknown;catalog:IntakeCatalog;
  facts:readonly Fact[];courtId:string;actor:string;at:string;reason:string;basisRefs:readonly string[];
-}):SubstitutionReview {
+}):Promise<SubstitutionReview> {
  const {requirement,proposal,catalog}=input;
  check(record(proposal),"INVALID_PROPOSAL");
  if(!record(proposal))throw new Error("SUBSTITUTION_INVALID_PROPOSAL");
@@ -49,9 +50,17 @@ export function approveDocumentSubstitution(input:{
  check(typeof proposal.employerSigned==="boolean","INVALID_SIGNED_STATUS");
  check(input.actor.trim().length>0&&input.reason.trim().length>0&&input.basisRefs.length>0&&input.basisRefs.every(x=>typeof x==="string"&&x.trim().length>0),"MISSING_REVIEW_BASIS");
  check(typeof input.courtId==="string"&&input.courtId.trim().length>0,"UNKNOWN_COURT");
+ const byId=new Map(input.facts.map(f=>[f.id,f]));
+ const proofFactIds=[...new Set(proofs.flatMap(p=>p.factIds))];
+ const proofFingerprints=[] as {factId:string;sha256:string}[];
+ for(const factId of proofFactIds){
+  const fact=byId.get(factId);
+  check(!!fact,"PROOF_FACT_MISSING");
+  proofFingerprints.push({factId,sha256:await substitutionFactFingerprint(fact!)});
+ }
  return {
   originalDocumentTypeId:requirement.intakeDocumentTypeId,alternativeDocumentTypeIds:ids,
-  proofs,periodStart:proposal.periodStart as string,periodEnd:proposal.periodEnd as string,
+  proofs,proofFingerprints,periodStart:proposal.periodStart as string,periodEnd:proposal.periodEnd as string,
   courtId:input.courtId,catalogVersion:catalog.version,exceptionReason:(proposal.exceptionReason as string).trim(),
   employerSigned:proposal.employerSigned as boolean,reviewer:input.actor,reviewedAt:input.at,
   reason:input.reason,basisRefs:[...new Set(input.basisRefs)]
