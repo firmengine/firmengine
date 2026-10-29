@@ -79,7 +79,7 @@ export async function executeCaseCommand(caseId:string,raw:unknown,audit?:{legac
   if(command.commandType==="intake.adopt"){
     const [view,catalog]=await Promise.all([getConsultationView(caseId),getIntakeCatalog()]);authority.intakeRun=view.run??undefined;authority.intakeCatalog=catalog.catalog;
   }
-  if(command.commandType==="requirement.override"&&command.patch.operation==="review_mapping")authority.intakeCatalog=(await getIntakeCatalog()).catalog;
+  if(command.commandType==="requirement.override"&&["review_mapping","review_substitution"].includes(String(command.patch.operation)))authority.intakeCatalog=(await getIntakeCatalog()).catalog;
   if(command.commandType==="requirement.confirm"){
     const view=await buildCaseWorkflowView(previous),id=String(command.target.requirementId);authority.requirementFingerprint=view.requirementFingerprints[id];authority.requirementComplete=view.requirementStates.some(state=>state.requirementId===id&&state.engineFulfillment==="complete"&&state.requirementStatus==="eligible_for_confirmation");
   }
