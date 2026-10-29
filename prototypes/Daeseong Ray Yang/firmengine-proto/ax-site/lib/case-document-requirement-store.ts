@@ -111,5 +111,8 @@ export async function listCaseDocumentRequirements(database:D1Database,caseId:st
     const {rawJson:_rawJson,rawSha256:_rawSha256,activeRunId:_activeRunId,planJson:_planJson,planSha256:_planSha256,...columns}=row;
     requirements.push({...columns,raw,fieldPlan,fieldPlanStatus:fieldPlan?"materialized":"legacy_unmaterialized"});
   }
-  return {caseId,activeRunId:rows[0]?.activeRunId??null,requirements};
+  // Do not imply "no documents required" while reanalysis is pending.
+  const activeRunId=rows[0]?.activeRunId??null;
+  const previous=activeRunId?null:await database.prepare("SELECT id FROM consultation_runs WHERE case_id=? AND status='complete' ORDER BY updated_at DESC LIMIT 1").bind(caseId).first<{id:string}>();
+  return {caseId,activeRunId,requirements,pendingReanalysis:!activeRunId&&!!previous,previousCompletedRunId:previous?.id??null};
 }
