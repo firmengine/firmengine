@@ -10,6 +10,8 @@ import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
 import { buildCaseWorkflowView } from "../../../../../lib/case-workflow-view.ts";
 import { finalWorkflowBlockers } from "../../../../../lib/document-workflow-gate.ts";
+import { getIntakeCatalog } from "../../../../../lib/intake-store.ts";
+import { buildFeatureLineageAudit,evaluateCaseFieldLineage } from "../../../../../lib/feature-lineage-audit.ts";
 import { commandHash } from "../../../../../lib/case-command-contract.ts";
 import { legalReviewInputFingerprint,currentLegalDispositionOutcome } from "../../../../../lib/legal-review-identity.ts";
 import { snapshotSha256 } from "../../../../../lib/calculator-tools.ts";
@@ -49,7 +51,16 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     const workflowView=await buildCaseWorkflowView(data);
     const activeRequirementIds=new Set(data.workflowState.requirements.filter(requirement=>!requirement.retired).map(requirement=>requirement.requirementId));
     const legalChecks=await currentLegalDispositionStates(data,extras);
-    const blockers=finalWorkflowBlockers({workflowAdopted:true,projectionBlockers:data.workflowState.projectionBlockers,requirements:workflowView.requirementStates.filter(requirement=>activeRequirementIds.has(requirement.requirementId)),legalChecks});
+    // Final review copies must not pass when a staff-approved case requirement
+    // names canonical evidence that is absent, unverified, conflicted or missing its period.
+    // Drafts remain available and unrelated catalog fields are never deemed mandatory.
+    const intakeCatalog=await getIntakeCatalog();
+    const inventory=buildFeatureLineageAudit(intakeCatalog.catalog,intakeCatalog.sha256,{limit:1000});
+    const currentFieldAudit=evaluateCaseFieldLineage(data,inventory.fields,{limit:1000});
+    const featureGaps=currentFieldAudit.fields.flatMap(field=>field.blockerCandidates.map(code=>({canonicalFieldId:field.canonicalFieldId,code})));
+    const blockers=finalWorkflowBlockers({workflowAdopted:true,projectionBlockers:data.workflowState.projectionBlockers,
+      requirements:workflowView.requirementStates.filter(requirement=>activeRequirementIds.has(requirement.requirementId)),
+      legalChecks,featureGaps});
     if(blockers.length)throw new HttpError(422,"필수 증빙 처리, 투영 연결 또는 담당자 검토가 끝나야 최종 문서를 작성할 수 있습니다.");
   }
   let prepared;
