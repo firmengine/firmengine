@@ -38,7 +38,23 @@ export function supplementIntakeCatalog(current:IntakeCatalog,baseline:IntakeCat
     const source=seedSources.get(sourceId);if(!source)throw new Error("INTAKE_UNKNOWN_SOURCE: "+sourceId);
     catalog.sources.push(structuredClone(source));sourceIds.add(sourceId);
   }
-  const changed=addedDocumentIds.length>0||attachedOcrIds.length>0;
+  // A stored DB catalogue is authoritative; append only unknown IDs from
+  // the verified baseline. Existing, human-edited rules/features are untouched.
+  const knownFeatureIds=new Set(catalog.features.map(feature=>feature.id));
+  const addedFeatureIds:string[]=[];
+  for(const feature of seed.features)if(!knownFeatureIds.has(feature.id)){
+    catalog.features.push(structuredClone(feature));knownFeatureIds.add(feature.id);addedFeatureIds.push(feature.id);
+  }
+  const knownRuleIds=new Set(catalog.rules.map(rule=>rule.id));
+  const addedRuleIds:string[]=[];
+  for(const rule of seed.rules)if(!knownRuleIds.has(rule.id)){
+    catalog.rules.push(structuredClone(rule));knownRuleIds.add(rule.id);addedRuleIds.push(rule.id);
+  }
+  for(const rule of catalog.rules)for(const sourceId of rule.sourceIds)if(!sourceIds.has(sourceId)){
+    const source=seedSources.get(sourceId);if(!source)throw new Error("INTAKE_UNKNOWN_SOURCE: "+sourceId);
+    catalog.sources.push(structuredClone(source));sourceIds.add(sourceId);
+  }
+  const changed=addedDocumentIds.length>0||attachedOcrIds.length>0||addedFeatureIds.length>0||addedRuleIds.length>0;
   if(changed)catalog.version=original.version+1;
-  return {catalog:validateIntakeCatalog(catalog),changed,addedDocumentIds,attachedOcrIds};
+  return {catalog:validateIntakeCatalog(catalog),changed,addedDocumentIds,attachedOcrIds,addedFeatureIds,addedRuleIds};
 }
