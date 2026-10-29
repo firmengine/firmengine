@@ -112,19 +112,18 @@ export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersi
       if(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation"){
         engineFulfillment="mapping_required";requirementStatus="legal_review";
       }
-    }else if(requirement.alternatives.length&&accepted.some(match=>{
-      const candidateTypeIds=new Set(requirement.alternatives.map(alt=>alt.id));
-      return match.pageIds.some(pageId=>{
+    }else if(requirement.alternatives.length&&accepted.length){
+      // No confirmed primary identity means an arbitrary or alternate upload
+      // must never inherit a primary-field completion verdict.
+      const everyAcceptedPageIsPrimary=accepted.every(match=>match.pageIds.length>0&&match.pageIds.every(pageId=>{
         const prefix=match.documentId+":";
         if(!pageId.startsWith(prefix))return false;
         const pageNo=Number(pageId.slice(prefix.length));
-        const observed=options.pageTypes?.find(item=>item.documentId===match.documentId&&item.page===pageNo)?.documentTypeId
+        const typed=options.pageTypes?.find(p=>p.documentId===match.documentId&&p.page===pageNo)?.documentTypeId
           ?? /^shared-document:([a-z0-9_]+)@/.exec(data.pages.find(page=>page.documentId===match.documentId&&page.page===pageNo)?.documentType??"")?.[1];
-        return observed?candidateTypeIds.has(observed):false;
-      });
-    })){
-      // An unapproved alternate document must not satisfy a primary request.
-      if(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation"){
+        return typed===requirement.intakeDocumentTypeId;
+      }));
+      if(!everyAcceptedPageIsPrimary&&(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation")){
         engineFulfillment="mapping_required";requirementStatus="legal_review";
       }
     }
