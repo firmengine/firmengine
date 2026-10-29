@@ -162,7 +162,7 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
      if(!auth.intakeCatalog)fail("최신 카탈로그 검토가 필요합니다.",409,"CATALOG_REVIEW_REQUIRED");
      const prior=work.requirements[index]!;
      let approved;
-     try{approved=approveDocumentSubstitution({requirement:prior,proposal:patch.substitutionReview,catalog:auth.intakeCatalog,
+     try{approved=await approveDocumentSubstitution({requirement:prior,proposal:patch.substitutionReview,catalog:auth.intakeCatalog,
        facts:currentFacts(previous),courtId:String(previous.context.courtId??""),actor:auth.actor,at:auth.at,reason:command.reason,basisRefs:basis});}
      catch(error){fail(error instanceof Error?error.message:"갈음 검토 항목을 확인하세요.",422,"SUBSTITUTION_REVIEW_INVALID");}
      work.requirements[index]={...prior,substitutionReview:approved,overrideReason:command.reason,overrideReviewer:auth.actor,overrideBasisRefs:basis};
