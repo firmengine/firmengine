@@ -1,9 +1,5 @@
-<<<<<<< HEAD
-import { isEvidenceModel,type CaseData } from "./domain";
-=======
 import { isSourceReadModel, type CaseData } from "./domain.ts";
 import { summarizePageOcrQuality, type OcrSourceRead, type OcrMissingCue } from "./ocr-quality.ts";
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
 import { hasBoundExtractionProvenance, hasCurrentProjection, parseHistoricalReadProvenance, prepareStoredReadReprojection, requireReprojectionProvenance, type StoredPageJobForReprojection, type StoredReadResult } from "./reprojection";
 import { isValidSourceBBox, validatePageRead } from "./extraction";
 import { samplePageRole } from "./sample-manifest";
@@ -76,11 +72,7 @@ function hasBoundFailedExtractionTask(job: StoredPageJobForReprojection, saved: 
       && task.caseId === job.caseId && task.pageJobId === job.id && task.documentId === job.documentId && task.page === job.page
       && task.sourceSha256 === documentSha256 && pass.sourceHash === documentSha256
       && task.imageSha256 === job.imageHash && pass.baseImageHash === job.imageHash && sentImages.includes(job.imageHash)
-<<<<<<< HEAD
-      && isEvidenceModel(task.model) && pass.model === task.model
-=======
       && isSourceReadModel(task.model) && pass.model === task.model
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
       && typeof task.promptVersion === "string" && !!task.promptVersion.trim() && pass.promptVersion === task.promptVersion
       && typeof pass.promptHash === "string" && /^[a-f0-9]{64}$/i.test(pass.promptHash)
       && typeof pass.verifiedAt === "string" && Number.isFinite(Date.parse(pass.verifiedAt));
