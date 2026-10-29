@@ -15,4 +15,5 @@ sample*.pdf
 /evaluation/*.json
 /evaluation/REPORT.md
 /evaluation/SUBMISSION_REPORT.md
+/evaluation/ORIGINAL_SAMPLE_REPORT.md
 /evaluation/runs/

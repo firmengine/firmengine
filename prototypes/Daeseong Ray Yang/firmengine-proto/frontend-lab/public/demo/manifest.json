@@ -1,0 +1,201 @@
+{
+  "synthetic": true,
+  "source": "scripts/create-demo-pdfs.mjs",
+  "realClientData": false,
+  "generatedAt": "2026-10-29T00:00:00.000Z",
+  "fixtures": {
+    "identity": {
+      "path": "/demo/identity.pdf",
+      "pages": 1,
+      "synthetic": true,
+      "content": [
+        {
+          "title": "Basic consultation record",
+          "rows": [
+            [
+              "Applicant",
+              "Demo Applicant (fictional)"
+            ],
+            [
+              "Reference period",
+              "January - September 2026"
+            ],
+            [
+              "Monthly living cost - illustrative",
+              "KRW 1,800,000"
+            ]
+          ]
+        }
+      ]
+    },
+    "income": {
+      "path": "/demo/income.pdf",
+      "pages": 2,
+      "synthetic": true,
+      "content": [
+        {
+          "title": "Monthly income record",
+          "rows": [
+            [
+              "Applicant",
+              "Demo Applicant (fictional)"
+            ],
+            [
+              "Employer / payer",
+              "Synthetic Demo Employer"
+            ],
+            [
+              "Reference period",
+              "January - September 2026"
+            ],
+            [
+              "Monthly income",
+              "KRW 4,500,000"
+            ]
+          ]
+        },
+        {
+          "title": "Monthly expense record",
+          "rows": [
+            [
+              "Applicant",
+              "Demo Applicant (fictional)"
+            ],
+            [
+              "Reference period",
+              "January - September 2026"
+            ],
+            [
+              "Monthly expenses - illustrative",
+              "KRW 300,000"
+            ],
+            [
+              "Related evidence",
+              "Monthly income record, page 1"
+            ]
+          ]
+        }
+      ]
+    },
+    "debt": {
+      "path": "/demo/debt.pdf",
+      "pages": 1,
+      "synthetic": true,
+      "content": [
+        {
+          "title": "Synthetic debt balance record",
+          "rows": [
+            [
+              "Creditor",
+              "Synthetic Demo Bank"
+            ],
+            [
+              "Contract reference",
+              "DEMO-LOAN-001"
+            ],
+            [
+              "Balance reference date",
+              "2026-10-29"
+            ],
+            [
+              "Debt balance",
+              "KRW 72,000,000"
+            ]
+          ]
+        }
+      ]
+    },
+    "business": {
+      "path": "/demo/business.pdf",
+      "pages": 1,
+      "synthetic": true,
+      "content": [
+        {
+          "title": "Synthetic business operation record",
+          "rows": [
+            [
+              "Business",
+              "Synthetic Demo Business"
+            ],
+            [
+              "Operator",
+              "Demo Applicant (fictional)"
+            ],
+            [
+              "Monthly income",
+              "KRW 4,500,000"
+            ],
+            [
+              "Monthly expenses",
+              "KRW 300,000"
+            ],
+            [
+              "Reference period",
+              "January - September 2026"
+            ]
+          ]
+        }
+      ]
+    },
+    "asset": {
+      "path": "/demo/asset.pdf",
+      "pages": 1,
+      "synthetic": true,
+      "content": [
+        {
+          "title": "Synthetic asset inventory",
+          "rows": [
+            [
+              "Owner",
+              "Demo Applicant (fictional)"
+            ],
+            [
+              "Asset",
+              "Synthetic example deposit"
+            ],
+            [
+              "Reference date",
+              "2026-10-29"
+            ],
+            [
+              "Total assets",
+              "KRW 3,000,000"
+            ]
+          ]
+        }
+      ]
+    },
+    "debt-alt": {
+      "path": "/demo/debt-alt.pdf",
+      "pages": 1,
+      "synthetic": true,
+      "content": [
+        {
+          "title": "Alternative synthetic debt balance",
+          "rows": [
+            [
+              "Creditor",
+              "Synthetic Demo Bank"
+            ],
+            [
+              "Contract reference",
+              "DEMO-LOAN-001"
+            ],
+            [
+              "Balance reference date",
+              "2026-10-29"
+            ],
+            [
+              "Alternative debt balance",
+              "KRW 84,000,000"
+            ],
+            [
+              "Review status",
+              "Conflicts with debt.pdf; source selection required"
+            ]
+          ]
+        }
+      ]
+    }
+  }
+}
