@@ -15,7 +15,7 @@ export interface OcrObservedField {
   value?: string | null; unit?: string | null; quote?: string | null;
   bbox?: number[] | null; confidence?: string;
   sourceState?: string; applicability?: string; applicabilityQuote?: string | null;
-  verificationState?: string;
+  verificationState?: string; subjectId?: string | null; asOf?: string | null; periodStart?: string | null; periodEnd?: string | null;
 }
 export interface OcrSourceRead { documentType?: string; complete?: boolean; records?: Array<{fields?: OcrObservedField[]}>; }
 export interface OcrMissingCue {canonicalFieldId?: string | null; sourceState?: string; quote?: string | null; bbox?: number[] | null;}
@@ -67,15 +67,15 @@ export function summarizePageOcrQuality(read:OcrSourceRead|null|undefined,missin
 
 export type GoldState="present"|"not_applicable"|"not_provided"|"blank"|"unreadable";
 export interface IndependentlyReviewedField {
-  id:string;documentId:string;page:number;sourceSha256:string;canonicalFieldId:string;
+  id:string;documentId:string;page:number;sourceSha256:string;canonicalFieldId:string;logicalDocumentId?:string;
   /** Reviewed against the actual image without revealing the answer to the extractor. */
   independentlyReviewed:true;
-  state:GoldState;expectedValue?:string|null;expectedUnit?:string|null;
+  state:GoldState;expectedValue?:string|null;expectedUnit?:string|null;expectedSubjectId?:string|null;expectedAsOf?:string|null;expectedPeriodStart?:string|null;expectedPeriodEnd?:string|null;
   /** Required for repeated instances of the same field: independent cell/row location. */
   bbox?:number[]|null;
 }
 export type IndependentStatus="correct"|"omission"|"misrecognition"|"not_applicable_confirmed"|"not_applicable_missed"|"not_provided"|"source_blank"|"unscorable_unreadable"|"false_positive"|"unresolved_ambiguity";
-export interface IndependentFinding {goldId:string;documentId:string;page:number;fieldId:string;status:IndependentStatus;expectedState:GoldState;}
+export interface IndependentFinding {goldId:string;documentId:string;logicalDocumentId:string;page:number;fieldId:string;status:IndependentStatus;expectedState:GoldState;}
 const norm=(s:string)=>s.normalize("NFKC").trim().replace(/\s+/g," ");
 const valueEqual=(a:string,b:string)=>{const x=norm(a),y=norm(b);if(/^-?(?:\d{1,3}(?:,\d{3})+|\d+)$/.test(x)&&/^-?(?:\d{1,3}(?:,\d{3})+|\d+)$/.test(y))return x.replace(/,/g,"")===y.replace(/,/g,"");return x===y;};
 function iou(a:number[],b:number[]){const intersection=Math.max(0,Math.min(a[2],b[2])-Math.max(a[0],b[0]))*Math.max(0,Math.min(a[3],b[3])-Math.max(a[1],b[1]));const area=(q:number[])=>(q[2]-q[0])*(q[3]-q[1]);return intersection/(area(a)+area(b)-intersection)||0;}
@@ -103,9 +103,15 @@ export function scoreIndependentOcr(gold:readonly IndependentlyReviewedField[],o
       const one=matches[0];if(one)used.add(one.i);
       const f=one?.f;
       if(g.state==="present"){
-        if(!f||f.value===null||f.value===undefined||f.value==="")status="omission";
+        if(!f)status="omission";
+        else if(f.sourceState==="explicit_none"||f.sourceState==="blank")status="misrecognition";
         else if(f.confidence==="unreadable"||f.sourceState==="illegible"||f.sourceState==="masked")status="unscorable_unreadable";
-        else if(f.sourceState!=="present"||!valueEqual(f.value,g.expectedValue!)||(g.expectedUnit!==undefined&&norm(f.unit??"")!==norm(g.expectedUnit??"")))status="misrecognition";
+        else if(f.value===null||f.value===undefined||f.value==="")status="omission";
+        else if(f.sourceState!=="present"||!valueEqual(f.value,g.expectedValue!)||(g.expectedUnit!==undefined&&norm(f.unit??"")!==norm(g.expectedUnit??""))||
+          (g.expectedSubjectId!==undefined&&norm(f.subjectId??"")!==norm(g.expectedSubjectId??""))||
+          (g.expectedAsOf!==undefined&&norm(f.asOf??"")!==norm(g.expectedAsOf??""))||
+          (g.expectedPeriodStart!==undefined&&norm(f.periodStart??"")!==norm(g.expectedPeriodStart??""))||
+          (g.expectedPeriodEnd!==undefined&&norm(f.periodEnd??"")!==norm(g.expectedPeriodEnd??"")))status="misrecognition";
         else status="correct";
       }else if(g.state==="not_applicable"){
         if(f?.sourceState==="explicit_none"&&f.applicability==="not_applicable"&&anchored(f))status="not_applicable_confirmed";
@@ -116,14 +122,22 @@ export function scoreIndependentOcr(gold:readonly IndependentlyReviewedField[],o
         status=readValue(f??{})?"false_positive":"source_blank";
       }else { status=readValue(f??{})?"false_positive":"unscorable_unreadable"; }
     }
-    findings.push({goldId:g.id,documentId:g.documentId,page:g.page,fieldId:g.canonicalFieldId,status,expectedState:g.state});
+    findings.push({goldId:g.id,documentId:g.documentId,logicalDocumentId:g.logicalDocumentId??g.documentId,page:g.page,fieldId:g.canonicalFieldId,status,expectedState:g.state});
   }
   const counts:Record<IndependentStatus,number>={correct:0,omission:0,misrecognition:0,not_applicable_confirmed:0,not_applicable_missed:0,not_provided:0,source_blank:0,unscorable_unreadable:0,false_positive:0,unresolved_ambiguity:0};
   for(const x of findings)counts[x.status]++;
   const denominator=gold.filter(g=>g.state==="present").length;
   const accuracyPercent=denominator?Math.round(10000*counts.correct/denominator)/100:null;
   const naTotal=gold.filter(g=>g.state==="not_applicable").length;
+  const byDocument=Object.values(gold.reduce((acc,g,index)=>{
+    const id=g.logicalDocumentId??g.documentId;
+    const group=acc[id]??={documentId:id,presentGoldCount:0,correct:0,omission:0,misrecognition:0,notApplicableCount:0,notApplicableConfirmed:0,unresolved:0};
+    const status=findings[index].status;
+    if(g.state==="present"){group.presentGoldCount++;if(status==="correct")group.correct++;else if(status==="omission")group.omission++;else if(status==="misrecognition")group.misrecognition++;else group.unresolved++;}
+    if(g.state==="not_applicable"){group.notApplicableCount++;if(status==="not_applicable_confirmed")group.notApplicableConfirmed++;}
+    return acc;
+  },{} as Record<string,{documentId:string;presentGoldCount:number;correct:number;omission:number;misrecognition:number;notApplicableCount:number;notApplicableConfirmed:number;unresolved:number}>)).map(group=>({...group,accuracyPercent:group.presentGoldCount?Math.round(group.correct/group.presentGoldCount*10000)/100:null}));
   return {schema:"ocr-independent-evaluation/1" as const,accuracyPercent,denominator,counts,notApplicableTotal:naTotal,notApplicableConfirmed:counts.not_applicable_confirmed,
     /** If the blind gold is partial, unmatched output values are not yet false positives. */
-    unmatchedObservedCount:observations.length-used.size,findings};
+    unmatchedObservedCount:observations.length-used.size,byDocument,findings};
 }

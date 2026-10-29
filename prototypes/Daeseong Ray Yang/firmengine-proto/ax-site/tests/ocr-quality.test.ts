@@ -43,3 +43,14 @@ test("ambiguous duplicate field observations are not silently picked",()=>{
   const r=scoreIndependentOcr([gold("x","f1","present",{expectedValue:"2"})],[source({canonicalFieldId:"f1",value:"2"}),source({canonicalFieldId:"f1",value:"3"})]);
   assert.equal(r.counts.unresolved_ambiguity,1);assert.equal(r.accuracyPercent,0);
 });
+
+test("false not-applicable or false blank on visible gold is misrecognition, not omission",()=>{
+ const g=[gold("a","f1","present",{expectedValue:"500"}),gold("b","f2","present",{expectedValue:"42"})];
+ const o=[source({canonicalFieldId:"f1",value:null,sourceState:"explicit_none",applicability:"not_applicable"}),source({canonicalFieldId:"f2",value:null,sourceState:"blank"})];
+ const r=scoreIndependentOcr(g,o);assert.equal(r.counts.misrecognition,2);assert.equal(r.counts.omission,0);
+});
+test("wrong person or period is misrecognition despite matching amount; score by logical document",()=>{
+ const g=[gold("a","amount","present",{expectedValue:"123,456",expectedUnit:"원",expectedSubjectId:"debtor_1",expectedAsOf:"2026-10-01",logicalDocumentId:"doc-A"}),gold("b","f2","present",{expectedValue:"1",logicalDocumentId:"doc-B"})];
+ const o=[source({canonicalFieldId:"amount",value:"123456",subjectId:"debtor_2",asOf:"2026-10-01"}),source({canonicalFieldId:"f2",value:"1"})];
+ const r=scoreIndependentOcr(g,o);assert.equal(r.counts.misrecognition,1);assert.equal(r.counts.correct,1);assert.deepEqual(r.byDocument.map(x=>[x.documentId,x.accuracyPercent]),[["doc-A",0],["doc-B",100]]);
+});
