@@ -1,0 +1,1697 @@
+{
+  "schema": "intake-substitution-coverage/1",
+  "asOf": "2026-10-30",
+  "primarySources": {
+    "seoul": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf",
+    "busan": "https://bsb.scourt.go.kr/bsb/info/info_01/practice_rule_bsb.pdf",
+    "section": "제402호 제2조 및 제3조"
+  },
+  "guardrails": [
+    "No unknown court permission inferred",
+    "No automatic waiver for unregistered alternative pairs",
+    "Human-reviewed source proof for every original required field",
+    "Full subject, source hash, page type and period checks",
+    "Original history and shared catalogue are never deleted",
+    "Change in any proof, court policy or jurisdiction makes the primary request active again"
+  ],
+  "coverage": {
+    "registered": 85,
+    "linked": 85,
+    "unlinked": [],
+    "alternativeOnly": 6,
+    "primaryWithAlternatives": 7
+  },
+  "rows": [
+    {
+      "documentTypeId": "resident_registration",
+      "name": "주민등록등본·필요한 주소이력 자료",
+      "requiredProofFields": [
+        "성명",
+        "현재 주소",
+        "발급일",
+        "필요한 주소변동기간"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-001"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "family_relation",
+      "name": "가족관계증명서",
+      "requiredProofFields": [
+        "본인",
+        "가족관계",
+        "부양 주장 대상",
+        "발급일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-001"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "income_source_inventory",
+      "name": "직장·사업·기타 소득원별 목록",
+      "requiredProofFields": [
+        "소득원",
+        "지급자",
+        "시작·종료일",
+        "총수입·비용·실수령 구분"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-002"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "employment_certificate",
+      "name": "재직증명서",
+      "requiredProofFields": [
+        "사용자",
+        "근로자",
+        "입사일",
+        "고용형태",
+        "근무상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-003",
+        "INTAKE-053"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [
+        "employment_contract"
+      ],
+      "publishedFallback": null,
+      "decisionDefault": "human_review_only"
+    },
+    {
+      "documentTypeId": "employment_contract",
+      "name": "근로계약서·사용자 근무확인서",
+      "requiredProofFields": [
+        "계약 당사자",
+        "계약기간",
+        "급여 조건",
+        "사용자 서명·날인"
+      ],
+      "primaryRuleIds": [],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-003",
+        "INTAKE-053"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "salary_withholding",
+      "name": "근로소득원천징수영수증",
+      "requiredProofFields": [
+        "사용자",
+        "귀속연도",
+        "급여 총액",
+        "세액·공제",
+        "근무기간"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-003",
+        "INTAKE-053"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [
+        "salary_statement",
+        "salary_bank_statement"
+      ],
+      "publishedFallback": {
+        "courts": [
+          "seoul",
+          "busan"
+        ],
+        "candidates": [
+          "salary_statement",
+          "salary_bank_statement"
+        ],
+        "citation": "Practice Rule 402 §2(3)"
+      },
+      "decisionDefault": "requires_full_human_source_proof_and_court_condition"
+    },
+    {
+      "documentTypeId": "salary_statement",
+      "name": "급여명세서·사용자 소득증명",
+      "requiredProofFields": [
+        "급여월",
+        "총급여",
+        "공제항목",
+        "실수령",
+        "사용자 확인"
+      ],
+      "primaryRuleIds": [],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-003",
+        "INTAKE-053"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "salary_bank_statement",
+      "name": "급여 입금 계좌 거래내역",
+      "requiredProofFields": [
+        "계좌명의",
+        "입금일",
+        "입금자",
+        "급여월 대응",
+        "입금액"
+      ],
+      "primaryRuleIds": [],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-003",
+        "INTAKE-053"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "employment_history",
+      "name": "고용변동·자격득실·종전 급여자료",
+      "requiredProofFields": [
+        "변동일",
+        "직장별 근무기간",
+        "급여변동",
+        "보험자격·가입기간"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-014"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "business_status_evidence",
+      "name": "실제 영업·사업 운영 확인자료",
+      "requiredProofFields": [
+        "사업체·업종",
+        "운영자",
+        "명의자",
+        "개업일",
+        "영업장",
+        "계속성"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-004"
+      ],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-006"
+      ],
+      "candidateDocumentTypeIds": [
+        "business_registration",
+        "business_contract"
+      ],
+      "publishedFallback": null,
+      "decisionDefault": "human_review_only"
+    },
+    {
+      "documentTypeId": "business_registration",
+      "name": "사업자등록증·사업자등록증명",
+      "requiredProofFields": [
+        "사업자번호",
+        "명의",
+        "상호",
+        "업종",
+        "개업일",
+        "과세유형"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-005"
+      ],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-004"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "business_contract",
+      "name": "사업장·가맹·도급·거래 계약자료",
+      "requiredProofFields": [
+        "당사자",
+        "사업장",
+        "계약기간",
+        "영업내용",
+        "대금 조건"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-006"
+      ],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-004"
+      ],
+      "candidateDocumentTypeIds": [
+        "business_status_evidence"
+      ],
+      "publishedFallback": null,
+      "decisionDefault": "human_review_only"
+    },
+    {
+      "documentTypeId": "business_income_report",
+      "name": "사업 월별 매출·비용·순소득 자료",
+      "requiredProofFields": [
+        "사업체",
+        "귀속월",
+        "총매출",
+        "필요비용",
+        "실질소득",
+        "자료 근거"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-004"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [
+        "financial_statement"
+      ],
+      "publishedFallback": {
+        "courts": [
+          "seoul",
+          "busan"
+        ],
+        "candidates": [
+          "financial_statement"
+        ],
+        "citation": "Practice Rule 402 §2(3)"
+      },
+      "decisionDefault": "requires_full_human_source_proof_and_court_condition"
+    },
+    {
+      "documentTypeId": "financial_statement",
+      "name": "손익계산서·재무제표",
+      "requiredProofFields": [
+        "사업체",
+        "회계기간",
+        "매출",
+        "비용",
+        "손익",
+        "작성 근거"
+      ],
+      "primaryRuleIds": [],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-004"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "income_amount_certificate",
+      "name": "소득금액증명",
+      "requiredProofFields": [
+        "납세자",
+        "귀속연도",
+        "소득 종류",
+        "수입금액",
+        "소득금액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-004",
+        "INTAKE-009"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "vat_certificate",
+      "name": "부가가치세과세표준증명·신고내역",
+      "requiredProofFields": [
+        "사업자",
+        "과세기간",
+        "신고매출",
+        "과세유형"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-007"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "vat_exempt_certificate",
+      "name": "면세사업자 수입금액증명·사업장현황신고",
+      "requiredProofFields": [
+        "사업자",
+        "귀속연도",
+        "면세업종",
+        "수입금액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-008"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "sales_purchase_summary",
+      "name": "매출·매입·카드·현금영수증 집계자료",
+      "requiredProofFields": [
+        "사업체",
+        "기간",
+        "거래처",
+        "매출",
+        "매입",
+        "카드·현금 중복"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-004"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "operating_expenses",
+      "name": "사업 필요비·임료·공과금 지급증빙",
+      "requiredProofFields": [
+        "사업체",
+        "기간",
+        "지출항목",
+        "지급상대",
+        "금액",
+        "개인비용 구분"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-004"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "platform_settlement",
+      "name": "프리랜서·플랫폼 계약·정산자료",
+      "requiredProofFields": [
+        "계약업체",
+        "계약기간",
+        "정산기간",
+        "총정산액",
+        "수수료",
+        "실입금"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-009"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "income_bank_statement",
+      "name": "소득 수령 계좌 거래내역",
+      "requiredProofFields": [
+        "계좌명의",
+        "거래일",
+        "지급자",
+        "금액",
+        "원천자료 대응"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-009",
+        "INTAKE-010"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "rental_income_contract",
+      "name": "임대인 측 임대차계약·임대료 내역",
+      "requiredProofFields": [
+        "임대물건",
+        "임대인·임차인",
+        "계약기간",
+        "보증금",
+        "임대료",
+        "실제 입금"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-010"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "interest_income_statement",
+      "name": "이자 지급명세·계좌내역",
+      "requiredProofFields": [
+        "지급자",
+        "귀속기간",
+        "이자총액",
+        "원천세",
+        "실수령",
+        "원금 자산"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-011"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "dividend_statement",
+      "name": "배당 지급명세·증권계좌내역",
+      "requiredProofFields": [
+        "지급회사",
+        "귀속기간",
+        "지급일",
+        "배당액",
+        "원천세",
+        "실수령"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-012"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "pension_certificate",
+      "name": "연금 수급·지급증명",
+      "requiredProofFields": [
+        "수급자",
+        "연금 종류",
+        "지급기간",
+        "실지급액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-013"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "debt_certificate",
+      "name": "채권자별 부채증명·채무잔액 확인자료",
+      "requiredProofFields": [
+        "현재 채권자",
+        "계약번호",
+        "발생일",
+        "원금",
+        "이자",
+        "잔액 기준일",
+        "이율"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-015",
+        "INTAKE-016",
+        "INTAKE-019",
+        "INTAKE-020"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [
+        "creditor_request_copy"
+      ],
+      "publishedFallback": null,
+      "decisionDefault": "human_review_only"
+    },
+    {
+      "documentTypeId": "creditor_request_copy",
+      "name": "자료송부청구서 사본·발송 및 회신자료",
+      "requiredProofFields": [
+        "채권자",
+        "청구일",
+        "발급 곤란 사유",
+        "요청항목",
+        "발송·회신 여부"
+      ],
+      "primaryRuleIds": [],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-015",
+        "INTAKE-016",
+        "INTAKE-019",
+        "INTAKE-020"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "loan_contract",
+      "name": "차용·대출계약서 및 상환내역",
+      "requiredProofFields": [
+        "당사자",
+        "차용일",
+        "대출액",
+        "이율",
+        "기한",
+        "상환내역"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-017"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "card_statement",
+      "name": "카드 이용·대출·결제 명세",
+      "requiredProofFields": [
+        "카드사",
+        "상품·계약",
+        "이용일",
+        "이용금액",
+        "결제·대출잔액",
+        "사용처"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-016"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "private_loan_transfer",
+      "name": "개인차용 입출금·이자·변제 자료",
+      "requiredProofFields": [
+        "채권자",
+        "차용일",
+        "입금",
+        "변제일·액",
+        "이자지급",
+        "현금거래 설명"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-017"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "security_register",
+      "name": "담보권 설정·목적물 권리자료",
+      "requiredProofFields": [
+        "목적물",
+        "소유자",
+        "담보권자",
+        "순위",
+        "채권최고액",
+        "담보 범위"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-018"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "mortgage_balance",
+      "name": "담보대출·할부 현재잔액 자료",
+      "requiredProofFields": [
+        "채권자",
+        "계약번호",
+        "목적물",
+        "원금",
+        "이자",
+        "기준일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-018",
+        "INTAKE-027"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "guarantee_contract",
+      "name": "보증약정·주채무·구상청구 자료",
+      "requiredProofFields": [
+        "주채무자",
+        "보증인",
+        "채권자",
+        "보증 범위",
+        "주채무잔액",
+        "대위변제"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-019"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "assignment_notice",
+      "name": "채권양도·대위변제 통지와 잔액 자료",
+      "requiredProofFields": [
+        "원채권자",
+        "현재 청구자",
+        "통지일",
+        "원계약",
+        "승계금액",
+        "대위변제일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-020"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "tax_arrears",
+      "name": "세목별 체납·고지·납기 상세자료",
+      "requiredProofFields": [
+        "과세기관",
+        "국세·지방세",
+        "세목",
+        "과세기간",
+        "납부기한",
+        "원세·가산금",
+        "기준일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-021"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [
+        "national_tax_arrears_fact"
+      ],
+      "publishedFallback": null,
+      "decisionDefault": "human_review_only"
+    },
+    {
+      "documentTypeId": "national_tax_arrears_fact",
+      "name": "국세 사실증명(체납내역)",
+      "requiredProofFields": [
+        "납세자",
+        "세목",
+        "귀속기간",
+        "체납액",
+        "기준일"
+      ],
+      "primaryRuleIds": [],
+      "usedAsAlternativeRuleIds": [
+        "INTAKE-021"
+      ],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "alternative_only"
+    },
+    {
+      "documentTypeId": "social_insurance_arrears",
+      "name": "사회보험료·기타징수금 미납내역",
+      "requiredProofFields": [
+        "기관",
+        "보험·징수금 종류",
+        "귀속기간",
+        "납기",
+        "미납액",
+        "우선권 표시",
+        "제2차 납부 여부"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-022"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "litigation_record",
+      "name": "소장·판결·지급명령·집행 관련 자료",
+      "requiredProofFields": [
+        "법원·사건번호",
+        "당사자",
+        "청구·다툼 금액",
+        "송달일",
+        "확정 여부",
+        "집행 상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-023"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "loan_use_of_funds",
+      "name": "차입금 입금·사용처·잔존자금 자료",
+      "requiredProofFields": [
+        "차입일",
+        "차입금",
+        "사용일",
+        "수취인",
+        "사용목적",
+        "잔존액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-024"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "vehicle_registration",
+      "name": "자동차등록원부 갑·을",
+      "requiredProofFields": [
+        "등록번호",
+        "차대번호",
+        "차종·연식",
+        "소유자·지분",
+        "저당·압류",
+        "발급일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-025",
+        "INTAKE-027",
+        "INTAKE-051"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "vehicle_valuation",
+      "name": "차량 시가 확인자료",
+      "requiredProofFields": [
+        "차종",
+        "연식",
+        "상태",
+        "평가일",
+        "시가",
+        "평가방법"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-025",
+        "INTAKE-051"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "vehicle_lease_contract",
+      "name": "차량 리스·렌트 계약 및 정산자료",
+      "requiredProofFields": [
+        "소유자",
+        "이용자",
+        "차량",
+        "보증금",
+        "월납입",
+        "계약기간",
+        "중도해지·인수조건"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-026"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "real_estate_register",
+      "name": "부동산등기사항전부증명서",
+      "requiredProofFields": [
+        "소재지",
+        "소유자",
+        "지분",
+        "권리변동",
+        "담보·압류",
+        "발급일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-028",
+        "INTAKE-052"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "real_estate_valuation",
+      "name": "부동산 시가·거래·감정 자료",
+      "requiredProofFields": [
+        "물건",
+        "평가일",
+        "시가",
+        "거래사례",
+        "평가방법",
+        "지분"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-028",
+        "INTAKE-052"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "lease_contract",
+      "name": "임차인 측 임대차계약서",
+      "requiredProofFields": [
+        "목적물",
+        "임대인·임차인",
+        "계약기간",
+        "보증금",
+        "월세",
+        "확정일자"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-029"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "deposit_rights",
+      "name": "보증금 지급·연체공제·반환 관련 자료",
+      "requiredProofFields": [
+        "보증금 입금",
+        "연체 차임",
+        "반환액",
+        "양도·질권",
+        "보증기관",
+        "회수상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-029"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "insurance_surrender_statement",
+      "name": "보험별 예상해약환급금확인서",
+      "requiredProofFields": [
+        "보험사",
+        "계약번호",
+        "계약자",
+        "피보험자",
+        "환급금",
+        "기준일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-030"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "insurance_loan_statement",
+      "name": "보험계약 대출·공제 내역",
+      "requiredProofFields": [
+        "계약번호",
+        "대출원금",
+        "이자",
+        "공제내역",
+        "기준일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-054"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "bank_balance_certificate",
+      "name": "계좌별 예금·적금 잔고확인 자료",
+      "requiredProofFields": [
+        "금융기관",
+        "계좌 식별",
+        "명의",
+        "통화",
+        "잔액",
+        "기준일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-031"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "bank_statement",
+      "name": "계좌 거래내역",
+      "requiredProofFields": [
+        "계좌",
+        "조회기간",
+        "거래일",
+        "상대방",
+        "입출금",
+        "잔액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-061",
+        "INTAKE-062"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "securities_balance",
+      "name": "증권·펀드·출자지분 잔고 및 평가자료",
+      "requiredProofFields": [
+        "계좌·회사",
+        "명의",
+        "종목",
+        "수량·지분",
+        "기준일",
+        "평가액·방법"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-032"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "securities_transactions",
+      "name": "증권 매매·출자·이체 내역",
+      "requiredProofFields": [
+        "거래일",
+        "종목",
+        "수량",
+        "매매금액",
+        "입출고",
+        "자금 이동"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-032"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "crypto_balance",
+      "name": "거래소·지갑별 가상자산 잔고자료",
+      "requiredProofFields": [
+        "거래소·지갑",
+        "보유자",
+        "종목",
+        "수량",
+        "기준일",
+        "평가가격"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-033"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "crypto_transactions",
+      "name": "가상자산 매매·입출고 내역",
+      "requiredProofFields": [
+        "거래일",
+        "종목·수량",
+        "입출고",
+        "상대 주소",
+        "연결 입출금"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-033"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "business_asset_inventory",
+      "name": "사업 재고·설비·비품·권리금 자료",
+      "requiredProofFields": [
+        "품목",
+        "명의·소유",
+        "수량",
+        "장부가",
+        "시가",
+        "처분가능성",
+        "권리금 계약"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-034"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "retirement_estimate",
+      "name": "퇴직금 예상액·퇴직연금 적립·잔액자료",
+      "requiredProofFields": [
+        "제도 종류",
+        "가입·근속기간",
+        "기준일",
+        "예상·적립액",
+        "인출·지급조건"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-035"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "receivable_statement",
+      "name": "대여금·매출·반환채권 계약과 잔액자료",
+      "requiredProofFields": [
+        "상대방",
+        "발생원인",
+        "원금",
+        "기한",
+        "변제내역",
+        "현재잔액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-036"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "receivable_collectability",
+      "name": "미회수 채권 회수가능성 자료",
+      "requiredProofFields": [
+        "독촉·집행",
+        "상대방 상태",
+        "담보·보증",
+        "회수내역",
+        "미회수 사유"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-036"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "dependent_evidence",
+      "name": "부양 대상 소득·거주·지원 자료",
+      "requiredProofFields": [
+        "대상자",
+        "관계·나이",
+        "동거",
+        "소득",
+        "실제 지원액",
+        "지원기간"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-037"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "spouse_asset_evidence",
+      "name": "필요성이 확인된 배우자·가족 재산 관련 자료",
+      "requiredProofFields": [
+        "명의자",
+        "재산",
+        "취득자금",
+        "신청인과 관계",
+        "조사 필요성",
+        "제출 가능 여부"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-038"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "free_residence_confirmation",
+      "name": "무상거주사실확인 및 주거권원 자료",
+      "requiredProofFields": [
+        "거주자",
+        "제공자",
+        "주소",
+        "무상 조건",
+        "거주기간",
+        "명의·권원"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-039"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "medical_expense_evidence",
+      "name": "진단·치료계획·의료비 지급자료",
+      "requiredProofFields": [
+        "지출대상",
+        "필요성",
+        "치료기간",
+        "실지출",
+        "보험·지원 보전"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-040"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "housing_expense_evidence",
+      "name": "주거계약·월세 등 실지급자료",
+      "requiredProofFields": [
+        "주거지",
+        "계약당사자",
+        "지출항목",
+        "지급액",
+        "기간",
+        "다른 부담자"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-041"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "education_expense_evidence",
+      "name": "교육·특수교육 필요성 및 지급자료",
+      "requiredProofFields": [
+        "대상자",
+        "교육내용",
+        "필요성",
+        "지급액",
+        "기간",
+        "지원금"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-042"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "closure_certificate",
+      "name": "휴업·폐업 사실증명·양도자료",
+      "requiredProofFields": [
+        "사업체",
+        "명의",
+        "휴폐업·양도일",
+        "사유",
+        "잔존 영업"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-043"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "business_liquidation",
+      "name": "폐업·양도 정산 및 잔존재산 자료",
+      "requiredProofFields": [
+        "대상재산",
+        "처분일",
+        "정산액",
+        "수령·사용처",
+        "잔존재산"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-043"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "disposal_records",
+      "name": "재산 처분계약·대금·사용처 자료",
+      "requiredProofFields": [
+        "재산",
+        "일자",
+        "상대방",
+        "대가",
+        "입금",
+        "사용처",
+        "잔존액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-044"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "selective_payment_records",
+      "name": "특정인 지급·상환·이전의 원인자료",
+      "requiredProofFields": [
+        "지급일",
+        "수취인",
+        "관계",
+        "금액",
+        "원인",
+        "당시 채무상태",
+        "대가"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-045"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "inheritance_records",
+      "name": "상속·분할·포기·한정승인 관련 자료",
+      "requiredProofFields": [
+        "피상속인",
+        "개시일",
+        "상속인",
+        "재산·채무",
+        "분할",
+        "신고·심판",
+        "귀속·대금"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-046"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "divorce_records",
+      "name": "혼인·이혼·재산분할·양육비 관련 자료",
+      "requiredProofFields": [
+        "혼인·이혼일",
+        "합의·판결",
+        "분할재산",
+        "양육비",
+        "지급일·액",
+        "현재 권리"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-047"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "prior_case_records",
+      "name": "종전 회생·파산 신청과 종국·면책 자료",
+      "requiredProofFields": [
+        "법원·사건번호",
+        "신청일",
+        "종국내역",
+        "종국일",
+        "면책 결정·확정일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-048"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "prior_creditor_list",
+      "name": "종전 채권자목록·계획·보정자료",
+      "requiredProofFields": [
+        "종전 사건",
+        "채권자목록",
+        "계획",
+        "보정사항",
+        "사정변경"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-048"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "private_adjustment_records",
+      "name": "신복위·캠코 등 채무조정 자료",
+      "requiredProofFields": [
+        "기관",
+        "신청일",
+        "채권자",
+        "합의내용",
+        "변제내역",
+        "현재상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-049"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "court_correction_order",
+      "name": "현재 사건 보정권고·명령 원문",
+      "requiredProofFields": [
+        "법원·사건번호",
+        "송달일",
+        "제출기한",
+        "요구항목",
+        "요구대상·기간",
+        "이미 제출한 답변"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-050"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "credit_information_report",
+      "name": "신용정보조회서·채권자변동정보 조회자료",
+      "requiredProofFields": [
+        "조회대상",
+        "조회·발급일",
+        "정보종류",
+        "기관",
+        "상품·계약",
+        "발생·변경일",
+        "신고금액·단위",
+        "등록상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-055"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "property_ownership_search",
+      "name": "지적전산자료·부동산 소유현황 조회결과",
+      "requiredProofFields": [
+        "조회대상",
+        "조회지역·범위",
+        "조회기준일",
+        "조회결과·물건식별",
+        "명의자",
+        "지분",
+        "발급일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-056",
+        "INTAKE-059"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "cash_holding_statement",
+      "name": "현금·현금성자산 보유내역 및 자금출처자료",
+      "requiredProofFields": [
+        "보유자",
+        "현금·자산종류",
+        "보관·식별",
+        "금액·통화·단위",
+        "기준일",
+        "취득·보관 근거"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-063"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "local_tax_assessment",
+      "name": "지방세 세목별 과세증명서·미과세 내역",
+      "requiredProofFields": [
+        "납세자",
+        "발급기관",
+        "과세지역·조회연도",
+        "세목·과세대상",
+        "과세액",
+        "납부·체납상태",
+        "미과세 표시",
+        "발급일"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-056",
+        "INTAKE-059"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "pension_contribution_statement",
+      "name": "국민연금 가입·납부내역 및 연금산정용 가입내역 확인서",
+      "requiredProofFields": [
+        "가입자",
+        "확인기준·발급일",
+        "가입·납부기간",
+        "사업장·가입유형",
+        "기준소득월액",
+        "납부할·납부한·미납 월수와 금액"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-057",
+        "INTAKE-060"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "household_expense_ledger",
+      "name": "가계지출 명세·공과금 청구 및 실제 지급자료",
+      "requiredProofFields": [
+        "지출종류",
+        "공급자",
+        "지급자·수혜자",
+        "청구기간",
+        "청구액",
+        "실지급액",
+        "미납",
+        "공동부담·지원"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-064"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "applicant_statement",
+      "name": "신청인 진술서·채무증대경위서",
+      "requiredProofFields": [
+        "작성자",
+        "작성·서명일",
+        "문서버전",
+        "주제·문단별본문",
+        "사건발생기간",
+        "수정·보충내용",
+        "서명상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-058",
+        "INTAKE-065"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "application_form_input",
+      "name": "개시신청서·인적사항 및 관할 기재자료",
+      "requiredProofFields": [
+        "신청인",
+        "가림 식별정보",
+        "주소·연락처",
+        "신청·접수일",
+        "법원·사건번호",
+        "관할근거",
+        "적용규칙 기재"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-066"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "case_specific_court_request",
+      "name": "현재 사건 개별 자료제출요구·질의 및 회신자료",
+      "requiredProofFields": [
+        "법원·사건번호",
+        "요구종류",
+        "요구문",
+        "인용근거",
+        "송달일",
+        "답변기한",
+        "요구대상·기간",
+        "제출답변·제출일",
+        "후속 상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-068"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "plan_funding_statement",
+      "name": "변제계획 재원·재산처분 및 지급일정 기재자료",
+      "requiredProofFields": [
+        "계획재원 구분",
+        "연결 소득증빙",
+        "처분재산",
+        "처분대금·일자",
+        "계획투입액",
+        "선택서식",
+        "서식버전",
+        "검토상태"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-067"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    },
+    {
+      "documentTypeId": "income_household_change_evidence",
+      "name": "소득·가구 변동 및 비정형 사정의 기간·영향 증빙",
+      "requiredProofFields": [
+        "영향대상",
+        "사건종류",
+        "발생일·효력일",
+        "변경전·후 상태",
+        "영향종료일",
+        "명시 소득증감",
+        "명시 지출증감",
+        "발급기관"
+      ],
+      "primaryRuleIds": [
+        "INTAKE-069",
+        "INTAKE-070"
+      ],
+      "usedAsAlternativeRuleIds": [],
+      "candidateDocumentTypeIds": [],
+      "publishedFallback": null,
+      "decisionDefault": "primary_required_no_auto_substitution"
+    }
+  ]
+}
