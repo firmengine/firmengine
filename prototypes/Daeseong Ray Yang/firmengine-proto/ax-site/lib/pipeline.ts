@@ -3,18 +3,12 @@ import { renderPromptPolicy, legalReviewInstructions } from "./reference-prompts
 import { buildCaseExecutionPlan } from "./case-execution";
 import { runCaseCalculatorNode } from "./case-agent";
 import { snapshotSha256 } from "./calculator-tools";
-<<<<<<< HEAD
 import { canRecoverClassification, recoveredClassificationRole, observedClassificationRole, canUseRescueRole, MAX_CLASSIFICATION_ATTEMPTS, CLASSIFICATION_INSTRUCTIONS, CLASSIFICATION_RECOVERY_INSTRUCTIONS, SHARED_DOCUMENT_CLASSIFICATION_INSTRUCTIONS, buildSharedClassificationSchema, sharedClassificationCatalogInput, hasValidSharedClassification, type ClassificationRead, type ClassificationRecoveryRead } from "./classification-recovery";
 import { documentFamily,equivalentDocumentTypes } from "./document-routing";
 import { buildSharedDocumentCatalog, encodeDocumentRoute } from "./shared-document-catalog.ts";
 import { getIntakeCatalog } from "./intake-store.ts";
 import { persistPageExtractionRows } from "./extraction-row-store.ts";
-import { AI_MODEL,applyExtraction,createCaseReadIndex,currentFacts,extractionCacheKey,factHasValidStructuredRefs,factSourceLineageIssues,touchCase,validSourceRef,type CaseData,type EvidenceModel } from "./domain";
-=======
-import { canRecoverClassification, recoveredClassificationRole, observedClassificationRole, canUseRescueRole, MAX_CLASSIFICATION_ATTEMPTS, CLASSIFICATION_SCHEMA, CLASSIFICATION_INSTRUCTIONS, CLASSIFICATION_RECOVERY_SCHEMA, CLASSIFICATION_RECOVERY_INSTRUCTIONS, CLASSIFICATION_FAMILY_CATALOG, hasValidClassificationCatalog, type ClassificationRead, type ClassificationRecoveryRead } from "./classification-recovery";
-import { documentFamily,equivalentDocumentTypes,documentTypeForCatalogFamily } from "./document-routing";
-import { AI_MODEL,OCR_MODEL,isSourceReadModel,applyExtraction,createCaseReadIndex,currentFacts,extractionCacheKey,factHasValidStructuredRefs,factSourceLineageIssues,touchCase,validSourceRef,type CaseData } from "./domain";
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
+import { AI_MODEL,OCR_MODEL,applyExtraction,createCaseReadIndex,currentFacts,extractionCacheKey,factHasValidStructuredRefs,factSourceLineageIssues,touchCase,validSourceRef,type CaseData,type EvidenceModel } from "./domain";
 import { callLuna,imageContent,type Usage } from "./luna";
 import { applyFirstVerification,applyTargetedRepair,DOC_FIELDS,EXTRACT_INSTRUCTIONS,PAGE_COMPLETENESS_INSTRUCTIONS,SOURCE_BBOX_INSTRUCTIONS,STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS,getRepairTargets,PAGE_SCHEMA,PROMPT_VERSION,preserveAgreedFieldsAfterOmission,projectPage,sourceInstructions,validatePageRead,VERIFY_SCHEMA,type FieldReviewCheck,type PageRead } from "./extraction";
 import { bucket,connection,db,event,getCase,HttpError,now,saveCase } from "./server-store";
@@ -53,11 +47,7 @@ interface PageJob {id:string;case_id:string;document_id:string;page:number;role:
 interface VerifyResult {checks:FieldReviewCheck[];omittedRows:boolean;warnings:string[];missingFields?:MissingFieldCue[];missingFieldDiagnostics?:string[];}
 type CommitCheckpoint={read:PageRead;review:VerifyResult;disagreements:number;verifierPasses:ReviewPass[];sourceHash:string;imageKey:string;imageHash:string;cacheKey:string;projectionVersion:string;documentId:string;page:number;role:string;casConflictCount?:number;firstRead?:PageRead;extractionRead?:PageRead;baselineRead?:PageRead;baselineReview?:VerifyResult;baselinePassInfo?:ReviewPass;omissionRetry?:boolean;};
 type RescuePlan={planId:string;documentId:string;page:number;sourceHash:string;baseImageHash:string;reason:"field_disagreement"|"omitted_rows"|"unreadable"|"incomplete_extraction"|"classification_unknown";boxes:unknown[];recipeVersion?:RescueRecipeVersion};
-<<<<<<< HEAD
 type ExtractionPass={model:EvidenceModel;promptVersion:string;promptHash:string;usedVariants:{hash:string;variant:string;bbox:string;transform:string}[];sourceHash:string;baseImageHash:string;verifiedAt:string;agentTask?:import("./document-agent-registry.ts").DocumentTaskEnvelope};
-=======
-type ExtractionPass={model:typeof AI_MODEL|typeof OCR_MODEL;promptVersion:string;promptHash:string;usedVariants:{hash:string;variant:string;bbox:string;transform:string}[];sourceHash:string;baseImageHash:string;verifiedAt:string;agentTask?:import("./document-agent-registry.ts").DocumentTaskEnvelope};
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
 type RegionResult={read:PageRead;review:VerifyResult;pass:ReviewPass;bbox:[number,number,number,number];receipts?:SourceVerificationReceipt[]};
 type SavedResult={taskRunId?:string;classification?:ClassificationRead;classificationRaw?:unknown;classificationRecoveryRaw?:unknown;rawRead?:unknown;classificationAttempts?:number;classificationRecovery?:{read:ClassificationRecoveryRead;plan:RescuePlan;sourceHash:string;baseImageHash:string;imageHashes:string[]};priorReadArchive?:PriorReadArchive;read?:PageRead;firstRead?:PageRead;extractionRead?:PageRead;reverification?:ReverificationProvenance;regionRead?:PageRead;regionBbox?:[number,number,number,number];regionAttempts?:Record<string,number>;regionMode?:boolean;extractionPasses?:ExtractionPass[];review?:VerifyResult;regionalReview?:VerifyResult;regionResults?:RegionResult[];regionIndex?:number;baselineRead?:PageRead;baselineReview?:VerifyResult;baselinePassInfo?:ReviewPass;omissionRetry?:boolean;rescueRetry?:boolean;rescuePlan?:RescuePlan;rescueProvenance?:{hash:string;variant:string;bbox:string;transform:string}[];verifierPasses?:ReviewPass[];commit?:CommitCheckpoint;supersededRead?:PageRead;supersededCacheKey?:string|null;supersededResult?:Omit<SavedResult,"supersededResult"|"commit">};
 async function hashText(value:string){const bytes=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value));return [...new Uint8Array(bytes)].map(x=>x.toString(16).padStart(2,"0")).join("");}
@@ -230,13 +220,9 @@ export async function processNext(caseId:string,jobIds?:string[]){
       saved.classificationAttempts=(used as number)+1;
       const attempt=await db().prepare("UPDATE page_jobs SET result = ?,updated_at = ? WHERE id = ? AND lease_until = ? AND status = 'processing'").bind(JSON.stringify(saved),now(),j.id,lease).run();
       if(!attempt.meta.changes)throw new HttpError(409,"분류 시도 기록을 저장하기 전에 처리 권한이 바뀌었습니다.");
-<<<<<<< HEAD
       const intakeCatalog=await getIntakeCatalog();
       const sharedCatalog=buildSharedDocumentCatalog(intakeCatalog.catalog,intakeCatalog.sha256);
-      const {value,usage}=await callLuna<ClassificationRead|ClassificationRecoveryRead>({agent:recovering?"document_classifier_recovery":"document_classifier",instructions:(recovering?CLASSIFICATION_RECOVERY_INSTRUCTIONS:CLASSIFICATION_INSTRUCTIONS)+SHARED_DOCUMENT_CLASSIFICATION_INSTRUCTIONS,input:[{role:"user",content:[{type:"input_text",text:renderPromptPolicy("prompt.pipeline.classification_input.text", {value1: JSON.stringify(sharedClassificationCatalogInput(sharedCatalog)), value2: j.page, value3: recovering?renderPromptPolicy("prompt.pipeline.classification_input"):""})},img!,...(recovering?rescueImages.map(x=>x.content):[])]}],schema:buildSharedClassificationSchema(sharedCatalog),maxOutput:2400});
-=======
-      const {value,usage}=await callLuna<ClassificationRead|ClassificationRecoveryRead>({model:OCR_MODEL,agent:recovering?"document_classifier_recovery":"document_classifier",instructions:recovering?CLASSIFICATION_RECOVERY_INSTRUCTIONS:CLASSIFICATION_INSTRUCTIONS,input:[{role:"user",content:[{type:"input_text",text:renderPromptPolicy("prompt.pipeline.classification_input.text", {value1: JSON.stringify(CLASSIFICATION_FAMILY_CATALOG), value2: j.page, value3: recovering?renderPromptPolicy("prompt.pipeline.classification_input"):""})},img!,...(recovering?rescueImages.map(x=>x.content):[])]}],schema:recovering?CLASSIFICATION_RECOVERY_SCHEMA:CLASSIFICATION_SCHEMA,maxOutput:2200});
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
+      const {value,usage}=await callLuna<ClassificationRead|ClassificationRecoveryRead>({model:OCR_MODEL,agent:recovering?"document_classifier_recovery":"document_classifier",instructions:(recovering?CLASSIFICATION_RECOVERY_INSTRUCTIONS:CLASSIFICATION_INSTRUCTIONS)+SHARED_DOCUMENT_CLASSIFICATION_INSTRUCTIONS,input:[{role:"user",content:[{type:"input_text",text:renderPromptPolicy("prompt.pipeline.classification_input.text", {value1: JSON.stringify(sharedClassificationCatalogInput(sharedCatalog)), value2: j.page, value3: recovering?renderPromptPolicy("prompt.pipeline.classification_input"):""})},img!,...(recovering?rescueImages.map(x=>x.content):[])]}],schema:buildSharedClassificationSchema(sharedCatalog),maxOutput:2400});
       await logUsage(caseId,recovering?"classifier_recovery":"classifier",usage);
       const rawClassification=value as unknown;
       const candidateClassification=value as ClassificationRead;
@@ -293,13 +279,8 @@ export async function processNext(caseId:string,jobIds?:string[]){
       const {value,usage}=await callLuna<PageRead>({model:OCR_MODEL,agent:"evidence_extractor",instructions:extractInstructions,input:[{role:"user",content:[{type:"input_text",text:extractInputText},...(isRegionExtract?rescueImages.map(x=>x.content):[img!,...rescueImages.map(x=>x.content)])]}],schema:PAGE_SCHEMA,maxOutput:extractMaxOutput});
       const extractionRead=validatePageRead(value);let read=extractionRead;await logUsage(caseId,"extractor",usage);
       if(saved.omissionRetry&&saved.baselineRead&&saved.baselineReview)read=preserveAgreedFieldsAfterOmission(saved.baselineRead,saved.baselineReview.checks,extractionRead);
-<<<<<<< HEAD
-      const extractionPasses=[...(saved.extractionPasses??[]),{model:AI_MODEL,promptVersion:PROMPT_VERSION,promptHash:extractPromptHash,usedVariants,sourceHash:document.sha256,baseImageHash:actualImageHash,verifiedAt:now(),agentTask:extractionTask}];
-      if(!documentTypeMatchesFamily(extractionRead.documentType,fieldContract.family_id)||j.document_type?.startsWith("shared-document:")&&extractionRead.documentType!==j.document_type)return await holdUnknownFamilyRead(caseId,j,lease,{...saved,extractionPasses},extractionRead,fieldContract.family_id,documentFieldContract(extractionRead.documentType)?.family_id??null,document.sha256,actualImageHash,jobIds);
-=======
       const extractionPasses=[...(saved.extractionPasses??[]),{model:OCR_MODEL,promptVersion:PROMPT_VERSION,promptHash:extractPromptHash,usedVariants,sourceHash:document.sha256,baseImageHash:actualImageHash,verifiedAt:now(),agentTask:extractionTask}];
-      if(!documentTypeMatchesFamily(extractionRead.documentType,fieldContract.family_id))return await holdUnknownFamilyRead(caseId,j,lease,{...saved,extractionPasses},extractionRead,fieldContract.family_id,documentFieldContract(extractionRead.documentType)?.family_id??null,document.sha256,actualImageHash,jobIds);
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
+      if(!documentTypeMatchesFamily(extractionRead.documentType,fieldContract.family_id)||j.document_type?.startsWith("shared-document:")&&extractionRead.documentType!==j.document_type)return await holdUnknownFamilyRead(caseId,j,lease,{...saved,extractionPasses},extractionRead,fieldContract.family_id,documentFieldContract(extractionRead.documentType)?.family_id??null,document.sha256,actualImageHash,jobIds);
       if(isRegionExtract){const bbox=JSON.parse(rescueImages[0].bbox) as [number,number,number,number];await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'region_verify',result = ?,cache_key = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND lease_until = ?").bind(JSON.stringify({...saved,read:extractionRead,regionIndex,regionRead:extractionRead,extractionPasses,rescueProvenance:usedVariants,regionBbox:bbox}),cacheKey,now(),j.id,lease).run();return {remaining:await remaining(caseId,jobIds),stage:"region_extracted",page:j.page};}
       await db().prepare("UPDATE page_jobs SET status = 'pending',stage = 'verify',result = ?,cache_key = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND lease_until = ?").bind(JSON.stringify({taskRunId:saved.taskRunId,classification:saved.classification,classificationAttempts:saved.classificationAttempts,classificationRecovery:saved.classificationRecovery,read,firstRead:saved.firstRead??read,extractionRead,extractionPasses,baselineRead:saved.baselineRead,baselineReview:saved.baselineReview,baselinePassInfo:saved.baselinePassInfo,omissionRetry:saved.omissionRetry,rescueRetry:saved.rescueRetry,rescuePlan:saved.rescuePlan,rescueProvenance:usedVariants,supersededRead:saved.supersededRead,supersededCacheKey:saved.supersededCacheKey,supersededResult:saved.supersededResult,priorReadArchive:saved.priorReadArchive}),cacheKey,now(),j.id,lease).run();
       return {remaining:await remaining(caseId,jobIds),stage:"extracted",page:j.page};
@@ -432,7 +413,7 @@ export async function processNext(caseId:string,jobIds?:string[]){
       const currentPage=currentCase.pages.find(item=>item.documentId===j.document_id&&item.page===j.page);
       if(!currentDocument||currentDocument.sha256!==document.sha256||currentPage?.role!=="evidence")throw new HttpError(409,"정규화 추출값을 저장하기 전에 원본 또는 페이지 역할이 변경되었습니다.");
       try{
-        normalizedRows=await persistPageExtractionRows(db(),{caseId,documentId:j.document_id,page:j.page,pageJobId:j.id,read,sourceHash:document.sha256,imageHash:j.image_hash,model:saved.extractionPasses?.at(-1)?.model??AI_MODEL,caseRevision:currentCase.context.revision,stage:"committed",classification:saved.classificationRecovery?.read??saved.classification});
+        normalizedRows=await persistPageExtractionRows(db(),{caseId,documentId:j.document_id,page:j.page,pageJobId:j.id,read,sourceHash:document.sha256,imageHash:j.image_hash,model:saved.extractionPasses?.at(-1)?.model??OCR_MODEL,caseRevision:currentCase.context.revision,stage:"committed",classification:saved.classificationRecovery?.read??saved.classification});
         break;
       }catch(error){
         if(error instanceof Error&&error.message==="CASE_REVISION_MISMATCH"){
