@@ -113,6 +113,17 @@ export function mergeRequirements(existing: readonly CaseRequirement[], incoming
     prior.matchedRuleIds = [...new Set([...prior.matchedRuleIds, ...candidate.matchedRuleIds])];
     prior.sourceClaimIds = [...new Set([...prior.sourceClaimIds, ...candidate.sourceClaimIds])];
     prior.sourceIds = [...new Set([...prior.sourceIds, ...candidate.sourceIds])];
+    // Refresh the current rule's proof slots/candidate list without discarding
+    // historical reviews. A changed policy makes the old review ineligible.
+    const newerFields=candidate.sourceEvidenceFields??[];
+    if(JSON.stringify(prior.sourceEvidenceFields??[])!==JSON.stringify(newerFields)){
+      prior.sourceEvidenceFields=[...newerFields];
+      prior.substitutionReview=undefined;
+    }
+    if(JSON.stringify(prior.alternatives)!==JSON.stringify(candidate.alternatives)){
+      prior.alternatives=candidate.alternatives.map(item=>({...item}));
+      prior.substitutionReview=undefined;
+    }
   }
   return result;
 }
