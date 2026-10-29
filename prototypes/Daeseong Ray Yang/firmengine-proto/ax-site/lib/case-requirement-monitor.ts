@@ -12,14 +12,27 @@ type Instance={documentId:string;page:number;documentTypeId:string|null};
 type Head={documentId:string;page:number};
 type Job={documentId:string;page:number;status:string;stage:string;documentType:string|null};
 
+/** Monotone event cursor for existing DB-monitor agents; read never acknowledges events. */
+export async function listCaseDocumentWorkEvents(database:D1Database,input:{caseId:string;afterEventId?:number;limit?:number}){
+  const after=input.afterEventId??0,limit=input.limit??50;
+  if(!input.caseId.trim()||input.caseId.length>300||!Number.isSafeInteger(after)||after<0
+    ||!Number.isSafeInteger(limit)||limit<1||limit>200)throw new Error("INVALID_DOCUMENT_WORK_CURSOR");
+  const rows=await database.prepare("SELECT id,case_id AS caseId,event_kind AS eventKind,source_id AS sourceId,before_state AS beforeState,after_state AS afterState,occurred_at AS occurredAt FROM case_document_work_events WHERE case_id=? AND id>? ORDER BY id LIMIT ?")
+    .bind(input.caseId,after,limit+1).all<{id:number;caseId:string;eventKind:string;sourceId:string;beforeState:string|null;afterState:string|null;occurredAt:string}>();
+  const events=rows.results.slice(0,limit);
+  return {schemaVersion:"case-document-work-events/1",caseId:input.caseId,afterEventId:after,nextAfterEventId:events.at(-1)?.id??after,hasMore:rows.results.length>limit,events,
+    cursorMeaning:"Append-only change id. Query never clears alerts or approves a filing."};
+}
+
 export async function caseRequirementMonitor(database:D1Database,caseData:CaseData){
   const caseId=caseData.context.id;
-  const [checklist,instances,heads,jobs,changes]=await Promise.all([
+  const [checklist,instances,heads,jobs,changes,workCursor]=await Promise.all([
     listCaseDocumentRequirements(database,caseId),
     database.prepare("SELECT source_document_id AS documentId,page,shared_document_type_id AS documentTypeId FROM document_instances WHERE case_id=?").bind(caseId).all<Instance>(),
     database.prepare("SELECT source_document_id AS documentId,page FROM case_extraction_heads WHERE case_id=?").bind(caseId).all<Head>(),
     database.prepare("SELECT document_id AS documentId,page,status,stage,document_type AS documentType FROM page_jobs WHERE case_id=?").bind(caseId).all<Job>(),
-    getCaseDataUpdateState(database,{caseId})
+    getCaseDataUpdateState(database,{caseId}),
+    database.prepare("SELECT COALESCE(MAX(id),0) AS id FROM case_document_work_events WHERE case_id=?").bind(caseId).first<{id:number}>()
   ]);
   const activeDocs=new Set(caseData.documents.filter(doc=>doc.status==="active").map(doc=>doc.id));
   const pageKey=(id:string,page:number)=>id+":"+page;
@@ -58,7 +71,7 @@ export async function caseRequirementMonitor(database:D1Database,caseData:CaseDa
     schemaVersion:CASE_REQUIREMENT_MONITOR_VERSION,caseId,caseRevision:caseData.context.revision,
     activeRunId:checklist.activeRunId,consultationChecklistMaterialized:!!checklist.activeRunId,
     workflowAdopted,requirements,unclassifiedPageJobs:unclassifiedJobs,
-    eventCursor:{dataVersion:changes.dataVersion,lastEventId:changes.lastEventId,isQuiet:changes.isQuiet},
+    eventCursor:{dataVersion:changes.dataVersion,lastEventId:changes.lastEventId,isQuiet:changes.isQuiet,documentWorkEventId:workCursor?.id??0},
     legalSufficiencyInferred:false,autoApproval:false,
     notice:"OCR/서류종류 관측만 표시합니다. 대상자·기간·필수값·갈음·법원 제출 적합성은 별도 검토 대상입니다."
   };
