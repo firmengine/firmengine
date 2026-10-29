@@ -19,7 +19,18 @@ const source:IntakeRequirement={
  alternatives:need.alternatives.map(id=>({id,name:documentIds.get(id)!.name})),
  alternativePolicy:"review_required",fields:[...documentIds.get("salary_withholding")!.fields],issuer:"Test",
 };
-const orig=()=>makeCaseRequirement({source,intakeRunId:"run-one",subjectLinkId:"subject-link-one",scopeKey:"salary-one",idFactory:()=>"requirement-one"});
+const orig=()=>{
+ const req=makeCaseRequirement({source,intakeRunId:"run-one",subjectLinkId:"subject-link-one",scopeKey:"salary-one",idFactory:()=>"requirement-one"});
+ // Synthetic only: an independent primary crosswalk reviewer has already
+ // accepted required semantic slots. Production requires review_mapping.
+ req.mappingRequired=false;
+ req.requiredFieldGroups=[["wage_withholding_tax::income.tax.taxpayer"]];
+ req.crosswalkReview={crosswalkId:"synthetic-reviewed",familyId:"wage_withholding_tax",version:"v1",
+  requiredFieldGroups:req.requiredFieldGroups,optionalFieldIds:[],typedTargets:[{fieldId:"wage_withholding_tax::income.tax.taxpayer",targetPath:"source_only"}],
+  subjectScope:"income",periodPolicy:"six months",noRequiredFields:false,reviewer:"independent-reviewer",
+  reviewedAt:"2026-10-30T00:00:00Z",reason:"Independently reviewed primary evidence slots"};
+ return req;
+};
 const H="a".repeat(64);
 const docs:EvidenceDocument[]=[{id:"doc-bank",name:"Synthetic payroll bank",sha256:H,status:"active",pages:[1]}];
 const pages:EvidencePage[]=[{documentId:"doc-bank",page:1,role:"evidence",documentType:"shared-document:salary_bank_statement@bank_transactions",text:"Synthetic payroll evidence"}];
@@ -56,6 +67,12 @@ test("full signed-reviewed six-month source-backed substitute is derived inactiv
  const x=await state();assert.equal(x.status,"inactive_by_substitution");assert.equal(x.activeRequest,false);
  assert.equal(x.coveredFields.length,source.fields.length);assert.deepEqual(x.missingFields,[]);
  assert.deepEqual(x.supportDocumentIds,["doc-bank"]);
+});
+test("unreviewed primary field mapping cannot automatically deactivate a request",async()=>{
+ const r=orig();r.mappingRequired=true;r.crosswalkReview=undefined;
+ const view=await reconcileDocumentSubstitution(input({requirement:r}));
+ assert.equal(view.activeRequest,true);
+ assert.ok(view.reasonCodes.includes("PRIMARY_FIELD_MAPPING_UNREVIEWED"));
 });
 test("absence of review or declared alternatives retains original request",async()=>{
  assert.equal((await reconcileDocumentSubstitution({...input(),requirement:orig()})).status,"review_required");
