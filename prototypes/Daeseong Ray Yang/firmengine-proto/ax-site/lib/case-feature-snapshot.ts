@@ -3,10 +3,11 @@
  * CaseData value, reissues a source proof, or creates a human/legal acceptance. */
 import {currentFacts,type CaseData,type Fact,type NumericInput,type ExtractionPayload} from "./domain.ts";
 import {projectPage,validatePageRead,type PageRead} from "./extraction.ts";
+import {bindCanonicalSourceField,canonicalProjectionKey,CANONICAL_SOURCE_BINDING_VERSION} from "./canonical-field-binding.ts";
 
 type Head={case_id:string;source_document_id:string;page:number;run_id:string;head_case_revision:number;run_case_id:string;document_instance_id:string;schema_id:string;stage:string;model:string;source_hash:string;image_hash:string;read_sha256:string;read_json:string;run_case_revision:number;instance_case_id:string;instance_source_document_id:string;instance_page:number;shared_document_type_id:string|null;family_id:string|null;schema_sha256:string;schema_payload_json:string;document_case_id:string;document_sha256:string};
 type RecordRow={id:string;ordinal:number;category:string;label:string};
-type FeatureRow={id:string;record_id:string;schema_id:string;ordinal:number;canonical_field_id:string|null;field_key:string;label:string;raw_value_json:string;unit:string|null;source_state:string|null;confidence:string;quote:string|null;bbox_json:string;raw_field_json:string};
+type FeatureRow={id:string;record_id:string;schema_id:string;ordinal:number;canonical_field_id:string|null;field_key:string;label:string;raw_value_json:string;unit:string|null;source_state:string|null;confidence:string;quote:string|null;bbox_json:string;raw_field_json:string;projection_key:string|null;binding_version:string;}
 type SchemaField={canonical_field_id:string;ordinal:number;local_key:string;label:string;datatype:string;unit:string;subject_role:string;party_role:string;temporal_role:string;amount_owner_role:string|null;definition_json:string};
 const stable=(value:unknown):string=>value===null||typeof value!=="object"?JSON.stringify(value)??"null":Array.isArray(value)?`[${value.map(stable).join(",")}]`:`{${Object.keys(value).sort().filter(key=>(value as Record<string,unknown>)[key]!==undefined).map(key=>JSON.stringify(key)+":"+stable((value as Record<string,unknown>)[key])).join(",")}}`;
 const digest=async(value:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)))].map(value=>value.toString(16).padStart(2,"0")).join("");
@@ -79,13 +80,19 @@ export async function buildCaseFeatureSnapshot(database:D1Database,input:{caseDa
       if(field.ordinal!==index||field.canonical_field_id!==definition.global_field_id||field.local_key!==definition.local_id||field.label!==definition.label||field.datatype!==definition.datatype||field.unit!==definition.canonical_unit||field.subject_role!==definition.subject_entity_role||field.party_role!==definition.party_value_role||field.temporal_role!==definition.temporal_role||field.amount_owner_role!==definition.amount_owner_role||!same(parse(field.definition_json,"field definition JSON invalid"),definition))throw fault("SOURCE_INTEGRITY_MISMATCH","physical schema field differs from immutable contract");
     }
     const records=(await database.prepare("SELECT id,ordinal,category,label FROM extraction_records WHERE run_id=? ORDER BY ordinal").bind(head.run_id).all<RecordRow>()).results;
-    const features=(await database.prepare("SELECT f.id,f.record_id,f.schema_id,f.ordinal,f.canonical_field_id,f.field_key,f.label,f.raw_value_json,f.unit,f.source_state,f.confidence,f.quote,f.bbox_json,f.raw_field_json FROM extracted_features f JOIN extraction_records r ON r.id=f.record_id WHERE r.run_id=? ORDER BY r.ordinal,f.ordinal").bind(head.run_id).all<FeatureRow>()).results;
+    const features=(await database.prepare("SELECT f.id,f.record_id,f.schema_id,f.ordinal,f.canonical_field_id,f.field_key,f.label,f.raw_value_json,f.unit,f.source_state,f.confidence,f.quote,f.bbox_json,f.raw_field_json,f.projection_key,f.binding_version FROM extracted_features f JOIN extraction_records r ON r.id=f.record_id WHERE r.run_id=? ORDER BY r.ordinal,f.ordinal").bind(head.run_id).all<FeatureRow>()).results;
     if(!Array.isArray(original.records)||records.length!==original.records.length)throw fault("SOURCE_INTEGRITY_MISMATCH","physical source record count differs from immutable read");
     const rebuilt={...original,records:records.map((record,ri)=>{
       const old=original.records[ri],fields=features.filter(field=>field.record_id===record.id);
       if(record.ordinal!==ri||record.category!==old.category||record.label!==old.label||fields.length!==old.fields.length)throw fault("SOURCE_INTEGRITY_MISMATCH","source record identity/count differs from immutable read");
       return {...old,category:record.category,label:record.label,fields:fields.map((field,fi)=>{
         const raw=parse(field.raw_field_json,"raw source field JSON invalid"),expected=old.fields[fi];
+        if(field.binding_version===CANONICAL_SOURCE_BINDING_VERSION){
+          const binding=bindCanonicalSourceField(raw,schema.contract??null);
+          const mapped=canonicalProjectionKey(schema.contract??null,binding,record.category);
+          if(binding.canonicalFieldId!==field.canonical_field_id||mapped!==field.projection_key)
+            throw fault("SOURCE_INTEGRITY_MISMATCH","canonical OCR field/typed projection differs from immutable source");
+        }
         if(field.ordinal!==fi||field.schema_id!==head.schema_id||!same(raw,expected)||field.field_key!==raw.key||field.label!==raw.label||!same(parse(field.raw_value_json,"raw value JSON invalid"),raw.value)||field.unit!==(raw.unit??null)||field.source_state!==(raw.sourceState??null)||field.confidence!==raw.confidence||field.quote!==(raw.quote??null)||!same(parse(field.bbox_json,"bbox JSON invalid"),raw.bbox??null))throw fault("SOURCE_INTEGRITY_MISMATCH","normalized feature differs from immutable source field");
         if(field.canonical_field_id&&!definitions.some((definition:any)=>definition.global_field_id===field.canonical_field_id&&(raw.canonicalFieldId?raw.canonicalFieldId===definition.global_field_id:raw.key===definition.local_id||raw.key===definition.global_field_id)))throw fault("SOURCE_INTEGRITY_MISMATCH","normalized canonical field binding differs from source/schema");
         return raw;

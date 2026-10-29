@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { createHash } from "node:crypto";
-import { persistPageExtractionRows,listCaseExtractionRows,type PersistPageExtractionRowsInput } from "../lib/extraction-row-store.ts";
+import { persistPageExtractionRows,listCaseExtractionRows,listCaseExtractionCoverage,type PersistPageExtractionRowsInput } from "../lib/extraction-row-store.ts";
 import type { PageRead } from "../lib/extraction.ts";
 
 const hash="a".repeat(64),imageHash="b".repeat(64);
 function setup(){
   const sqlite=new DatabaseSync(":memory:");sqlite.exec("PRAGMA foreign_keys=ON");
-  for(const name of ["0000_chunky_cardiac.sql","0001_case_storage_token.sql","0008_normalized_extractions.sql"])sqlite.exec(readFileSync(new URL("../drizzle/"+name,import.meta.url),"utf8"));
+  for(const name of ["0000_chunky_cardiac.sql","0001_case_storage_token.sql","0008_normalized_extractions.sql","0016_source_field_coverage.sql"])sqlite.exec(readFileSync(new URL("../drizzle/"+name,import.meta.url),"utf8"));
   sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at,storage_token) VALUES ('case-1','Synthetic','owner',1,'{}','at','at','token')").run();
   sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,ready,created_at) VALUES ('doc-1','case-1','Synthetic.pdf',?,2,1,'at')").run(hash);
   let beforeBatch:(()=>void)|undefined;
@@ -32,7 +32,7 @@ test("normalized writer preserves every repeated row, null source state, unit an
   const h=setup();try{
     const read=sourceRead(),before=JSON.stringify(read),result=await persistPageExtractionRows(h.database,input(read));
     assert.equal(result.records,2);assert.equal(result.features,5);assert.equal(result.headPromoted,true);assert.equal(JSON.stringify(read),before);
-    assert.equal(count(h,"extraction_schema_fields"),12);assert.equal(count(h,"extraction_records"),2);assert.equal(count(h,"extracted_features"),5);
+    assert.equal(count(h,"extraction_schema_fields"),12);assert.equal(count(h,"extraction_records"),2);assert.equal(count(h,"extracted_features"),5);assert.equal(count(h,"extraction_field_coverage"),12);
     const stored=h.sqlite.prepare("SELECT read_json,read_sha256 FROM extraction_runs WHERE id=?").get(result.runId) as {read_json:string;read_sha256:string};
     assert.equal(stored.read_json,before);assert.equal(stored.read_sha256,createHash("sha256").update(before).digest("hex"));
     const output=await listCaseExtractionRows(h.database,{caseId:"case-1",expectedRevision:1});
@@ -113,5 +113,30 @@ test("nullable canonical amount owner roles preserve every debt schema field and
     const amount=h.sqlite.prepare("SELECT amount_owner_role FROM extraction_schema_fields WHERE schema_id=? AND canonical_field_id='debt_certificate::principal_balance'").get(result.schemaId) as {amount_owner_role:string|null};assert.equal(amount.amount_owner_role,null);
     const view=await listCaseExtractionRows(h.database,{caseId:"case-1"});assert.equal(view.records[0].fields[0].canonicalFieldId,"debt_certificate::principal_balance");assert.equal(view.records[0].fields[0].expected.amountOwnerRole,null);
     assert.deepEqual(h.sqlite.prepare("PRAGMA foreign_key_check").all(),[]);
+  }finally{h.close();}
+});
+
+test("every schema field has a page-coverage row even if OCR did not observe it",async()=>{
+  const h=setup();try{
+    const read:PageRead={documentType:"shared-document:debt_certificate@debt_certificate",complete:true,warnings:[],
+      records:[{category:"debt",label:"claim",fields:[{key:"principal_balance",canonicalFieldId:"debt_certificate::principal_balance",
+        label:"balance",value:"0",unit:"KRW",quote:"원금 0원",bbox:[0.1,0.1,0.4,0.2],confidence:"clear",sourceState:"present"}]}]};
+    const result=await persistPageExtractionRows(h.database,input(read,{classification:{documentTypeId:"debt_certificate",documentTypeName:"부채증명서",familyId:"debt_certificate",documentCatalogVersion:2,documentCatalogSha256:"c".repeat(64)}}));
+    assert.equal(result.features,1);assert.equal(result.expectedFields,13);assert.equal(result.notObservedOnPage,12);
+    const coverage=await listCaseExtractionCoverage(h.database,{caseId:"case-1",documentTypeId:"debt_certificate"});
+    assert.equal(coverage.totalFields,13);
+    assert.equal(coverage.rows.find(v=>v.canonicalFieldId==="debt_certificate::principal_balance")?.observationStatus,"observed_source_only");
+    assert.equal(coverage.rows.find(v=>v.canonicalFieldId==="debt_certificate::interest_balance")?.observationStatus,"not_observed_on_page");
+    assert.equal(count(h,"extracted_features"),1);assert.equal(count(h,"extraction_field_coverage"),13);
+  }finally{h.close();}
+});
+test("canonical ID disagreeing with OCR key is rejected consistently across storage and case projection",async()=>{
+  const h=setup();try{
+    const read=sourceRead();read.records[0].fields[0].canonicalFieldId="bank_transactions::amount";read.records[0].fields[0].key="counterparty";
+    await persistPageExtractionRows(h.database,input(read));
+    const view=await listCaseExtractionRows(h.database,{caseId:"case-1"});
+    assert.equal(view.records[0].fields[0].canonicalFieldId,null);
+    assert.equal(view.records[0].fields[0].projectionKey,null);
+    assert.ok(view.records[0].fields[0].validation.includes("CANONICAL_ID_KEY_CONFLICT"));
   }finally{h.close();}
 });
