@@ -121,6 +121,7 @@ test("two substitutes can jointly cover distinct proof slots without overwriting
  const withMatches=[...input().matches,{...m,matchId:"m-two",documentId:"doc-paystub",pageIds:["doc-paystub:1"],sourceDocumentHash:"b".repeat(64)}];
  // First two of five proof slots now come from the second alternative.
  const facts=factRows.map((item,i)=>i<2?{...item,refs:[{documentId:"doc-paystub",page:1,quote:"synthetic",sourceHash:"b".repeat(64)}]}:item);
+ original.substitutionReview!.proofFingerprints=await Promise.all(facts.map(async fact=>({factId:fact.id,sha256:await substitutionFactFingerprint(fact)})));
  const a=await reconcileDocumentSubstitution(input({requirement:original,documents:withTwo,pages:withPages,matches:withMatches,facts}));
  assert.equal(a.status,"inactive_by_substitution");
  assert.deepEqual(a.supportDocumentIds,["doc-bank","doc-paystub"]);
