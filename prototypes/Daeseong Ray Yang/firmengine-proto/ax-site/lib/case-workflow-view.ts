@@ -3,6 +3,7 @@ import type { CaseRequirement } from "./case-requirements.ts";
 import type { DocumentMatch } from "./document-fulfillment.ts";
 import { aggregateDocumentReception, deriveRequirementStatus, fulfillmentDependencyFingerprint, type DocumentReceptionView, type FulfillmentDependencyInput, type ReceptionFieldIssue, type ReceptionPage, type RequirementStatus } from "./document-fulfillment.ts";
 import type { RequirementStaffDisposition } from "./case-requirements.ts";
+import { reconcileDocumentSubstitution, type SubstitutionPageType, type SubstitutionView } from "./document-substitution.ts";
 
 export interface CaseWorkflowRequirementView {
   requirementId: string;
@@ -10,6 +11,7 @@ export interface CaseWorkflowRequirementView {
   engineFulfillment: "missing"|"partial"|"complete"|"conflict"|"mapping_required"|"stale";
   staffDisposition: "unreviewed"|"confirmed"|"rejected"|"waived"|"stale";
   requirementStatus: RequirementStatus;
+  substitution: SubstitutionView;
   requiredFieldCoverage: { required: string[]; covered: string[]; missing: string[] };
   mappingOptions: { crosswalkId:string|null; familyId:string|null; contractVersion:string|null; availableFieldIds:string[]; targetFamilies:string[] };
   matchedDocumentCount: number;
@@ -67,7 +69,7 @@ function confirmationReceipt(confirmation:ReturnType<typeof latestConfirmation>)
 }
 
 /** Read-only projection. It returns state and opaque fingerprints, never source values or auth material. */
-export async function buildCaseWorkflowView(data:CaseData):Promise<CaseWorkflowView> {
+export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersion?:number|null;pendingCourtPolicyChange?:boolean;pageTypes?:readonly SubstitutionPageType[]}={}):Promise<CaseWorkflowView> {
   const workflow=data.workflowState;
   const requirements=workflow?.requirements??[], matches=workflow?.documentMatches??[], links=workflow?.subjectLinks??[];
   const facts=currentFacts(data), requirementStates:CaseWorkflowRequirementView[]=[], requirementFingerprints:Record<string,string>={};
@@ -97,6 +99,35 @@ export async function buildCaseWorkflowView(data:CaseData):Promise<CaseWorkflowV
     const derived=await deriveRequirementStatus({...fulfillmentInput,...(receipt?{staffDispositionReceipt:receipt}:{})});
     let engineFulfillment=derived.engineFulfillment,requirementStatus=derived.requirementStatus;
     if(requirement.intakeStatus==="conflict"){engineFulfillment="conflict";requirementStatus="conflict";}
+    const substitution=reconcileDocumentSubstitution({
+      requirement,matches:effectiveMatches,documents:data.documents,pages:data.pages,facts,subjectLink,
+      courtId:String(data.context.courtId??""),asOf:String(data.context.asOf??""),
+      catalogVersion:options.catalogVersion,pendingCourtPolicyChange:options.pendingCourtPolicyChange,
+      pageTypes:options.pageTypes
+    });
+    if(substitution.status==="inactive_by_substitution"&&requirement.intakeStatus!=="conflict"&&requirement.intakeStatus!=="qualification_needed"&&requirement.intakeStatus!=="legal_review"){
+      engineFulfillment="complete";requirementStatus="satisfied";
+    }else if(requirement.substitutionReview||requirement.selectedAlternativeId){
+      // A selected or previously-approved substitute cannot bypass fresh proof validation.
+      if(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation"||requirementStatus==="complete"){
+        engineFulfillment="mapping_required";requirementStatus="legal_review";
+      }
+    }else if(requirement.alternatives.length&&accepted.some(match=>{
+      const candidateTypeIds=new Set(requirement.alternatives.map(alt=>alt.id));
+      return match.pageIds.some(pageId=>{
+        const prefix=match.documentId+":";
+        if(!pageId.startsWith(prefix))return false;
+        const pageNo=Number(pageId.slice(prefix.length));
+        const observed=options.pageTypes?.find(item=>item.documentId===match.documentId&&item.page===pageNo)?.documentTypeId
+          ?? /^shared-document:([a-z0-9_]+)@/.exec(data.pages.find(page=>page.documentId===match.documentId&&page.page===pageNo)?.documentType??"")?.[1];
+        return observed?candidateTypeIds.has(observed):false;
+      });
+    })){
+      // An unapproved alternate document must not satisfy a primary request.
+      if(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation"){
+        engineFulfillment="mapping_required";requirementStatus="legal_review";
+      }
+    }
     const docs=new Set(effectiveMatches.filter(m=>["accepted","proposed","stale"].includes(m.state)).map(m=>m.documentId));
     const reception:CaseWorkflowRequirementView["reception"]=[];
     for(const documentId of [...docs].sort()){
@@ -118,7 +149,7 @@ export async function buildCaseWorkflowView(data:CaseData):Promise<CaseWorkflowV
       const view=aggregateDocumentReception({document:{id:doc.id,status:doc.status,originalReady:doc.pages.length>0,pagesReady:doc.pages.every(pageNo=>pageRows.some(p=>p.page===pageNo&&pageContentReady(p)))},pages:receptionPages,requiredPages,fieldIssues,sourceRevision:data.context.revision});
       reception.push(sanitizedReception(view));
     }
-    requirementStates.push({requirementId:requirement.requirementId,required:requirement.requirement==="required_when_applicable"||requirement.requirement==="court_ordered",engineFulfillment,staffDisposition:derived.staffDisposition,requirementStatus,requiredFieldCoverage:{required:requiredFields,covered,missing},mappingOptions:{crosswalkId:requirement.crosswalkId??null,familyId:requirement.familyId??null,contractVersion:requirement.crosswalkVersion??null,availableFieldIds:[...(requirement.availableFieldIds??[])],targetFamilies:["source_only","incomes[]","debts[]","assets[]","transactions[]","household[]"]},matchedDocumentCount:new Set(accepted.map(m=>m.documentId)).size,reception});
+    requirementStates.push({requirementId:requirement.requirementId,required:requirement.requirement==="required_when_applicable"||requirement.requirement==="court_ordered",engineFulfillment,staffDisposition:substitution.status==="inactive_by_substitution"?"confirmed":derived.staffDisposition,requirementStatus,substitution,requiredFieldCoverage:{required:requiredFields,covered,missing},mappingOptions:{crosswalkId:requirement.crosswalkId??null,familyId:requirement.familyId??null,contractVersion:requirement.crosswalkVersion??null,availableFieldIds:[...(requirement.availableFieldIds??[])],targetFamilies:["source_only","incomes[]","debts[]","assets[]","transactions[]","household[]"]},matchedDocumentCount:new Set(accepted.map(m=>m.documentId)).size,reception});
   }
   const count=(status:RequirementStatus)=>requirementStates.filter(state=>state.requirementStatus===status).length;
   const required=requirementStates.filter(state=>state.required&&state.requirementStatus!=="retired"),resolved=new Set<RequirementStatus>(["satisfied","waived_by_review","not_applicable_confirmed","retired"]);
