@@ -2,7 +2,7 @@
 
 의뢰인 증빙을 사건별로 보관하고, 문서유형별로 사실과 원문 근거를 추출한다. n8n Code의 결정론적 계산과 필요증빙·위험 체크를 거쳐 필수 조건이 해결된 경우 편집형 법원 서류를 생성한다. 생성 후 담당자·변호사 검수를 별도로 기록한다.
 
-현재 데이터 모델·흐름도·구현 한계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)에 있다. 최초 엄격 독립평가는 **채점 가능 212개 중 7개 일치**였으며, 리팩토링 합성 검증과 실제 제출본 재현 품질을 구별한다. 법원 인가확률을 수치로 예측하지 않는다.
+현재 데이터 모델·흐름도·구현 한계는 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)에 있다. 합성 검증과 실제 제출본 품질 평가는 구별한다. 법원 인가확률을 수치로 예측하지 않는다.
 
 ## 로컬 실행
 
@@ -66,18 +66,11 @@ Qdrant는 법령·준칙·사례 관찰·검토된 성공사례 컬렉션을 분
 - `molit_apartment`: `MOLIT_API_KEY` 또는 공공데이터 키와 `lawd_cd`, `deal_ymd`가 필요한 실거래 비교. 거래가격을 자동 감정가로 채택하지 않는다.
 - `configured_vehicle_api`: 신뢰한 환경 설정 URL과 선택적인 `VEHICLE_VALUATION_API_KEY`로 연결하는 차량 시세 제공자.
 
-## 양식·실제 샘플 평가
+## 양식과 평가
 
-`templates/`에는 기본 6종과 조건부 신청서·채권 부속표·변제 배분표·자산평가표·증빙 색인 등 18개 편집형 템플릿이 있다. 공개 빈 PDF/HWP 원본·해시·출처는 별도 보존한다. 편집형 재구성이므로 실제 법원 요청양식과 레이아웃·항목·첨부를 검수해야 한다.
+`templates/`에는 공개 빈 양식을 바탕으로 한 편집형 템플릿이 있습니다. 실제 제출 전에는 해당 법원의 항목·배치·첨부 요건을 검토해야 합니다.
 
-`sample_masking.pdf` 118쪽 중 의뢰인 증빙 92쪽만 물리적으로 분리한다. 작성 완료된 제출본 24쪽은 독립평가 전용, 행정자료 2쪽은 제외다. 제출본 정답은 생성기·RAG·few-shot에 넣지 않는다.
-
-```powershell
-python scripts/run_sample.py --run-name refactor-001
-python evaluation/evaluate_sample.py
-```
-
-실행별 입력 분리·생성 결과·파일은 `.runtime/evaluation/runs/`에 별도 보존한다. 필수 조건으로 생성이 보류된 실행도 기록하며 성공으로 계산하지 않는다. 평가 기준과 방법은 [evaluation/README.md](evaluation/README.md), 공개 결과는 [evaluation/SUBMISSION_REPORT.md](evaluation/SUBMISSION_REPORT.md)를 참고한다.
+실제 샘플 PDF와 그 자료에서 나온 페이지 목록·사례 정보·평가 결과는 공개 저장소에서 제거했습니다. 평가 도구는 별도로 승인된 비공개 입력을 준비한 경우에만 실행할 수 있습니다. [평가 자료 관리](evaluation/README.md)를 참고하세요.
 
 ## 검증
 

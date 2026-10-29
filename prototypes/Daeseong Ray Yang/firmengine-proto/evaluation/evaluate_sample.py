@@ -22,9 +22,9 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
-EVALUATION = ROOT / "evaluation"
+EVALUATION = ROOT / ".runtime" / "evaluation"
 PRIVATE = ROOT / ".runtime" / "evaluation"
-SAMPLE = ROOT / "sample_masking.pdf"
+SAMPLE = PRIVATE / "source.pdf"
 MODEL = "gpt-6-luna"
 FIELD_KEYS = [
     "client_name", "court_name", "business_name", "household_size",
@@ -35,19 +35,7 @@ FIELD_KEYS = [
     "bank_balance", "insurance_surrender", "housing_deposit", "business_deposit",
     "vehicle_value", "real_estate_value", "monthly_trustee_fee",
 ]
-BATCHES = [
-    {"name": "identity_and_income", "pages": [1, 69],
-     "keys": ["client_name", "court_name", "business_name", "household_size",
-              "monthly_income", "recognized_living_cost"]},
-    {"name": "creditors", "pages": [4, 5],
-     "keys": ["debt_principal_total", "debt_interest_total", "debt_total"]},
-    {"name": "assets", "pages": [33, 34, 35],
-     "keys": ["assets_total", "bank_balance", "insurance_surrender", "housing_deposit",
-              "business_deposit", "vehicle_value", "real_estate_value"]},
-    {"name": "repayment", "pages": [23, 28, 31, 32],
-     "keys": ["monthly_disposable_income", "repayment_months", "monthly_payment",
-              "total_repayment", "repayment_rate", "liquidation_value", "monthly_trustee_fee"]},
-]
+
 LABELS = {
     "client_name": ["성명", "신청인", "채무자"],
     "court_name": ["관할", "법원"],
@@ -165,11 +153,27 @@ def extract_gold(sample: Path, force: bool = False, refresh_batch: str | None = 
     digest = hashlib.sha256(sample.read_bytes()).hexdigest()
     if digest != manifest["source_sha256"]:
         raise RuntimeError("Sample SHA256 does not match the independently reviewed page split")
+    batches = manifest.get("extraction_batches")
+    if not isinstance(batches, list) or not batches:
+        raise RuntimeError("Private evaluation extraction_batches are required")
+    names = set()
+    for batch in batches:
+        if not isinstance(batch, dict) or not re.fullmatch(r"[a-zA-Z0-9_-]+", str(batch.get("name", ""))):
+            raise RuntimeError("Invalid private evaluation batch name")
+        if batch["name"] in names:
+            raise RuntimeError("Duplicate private evaluation batch name")
+        names.add(batch["name"])
+        if not isinstance(batch.get("pages"), list) or not batch["pages"] or any(type(p) is not int for p in batch["pages"]) or not set(batch["pages"]).issubset(manifest["holdout_pages"]):
+            raise RuntimeError("Evaluation batch must contain reviewed held-out pages")
+        if not isinstance(batch.get("keys"), list) or not set(batch["keys"]).issubset(FIELD_KEYS):
+            raise RuntimeError("Invalid evaluation field selection")
+    if refresh_batch is not None and refresh_batch not in names:
+        raise RuntimeError("Unknown private evaluation batch")
     key = load_api_key()
     pdf = pymupdf.open(sample)
     all_fields, all_creditors, usage_rows = [], [], []
     started = time.monotonic()
-    for batch in BATCHES:
+    for batch in batches:
         if not set(batch["pages"]).issubset(manifest["holdout_pages"]):
             raise RuntimeError("Golden extraction batch contains non-holdout pages")
         cache = PRIVATE / ("gold_" + batch["name"] + ".json")
@@ -241,7 +245,7 @@ def extract_gold(sample: Path, force: bool = False, refresh_batch: str | None = 
     golden = {"schema_version": 1, "source_sha256": digest, "model": MODEL,
               "extraction_method": "independent_holdout_vision", "human_verified": False,
               "field_targets": all_fields, "creditor_targets": all_creditors,
-              "holdout_pages_used": sorted({p for b in BATCHES for p in b["pages"]}),
+              "holdout_pages_used": sorted({p for b in batches for p in b["pages"]}),
               "usage": usage_rows, "extraction_elapsed_seconds": round(time.monotonic() - started, 2)}
     target = PRIVATE / "golden.json"
     write_json(target, golden)
@@ -469,8 +473,8 @@ def compare(golden_path: Path, generated_path: Path) -> dict:
     report = {
         "schema_version": 1, "created_at": datetime.now(timezone.utc).isoformat(),
         "sample_count": 1, "source_sha256": manifest["source_sha256"], "model": MODEL,
-        "split": {"total_pages": 118, "evidence_pages": len(manifest["evidence_pages"]),
-                  "heldout_pages": len(manifest["holdout_pages"]), "excluded_pages": 2},
+        "split": {"total_pages": manifest.get("total_pages", len(set(manifest["evidence_pages"] + manifest["holdout_pages"] + manifest.get("administrative_excluded_pages", [])))), "evidence_pages": len(manifest["evidence_pages"]),
+                  "heldout_pages": len(manifest["holdout_pages"]), "excluded_pages": len(manifest.get("administrative_excluded_pages", []))},
         "golden": {"method": golden["extraction_method"], "human_verified": golden.get("human_verified", False),
                    "target_pages_read": golden["holdout_pages_used"], "scalar_targets": len(field_results),
                    "creditor_targets": len(golden["creditor_targets"])},
@@ -509,8 +513,8 @@ def compare(golden_path: Path, generated_path: Path) -> dict:
 def render_report(report: dict) -> None:
     scalar = report["scalar_comparison"]
     count = scalar["counts"]
-    lines = ["# 독립 평가 결과", "", "평가 대상: 제공된 개인사업자 샘플 1건. 제출본은 생성 입력에서 분리했습니다.", "",
-             "- 생성 입력: 증빙 92페이지 / 제출본 holdout: 24페이지 / 행정문서 제외: 2페이지",
+    lines = ["# 독립 평가 결과", "", "평가 대상: 별도로 승인된 비공개 입력. 평가용 제출본은 생성 입력에서 분리했습니다.", "",
+             f"- 생성 입력: 증빙 {report['split']['evidence_pages']}페이지 / 평가 {report['split']['heldout_pages']}페이지 / 제외 {report['split']['excluded_pages']}페이지",
              "- 평가 모델: `gpt-6-luna`, Responses API `store: false`",
              "- 정답 추출: 별도 요청·프롬프트로 수행. 전문가가 확정한 법률 정답은 아닙니다.", "",
              "## 필드 비교", "",
@@ -543,7 +547,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--extract-gold", action="store_true")
     parser.add_argument("--force", action="store_true", help="Repeat paid golden extraction instead of using private cache")
-    parser.add_argument("--refresh-batch", choices=[b["name"] for b in BATCHES],
+    parser.add_argument("--refresh-batch",
                         help="Repeat only one paid batch; preserve other private golden caches")
     parser.add_argument("--sample", type=Path, default=SAMPLE)
     parser.add_argument("--generated", type=Path, default=PRIVATE / "generated.json")
@@ -553,7 +557,7 @@ def main() -> int:
         golden_path = extract_gold(args.sample, args.force, args.refresh_batch) if args.extract_gold else args.golden
         if args.generated.exists():
             report = compare(golden_path, args.generated)
-            print(json.dumps({"report": "evaluation/report.json", "scalar_counts": report["scalar_comparison"]["counts"],
+            print(json.dumps({"report": str(EVALUATION / "report.json"), "scalar_counts": report["scalar_comparison"]["counts"],
                               "artifact_count": report["artifacts"]["readable_count"]}))
         elif args.extract_gold:
             print(json.dumps({"golden_ready": True, "generated_export_pending": True}))

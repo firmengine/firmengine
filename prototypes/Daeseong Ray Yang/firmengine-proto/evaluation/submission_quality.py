@@ -26,7 +26,7 @@ from docx.oxml.ns import qn
 import evaluate_sample as scalar
 
 ROOT = scalar.ROOT
-PUBLIC = ROOT / "evaluation"
+PUBLIC = ROOT / ".runtime" / "evaluation"  # Runtime-only output; never public source.
 PRIVATE = ROOT / ".runtime" / "evaluation"
 PROMPTS = ROOT / "promptbook"
 MODEL = "gpt-6-luna"
@@ -85,8 +85,7 @@ def request_json(bundle: dict, body: str, images: list[dict] | None = None, sche
 
 
 def source_path(manifest: dict) -> Path:
-    candidates = [ROOT / manifest.get("source_relative_path", "sample_masking.pdf"),
-                  ROOT / "sample_masking.pdf", ROOT.parent / "sample.pdf"]
+    candidates = [PRIVATE / "source.pdf"]
     for candidate in candidates:
         if candidate.is_file():
             if hashlib.sha256(candidate.read_bytes()).hexdigest() == manifest["source_sha256"]:
@@ -346,7 +345,7 @@ def score_submission(generated_path: Path) -> dict:
 
 
 def write_public_report(report: dict) -> None:
-    lines = ["# 제출서류 본문 독립 평가", "", "제출본 24페이지를 생성 입력에서 분리하고, 6종 DOCX의 실제 본문만 비교했습니다. 근거 부록·워크북 추출값·원본 인용은 본문 완성으로 계산하지 않습니다.", "",
+    lines = ["# 제출서류 본문 독립 평가", "", "평가용 제출본을 생성 입력에서 분리하고, 지정된 DOCX의 실제 본문만 비교했습니다. 근거 부록·워크북 추출값·원본 인용은 본문 완성으로 계산하지 않습니다.", "",
              "- 자동 완성도 기준: " + ("충족" if report["automated_completeness_pass"] else "미충족"),
              "- 법원 제출 가능 판정: 미확정. 실제 양식·내용에 대한 변호사 최종 확인이 필요합니다.",
              f"- 동결된 비교 가능 체크: {report['scorable_checks']}개",

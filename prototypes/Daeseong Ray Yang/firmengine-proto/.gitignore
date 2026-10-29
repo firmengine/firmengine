@@ -10,3 +10,9 @@ __pycache__/
 evaluation/private/
 .env.example
 sample.pdf
+# Private case inputs and all derived evaluation artifacts.
+sample*.pdf
+/evaluation/*.json
+/evaluation/REPORT.md
+/evaluation/SUBMISSION_REPORT.md
+/evaluation/runs/

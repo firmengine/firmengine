@@ -1,3 +1,4 @@
+import { isProtectedCaseId } from "./protected-case.ts";
 import type { CaseData } from "./domain.ts";
 import { caseWorkflow } from "./case-workflow-state.ts";
 import { canonicalSha256 } from "./structured-case-import.ts";
@@ -19,7 +20,6 @@ export interface CaseSchemaMigrationPlan {
   sourceSha256:string;resultStateSha256:string;mode:MigrationMode;allowlistedCaseIds:string[];
   changedFields:string[];semanticDiff:{before:unknown;after:unknown};migratedSnapshot:CaseData;existingReceipt?:CaseSchemaMigrationReceipt;
 }
-const BLOCKED_CASE_IDS=new Set(["8429888a-1861-48b5-b1f4-66af1d36273e"]);
 const allowedModes=new Set<MigrationMode>(["deterministic","document","propagation"]);
 type MigrationExtendedCase=CaseData&{caseSchemaMigrations?:CaseSchemaMigrationReceipt[]};
 function fail(code:string):never{throw new Error(code);}
@@ -29,10 +29,10 @@ export function assertWritableWorkflowSchema(data:Pick<CaseData,"workflowState">
   if(state&&state.schema!=="case-workflow/1")fail("MIGRATION_UNSUPPORTED_WORKFLOW_SCHEMA");
   if(state&&state.version!==undefined&&(!Number.isSafeInteger(state.version)||state.version<1))fail("MIGRATION_WORKFLOW_COUNTER_INVALID");
 }
-function validateScope(data:CaseData,request:CaseSchemaMigrationRequest,allowlistedCaseIds:readonly string[]):void{
+async function validateScope(data:CaseData,request:CaseSchemaMigrationRequest,allowlistedCaseIds:readonly string[]):Promise<void>{
   if(!Array.isArray(allowlistedCaseIds)||allowlistedCaseIds.length<1||allowlistedCaseIds.length>52||new Set(allowlistedCaseIds).size!==allowlistedCaseIds.length||allowlistedCaseIds.some(id=>typeof id!=="string"||!id.trim()||id.length>128))fail("MIGRATION_EXPLICIT_CASE_SCOPE_REQUIRED");
   if(!allowlistedCaseIds.includes(data.context.id)||request.caseId!==data.context.id)fail("MIGRATION_CASE_NOT_ALLOWLISTED");
-  if(BLOCKED_CASE_IDS.has(data.context.id))fail("MIGRATION_PROTECTED_CASE");
+  if(await isProtectedCaseId(data.context.id))fail("MIGRATION_PROTECTED_CASE");
   if((data.structuredTest||data.referenceTest)&&!data.evaluationClone)fail("MIGRATION_ORIGINAL_FIXTURE_IMMUTABLE");
   if(!request||request.migrationVersion!==CASE_SCHEMA_MIGRATION_VERSION||!allowedModes.has(request.mode))fail("MIGRATION_VERSION_OR_MODE_UNSUPPORTED");
   if(!Number.isSafeInteger(request.expectedRevision)||request.expectedRevision<1||request.expectedRevision!==data.context.revision)fail("MIGRATION_REVISION_MISMATCH");
@@ -79,7 +79,7 @@ function migrationReceipt(data:CaseData):CaseSchemaMigrationReceipt|undefined{
 }
 /** Prepare a per-case dry run. The caller supplies a bounded explicit ID list and the server-read hash/revision. */
 export async function prepareCaseSchemaMigration(data:CaseData,request:CaseSchemaMigrationRequest,allowlistedCaseIds:readonly string[]):Promise<CaseSchemaMigrationPlan>{
-  validateScope(data,request,allowlistedCaseIds);
+  await validateScope(data,request,allowlistedCaseIds);
   const sourceSha256=await canonicalSha256(data);
   if(sourceSha256!==request.expectedInputSha256)fail("MIGRATION_SOURCE_HASH_MISMATCH");
   const prior=migrationReceipt(data);
@@ -97,7 +97,7 @@ export async function prepareCaseSchemaMigration(data:CaseData,request:CaseSchem
 export async function applyCaseSchemaMigration(data:CaseData,plan:CaseSchemaMigrationPlan,appliedAt:string):Promise<{data:CaseData;receipt:CaseSchemaMigrationReceipt;alreadyApplied:boolean}>{
   if(!Number.isFinite(Date.parse(appliedAt)))fail("MIGRATION_APPLIED_AT_INVALID");
   if(plan.migrationVersion!==CASE_SCHEMA_MIGRATION_VERSION||plan.caseId!==data.context.id||!plan.allowlistedCaseIds.includes(data.context.id)||plan.allowlistedCaseIds.length<1||plan.allowlistedCaseIds.length>52||!allowedModes.has(plan.mode))fail("MIGRATION_PLAN_SCOPE_INVALID");
-  if(BLOCKED_CASE_IDS.has(data.context.id)||(data.structuredTest||data.referenceTest)&&!data.evaluationClone)fail("MIGRATION_TARGET_NOT_MUTABLE");
+  if(await isProtectedCaseId(data.context.id)||(data.structuredTest||data.referenceTest)&&!data.evaluationClone)fail("MIGRATION_TARGET_NOT_MUTABLE");
   const prior=migrationReceipt(data);
   if(prior){
     if(prior.receiptId!==plan.planId||prior.mode!==plan.mode||plan.existingReceipt&&plan.existingReceipt.receiptId!==prior.receiptId||!plan.existingReceipt&&(prior.sourceSha256!==plan.sourceSha256||prior.sourceRevision!==plan.expectedRevision))fail("MIGRATION_RECEIPT_CONFLICT");

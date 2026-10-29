@@ -1,3 +1,4 @@
+import { isProtectedCaseId } from "./protected-case.ts";
 import { currentFacts,reviewFact,touchCase,retractDocument,reviewExport,archiveExport,validSourceRef,moneyValue,type CaseData,type Json,type SourceRef,type NumericInput } from "./domain.ts";
 import { parseContextPatch,parseHouseholdPatch } from "./context-validation.ts";
 import { upsertObject,removeObject } from "./object-editor.ts";
@@ -38,7 +39,7 @@ function validateCommandSourceRefs(data:CaseData,refs:unknown){
  for(const raw of refs){if(!raw||typeof raw!=="object"||Array.isArray(raw)||!validSourceRef(data,raw as SourceRef))fail("현재 사건의 유효한 원문 문서·페이지·인용을 지정하세요.");}
 }
 export async function documentEditBaseHash(input:{artifactId:string;fieldId:string;rowId?:string|null;value:string}){return commandHash(input);}
-export function assertMutableCase(data:CaseData){assertWritableWorkflowSchema(data);if(data.context.id==="8429888a-1861-48b5-b1f4-66af1d36273e")fail("보호 사건의 수정은 잠겨 있습니다.",409,"PROTECTED_CASE");if(isSynthetic(data)&&!data.evaluationClone)fail("원본 평가 사건은 수정할 수 없습니다. 전용 복제 사건을 사용하세요.",409,"FIXTURE_IMMUTABLE");}
+export async function assertMutableCase(data:CaseData){assertWritableWorkflowSchema(data);if(await isProtectedCaseId(data.context.id))fail("보호 사건의 수정은 잠겨 있습니다.",409,"PROTECTED_CASE");if(isSynthetic(data)&&!data.evaluationClone)fail("원본 평가 사건은 수정할 수 없습니다. 전용 복제 사건을 사용하세요.",409,"FIXTURE_IMMUTABLE");}
 function resetReviews(data:CaseData,impact?:Record<string,unknown>){
  const invalidated:{key:string;prior:unknown}[]=[];
  const reset=(key:keyof CaseData["context"])=>{const prior=data.context[key];if(prior!==undefined&&prior!==false&&prior!==null)invalidated.push({key:String(key),prior:structuredClone(prior)});(data.context as unknown as Record<string,unknown>)[key]=false;};
@@ -49,7 +50,7 @@ function resetReviews(data:CaseData,impact?:Record<string,unknown>){
 }
 /** Pure command reducer. Trusted external contexts are loaded by the server, never accepted as client caseData. */
 export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,auth:CommandAuthority):Promise<{data:CaseData;impact:Record<string,unknown>}> {
- assertMutableCase(previous);
+ await assertMutableCase(previous);
  assertWritableWorkflowSchema(previous);
  if(!auth.actor||auth.actor==="private-site-service"||!auth.roles.includes("case_editor"))fail("사건 수정 권한이 필요합니다.",403,"HUMAN_ROLE_REQUIRED");
  if(command.commandType==="schema.migrate"){

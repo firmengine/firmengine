@@ -22,3 +22,5 @@
 `audit-*.md`, `ax-v35-merge.md` 등은 이전 판본의 조사·수정 이력입니다. 현재 완료 여부는 위의 v44 안내와 검증표를 기준으로 봅니다.
 
 개발 검토가 필요한 경우에만 `release-acceptance.json`, `feature-inventory.json`, `eform-parity-matrix.json`을 확인하세요. 파일이 존재한다는 이유만으로 기능이 검증된 것으로 표시하지 않습니다.
+
+- [공개 사례 자료 정리](public-data-cleanup.md): 삭제 범위와 재유입 방지.

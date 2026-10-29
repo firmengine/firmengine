@@ -28,6 +28,15 @@ DOCUMENT_SUFFIXES = {".pdf", ".docx", ".docm", ".xlsx", ".xls", ".hwp", ".zip", 
 OFFICIAL_HOSTS = {"file.scourt.go.kr", "www.scourt.go.kr", "slb.scourt.go.kr"}
 SECRET = re.compile(rb"(?:sk-(?:proj-|svcacct-)?[A-Za-z0-9_-]{24,}|gh[pousr]_[A-Za-z0-9]{24,}|github_pat_[A-Za-z0-9_]{24,}|-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----)")
 
+# Fingerprints of private identifiers; raw case IDs and source PDF hashes stay private.
+PRIVATE_IDENTIFIER_FINGERPRINTS = {
+    "1dfd979da22e0b7222eec78973c993ae0e1220748fd558ac2e236350c9d92aae",
+    "b11d31ffe75a07f42179715f42944391be96e42818e0cc925da484151c907409",
+}
+def contains_private_identifier(data, fingerprints=PRIVATE_IDENTIFIER_FINGERPRINTS):
+    tokens = re.findall(rb"(?i)(?<![a-z0-9])[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}(?![a-z0-9])|(?<![a-z0-9])[a-f0-9]{64}(?![a-z0-9])", data)
+    return any(hashlib.sha256(token.lower()).hexdigest() in fingerprints for token in tokens)
+
 PUBLIC_SAMPLE_CONFIG = '''/** Generic source distribution: private evaluation fixtures are intentionally absent. */
 export const SAMPLE_SHA256 = "";
 export function samplePageRole(_hash: string, page: number): {page:number;role:"unknown"|"evidence"|"filed_form"|"administrative";documentType?:string} {
@@ -350,7 +359,7 @@ def main():
         if name=="docs/audit-transport-reliability.md": data=data.replace(b"saved run-001 baseline",b"saved independent evaluation checkpoint")
         if name=="public/templates/README.md":
             data += "\n## 공개 소스 배포 범위\n\n이 배포에는 실행용 빈 DOCX와 매핑 메타데이터를 포함합니다. 법원 원본 PDF/HWP의 복제본은 제외하며, catalog.json과 additional_sources.json의 공식 다운로드 URL·해시를 참조하세요.\n".encode()
-        if SECRET.search(data) or any(value in data for value in private_hashes): raise SystemExit(f"Sensitive content rejected: {name}")
+        if SECRET.search(data) or contains_private_identifier(data) or any(value in data for value in private_hashes): raise SystemExit(f"Sensitive content rejected: {name}")
         files[name]=data;modes[name]="100755" if path.stat().st_mode&stat.S_IXUSR else "100644"
     files["lib/sample-manifest.ts"]=PUBLIC_SAMPLE_CONFIG.encode();files["README.md"]=PUBLIC_README.encode()
     files[".gitignore"]=((source/".gitignore").read_text()+EXTRA_IGNORE).encode()

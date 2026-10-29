@@ -9,3 +9,10 @@ __pycache__/
 dist/
 sample.pdf
 sample*.pdf
+
+
+# Case-derived artifacts remain private.
+sample*.pdf
+/evaluation/SAMPLE_REPORT.md
+/evaluation/*report*.json
+/evaluation/runs/

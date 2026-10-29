@@ -181,7 +181,7 @@ def evaluate(output_dir: Path | None, truth_path: Path, *, mode="normal", workfl
         "coverage":{"criteria":len(results),"pre_unscorable":sum(bool(check.get("unscorable")) for check in truth["checks"]),
                     "scorable":len(results)-counts["unscorable"]-counts["unsupported"],"summary":dict(counts),"by_document_type":grouped,
                     "generated_document_count":len(documents),"document_hashes":{name:doc["sha256"] for name,doc in documents.items()}},
-        "limitations":["독립 원본 전사 기준은 전문가 인증 정답이 아닙니다.","정규화 본문 필드 및 반복행 기재값 범위 비교이며 의미가 동등한 서술의 법적 적정성을 자동 인증하지 않습니다.","가림·판독불가 항목은 채점하지 않습니다.","판정기 v2는 값 없는 인쇄 라벨의 거짓 일치를 수정했으며 원래442개 기준과 기대값은 변경하지 않았습니다. 모든 실행에 같은 수정본을 적용합니다.","진단 후보 문서는 정상 생성 또는 생성 후 HITL 완료로 세지 않습니다."],
+        "limitations":["독립 원본 전사 기준은 전문가 인증 정답이 아닙니다.","정규화 본문 필드 및 반복행 기재값 범위 비교이며 의미가 동등한 서술의 법적 적정성을 자동 인증하지 않습니다.","가림·판독불가 항목은 채점하지 않습니다.","판정기 v2는 값 없는 인쇄 라벨의 거짓 일치를 수정했으며 입력된 고정 기준과 기대값은 변경하지 않습니다. 모든 실행에 같은 수정본을 적용합니다.","진단 후보 문서는 정상 생성 또는 생성 후 HITL 완료로 세지 않습니다."],
         "results":results}
 
 
@@ -202,3 +202,4 @@ def main():
 
 if __name__=="__main__":
     main()
+

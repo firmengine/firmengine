@@ -25,10 +25,10 @@ def validate_manifest(manifest):
 
 def resolve_source(root=None):
     root = Path(root or config.ROOT)
-    manifest = json.loads((root / 'evaluation' / 'sample_manifest.json').read_text(encoding='utf-8'))
+    manifest = json.loads((root / '.runtime' / 'evaluation' / 'sample_manifest.json').read_text(encoding='utf-8'))
     validate_manifest(manifest)
     configured = config.ENV.get('SAMPLE_PDF_PATH')
-    candidates = ([Path(configured)] if configured else []) + [root / 'sample_masking.pdf', root / 'sample.pdf', root.parent / 'sample.pdf']
+    candidates = ([Path(configured)] if configured else []) + [root / '.runtime' / 'evaluation' / 'source.pdf']
     existing = []
     for candidate in candidates:
         if not candidate.is_file():
@@ -40,7 +40,7 @@ def resolve_source(root=None):
             return candidate, manifest
     if existing:
         raise ValueError('샘플 해시가 분리표와 다릅니다. 해당 PDF의 페이지 분리를 다시 검토해야 합니다.')
-    raise FileNotFoundError('sample_masking.pdf 또는 sample.pdf와 독립 분리표가 필요합니다.')
+    raise FileNotFoundError('비공개 작업 폴더의 source.pdf와 검토된 분리표가 필요합니다.')
 
 
 def evidence_bundle(root=None):

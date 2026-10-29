@@ -3,7 +3,7 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "a21b2448e6f19e375e05672cb4a18e58ec24251d80b6193a25b0446e8ee1f7c8",
+  "source_digest": "20473fb352e7eb6e6f123505955bfa02dbd988c22864827146123edfc85bc9a2",
   "files": [
     {
       "path": ".gitignore",
@@ -787,8 +787,8 @@
     },
     {
       "path": "docs/README.md",
-      "sha256": "facad54270534ce42531196f960702ed5bb1c946a4995d311af50b0e57728a99",
-      "bytes": 1458,
+      "sha256": "e61b0790a45f5fa9431f4d880d17cd62fd9df5861e1d6ba4692bc8e07ac0c069",
+      "bytes": 1551,
       "mode": "100644"
     },
     {
@@ -805,8 +805,8 @@
     },
     {
       "path": "docs/audit-extraction.md",
-      "sha256": "74084a7705fddc382a0650a30684428d3bcfe93616c9888bb32a4bcd39d77c92",
-      "bytes": 6698,
+      "sha256": "67259574c65b7bfdd22f9cb14580dc993f21d390d05c9437f7b8b89009c8c5e4",
+      "bytes": 6445,
       "mode": "100644"
     },
     {
@@ -921,6 +921,12 @@
       "path": "docs/page-recovery-and-evaluation.md",
       "sha256": "5d6d6e3a8ed11441b0a15b5138952ecc61aaf631cad06a54a89f1cd007ffe8fd",
       "bytes": 7157,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/public-data-cleanup.md",
+      "sha256": "572e442e3650740e354b8d342799877b942a0c2c0b86f8095a69c6863b46cff2",
+      "bytes": 1223,
       "mode": "100644"
     },
     {
@@ -1159,14 +1165,14 @@
     },
     {
       "path": "lib/case-command-store.ts",
-      "sha256": "810e58a0e03565126a225b9c474a1ec90ed3165517b51fbb81dac759a0022937",
-      "bytes": 12833,
+      "sha256": "37c0459569e03195031851df9772b724818fc661fcc89b19461a4c190c500d8b",
+      "bytes": 12839,
       "mode": "100644"
     },
     {
       "path": "lib/case-commands.ts",
-      "sha256": "0d1c4a8774ff21017edfd1404c88d5a6e1b16a2b6c89c9cd28344d3c65aeb557",
-      "bytes": 41789,
+      "sha256": "8e8f8b7ddaac2ad4d469c7c60b75192ba6c28fb6d58b778f0a5e74b04f6002a5",
+      "bytes": 41842,
       "mode": "100644"
     },
     {
@@ -1201,8 +1207,8 @@
     },
     {
       "path": "lib/case-schema-migration.ts",
-      "sha256": "6ed43dffb01f3d6bd1e9730c5d02cabf1304046a0054bd907a213e2df4c41321",
-      "bytes": 11025,
+      "sha256": "4f8ebedd0219155505d5138bf58233ddab7b67665ec94b97394952592fa92c8f",
+      "bytes": 11035,
       "mode": "100644"
     },
     {
@@ -1213,8 +1219,8 @@
     },
     {
       "path": "lib/case-workflow-server.ts",
-      "sha256": "b52b0270ac2be12e0bab9b593c659038fb4c57c501279cce96d884140764b7b1",
-      "bytes": 6765,
+      "sha256": "b62330f38a49eda3536438b0b147a2d0cf758f657335abd07bae5051af234bb9",
+      "bytes": 6806,
       "mode": "100644"
     },
     {
@@ -1746,6 +1752,12 @@
       "mode": "100644"
     },
     {
+      "path": "lib/protected-case.ts",
+      "sha256": "4f482d11338f65a055872b7fd587d7f6b55d55ca477b2f30f55d6c7c8c06582f",
+      "bytes": 487,
+      "mode": "100644"
+    },
+    {
       "path": "lib/reactive-evaluation.ts",
       "sha256": "7df31237a4835ff010d77104f4e8f16000e1fa1ec13db31f7f4a82c0491eda27",
       "bytes": 2439,
@@ -2263,8 +2275,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "2deefc263b66214c37515ab70c60ec55be71c0a703e3632c0e52971b877b4f35",
-      "bytes": 25911,
+      "sha256": "92de77df5649c94388751d80dd4c00006d93e606fd6d9ed50c3fccad6bbaade1",
+      "bytes": 26561,
       "mode": "100644"
     },
     {
@@ -2473,8 +2485,8 @@
     },
     {
       "path": "tests/case-schema-migration.test.ts",
-      "sha256": "bb133e1444b5f33b7ee8b79101e4a352d3ba3aec69c8bb9d71b36b8e1cabf785",
-      "bytes": 8232,
+      "sha256": "d1e9c76972cd6a4cddc46f5d8efae7302cebde0ba180c414b2d8400c9dc82c4d",
+      "bytes": 8740,
       "mode": "100644"
     },
     {
@@ -2581,8 +2593,8 @@
     },
     {
       "path": "tests/evaluation-inventory.test.ts",
-      "sha256": "b88f69fd52175f280cc4492cdea3a07647f689fa707031baf357603ca3f4e849",
-      "bytes": 801,
+      "sha256": "0e7c24472d372e304902d1e02b881125af27ab6648cae343a310250cc58110ab",
+      "bytes": 789,
       "mode": "100644"
     },
     {
@@ -3621,5 +3633,10 @@
     "vite.config.ts": "100644"
   },
   "deployment_source_commit": "968578493ed6daf78eab01cf5602f299d0da6598",
-  "public_documentation_note": "v44 feature-focused guides updated for this public mirror; application source is the deployed version."
+  "public_documentation_note": "v44 feature-focused guides updated for this public mirror; application source is the deployed version.",
+  "public_cleanup": {
+    "date": "2026-10-29",
+    "scope": "Remove sample PDF-derived content and raw case identifiers; preserve protection behavior",
+    "deployment_changed": false
+  }
 }

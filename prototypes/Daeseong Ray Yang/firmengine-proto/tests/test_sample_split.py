@@ -13,17 +13,17 @@ class SampleSplitTests(unittest.TestCase):
     def test_moved_sample_resolves_and_only_evidence_enters_generator(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / 'evaluation').mkdir()
+            (root / '.runtime/evaluation').mkdir(parents=True)
             with pymupdf.open() as source:
                 for text in ('evidence_alpha', 'heldout_secret_answer', 'evidence_beta', 'admin_not_input'):
                     source.new_page().insert_text((50, 50), text)
                 data = source.tobytes()
-            (root / 'sample_masking.pdf').write_bytes(data)
+            (root / '.runtime/evaluation/source.pdf').write_bytes(data)
             manifest = {'source_sha256': hashlib.sha256(data).hexdigest(), 'total_pages': 4,
                         'evidence_pages': [1, 3], 'holdout_pages': [2], 'administrative_excluded_pages': [4]}
-            (root / 'evaluation/sample_manifest.json').write_text(json.dumps(manifest))
+            (root / '.runtime/evaluation/sample_manifest.json').write_text(json.dumps(manifest))
             content, actual, filename = evidence_bundle(root)
-            self.assertEqual(filename, 'sample_masking.pdf')
+            self.assertEqual(filename, 'source.pdf')
             self.assertEqual(actual['evidence_pages'], [1, 3])
             with pymupdf.open(stream=content, filetype='pdf') as result:
                 self.assertEqual(len(result), 2)

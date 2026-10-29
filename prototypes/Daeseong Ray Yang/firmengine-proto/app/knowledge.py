@@ -31,7 +31,11 @@ KNOWLEDGE_ROOT = config.ROOT / 'knowledge'
 OFFICIAL_HOSTS = ('law.go.kr', 'scourt.go.kr', 'mohw.go.kr', 'data.go.kr', 'molit.go.kr', 'car365.go.kr')
 WATCH_DEFAULTS = ('K01', 'K04', 'K19', 'K20', 'K21', 'K23')
 MAX_BYTES = 2_000_000
-BENCHMARK_HASH = '1f5d24578c8c16afbcf46f8cf0385e0233d740566ce849bebfe6824f96c6f087'
+BLOCKED_BUNDLE_FINGERPRINT = 'b11d31ffe75a07f42179715f42944391be96e42818e0cc925da484151c907409'
+
+def is_blocked_bundle(value):
+    return isinstance(value, str) and hashlib.sha256(value.encode()).hexdigest() == BLOCKED_BUNDLE_FINGERPRINT
+
 VECTOR_COLLECTIONS = ('legal_norms', 'practice_rules', 'case_observations', 'fewshot_success')
 _VECTOR_CLIENTS = {}
 _VECTOR_LOCK = threading.RLock()
@@ -299,6 +303,7 @@ class KnowledgeStore:
     def _db(self):
         db = sqlite3.connect(self.db_path, timeout=20)
         db.row_factory = sqlite3.Row
+        db.create_function('is_blocked_bundle', 1, is_blocked_bundle, deterministic=True)
         db.execute('PRAGMA busy_timeout=20000')
         try:
             with db:
@@ -403,11 +408,11 @@ class KnowledgeStore:
         as_of = iso_date(as_of) or date.today().isoformat()
         excluded = set(exclude_bundle_hashes or [])
         # The mixed evaluation bundle is permanently excluded from shared RAG.
-        excluded.add(BENCHMARK_HASH)
+        # Match an opaque fingerprint without retaining the source PDF hash.
         with self._db() as db:
             if case_id:
                 excluded.update(r[0] for r in db.execute('SELECT bundle_hash FROM knowledge_case_bundles WHERE tenant_id=? AND case_id=?', (tenant_id, case_id)))
-            where = ['instr(content,char(65533))=0','(valid_from IS NULL OR valid_from<=?)', '(valid_to IS NULL OR valid_to>?)',
+            where = ['is_blocked_bundle(source_bundle_hash)=0','instr(content,char(65533))=0','(valid_from IS NULL OR valid_from<=?)', '(valid_to IS NULL OR valid_to>?)',
                      "(scope='public' OR (tenant_id=? AND scope='tenant') OR (tenant_id=? AND scope='case' AND source_case_id=?))"]
             args = [as_of, as_of, tenant_id, tenant_id, case_id]
             # Unknown effective dates are observable references only from their capture date onward.
@@ -535,9 +540,9 @@ class KnowledgeStore:
             with self._db() as db:
                 rows = [dict(row) for row in db.execute('''SELECT v.* FROM knowledge_versions v
                     LEFT JOIN knowledge_vector_index i ON i.version_id=v.version_id AND i.embedding_model=?
-                    WHERE i.version_id IS NULL AND instr(v.content,char(65533))=0 AND (v.source_bundle_hash IS NULL OR v.source_bundle_hash<>?)
+                    WHERE i.version_id IS NULL AND instr(v.content,char(65533))=0 AND is_blocked_bundle(v.source_bundle_hash)=0
                     AND (v.kind='official_snapshot' OR (v.kind IN ('case_observation','fewshot','reviewed_source_summary') AND v.reviewed=1))
-                    ORDER BY v.recorded_at LIMIT ?''', (self.embedding_model, BENCHMARK_HASH, max(1, min(int(max_versions), 40))))]
+                    ORDER BY v.recorded_at LIMIT ?''', (self.embedding_model, max(1, min(int(max_versions), 40))))]
             indexed = []
             for row in rows:
                 collection = self._collection(row)

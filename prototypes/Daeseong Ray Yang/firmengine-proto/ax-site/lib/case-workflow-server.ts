@@ -1,3 +1,4 @@
+import { isProtectedCaseId } from "./protected-case.ts";
 import { getCase,caseStateFingerprint,db,actor,drainCaseRecomputeJobs,caseExtras } from "./server-store";
 import { caseWorkflow } from "./case-workflow-state.ts";
 import { buildCaseWorkflowView } from "./case-workflow-view.ts";
@@ -55,6 +56,6 @@ export async function caseWorkflowResponse(caseId:string){
     entities:[{id:data.context.id,label:data.context.caseName,kind:"person"},...data.incomes.map(v=>({id:v.id,label:v.label,kind:"income"})),...data.debts.map(v=>({id:v.id,label:v.creditor,kind:"debt"})),...data.assets.map(v=>({id:v.id,label:v.label,kind:"asset"}))],
     formFields:[...new Map(Object.values(FORM_CONTRACTS).flatMap(form=>form.fields.map(f=>[f.token,{token:f.token,kind:f.kind}] as const))).values()],
     tasks:taskSummary(workflow.tasks),recomputeJobs:recomputeJobs.results,planReconciliation:execution.planReconciliation,
-    diagnostics:{protected:caseId==="8429888a-1861-48b5-b1f4-66af1d36273e",fixtureReadOnly:!!(data.structuredTest||data.referenceTest)&&!data.evaluationClone,projectionBlockers:workflow.projectionBlockers.length,pendingJobs:recomputeJobs.results.filter((j:{status?:unknown})=>["pending","running","retry_wait","failed"].includes(String(j.status))).length,modelCallsStarted:0},
+    diagnostics:{protected:await isProtectedCaseId(caseId),fixtureReadOnly:!!(data.structuredTest||data.referenceTest)&&!data.evaluationClone,projectionBlockers:workflow.projectionBlockers.length,pendingJobs:recomputeJobs.results.filter((j:{status?:unknown})=>["pending","running","retry_wait","failed"].includes(String(j.status))).length,modelCallsStarted:0},
   };
 }

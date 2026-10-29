@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from app.knowledge import KnowledgeStore, BENCHMARK_HASH, effective_date, normalize_content, source_effective_date, judgment_date, decode_official_text
+from app.knowledge import KnowledgeStore, effective_date, normalize_content, source_effective_date, judgment_date, decode_official_text
 from app.knowledge import LawWatchInput, ChangePreview
 from app.promptbook import load_prompt
 
@@ -56,10 +56,13 @@ class KnowledgeTests(unittest.TestCase):
     def test_tenant_scope_and_case_bundle_exclusions_before_limit(self):
         self.add('private', 'income secret ' * 100, scope='tenant', tenant_id='other')
         self.add('samebundle', 'income answer ' * 100, source_bundle_hash='a' * 64, kind='fewshot')
-        self.add('goldcontamination', 'income answer ' * 100, source_bundle_hash=BENCHMARK_HASH, kind='fewshot')
+        self.add('goldcontamination', 'income answer ' * 100, source_bundle_hash='b' * 64, kind='fewshot')
         self.add('safe', 'income safe', kind='fewshot')
         self.store.register_case_bundle('case1', 'a' * 64)
-        found = self.store.fewshots('income', case_id='case1', limit=1)
+        from unittest.mock import patch
+        import hashlib
+        with patch('app.knowledge.BLOCKED_BUNDLE_FINGERPRINT', hashlib.sha256(b'b' * 64).hexdigest()):
+            found = self.store.fewshots('income', case_id='case1', limit=1)
         self.assertEqual([x['source_id'] for x in found], ['safe'])
 
     def test_heldout_kind_rejected_and_versions_immutable(self):

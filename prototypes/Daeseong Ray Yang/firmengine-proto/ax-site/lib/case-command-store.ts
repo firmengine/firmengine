@@ -68,7 +68,7 @@ export async function executeCaseCommand(caseId:string,raw:unknown,audit?:{legac
   const command=parseCaseCommand(raw),identity=await authorize(caseId),requestHash=await commandHash(command);
   const existing=await readCommandReceipt(caseId,command.commandId);
   if(existing){if(existing.actor!==identity.actor||existing.requestHash!==requestHash)conflict("같은 명령 식별자가 다른 요청에 사용되었습니다.");return commandResult(caseId,existing,true);}
-  const previous=await getCase(caseId);assertMutableCase(previous);
+  const previous=await getCase(caseId);await assertMutableCase(previous);
   const before=await caseStateFingerprint(previous);
   if(previous.context.revision!==command.expectedRevision||before!==command.expectedStateFingerprint)throw new CommandError("CASE_STATE_CONFLICT",409,"사건 상태가 바뀌었습니다. 최신 내용을 불러와 차이를 확인하세요.",{expectedRevision:command.expectedRevision,currentRevision:previous.context.revision,expectedStateFingerprint:command.expectedStateFingerprint,currentStateFingerprint:before,target:command.target,currentContext:command.commandType==="context.update"?Object.fromEntries(Object.keys((command.patch.context??{}) as object).map(key=>[key,(previous.context as unknown as Record<string,unknown>)[key]])):undefined,reloadUrl:`/api/cases/${encodeURIComponent(caseId)}`});
   const authority:CommandAuthority={...identity,at:now(),referenceSha256:referenceIdentity()?.sha256??referenceRelease.sha256};

@@ -1,4 +1,5 @@
-import test from "node:test";
+import test, { mock } from "node:test";
+import { PROTECTED_CASE_SHA256 } from "../lib/protected-case.ts";
 import assert from "node:assert/strict";
 import { createCase, normalizeMoney, type Fact } from "../lib/domain.ts";
 import { canonicalSha256 } from "../lib/structured-case-import.ts";
@@ -54,8 +55,14 @@ test("migration refuses protected/original synthetic fixtures and unknown future
   const original=oldCase("synthetic-original-v1");original.structuredTest={mode:"assumed_extracted_synthetic",scenarioId:original.context.id,sourceRecords:[]};
   const originalRequest=await requestFor(original);
   await assert.rejects(prepareCaseSchemaMigration(original,originalRequest,[original.context.id]),/MIGRATION_ORIGINAL_FIXTURE_IMMUTABLE/);
-  const protectedCase=oldCase("8429888a-1861-48b5-b1f4-66af1d36273e"),protectedRequest=await requestFor(protectedCase);
-  await assert.rejects(prepareCaseSchemaMigration(protectedCase,protectedRequest,[protectedCase.context.id]),/MIGRATION_PROTECTED_CASE/);
+  const protectedCase=oldCase("synthetic-protected-case"),protectedRequest=await requestFor(protectedCase);
+  const originalDigest=crypto.subtle.digest.bind(crypto.subtle);
+  const guard=mock.method(crypto.subtle,"digest",async(algorithm:AlgorithmIdentifier,bytes:BufferSource)=>{
+    const value=new TextDecoder().decode(bytes);
+    if(value===protectedCase.context.id)return Uint8Array.from(PROTECTED_CASE_SHA256.match(/../g)!.map(byte=>parseInt(byte,16))).buffer;
+    return originalDigest(algorithm,bytes);
+  });
+  try{await assert.rejects(prepareCaseSchemaMigration(protectedCase,protectedRequest,[protectedCase.context.id]),/MIGRATION_PROTECTED_CASE/);}finally{guard.mock.restore();}
   const future=structuredClone(ordinary);future.workflowState!.schema="case-workflow/2" as never;
   const futureRequest=await requestFor(future);
   await assert.rejects(prepareCaseSchemaMigration(future,futureRequest,[future.context.id]),/MIGRATION_UNSUPPORTED_WORKFLOW_SCHEMA/);
