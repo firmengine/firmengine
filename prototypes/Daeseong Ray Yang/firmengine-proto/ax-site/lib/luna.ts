@@ -9,7 +9,7 @@ export interface LunaCallResult<T> {value:T;usage:Usage;sourceUrls?:string[];}
 export const LUNA_REQUEST_TIMEOUT_MS=65_000;
 export async function callLuna<T>(args:LunaCallArgs):Promise<LunaCallResult<T>>{
   if(!env.OPENAI_API_KEY)throw new HttpError(503,"OpenAI 키가 사이트에 아직 연결되지 않았습니다. 사이트의 비밀 환경변수 OPENAI_API_KEY를 연결한 뒤 재개하세요.");
-  const model=args.agent==="consultation_classifier"||args.agent.startsWith("legal_monitor_")?CONSULTATION_AI_MODEL:(args.model??AI_MODEL);
+  const model=args.agent==="consultation_classifier"||args.agent.startsWith("legal_")?CONSULTATION_AI_MODEL:(args.model??AI_MODEL);
   args.signal?.throwIfAborted();
   const domains=args.webSearch?[...new Set(args.webSearch.allowedDomains.map(domain=>domain.trim().toLowerCase()))]:undefined;
   if(domains&&(!domains.length||domains.length>100||domains.some(domain=>!/^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(domain))))throw new HttpError(400,"웹 검색 공식 도메인 설정을 확인하세요.");
