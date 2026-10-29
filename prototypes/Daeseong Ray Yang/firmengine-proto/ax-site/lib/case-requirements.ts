@@ -130,6 +130,7 @@ export function mergeRequirements(existing: readonly CaseRequirement[], incoming
 }
 export function applyRequirementOverride(requirement: CaseRequirement, command: { operation: RequirementOverride; expectedId: string; reason?: string; period?: string; subjectLinkId?: string | null; alternativeId?: string; idFactory?: () => string; reviewer?: string; reviewedAt?: string; basisRefs?: string[]; waiverAllowed?: boolean; mappingReview?: {expectedCrosswalkId:string;expectedCrosswalkVersion:string;requiredFieldGroups:string[][];optionalFieldIds:string[];typedTargets:RequirementFieldTarget[];noRequiredFields:boolean;subjectScope:string;periodPolicy:string} }): CaseRequirement {
   if (command.expectedId !== requirement.requirementId || requirement.retired) throw new Error("Requirement identity is stale or retired.");
+  if(command.operation==="retire"&&requirement.requirement!=="recommended")throw new Error("Mandatory or court-ordered requests cannot be retired without a separately reviewed lawful disposition.");
   if (command.operation === "review_substitution") throw new Error("Substitution approval must use the authenticated case command reducer.");
   const needsReason = ["waive_with_reason", "declare_not_applicable", "retire", "change_period", "change_subject", "select_alternative","review_mapping"].includes(command.operation);
   if (needsReason && !command.reason?.trim()) throw new Error("A reason is required for this requirement override.");
