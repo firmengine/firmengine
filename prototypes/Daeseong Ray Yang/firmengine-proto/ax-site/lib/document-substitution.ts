@@ -111,6 +111,7 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(!selected.length||selected.length!==review.alternativeDocumentTypeIds.length||selected.some(id=>!r.alternatives.some(a=>a.id===id)))problems.push("ALTERNATIVE_NOT_DECLARED");
   if(r.selectedAlternativeId&&!selected.includes(r.selectedAlternativeId))problems.push("SELECTED_ALTERNATIVE_CHANGED");
   if(!fields.length||uniq(fields).length!==fields.length)problems.push("PRIMARY_PROOF_FIELDS_UNAVAILABLE");
+  if(r.mappingRequired||!r.crosswalkReview?.reviewer||!r.requiredFieldGroups.length||!r.crosswalkReview.requiredFieldGroups.length)problems.push("PRIMARY_FIELD_MAPPING_UNREVIEWED");
   if(!review.reviewer.trim()||!review.reason.trim()||!review.basisRefs.length||!validDate(review.reviewedAt.slice(0,10)))problems.push("HUMAN_REVIEW_INCOMPLETE");
   if(!input.courtId||review.courtId!==input.courtId||!validDate(input.asOf)||review.periodEnd>input.asOf)problems.push("COURT_OR_PERIOD_CHANGED");
   if(input.catalogVersion===undefined||input.catalogVersion===null||review.catalogVersion!==input.catalogVersion||input.pendingCourtPolicyChange)problems.push("COURT_POLICY_RECHECK_REQUIRED");
