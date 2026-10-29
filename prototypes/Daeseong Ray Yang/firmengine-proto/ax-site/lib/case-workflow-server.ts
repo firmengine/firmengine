@@ -1,6 +1,7 @@
 import { isProtectedCaseId } from "./protected-case.ts";
 import { getCase,caseStateFingerprint,db,actor,drainCaseRecomputeJobs,caseExtras } from "./server-store";
 import { caseWorkflow } from "./case-workflow-state.ts";
+import { currentFacts } from "./domain.ts";
 import { buildCaseWorkflowView } from "./case-workflow-view.ts";
 import { taskSummary } from "./case-tasks.ts";
 import { rolesForActor } from "./app-roles";
@@ -66,6 +67,7 @@ export async function caseWorkflowResponse(caseId:string){
     health,
     artifacts,fieldBases,legalRuns,legalCoverageTruncated,
     documents:data.documents.filter(d=>d.status==="active").map(d=>({id:d.id,name:d.name,sha256:d.sha256,pages:d.pages,status:d.status})),
+    proofCandidates:currentFacts(data).filter(f=>f.state==="verified"&&f.recognition==="accepted"&&f.canonicalFieldId).slice(0,500).map(f=>({id:f.id,fieldId:f.canonicalFieldId,subjectId:f.subjectId,sourcePages:f.refs.map(ref=>({documentId:ref.documentId,page:ref.page}))})),
     entities:[{id:data.context.id,label:data.context.caseName,kind:"person"},...data.incomes.map(v=>({id:v.id,label:v.label,kind:"income"})),...data.debts.map(v=>({id:v.id,label:v.creditor,kind:"debt"})),...data.assets.map(v=>({id:v.id,label:v.label,kind:"asset"}))],
     formFields:[...new Map(Object.values(FORM_CONTRACTS).flatMap(form=>form.fields.map(f=>[f.token,{token:f.token,kind:f.kind}] as const))).values()],
     tasks:taskSummary(workflow.tasks),recomputeJobs:recomputeJobs.results,planReconciliation:execution.planReconciliation,
