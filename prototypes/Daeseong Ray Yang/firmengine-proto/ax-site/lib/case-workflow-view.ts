@@ -69,7 +69,7 @@ function confirmationReceipt(confirmation:ReturnType<typeof latestConfirmation>)
 }
 
 /** Read-only projection. It returns state and opaque fingerprints, never source values or auth material. */
-export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersion?:number|null;pendingCourtPolicyChange?:boolean;pageTypes?:readonly SubstitutionPageType[]}={}):Promise<CaseWorkflowView> {
+export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersion?:number|null;pendingCourtPolicyChange?:boolean;latestCourtPolicyAlertAt?:string|null;activeIntakeRunId?:string|null;activeIntakeCatalogVersion?:number|null;pageTypes?:readonly SubstitutionPageType[]}={}):Promise<CaseWorkflowView> {
   const workflow=data.workflowState;
   const requirements=workflow?.requirements??[], matches=workflow?.documentMatches??[], links=workflow?.subjectLinks??[];
   const facts=currentFacts(data), requirementStates:CaseWorkflowRequirementView[]=[], requirementFingerprints:Record<string,string>={};
@@ -103,8 +103,17 @@ export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersi
       requirement,matches:effectiveMatches,documents:data.documents,pages:data.pages,facts,subjectLink,
       courtId:String(data.context.courtId??""),asOf:String(data.context.asOf??""),
       catalogVersion:options.catalogVersion,pendingCourtPolicyChange:options.pendingCourtPolicyChange,
+      latestCourtPolicyAlertAt:options.latestCourtPolicyAlertAt,
       pageTypes:options.pageTypes
     });
+    // Only a live, same-catalogue consultation run may suppress a current request.
+    if(requirement.substitutionReview && options.activeIntakeRunId!==undefined
+      &&(options.activeIntakeRunId!==requirement.intakeRunId
+        || options.activeIntakeCatalogVersion!==options.catalogVersion)){
+      substitution.status="restored";
+      substitution.activeRequest=true;
+      substitution.reasonCodes=[...new Set([...substitution.reasonCodes,"ACTIVE_CONSULTATION_CHANGED"])];
+    }
     if(substitution.status==="inactive_by_substitution"&&requirement.intakeStatus!=="conflict"&&requirement.intakeStatus!=="qualification_needed"&&requirement.intakeStatus!=="legal_review"){
       engineFulfillment="complete";requirementStatus="satisfied";
     }else if(requirement.substitutionReview||requirement.selectedAlternativeId){
