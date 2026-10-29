@@ -9,7 +9,7 @@ test("statutory minimum is distinct from unverified court portal fields",()=>{
  assert.equal(FORM_CONTRACTS.D5100.fields.find(x=>x.token==="address")?.authorityBasis,"statutory_minimum");
  assert.equal(FORM_CONTRACTS.D5106.fields.find(x=>x.token==="creditor.address")?.requiredness,"conditional");
  assert.equal(FORM_CONTRACTS.D5106.fields.find(x=>x.token==="creditor.cause")?.authorityBasis,"statutory_minimum");
- assert.equal(FORM_CONTRACTS.D5106.fields.find(x=>x.token==="creditor.interest")?.requiredness,"unverified");
+ assert.equal(FORM_CONTRACTS.D5106.fields.find(x=>x.token==="creditor.interest")?.requiredness,"conditional");
 });
 test("final creditor-list generation blocks missing name, address, cause and total checks",async()=>{
  const result=await evaluateDocumentPreflight({formCode:"D5106",mode:"final",identity:identity("D5106"),

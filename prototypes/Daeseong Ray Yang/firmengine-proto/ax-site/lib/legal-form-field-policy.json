@@ -74,6 +74,13 @@
         "sourceId": "KR-REHAB-589",
         "reason": "채권금액의 원금 구성요소 또는 0; 이자와 합계 대조",
         "when": "각 채권자 행"
+      },
+      "creditor.interest": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채권현재액의 이자 구성요소를 별도 확인; 없으면 명시적 0으로 기록",
+        "when": "각 채권자 행"
       }
     },
     "D5101": {
