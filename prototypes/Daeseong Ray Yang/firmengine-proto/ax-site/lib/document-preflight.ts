@@ -1,11 +1,12 @@
 import { FORM_CONTRACTS, FORM_CONTRACT_VERSION, type FormContract } from "./form-contracts.ts";
+import { reviewLegalPlanArithmetic } from "./legal-calculation-readiness.ts";
 import type { FormBindings } from "./form-mapping.ts";
 export type DocumentMode = "draft" | "final";
 export interface DocumentPreflightIdentity { evaluationId:string; evaluationResultHash:string; referenceBundleHash:string; templateHash:string; documentEditsHash:string; }
 export interface PreflightIssue { code:string; token?:string; message:string; severity:"blocker"|"warning"; }
 export interface DocumentPreflightResult { status:"ready"|"draft_with_unresolved"|"blocked"; blockers:PreflightIssue[]; warnings:PreflightIssue[]; unresolved:string[]; contractHash:string; }
 const MISSING = new Set(["","[확인 필요]","[불일치·확인 필요]","[미확정]","[검토 필요]"]);
-const absent=(x:unknown)=>x===undefined||x===null||MISSING.has(String(x).trim());
+const absent=(x:unknown)=>x===undefined||x===null||MISSING.has(String(x).trim())||/^\[(?:상충|누락|오인식|판독|검토|배분|미확정)/.test(String(x).trim());
 export async function evaluateDocumentPreflight(input:{formCode:string;bindings:FormBindings;identity:DocumentPreflightIdentity;mode:DocumentMode;contract?:FormContract}):Promise<DocumentPreflightResult> {
   const contract=input.contract ?? FORM_CONTRACTS[input.formCode];
   const blockers:PreflightIssue[]=[],warnings:PreflightIssue[]=[],unresolved:string[]=[];
@@ -28,7 +29,7 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     const values=rest.length||field.token.includes(".") ? (input.bindings.rows[group]??[]).map(row=>row[rest.length?`${leaf}.${rest.join(".")}`:leaf]) : [input.bindings.scalars[field.token]];
     const applies=field.requiredness!=="conditional"||values.length>0;
     if(!applies) continue;
-    const missing=values.length===0 || values.some(absent);
+    const missing=values.length===0 || values.some(absent) || field.token==="resident_id"&&values.some(value=>/[Xx*●•]/.test(String(value??"")));
     if(!missing) continue;
     const reason=`${field.token}: ${field.requiredness === "unverified" ? "requiredness/applicability unverified" : "value unresolved"}`;
     unresolved.push(reason);
@@ -44,6 +45,10 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
       const sum=rowValues.reduce((acc,value)=>acc+value!,0n);
       if(sum!==total) blockers.push({code:"REPEAT_ROW_TOTAL_MISMATCH",token:`creditor.${rowField}`,message:`Creditor row ${rowField} sum does not match ${totalField}.`,severity:"blocker"});
     }
+  }
+  for(const issue of reviewLegalPlanArithmetic(input.formCode,input.bindings).issues){
+    const result={code:issue.code,message:issue.message+" ("+issue.statute+")",severity:(issue.severity==="blocker"&&input.mode==="final"?"blocker":"warning") as "blocker"|"warning"};
+    if(result.severity==="blocker")blockers.push(result);else warnings.push(result);
   }
   if(input.mode==="final"&&unresolved.length) warnings.push({code:"UNVERIFIED_FORM_APPLICABILITY",message:"Some field applicability and official e-form behavior remain unverified; this is separate from the FirmEngine application required-field gate.",severity:"warning"});
   const canonical=JSON.stringify({version:FORM_CONTRACT_VERSION,code:contract.code,templateHash:contract.templateHash,fields:contract.fields,repeatGroups:contract.repeatGroups,identity:input.identity});
