@@ -39,6 +39,7 @@ export interface SubstitutionContext {
   asOf: string;
   catalogVersion?: number | null;
   pendingCourtPolicyChange?: boolean;
+  latestCourtPolicyAlertAt?: string | null;
   pageTypes?: readonly SubstitutionPageType[];
 }
 const uniq = <T>(values:readonly T[]) => [...new Set(values)];
@@ -47,7 +48,7 @@ const nextDay=(d:string)=>new Date(Date.parse(d+"T00:00:00Z")+86400000).toISOStr
 const idRoute=/^shared-document:([a-z0-9_]+)@[A-Za-z0-9_.:-]+$/;
 function observedType(input:SubstitutionContext, documentId:string, page:number):string|null {
   const type=input.pageTypes?.find(p=>p.documentId===documentId&&p.page===page)?.documentTypeId;
-  if(type)return type;
+  if(input.pageTypes?.some(p=>p.documentId===documentId&&p.page===page))return type??null;
   const reported=input.pages.find(p=>p.documentId===documentId&&p.page===page)?.documentType;
   if(!reported)return null;
   return idRoute.exec(reported)?.[1]??null;
@@ -113,9 +114,11 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(!review.reviewer.trim()||!review.reason.trim()||!review.basisRefs.length||!validDate(review.reviewedAt.slice(0,10)))problems.push("HUMAN_REVIEW_INCOMPLETE");
   if(!input.courtId||review.courtId!==input.courtId||!validDate(input.asOf)||review.periodEnd>input.asOf)problems.push("COURT_OR_PERIOD_CHANGED");
   if(input.catalogVersion===undefined||input.catalogVersion===null||review.catalogVersion!==input.catalogVersion||input.pendingCourtPolicyChange)problems.push("COURT_POLICY_RECHECK_REQUIRED");
+  if(input.latestCourtPolicyAlertAt&&(!Number.isFinite(Date.parse(review.reviewedAt))||Date.parse(input.latestCourtPolicyAlertAt)>Date.parse(review.reviewedAt)))problems.push("COURT_POLICY_CHANGED_AFTER_APPROVAL");
   if(!allowedPublishedPath(r,review,input.courtId))problems.push("PUBLISHED_SUBSTITUTION_POLICY_NOT_CONFIRMED");
   if(!input.subjectLink||input.subjectLink.status!=="confirmed"||!input.subjectLink.typedEntityId)problems.push("SUBJECT_NOT_CONFIRMED");
   if(fields.length!==review.proofs.length||uniq(review.proofs.map(p=>p.requiredField)).length!==fields.length||fields.some(f=>!review.proofs.some(p=>p.requiredField===f)))problems.push("PROOF_SLOTS_INCOMPLETE");
+  if(uniq(review.proofs.flatMap(p=>p.factIds)).length!==review.proofs.reduce((sum,p)=>sum+p.factIds.length,0))problems.push("PROOF_FACT_REUSED_ACROSS_UNRELATED_FIELDS");
   const proofIds=uniq(review.proofs.flatMap(item=>item.factIds));
   const snapshots=review.proofFingerprints??[];
   if(snapshots.length!==proofIds.length||uniq(snapshots.map(item=>item.factId)).length!==proofIds.length
