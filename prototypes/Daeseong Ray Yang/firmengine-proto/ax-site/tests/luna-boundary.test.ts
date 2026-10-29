@@ -15,11 +15,7 @@ function boundary(abort=false){
     return {ok:true,json:async()=>({status:"completed",output:[{content:[{type:"output_text",text:'{"ok":true}'}]}],usage:{input_tokens:1,output_tokens:1}})};
   };
   new Function("require","module","exports","fetch","AbortSignal",output)((name:string)=>{if(name in mocks)return mocks[name];throw new Error(name);},module,module.exports,fetcher,{timeout:(ms:number)=>{deadline=ms;return controller.signal;}});
-<<<<<<< HEAD
-  return {call:(reasoningEffort?:"low"|"medium",agent="evidence_extractor")=>module.exports.callLuna({agent,instructions:"Synthetic",input:[],schema:{},maxOutput:100,...(reasoningEffort?{reasoningEffort}:{})}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
-=======
-  return {call:(reasoningEffort?:"low"|"medium")=>module.exports.callLuna({agent:"synthetic_boundary",instructions:"Synthetic",input:[],schema:{},maxOutput:100,...(reasoningEffort?{reasoningEffort}:{})}),callTerra:()=>module.exports.callLuna({model:"gpt-6.1-terra",agent:"synthetic_ocr",instructions:"Synthetic OCR",input:[],schema:{},maxOutput:100}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
+  return {call:(reasoningEffort?:"low"|"medium",agent="evidence_extractor")=>module.exports.callLuna({agent,instructions:"Synthetic",input:[],schema:{},maxOutput:100,...(reasoningEffort?{reasoningEffort}:{})}),callTerra:()=>module.exports.callLuna({model:"gpt-6.1-terra",agent:"synthetic_ocr",instructions:"Synthetic OCR",input:[],schema:{},maxOutput:100}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
 }
 
 test("Terra OCR deadline leaves a checkpoint window before the observed hosting disconnect",async()=>{
