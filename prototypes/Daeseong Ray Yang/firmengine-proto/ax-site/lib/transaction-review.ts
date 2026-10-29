@@ -1,5 +1,6 @@
 import { referenceMoney } from "./reference-parameters.ts";
 import type { CaseData, Fact, Json, Transaction } from "./domain.ts";
+import { groupTransactionEvidence, type TransactionGroup } from "./transaction-groups.ts";
 import { currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
 
 export type TransactionCheckStatus = "pass" | "fail" | "missing" | "conflict" | "not_applicable";
@@ -96,6 +97,16 @@ function ownAccount(data: CaseData, facts: Fact[]): boolean | null {
   const name = data.context.applicant?.name;
   const identityConfirmed = bool(oneValue(data, facts, ["transaction.owner_identity_confirmed"])) === true;
   return identityConfirmed && typeof owner === "string" && name?.trim() && owner.trim() === name.trim() ? true : null;
+}
+
+/** Candidate groups derived only from transaction object fields. Missing account coverage is never inferred. */
+export function groupTransactionCandidates(data: CaseData): TransactionGroup[] {
+  return groupTransactionEvidence({ transactions: data.transactions.map(tx => ({
+    id: tx.id, accountId: tx.accountId ?? null, counterpartyId: tx.counterparty ?? null,
+    date: tx.date || null, amount: moneyValue(tx.amount)?.toString() ?? null,
+    direction: tx.direction === "in" || tx.direction === "out" ? tx.direction : undefined,
+    category: tx.kind,
+  })), reviewThresholdWon: currentTransactionPolicy().thresholdWon });
 }
 
 /** Pure scan of every supplied row. Candidate matching never moves money or rewrites evidence. */
@@ -242,5 +253,6 @@ export function scanTransactions(data: CaseData) {
     items,
     totals: { scope: "supplied_rows_only", inputComplete: allRowsUsable, inflowWon: inflow?.toString() ?? null, outflowWon: outflow?.toString() ?? null, netFlowWon: inflow !== null && outflow !== null ? (inflow - outflow).toString() : null, transfersExcluded: false, note: allRowsUsable ? "제공된 검증 가능 행의 입출금 합계입니다. 수입·비용·가용소득으로 분류한 금액이 아닙니다." : "누락·미확인·상충·철회가 있어 합계를 보류했습니다. 0원으로 대체하지 않았습니다." },
     transferCandidates,
+    evidenceGroups: groupTransactionCandidates(data),
   };
 }

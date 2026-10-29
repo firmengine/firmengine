@@ -4,6 +4,7 @@ import { createHash } from "node:crypto";
 import * as nodeCrypto from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite";
 import type { SQLInputValue } from "node:sqlite";
 import ts from "typescript";
@@ -18,18 +19,35 @@ import * as calculatorTools from "../lib/calculator-tools.ts";
 import * as legalRules from "../lib/legal-rules.ts";
 import * as referenceRuntime from "../lib/reference-runtime.ts";
 import * as exportArtifactTransaction from "../lib/export-artifact-transaction.ts";
+import * as referenceApplication from "../lib/reference-application.ts";
 import referenceRelease from "../lib/reference-release.json" with { type: "json" };
 import type { CaseData, ExportManifest } from "../lib/domain.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
-const load=<T>(path:string,mocks:Record<string,unknown>):T=>{
-  const dependencies:Record<string,unknown>={"./reference-runtime.ts":referenceRuntime,"./reference-release.json":{default:referenceRelease},"../../../../lib/reference-runtime.ts":referenceRuntime,"../../../../../lib/export-artifact-transaction.ts":exportArtifactTransaction,...mocks};
-  const output=ts.transpileModule(readFileSync(root+path,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const module={exports:{}};
-  new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(dependencies,name))return dependencies[name];throw new Error(`Unexpected dependency: ${name}`);},module,module.exports);
-  return module.exports as T;
+const nodeRequire=createRequire(import.meta.url);
+const loadTs=<T>(path:string,mocks:Record<string,unknown>={},cache=new Map<string,{exports:Record<string,unknown>}>()):T=>{
+  const absolute=path.endsWith(".ts")||path.endsWith(".json")?path:`${path}.ts`;
+  if(cache.has(absolute))return cache.get(absolute)!.exports as T;
+  if(absolute.endsWith(".json"))return {__esModule:true,default:JSON.parse(readFileSync(absolute,"utf8"))} as T;
+  const output=ts.transpileModule(readFileSync(absolute,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText;
+  const commonJsModule={exports:{} as Record<string,unknown>};cache.set(absolute,commonJsModule);
+  try{new Function("require","module","exports",output)((name:string)=>{
+    if(Object.hasOwn(mocks,name))return mocks[name];
+    if(name.startsWith("node:"))return nodeRequire(name);
+    if(name==="cloudflare:workers")return {env:{DB:undefined,BUCKET:undefined}};
+    if(name.startsWith(".")){const resolved=new URL(name,`file://${absolute}`).pathname;return loadTs(resolved.endsWith(".ts")||resolved.endsWith(".json")?resolved:`${resolved}.ts`,mocks,cache);}
+    return nodeRequire(name);
+  },commonJsModule,commonJsModule.exports);}catch(error){throw new Error(`Failed loading ${absolute}: ${error instanceof Error?error.message:String(error)}`,{cause:error});}
+  return commonJsModule.exports as T;
 };
-type Store={getCase(id:string):Promise<CaseData>;saveCase(data:CaseData,revision:number,previous:CaseData):Promise<void>;[key:string]:unknown};
+const load=<T>(path:string,mocks:Record<string,unknown>):T=>{
+  const dependencies:Record<string,unknown>={"./reference-runtime.ts":referenceRuntime,"./reference-context.ts":{resolveReferenceApplicationForCase:()=>null},"./reference-application.ts":{resolveReferenceApplicationForCase:()=>null},"./reference-release.json":{default:referenceRelease},"../../../../lib/reference-runtime.ts":referenceRuntime,"../../../../../lib/export-artifact-transaction.ts":exportArtifactTransaction,"../../../../../lib/case-workflow-view.ts":{buildCaseWorkflowView:async()=>({requirementStates:[]})},"../../../../../lib/document-workflow-gate.ts":{finalWorkflowBlockers:()=>[]},"../../../../../lib/document-field-bases.ts":{buildDocumentFieldBases:async()=>[]},"../../../../../lib/case-command-contract.ts":{commandHash:async(value:unknown)=>digest(new TextEncoder().encode(JSON.stringify(value)))},"../../../../../lib/legal-review-identity.ts":{legalReviewInputFingerprint:async()=>"synthetic",currentLegalDispositionOutcome:()=>"accepted"},"../../../../../lib/calculator-tools.ts":calculatorTools,"../../../../../lib/execution-catalog.ts":executionCatalog,...mocks};
+  const output=ts.transpileModule(readFileSync(root+path,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
+  const commonJsModule={exports:{}};
+  new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(dependencies,name))return dependencies[name];throw new Error(`Unexpected dependency: ${name}`);},commonJsModule,commonJsModule.exports);
+  return commonJsModule.exports as T;
+};
+type Store={getCase(id:string):Promise<CaseData>;saveCase(data:CaseData,revision:number,previous:CaseData):Promise<void>;caseStateFingerprint(data:CaseData):Promise<string>;[key:string]:unknown};
 type Route={PUT(request:Request,context:{params:Promise<{id:string;doc:string}>}):Promise<Response>};
 type CaseRoute={PATCH(request:Request,context:{params:Promise<{id:string}>}):Promise<Response>};
 const digest=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex");
@@ -44,6 +62,7 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
   // Migrate an existing row: its empty default token must still participate in CAS.
   sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").run(data.context.id,data.context.caseName,"synthetic-owner",data.context.revision,JSON.stringify(data),"synthetic","synthetic");
   sqlite.exec(readFileSync(root+"drizzle/0001_case_storage_token.sql","utf8"));
+  sqlite.exec(readFileSync(root+"drizzle/0007_case_commands.sql","utf8"));
   const objects=new Map<string,{bytes:Uint8Array;mime:string}>();
   const bucket={
     async put(key:string,value:ReadableStream<Uint8Array>|Uint8Array|ArrayBuffer,options?:{httpMetadata?:{contentType?:string}}){
@@ -59,8 +78,39 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
     async all(){return {results:sqlite.prepare(sql).all(...params)};},
   };}};},async batch(commands:Array<{run():Promise<unknown>}>){const results=[];for(const command of commands)results.push(await command.run());return results;}};
   let authenticatedUser:{userId:string}|null={userId:"synthetic-owner"};
-  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":derivedHooks,"./calculator-tools.ts":calculatorTools});
+  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":derivedHooks,"./reference-application.ts":referenceApplication,"./reference-runtime.ts":referenceRuntime,"./calculator-tools.ts":calculatorTools});
   return {sqlite,data,objects,store,setAuthenticatedUser:(user:{userId:string}|null)=>{authenticatedUser=user;}};
+}
+
+function loadCommandStore(h:ReturnType<typeof setup>){
+  const reducerMocks={"./assessment.ts":{assessCase:()=>({generationGate:{canFinalize:true}})},"./assessment":{assessCase:()=>({generationGate:{canFinalize:true}})},"./case-execution.ts":{executeCaseNodes:()=>({assessment:{generationGate:{canFinalize:true}}})}};
+  const contract=loadTs<Record<string,unknown>>(root+"lib/case-command-contract.ts");
+  const commands=loadTs<Record<string,unknown>>(root+"lib/case-commands.ts",reducerMocks);
+  const legacy=loadTs<Record<string,unknown>>(root+"lib/legacy-case-command.ts");
+  const rolesForActor=async(actorId:string,scopeId:string)=>{
+    const rows=h.sqlite.prepare("SELECT role,status,effective_from AS effectiveFrom,effective_to AS effectiveTo,scope_id AS scopeId FROM app_role_grants WHERE actor_id=?").all(actorId) as {role:string;status:string;effectiveFrom:string;effectiveTo:string|null;scopeId:string}[];
+    const at=new Date().toISOString();
+    return [...new Set(rows.filter(row=>row.status==="active"&&row.effectiveFrom<=at&&(!row.effectiveTo||row.effectiveTo>at)&&(row.scopeId==="*"||row.scopeId===scopeId)).map(row=>row.role))];
+  };
+  const serverStore={...h.store,getProcessingReadiness:async()=>({complete:true})};
+  const mocks:Record<string,unknown>={
+    "./case-command-contract.ts":contract,"./case-command-contract":contract,
+    "./case-commands.ts":commands,"./case-commands":commands,
+    "./legacy-case-command.ts":legacy,"./legacy-case-command":legacy,
+    "./server-store":serverStore,"./app-roles":{rolesForActor},
+    "./intake-store":{getConsultationView:async()=>({run:null}),getIntakeCatalog:async()=>({catalog:{documents:[]}})},
+    "./case-workflow-view.ts":{buildCaseWorkflowView:async()=>({requirementStates:[],requirementFingerprints:{},requirementCompleteness:{complete:true}})},
+    "./case-response":{caseResponse:async(id:string)=>({case:await h.store.getCase(id)})},
+    "./reference-runtime.ts":referenceRuntime,"./calculator-tools.ts":calculatorTools,
+    "./execution-catalog.ts":executionCatalog,"./execution-catalog":executionCatalog,
+    "./reference-release.json":{default:referenceRelease},"./domain.ts":domain,"./domain":domain,
+  };
+  return loadTs<{executeLegacyCaseCommand:(id:string,body:Record<string,unknown>)=>Promise<unknown>}>(root+"lib/case-command-store.ts",mocks);
+}
+
+async function grantReviewRoles(h:ReturnType<typeof setup>){
+  const insert=h.sqlite.prepare("INSERT INTO app_role_grants (actor_id,role,scope_id,status,effective_from,effective_to,granted_by,reason,policy_revision,created_at,revoked_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)");
+  for(const role of ["case_editor","caseworker_review"])insert.run("synthetic-owner",role,h.data.context.id,"active","2000-01-01T00:00:00.000Z",null,"synthetic-admin","server integrity test",1,"2000-01-01T00:00:00.000Z",null);
 }
 
 test("같은 사건 revision의 보관·검수 경합은 stale 저장을 거부한다",async()=>{
@@ -190,17 +240,19 @@ test("legal advisory analysis is current only when its calculator receipt matche
 test("검수 API는 지문 누락과 재생성 전의 지문을 거부하고 현재 지문만 기록한다",async()=>{
   const h=setup(),prior=await h.store.getCase(h.data.context.id),oldFingerprint=domain.manifestFingerprint(prior.exportManifest!);
   prior.exportManifest=manifest(prior.context.revision,"new");await h.store.saveCase(prior,prior.context.revision,prior);
+  await grantReviewRoles(h);
+  const commandStore=loadCommandStore(h);
   const route=load<CaseRoute>("app/api/cases/[id]/route.ts",{
-    "../../../../lib/reference-case-import":{prepareReferenceCaseImport:async()=>{throw new Error("unexpected reference import");},ReferenceImportError:class extends Error{status=400;}},"../../../../lib/domain":domain,"../../../../lib/assessment":{assessCase:()=>({generationGate:{canFinalize:true}})},"../../../../lib/legal-rules":{CURRENT_RULESET:{}},"../../../../lib/case-response":{caseResponse:async(c:CaseData)=>({case:c})},"../../../../lib/server-store":h.store,"../../../../lib/object-editor":{},"../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})},"../../../../lib/context-validation":{},"../../../../lib/json-response":jsonResponses,"../../../../lib/history-integrity-restore":{parseRestoreInput:()=>{throw new Error("history restore helper must not run in review API test");},buildRestorePlan:()=>{throw new Error("history restore helper must not run in review API test");}},
+    "../../../../lib/reference-case-import":{prepareReferenceCaseImport:async()=>{throw new Error("unexpected reference import");},ReferenceImportError:class extends Error{status=400;}} ,"../../../../lib/domain":domain,"../../../../lib/assessment":{assessCase:()=>({generationGate:{canFinalize:true}})},"../../../../lib/legal-rules":{CURRENT_RULESET:{}},"../../../../lib/case-response":{caseResponse:async(c:CaseData)=>({case:c})},"../../../../lib/server-store":h.store,"../../../../lib/case-command-store":commandStore,"../../../../lib/object-editor":{},"../../../../lib/sample-manifest":{samplePageRole:()=>({role:"unknown"})},"../../../../lib/context-validation":{},"../../../../lib/json-response":jsonResponses,"../../../../lib/history-integrity-restore":{parseRestoreInput:()=>{throw new Error("history restore helper must not run in review API test");},buildRestorePlan:()=>{throw new Error("history restore helper must not run in review API test");}},
   });
-  const request=(fingerprint?:string)=>new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_export",role:"caseworker",revision:prior.context.revision,...(fingerprint===undefined?{}:{fingerprint})})});
-  const context={params:Promise.resolve({id:prior.context.id})};
-  assert.equal((await route.PATCH(request(),context)).status,400);
-  assert.equal((await route.PATCH(request(oldFingerprint),context)).status,409);
+  const context={params:Promise.resolve({id:prior.context.id})};let commandNo=0;
+  const request=async(fingerprint?:string)=>{const current=await h.store.getCase(prior.context.id);return new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_export",commandId:`server-integrity-review-${++commandNo}`,role:"caseworker",revision:current.context.revision,expectedStateFingerprint:await h.store.caseStateFingerprint(current),...(fingerprint===undefined?{}:{fingerprint})})});};
+  assert.equal((await route.PATCH(await request(),context)).status,400);
+  const staleResponse=await route.PATCH(await request(oldFingerprint),context);assert.equal(staleResponse.status,409,await staleResponse.clone().text());
   h.setAuthenticatedUser(null);
-  assert.equal((await route.PATCH(request(domain.manifestFingerprint(prior.exportManifest!)),context)).status,403);
+  assert.equal((await route.PATCH(await request(domain.manifestFingerprint(prior.exportManifest!)),context)).status,403);
   h.setAuthenticatedUser({userId:"private-site-service"});
-  assert.equal((await route.PATCH(request(domain.manifestFingerprint(prior.exportManifest!)),context)).status,403);
+  assert.equal((await route.PATCH(await request(domain.manifestFingerprint(prior.exportManifest!)),context)).status,403);
   assert.equal((await route.PATCH(new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_fact",revision:prior.context.revision})}),context)).status,403);
   assert.equal((await route.PATCH(new Request("https://synthetic.invalid/api/cases/"+prior.context.id,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({action:"review_object",revision:prior.context.revision})}),context)).status,403);
   const unchanged=await h.store.getCase(prior.context.id);
@@ -208,7 +260,7 @@ test("검수 API는 지문 누락과 재생성 전의 지문을 거부하고 현
   assert.equal(unchanged.exportManifest!.reviews.caseworker,null);
   h.setAuthenticatedUser({userId:"synthetic-owner"});
   const fingerprint=domain.manifestFingerprint(prior.exportManifest!);
-  assert.equal((await route.PATCH(request(fingerprint),context)).status,200);
+  assert.equal((await route.PATCH(await request(fingerprint),context)).status,200);
   assert.equal((await h.store.getCase(prior.context.id)).exportManifest!.reviews.caseworker!.manifestFingerprint,fingerprint);
   h.sqlite.close();
 });
@@ -218,7 +270,7 @@ test("같은 내용의 반복 출력과 다른 사건 출력은 독립된 파일
   h.sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at,storage_token) VALUES (?,?,?,?,?,?,?,?)").run(second.context.id,second.context.caseName,"synthetic-owner",second.context.revision,JSON.stringify(second),"synthetic","synthetic",crypto.randomUUID());
   const route=load<{POST(request:Request,context:{params:Promise<{id:string}>}):Promise<Response>}>("app/api/cases/[id]/export/route.ts",{
     "../../../../../lib/domain":domain,
-    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required",referenceRelease:{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256}}})},
+    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required",referenceRelease:{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256}}}),finalizeDocumentWriterReceipt:async(receipt:Record<string,unknown>,files:Array<{hash:string}>)=>({...receipt,artifactHashes:files.map(file=>file.hash),formResults:[]})},
     "../../../../../lib/reference-context.ts":{loadReferenceSnapshot:async()=>({id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256,values:{}})},
     "../../../../../lib/exports":{newExportManifest:(revision:number,files:ExportManifest["files"])=>({...manifest(revision,"test"),files})},
     "../../../../../lib/office-writer":{writeOfficePackage:async()=>[{id:"application-identical-content",kind:"application",name:"synthetic.docx",mime:"application/octet-stream",hash:"same-content-hash",bytes:new TextEncoder().encode("Identical synthetic content")}]},
@@ -238,6 +290,29 @@ test("같은 내용의 반복 출력과 다른 사건 출력은 독립된 파일
   assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM artifacts").get()!.n,3);
   assert.equal([...h.objects.keys()].filter(key=>key.includes("/artifacts/")).length,3);
   assert.equal((await h.store.getCase(h.data.context.id)).exportManifest!.reviews.caseworker,null);
+  h.sqlite.close();
+});
+
+test("final export checks adopted workflow requirements before rendering while legacy workflow remains delegated",async()=>{
+  const h=setup(),caseId=h.data.context.id,adopted=await h.store.getCase(caseId);
+  adopted.workflowState={schema:"case-workflow/1",version:1,requirements:[{requirementId:"required-proof",retired:false}],subjectLinks:[],documentMatches:[],tasks:[],legalDispositions:[],procedureEvents:[],projectionBlockers:[],reviewHistory:[],decisions:[],documentEdits:[],requirementConfirmations:[]} as any;
+  h.sqlite.prepare("UPDATE cases SET payload=? WHERE id=?").run(JSON.stringify(adopted),caseId);
+  let writes=0;
+  const route=load<{POST(request:Request,context:{params:Promise<{id:string}>}):Promise<Response> }>("app/api/cases/[id]/export/route.ts",{
+    "../../../../../lib/domain":domain,
+    "../../../../../lib/exports":{newExportManifest:()=>{throw new Error("manifest must not be built when workflow obligations are incomplete");}},
+    "../../../../../lib/office-writer":{writeOfficePackage:async()=>{throw new Error("render must not run when workflow obligations are incomplete");}},
+    "../../../../../lib/document-writer":{prepareDocumentWrite:async()=>{writes++;throw new Error("writer must not run when workflow obligations are incomplete");},finalizeDocumentWriterReceipt:async()=>{throw new Error("writer must not run");}},
+    "../../../../../lib/case-workflow-view.ts":{buildCaseWorkflowView:async()=>({requirementStates:[{requirementId:"required-proof",required:true,requirementStatus:"eligible_for_confirmation"}]})},
+    "../../../../../lib/document-workflow-gate.ts":{finalWorkflowBlockers:(await import("../lib/document-workflow-gate.ts")).finalWorkflowBlockers},
+    "../../../../../lib/reference-context.ts":{loadReferenceSnapshot:async()=>({id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256,values:{}})},
+    "../../../../../lib/legal-rules":{CURRENT_RULESET:{}},
+    "../../../../../lib/server-store":h.store,
+    "../../../../../lib/case-response":{caseResponse:async(c:CaseData)=>({case:c})},
+    "../../../../../lib/json-response":jsonResponses,
+  });
+  const response=await route.POST(new Request(`https://synthetic.invalid/api/cases/${caseId}/export`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"final"})}),{params:Promise.resolve({id:caseId})});
+  assert.equal(response.status,422);assert.equal(writes,0);
   h.sqlite.close();
 });
 
@@ -261,7 +336,7 @@ test("내보내기 CAS 경합은 우승 manifest와 파일을 보존하고 실�
   }};
   const route=load<{POST(request:Request,context:{params:Promise<{id:string}>}):Promise<Response> }>("app/api/cases/[id]/export/route.ts",{
     "../../../../../lib/domain":domain,
-    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required",referenceRelease:{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256}}})},
+    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required",referenceRelease:{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256}}}),finalizeDocumentWriterReceipt:async(receipt:Record<string,unknown>,files:Array<{hash:string}>)=>({...receipt,artifactHashes:files.map(file=>file.hash),formResults:[]})},
     "../../../../../lib/reference-context.ts":{loadReferenceSnapshot:async()=>({id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256,values:{}})},
     "../../../../../lib/exports":{newExportManifest:(revision:number,files:ExportManifest["files"])=>({...manifest(revision,"loser"),files})},
     "../../../../../lib/office-writer":{writeOfficePackage:async()=>[{id:"application-synthetic",kind:"application",name:"staged.docx",mime:"application/octet-stream",hash:"staged-hash",bytes:new TextEncoder().encode("Synthetic losing export")}]},

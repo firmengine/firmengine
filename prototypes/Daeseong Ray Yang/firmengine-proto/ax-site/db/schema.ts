@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, index, primaryKey } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, index, primaryKey, unique } from "drizzle-orm/sqlite-core";
 
 export const cases = sqliteTable("cases", {
   id: text("id").primaryKey(), name: text("name").notNull(),
@@ -145,3 +145,33 @@ export const consultationRuns = sqliteTable("consultation_runs", {
   status:text("status").notNull(), leaseUntil:text("lease_until"), payload:text("payload"), payloadSha256:text("payload_sha256"), error:text("error"),
   actor:text("actor").notNull(), createdAt:text("created_at").notNull(), updatedAt:text("updated_at").notNull(),
 },t=>[index("consultation_runs_case_idx").on(t.caseId,t.createdAt)]);
+
+export const caseMutationReceipts = sqliteTable("case_mutation_receipts", {
+  id:text("id").primaryKey().notNull(), caseId:text("case_id").notNull(), commandId:text("command_id").notNull(),
+  requestHash:text("request_hash").notNull(), commandType:text("command_type").notNull(), actor:text("actor").notNull(),
+  beforeRevision:integer("before_revision").notNull(), afterRevision:integer("after_revision").notNull(),
+  beforeStateHash:text("before_state_hash").notNull(), afterStateHash:text("after_state_hash").notNull(),
+  beforeSnapshotKey:text("before_snapshot_key").notNull(), afterSnapshotKey:text("after_snapshot_key").notNull(),
+  impactPayload:text("impact_payload").notNull(), createdAt:text("created_at").notNull(),
+},t=>[unique("case_mutation_receipts_case_command_unique").on(t.caseId,t.commandId)]);
+
+export const caseRecomputeJobs = sqliteTable("case_recompute_jobs", {
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),jobKind:text("job_kind").notNull(),
+  inputFingerprint:text("input_fingerprint").notNull(),contractFingerprint:text("contract_fingerprint").notNull(),
+  status:text("status").notNull(),leaseToken:text("lease_token"),leaseUntil:text("lease_until"),
+  attempts:integer("attempts").notNull().default(0),lastError:text("last_error"),nextAttemptAt:text("next_attempt_at"),
+  resultRef:text("result_ref"),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[unique("case_recompute_jobs_identity_unique").on(t.caseId,t.jobKind,t.inputFingerprint,t.contractFingerprint),index("case_recompute_pending_idx").on(t.caseId,t.status,t.nextAttemptAt)]);
+
+export const caseTasks = sqliteTable("case_tasks", {
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),dedupeKey:text("dedupe_key").notNull(),type:text("type").notNull(),
+  ownerId:text("owner_id"),dueAt:text("due_at"),waitingOn:text("waiting_on"),blockedBy:text("blocked_by").notNull(),
+  status:text("status").notNull(),dependencyFingerprint:text("dependency_fingerprint").notNull(),payload:text("payload").notNull(),
+  createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[unique("case_tasks_case_dedupe_unique").on(t.caseId,t.dedupeKey)]);
+
+export const appRoleGrants = sqliteTable("app_role_grants", {
+  actorId:text("actor_id").notNull(),role:text("role").notNull(),scopeId:text("scope_id").notNull(),status:text("status").notNull(),
+  effectiveFrom:text("effective_from").notNull(),effectiveTo:text("effective_to"),grantedBy:text("granted_by").notNull(),reason:text("reason").notNull(),
+  policyRevision:integer("policy_revision").notNull(),createdAt:text("created_at").notNull(),revokedAt:text("revoked_at"),
+},t=>[primaryKey({columns:[t.actorId,t.role,t.scopeId]})]);

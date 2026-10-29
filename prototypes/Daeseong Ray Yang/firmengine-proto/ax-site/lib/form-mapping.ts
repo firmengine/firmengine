@@ -5,6 +5,8 @@ import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
 import type { ArtifactKind, CaseData, CaseReadIndex, Fact, NumericInput } from "./domain.ts";
 import type { CalculationResult } from "./assessment.ts";
+import type { PlanLedger } from "./repayment-plan-model.ts";
+import type { PlanReconciliation } from "./plan-reconciliation.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { applicantIdentityValue } from "./applicant-identity.ts";
@@ -54,20 +56,35 @@ function sourceValid(data: CaseData, ids: string[],index?:CaseReadIndex): boolea
   return !factSourceLineageIssues(data, ids,index).some(code => code !== "SOURCE_VERIFICATION_REQUIRED");
 }
 const aliases: Record<string, string[]> = {
-  client_name: ["person.name", "applicant.name"], address: ["person.address", "applicant.address", "jurisdiction.residence"],
+  client_name: ["person.name", "applicant.name"], address: ["person.address", "applicant.address", "jurisdiction.residence", "creditor_address", "debt.creditor_address"],
   resident_id: ["person.resident_id_masked", "applicant.resident_id_masked"], registered_address: ["person.registered_address"],
-  phone: ["person.phone", "applicant.phone"], business_name: ["business.name", "business.business_name", "income.business_name"],
+  phone: ["person.phone", "applicant.phone", "creditor_phone"], fax: ["creditor_fax"], business_name: ["business.name", "business.business_name", "income.business_name"],
   business_type: ["business.type", "business.business_type"], business_registration: ["business.registration", "business.business_registration"],
   business_address: ["business.address"], opening_date: ["business.opening_date"], statement: ["statement.text", "person.statement", "form.statement"],
   prior_proceedings: ["case.prior_proceedings", "statement.prior_proceedings"], court_name: ["court.name"],
   "debt.principal": ["debt.principal_balance", "debt.outstanding_principal"],
+  cause: ["creditor_cause", "debt.cause"], content: ["debt.content", "creditor_content"],
+  loan_date: ["creditor_loan_date", "debt.incurred_at", "debt.loan_date"],
+  original_principal: ["debt.original_principal", "creditor_original_principal"],
+  collateral: ["creditor_collateral", "debt.collateral_id"], secured_amount: ["creditor_secured_amount", "debt.secured_amount"],
+  secured_recovery: ["creditor_secured_recovery", "debt.expected_separate_recovery"], shortfall: ["creditor_shortfall", "debt.deficiency"],
+  dispute_reason: ["creditor_dispute_reason", "debt.dispute_reason"], disputed_amount: ["creditor_disputed_amount", "debt.claimed_amount"],
+  undisputed_amount: ["creditor_undisputed_amount", "debt.undisputed_amount"], litigation: ["creditor_litigation", "debt.litigation"],
+  assignment_order: ["creditor_assignment_order", "debt.assignment_order"], priority_basis: ["creditor_priority_basis", "debt.priority_basis"],
+  "debt.cause": ["creditor_cause"], "debt.content": ["creditor_content"], "debt.address": ["creditor_address"],
+  "debt.phone": ["creditor_phone"], "debt.fax": ["creditor_fax"], "debt.loan_date": ["creditor_loan_date", "debt.incurred_at"],
+  "debt.original_principal": ["creditor_original_principal"], "debt.collateral": ["creditor_collateral", "debt.collateral_id"],
+  "debt.secured_amount": ["creditor_secured_amount"], "debt.secured_recovery": ["creditor_secured_recovery", "debt.expected_separate_recovery"],
+  "debt.shortfall": ["creditor_shortfall", "debt.deficiency"], "debt.dispute_reason": ["creditor_dispute_reason", "debt.dispute_reason"],
+  "debt.disputed_amount": ["creditor_disputed_amount", "debt.claimed_amount"], "debt.undisputed_amount": ["creditor_undisputed_amount", "debt.undisputed_amount"],
+  "debt.litigation": ["creditor_litigation"], "debt.assignment_order": ["creditor_assignment_order"], "debt.priority_basis": ["creditor_priority_basis"],
   "asset.institution": ["asset.insurer", "asset.insurance_company", "asset.bank", "bank_account.bank"],
   "asset.policy_number": ["asset.policy_id", "asset.insurance_policy_number"],
   "asset.acquisition_date": ["asset.acquired_date"],
 };
 
 /** Exact typed amounts are reused; unsupported legal choices and missing facts stay explicit. */
-export function buildFormBindings(data: CaseData, calculation: CalculationResult,index:CaseReadIndex=createCaseReadIndex(data)): FormBindings {
+export function buildFormBindings(data: CaseData, calculation: CalculationResult,index:CaseReadIndex=createCaseReadIndex(data),ledger?:PlanLedger,reconciliation?:PlanReconciliation): FormBindings {
   const facts = currentFacts(data,index).filter((fact) => usableFact(data, fact,index));
   const assetResolution = resolveAssetRows(data,index), debtResolution = resolveDebtRows(data,index);
   const conflictedAssets = new Set(assetResolution.conflictIds);
@@ -126,7 +143,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
       principal: amount(row.principalWon), interest: amount(row.interestWon), claim_type: present(claimLabels[debt.classification]),
       principal_basis: row.principalWon===null?MISSING_FORM_VALUE:sourceText(debt.factIds, "debt.principal"), interest_basis: sourceText(debt.factIds, "debt.interest"),
       total_payment: amount(calculation.allocations.find((a) => a.debtId === debt.id)?.totalWon),
-      monthly_payment: MISSING_FORM_VALUE,
+      monthly_payment: (()=>{if(!ledger||ledger.status==="blocked"||reconciliation?.status!=="reconciled")return MISSING_FORM_VALUE;const rows=ledger.rows.filter(r=>r.debtId===debt.id);if(!rows.length)return MISSING_FORM_VALUE;const months=new Map<number,bigint>();for(const r of rows)months.set(r.installment,(months.get(r.installment)??0n)+BigInt(r.principalWon)+BigInt(r.interestWon)+BigInt(r.otherComponentWon));const vals=[...months.values()];return vals.length&&vals.every(v=>v===vals[0])?amount(vals[0]!.toString()):MISSING_FORM_VALUE;})(),
     };
     for (const key of ["cause", "content", "address", "phone", "fax", "loan_date", "original_principal", "collateral", "secured_amount", "secured_recovery", "shortfall", "dispute_reason", "disputed_amount", "undisputed_amount", "litigation", "assignment_order", "priority_basis", "due_date"]) base[key] = key === "due_date" ? present(debt.dueDate) : objectFact("debt", key, debt.id);
     if (base.loan_date === MISSING_FORM_VALUE) base.loan_date = objectFact("debt", "origination_date", debt.id);
@@ -196,7 +213,7 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 const decode = (base64: string): Uint8Array => Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
 
 /** Fill literal tokens and clone original table rows without evaluating expressions or signatures. */
-export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseData; calculation: CalculationResult; appendixDocx: Uint8Array; mode: "draft" | "final"; sourceIndex?:CaseReadIndex; bindings?:FormBindings }): Promise<MappedPublicForm | null> {
+export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseData; calculation: CalculationResult; appendixDocx: Uint8Array; mode: "draft" | "final"; sourceIndex?:CaseReadIndex; bindings?:FormBindings; planLedger?:PlanLedger; planReconciliation?:PlanReconciliation }): Promise<MappedPublicForm | null> {
   const code = BASIC_FORM_CODES[input.kind];
   if (!code) return null;
   const metadata = PUBLIC_FORM_METADATA[code];
@@ -210,7 +227,7 @@ export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseDa
   }
   // Display-only labels belong to this render. The persisted snapshot and its
   // receipt digest must remain unchanged when reused by another document/tool.
-  const sourceBindings = input.bindings??buildFormBindings(input.data, input.calculation,input.sourceIndex);
+  const sourceBindings = input.bindings??buildFormBindings(input.data, input.calculation,input.sourceIndex,input.planLedger,input.planReconciliation);
   const bindings:FormBindings = {rows:sourceBindings.rows,scalars:{...sourceBindings.scalars,
     review_status:input.mode === "final" ? "최종 검토본 · 서식 검토 대기" : "초안 · 서식 검토 대기",
     revision:String(input.data.context.revision),

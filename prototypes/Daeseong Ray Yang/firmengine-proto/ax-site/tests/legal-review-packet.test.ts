@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { createCase,factHasValidStructuredRefs } from "../lib/domain.ts";
-import { buildLegalReviewPacket,currentCompletedLegalCheckIds,gateLegalReviewChecks,LEGAL_REVIEW_BATCH_SIZE,LEGAL_REVIEW_PACKET_CHAR_BUDGET,type LegalReviewRisk } from "../lib/legal-review-packet.ts";
+import { buildLegalReviewPacket,currentCompletedLegalCheckIds,gateLegalReviewChecks,legalCheckCoverageComplete,LEGAL_REVIEW_BATCH_SIZE,LEGAL_REVIEW_PACKET_CHAR_BUDGET,type LegalReviewRisk } from "../lib/legal-review-packet.ts";
 import type { Fact } from "../lib/domain.ts";
 import type { Finding } from "../lib/assessment.ts";
 import { scanTransactions } from "../lib/transaction-review.ts";
@@ -9,6 +9,12 @@ import { scanTransactions } from "../lib/transaction-review.ts";
 const risk=(id:string,feature:string):LegalReviewRisk=>({id,title:`Synthetic ${id}`,conditions:"Source-backed condition",features:[feature],request:"Synthetic evidence request",legalRuleIds:["rule-1"],manual:true});
 function fact(id:string,key:string,value:string,state:Fact["state"]="verified",recognition:Fact["recognition"]="accepted"):Fact{return {id,logicalId:id,version:1,subjectId:`subject-${id}`,key,value,state,recognition,refs:[{documentId:"doc",page:1,quote:`Synthetic quote ${id} `.repeat(20)}],validation:[]};}
 const gate=(input:Omit<Parameters<typeof gateLegalReviewChecks>[0],"eligibleFactIds">&{eligibleFactIds?:Set<string>})=>gateLegalReviewChecks({...input,eligibleFactIds:input.eligibleFactIds??new Set(input.providedFacts.map(item=>item.id))});
+
+test("check-specific coverage ignores the packet-wide incomplete marker and rejects only missing relevant evidence",()=>{
+  const check=risk("risk-priority","debt.priority"),coverage={complete:false,featureCounts:{"risk-priority:debt.priority":{total:1,provided:1,omitted:0,axisFallbackProvided:0}},checkRules:{"risk-priority":{total:1,provided:1,omitted:0}},checkGuidance:{"risk-priority":{total:0,provided:0,omitted:0}},inventoryRowsOmitted:{debts:0},truncatedFactIdsByCheck:{"risk-priority":[]},truncatedRuleIdsByCheck:{"risk-priority":[]},truncatedGuidanceIdsByCheck:{"risk-priority":[]},truncatedCheckIds:[]};
+  assert.equal(legalCheckCoverageComplete(check,coverage),true);
+  assert.equal(legalCheckCoverageComplete(check,{...coverage,featureCounts:{...coverage.featureCounts,"risk-priority:debt.priority":{total:2,provided:1,omitted:1,axisFallbackProvided:0}}}),false);
+});
 
 test("data-only legal review keeps JSON source provenance and scenario assumptions visible",()=>{
   const data=createCase("Synthetic data-only review","synthetic-json-review","2026-10-29");

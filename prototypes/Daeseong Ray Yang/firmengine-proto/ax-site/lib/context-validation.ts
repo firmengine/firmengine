@@ -31,10 +31,12 @@ const paymentSchedule=z.object({reviewed:z.boolean(),reviewReason:z.string().max
 });
 export const CONTEXT_PATCH_SCHEMA=z.object({
   caseName:z.string().trim().min(1).max(100).optional(),applicationDate:date.optional(),asOf:date.optional(),courtId:z.string().min(1).max(60).optional(),
+  referenceApplicationRequired:z.boolean().optional(),referenceBundleId:z.string().trim().min(1).max(180).nullable().optional(),referenceArtifactIds:z.array(z.string().trim().min(1).max(180)).min(1).max(500).refine(ids=>new Set(ids).size===ids.length,"기준 항목 ID를 중복 선택할 수 없습니다.").nullable().optional(),referenceDateBasis:z.enum(["applicationDate","asOf"]).nullable().optional(),referenceEffectiveDate:date.nullable().optional(),
   filingPeriod:z.object({start:date,end:date}).strict().refine(v=>v.start<=v.end,"기간 종료일이 시작일보다 앞섭니다.").nullable().optional(),incomePeriodReviewed:z.boolean().optional(),evidence_cutoff:date.optional(),
   inventoryComplete:z.object({income:tri,debt:tri,asset:tri}).strict().optional(),ruleApplicationReviewed:z.boolean().optional(),
   planMonths:installmentNumber().nullable().optional(),exceptionalTermReviewed:z.boolean().optional(),
   shortenedTermReview:z.object({months:z.number().int().min(1).refine(value=>value<ordinaryPlanMonths(),"단축 검토기간은 원칙 기간보다 짧아야 합니다."),ruleReleaseId:z.string().trim().min(1).max(120),reason:z.string().trim().min(1).max(2000),basisFingerprint:z.string().min(2).max(50000)}).strict().nullable().optional(),
+  disposalApplicabilityReview:z.object({disposition:z.literal("not_applicable"),status:z.enum(["candidate","confirmed"]),reason:z.string().trim().min(1).max(2000),basisFingerprint:z.string().min(2).max(50000),factIds:z.array(z.string().trim().min(1).max(180)).max(500),reviewedBy:z.string().trim().max(200).optional(),reviewedAt:z.string().datetime().optional()}).strict().nullable().optional(),
   monthlyTrusteeFee:nullableMoney,monthlyPriorityPayment:nullableMoney,monthlyEstatePayment:nullableMoney,approvedMonthlyPayment:nullableMoney,approvedPresentValue:nullableMoney,
   presentValueBasis:z.string().max(2000).optional(),presentValueReviewed:z.boolean().optional(),assetValuationBasisReviewed:z.boolean().optional(),courtObjection:tri.optional(),
   allocationBasis:z.enum(["principal_then_interest_pro_rata","principal_only_pro_rata"]).optional(),allocationBasisReviewed:z.boolean().optional(),
@@ -48,6 +50,9 @@ export function parseContextPatch(raw:unknown,previous?:CaseContext):Partial<Cas
   // Selecting/clearing a period never inherits an earlier review implicitly.
   if(Object.hasOwn(parsed,"filingPeriod")&&parsed.incomePeriodReviewed===undefined)parsed.incomePeriodReviewed=false;
   if(parsed.filingPeriod===null&&parsed.incomePeriodReviewed===true)throw new Error("대표기간을 선택한 후 해당 기간의 검토를 기록하세요.");
+  if(parsed.referenceApplicationRequired&&(!parsed.referenceBundleId||!parsed.referenceArtifactIds?.length||!parsed.referenceDateBasis||!parsed.referenceEffectiveDate))throw new Error("기준 적용을 확정하려면 승인된 판본, 적용 항목, 날짜 기준과 적용일을 모두 명시하세요.");
+  if(parsed.referenceApplicationRequired&&previous&&parsed.referenceDateBasis){const declaredDate=parsed.referenceDateBasis==="applicationDate"?parsed.applicationDate??previous.applicationDate:parsed.asOf??previous.asOf;if(declaredDate!==parsed.referenceEffectiveDate)throw new Error("선택한 사건 날짜 기준과 기준 적용일이 일치해야 합니다.");}
+  if(parsed.referenceBundleId&&previous?.referenceBundleId&&parsed.referenceBundleId!==previous.referenceBundleId&&parsed.referenceApplicationRequired===undefined)throw new Error("기준 판본을 바꾸려면 적용 검토를 다시 선언하세요.");
   return parsed as Partial<CaseContext>;
 }
 export function parseHouseholdPatch(raw:unknown,data:CaseData):Partial<Household>{

@@ -1,0 +1,266 @@
+{
+  "schema": "evaluation-whitelist/1",
+  "count": 52,
+  "cases": [
+    {
+      "caseId": "synthetic-clean-case-boundary-v1",
+      "caseDataSha256": "1b4dcd1f44fafb545b8af093b63dc0bd4a5e90bc98480f9b22d6fa899e4c1d5f",
+      "datasetManifestSha256": "a321e0655233de7073d4fd269d967389be07985d338decd79e46ca3c61637f4f"
+    },
+    {
+      "caseId": "synthetic-clean-case-conflict-v1",
+      "caseDataSha256": "580ede10decc2f2e9282d11bff17ea8e17026d4ef302bb078e4b956a2f80d2af",
+      "datasetManifestSha256": "a321e0655233de7073d4fd269d967389be07985d338decd79e46ca3c61637f4f"
+    },
+    {
+      "caseId": "synthetic-clean-case-legal-review-v1",
+      "caseDataSha256": "f71e88f7317a573d57025ec156ef03d8fd310187ff415b63f766c283c0cfc350",
+      "datasetManifestSha256": "a321e0655233de7073d4fd269d967389be07985d338decd79e46ca3c61637f4f"
+    },
+    {
+      "caseId": "synthetic-clean-case-missing-v1",
+      "caseDataSha256": "731cedc6f4052dac281a053250847023b081df2166c350cf6ee03272f03aadee",
+      "datasetManifestSha256": "a321e0655233de7073d4fd269d967389be07985d338decd79e46ca3c61637f4f"
+    },
+    {
+      "caseId": "synthetic-clean-case-normal-v1",
+      "caseDataSha256": "5c9b38975d3bb86076c622f00b8653c8c63fe4a31f56ff1e0397e358cf0a5e61",
+      "datasetManifestSha256": "dfbfcffecd2af3e0d71e9f9304d6a72ca1e71958936cde253a9513881f6ba70b"
+    },
+    {
+      "caseId": "synthetic-combined-income-boundary-v1",
+      "caseDataSha256": "d5778ab20c801edf4f45a9b99527b0465373769c29d26f3345f10667b9219c00",
+      "datasetManifestSha256": "dfbfcffecd2af3e0d71e9f9304d6a72ca1e71958936cde253a9513881f6ba70b"
+    },
+    {
+      "caseId": "synthetic-combined-income-conflict-v1",
+      "caseDataSha256": "ddcd49b3a7c22a47ee4edec13c3cf57b398f3ed5562acea986a22ac00ccd21d8",
+      "datasetManifestSha256": "dfbfcffecd2af3e0d71e9f9304d6a72ca1e71958936cde253a9513881f6ba70b"
+    },
+    {
+      "caseId": "synthetic-combined-income-legal-review-v1",
+      "caseDataSha256": "9131b1c2f0542003da5edbc52baef713cd4dcd8b4c6a8f49c6006728e14926c2",
+      "datasetManifestSha256": "dfbfcffecd2af3e0d71e9f9304d6a72ca1e71958936cde253a9513881f6ba70b"
+    },
+    {
+      "caseId": "synthetic-combined-income-missing-v1",
+      "caseDataSha256": "613c5c7bca6dcf72f34856503b20ca4bc28cf2cc22cc7bc07e03989f3d15a8f1",
+      "datasetManifestSha256": "8876119f1587f89ea268775c6db369c856ec9b26a62db66ad4dfd991fb278a26"
+    },
+    {
+      "caseId": "synthetic-combined-income-normal-v1",
+      "caseDataSha256": "70be7fd13a8990b52d0f1fa2000d09ae4c5e5436e1038cb673baab525ffef7aa",
+      "datasetManifestSha256": "8876119f1587f89ea268775c6db369c856ec9b26a62db66ad4dfd991fb278a26"
+    },
+    {
+      "caseId": "synthetic-complex-debts-boundary-v1",
+      "caseDataSha256": "b023ddf924168a5cf1b7e8af3254110fdbccedf7f3a6019e54d5d8faec69b904",
+      "datasetManifestSha256": "8876119f1587f89ea268775c6db369c856ec9b26a62db66ad4dfd991fb278a26"
+    },
+    {
+      "caseId": "synthetic-complex-debts-conflict-v1",
+      "caseDataSha256": "d4729cc20216d06e76cd3fa78e6f2fa9e35ca2848a4d7979666448474da055d1",
+      "datasetManifestSha256": "8876119f1587f89ea268775c6db369c856ec9b26a62db66ad4dfd991fb278a26"
+    },
+    {
+      "caseId": "synthetic-complex-debts-legal-review-v1",
+      "caseDataSha256": "543adb2c7bc6f2219b3653ce742c917fc1d7af3f5075f943e406966474f15408",
+      "datasetManifestSha256": "caff8a9aac10ce76b0c11b3cd68519f0eec205f3a712a8abd0d9267d18ab921d"
+    },
+    {
+      "caseId": "synthetic-complex-debts-missing-v1",
+      "caseDataSha256": "f83356c7daff2d59c561c3b1899eabae48cb4cdd617c6f62ca794b32f753b6fb",
+      "datasetManifestSha256": "caff8a9aac10ce76b0c11b3cd68519f0eec205f3a712a8abd0d9267d18ab921d"
+    },
+    {
+      "caseId": "synthetic-complex-debts-normal-v1",
+      "caseDataSha256": "cae2155f8893bdf55e54cdfb0a50e8b8db85af274b35a9dc9e654d903c1e127c",
+      "datasetManifestSha256": "caff8a9aac10ce76b0c11b3cd68519f0eec205f3a712a8abd0d9267d18ab921d"
+    },
+    {
+      "caseId": "synthetic-disposable-assets-boundary-v1",
+      "caseDataSha256": "4ee57cedbb40cac9e1d983473f70aef250a723fd87deb045e5df7c9c3fc48ded",
+      "datasetManifestSha256": "caff8a9aac10ce76b0c11b3cd68519f0eec205f3a712a8abd0d9267d18ab921d"
+    },
+    {
+      "caseId": "synthetic-disposable-assets-conflict-v1",
+      "caseDataSha256": "7a7d2d83ebc0481df8ff6d4478af14b2d9c30612c83b13c0c2cb21d514ff78c1",
+      "datasetManifestSha256": "1b4b889aaefcb9d61c5fd46f6851c948ccf1fd0ed72f1af39ddd96d1aa6fb2dd"
+    },
+    {
+      "caseId": "synthetic-disposable-assets-legal-review-v1",
+      "caseDataSha256": "a788bc657ca9e9afec7bf5748df904b2e4dbadfc18d0dc0253d5d3949645ca92",
+      "datasetManifestSha256": "1b4b889aaefcb9d61c5fd46f6851c948ccf1fd0ed72f1af39ddd96d1aa6fb2dd"
+    },
+    {
+      "caseId": "synthetic-disposable-assets-missing-v1",
+      "caseDataSha256": "8b37cc76967de13c3b1fca124a44be9f262d5eefc9f386f7b1fedd099d77fec4",
+      "datasetManifestSha256": "1b4b889aaefcb9d61c5fd46f6851c948ccf1fd0ed72f1af39ddd96d1aa6fb2dd"
+    },
+    {
+      "caseId": "synthetic-disposable-assets-normal-v1",
+      "caseDataSha256": "0f206262f02f2755f4ffd3a945d4f9b85b2786f4f07ee21ed2806dfc79ae485b",
+      "datasetManifestSha256": "1b4b889aaefcb9d61c5fd46f6851c948ccf1fd0ed72f1af39ddd96d1aa6fb2dd"
+    },
+    {
+      "caseId": "synthetic-individual-business-boundary-v1",
+      "caseDataSha256": "4f413d5b41d9c1867166284c5291d891b852f292ce6b92c5ccd853f66e644e2f",
+      "datasetManifestSha256": "53325eb00b1ec72a27bb1c1d341c02d0d3702125a4e9d8cfdbea9239ef3f006c"
+    },
+    {
+      "caseId": "synthetic-individual-business-conflict-v1",
+      "caseDataSha256": "de08125c7bd61f1af3efbcc22689810ab97a28f87329dc7c8f83921962fd643b",
+      "datasetManifestSha256": "53325eb00b1ec72a27bb1c1d341c02d0d3702125a4e9d8cfdbea9239ef3f006c"
+    },
+    {
+      "caseId": "synthetic-individual-business-legal-review-v1",
+      "caseDataSha256": "a503f29d99a731c0044798e5a3ae5f81b4bea81bc227884825067348832e6e9f",
+      "datasetManifestSha256": "53325eb00b1ec72a27bb1c1d341c02d0d3702125a4e9d8cfdbea9239ef3f006c"
+    },
+    {
+      "caseId": "synthetic-individual-business-missing-v1",
+      "caseDataSha256": "3bfdbf3e4ce98dd9a3f84dcf707830cf9e94c6c5f4267cbb5fce940c305a78b3",
+      "datasetManifestSha256": "53325eb00b1ec72a27bb1c1d341c02d0d3702125a4e9d8cfdbea9239ef3f006c"
+    },
+    {
+      "caseId": "synthetic-individual-business-normal-v1",
+      "caseDataSha256": "dedb66d401225f9d5edf297a7dbcd5c21039d9221b1f10e9c4b3d42d7c7e5c37",
+      "datasetManifestSha256": "cf2bab9adf29752e85082ad709ed58244eba97dee663ae1395058b7dd780bd94"
+    },
+    {
+      "caseId": "synthetic-passive-income-boundary-v1",
+      "caseDataSha256": "68878faed7bfa9fae724a0751ac53d698501e3b607c2f70cb7ca2fb615b2eb10",
+      "datasetManifestSha256": "cf2bab9adf29752e85082ad709ed58244eba97dee663ae1395058b7dd780bd94"
+    },
+    {
+      "caseId": "synthetic-passive-income-conflict-v1",
+      "caseDataSha256": "367b4b1a85230e88ba2221ffd55ef8a1434258d91c3a091dddf2689ad5a72799",
+      "datasetManifestSha256": "cf2bab9adf29752e85082ad709ed58244eba97dee663ae1395058b7dd780bd94"
+    },
+    {
+      "caseId": "synthetic-passive-income-legal-review-v1",
+      "caseDataSha256": "a01db73245a5eed33c3b109f55dfe9cd3bc5c2e17fc0f1205149677f2f951ff6",
+      "datasetManifestSha256": "cf2bab9adf29752e85082ad709ed58244eba97dee663ae1395058b7dd780bd94"
+    },
+    {
+      "caseId": "synthetic-passive-income-missing-v1",
+      "caseDataSha256": "02134ddad126e5940ae2d2bd08a8d8c0b2f875032f40cef728c653575b8e8097",
+      "datasetManifestSha256": "823e41328854bdc9ad51840df2e39468b47fa06e3f356f35d4b94b3885af1f5f"
+    },
+    {
+      "caseId": "synthetic-passive-income-normal-v1",
+      "caseDataSha256": "7e9e686a527f98cd612800bc3e4b7ce19e1103c690b2b831b74dbee2aa2db58c",
+      "datasetManifestSha256": "823e41328854bdc9ad51840df2e39468b47fa06e3f356f35d4b94b3885af1f5f"
+    },
+    {
+      "caseId": "synthetic-salary-earner-boundary-v1",
+      "caseDataSha256": "68d26dabed7a6d0afb23ce7629788dbc38b43a2db53d19faefa121fecf2da036",
+      "datasetManifestSha256": "823e41328854bdc9ad51840df2e39468b47fa06e3f356f35d4b94b3885af1f5f"
+    },
+    {
+      "caseId": "synthetic-salary-earner-conflict-v1",
+      "caseDataSha256": "8c0522f7f40a95f00296d2a3f0df673a83240608967d23fde7c1b3f64317fc0b",
+      "datasetManifestSha256": "823e41328854bdc9ad51840df2e39468b47fa06e3f356f35d4b94b3885af1f5f"
+    },
+    {
+      "caseId": "synthetic-salary-earner-legal-review-v1",
+      "caseDataSha256": "f034ddffa178d5c47f1fdf9c8ceaa28d92382cef90760a698abcd6209544653d",
+      "datasetManifestSha256": "729daeecea8dc271cf66d432450e46db20f105e011f09121ee795002101ef3fd"
+    },
+    {
+      "caseId": "synthetic-salary-earner-missing-v1",
+      "caseDataSha256": "f551f3e19eda05c6a64948a2b9edc7ae2dc65ec5556939560a8ac3b3085146cf",
+      "datasetManifestSha256": "729daeecea8dc271cf66d432450e46db20f105e011f09121ee795002101ef3fd"
+    },
+    {
+      "caseId": "synthetic-salary-earner-normal-v1",
+      "caseDataSha256": "b0b395bca3bddab6eda11c7e7f38d36d72d939caa681a0a53b2a7aeff88eb36a",
+      "datasetManifestSha256": "729daeecea8dc271cf66d432450e46db20f105e011f09121ee795002101ef3fd"
+    },
+    {
+      "caseId": "synthetic-tax-arrears-boundary-v1",
+      "caseDataSha256": "cab268ba13aa4091f978249353d3bb32d2d8de031b638faaa162f1d59165ab71",
+      "datasetManifestSha256": "729daeecea8dc271cf66d432450e46db20f105e011f09121ee795002101ef3fd"
+    },
+    {
+      "caseId": "synthetic-tax-arrears-conflict-v1",
+      "caseDataSha256": "d7f46927211f5eeb7c8416651df522b7bdcf877dd4c93caeb7d6fa43a7097586",
+      "datasetManifestSha256": "a6b6072e0d73fabfcf2cf73e5e1fc1f0814a808102f9f0a4a91293c99eaf685b"
+    },
+    {
+      "caseId": "synthetic-tax-arrears-legal-review-v1",
+      "caseDataSha256": "d27464becebbcdfed7c5cc22a0198280b4e2ca4599d6a812c048804aaad2c071",
+      "datasetManifestSha256": "a6b6072e0d73fabfcf2cf73e5e1fc1f0814a808102f9f0a4a91293c99eaf685b"
+    },
+    {
+      "caseId": "synthetic-tax-arrears-missing-v1",
+      "caseDataSha256": "fcada191fb1d4733ccd78bc29dd4f3c74aaeed63bd3f90b0a1af231932fa65fc",
+      "datasetManifestSha256": "a6b6072e0d73fabfcf2cf73e5e1fc1f0814a808102f9f0a4a91293c99eaf685b"
+    },
+    {
+      "caseId": "synthetic-tax-arrears-normal-v1",
+      "caseDataSha256": "dd3323f00a7d79668eb8f3c5c00e1b6849f1a2071db517aa3d9d5555e84be57f",
+      "datasetManifestSha256": "a6b6072e0d73fabfcf2cf73e5e1fc1f0814a808102f9f0a4a91293c99eaf685b"
+    },
+    {
+      "caseId": "synthetic-threshold-debt-cap-secured-1499999999-v1",
+      "caseDataSha256": "2bdd7faa2b76eca55a89c0c2d744c315607bb2c4b449482e35d30add9b6d200e",
+      "datasetManifestSha256": "4f6dd1657e1187928ef5145f6c10cbd2ac3557cfc0140a50ba47003be3001014"
+    },
+    {
+      "caseId": "synthetic-threshold-debt-cap-secured-1500000000-v1",
+      "caseDataSha256": "e1f4b7dd225b17e88968103273cc1e8656176884addd8a87b1b6bc003cb765fd",
+      "datasetManifestSha256": "4f6dd1657e1187928ef5145f6c10cbd2ac3557cfc0140a50ba47003be3001014"
+    },
+    {
+      "caseId": "synthetic-threshold-debt-cap-secured-1500000001-v1",
+      "caseDataSha256": "b467296625dffcba4bf672bccdd0d324dea2c8184acc4675974765b8cf029658",
+      "datasetManifestSha256": "4f6dd1657e1187928ef5145f6c10cbd2ac3557cfc0140a50ba47003be3001014"
+    },
+    {
+      "caseId": "synthetic-threshold-debt-cap-unsecured-1000000000-v1",
+      "caseDataSha256": "7871cec8d3ee8375bd36eaa2a8a778a1f385e1c2abc5d60a3da2f39a1a2d18e3",
+      "datasetManifestSha256": "4f6dd1657e1187928ef5145f6c10cbd2ac3557cfc0140a50ba47003be3001014"
+    },
+    {
+      "caseId": "synthetic-threshold-debt-cap-unsecured-1000000001-v1",
+      "caseDataSha256": "9e17f119c35d32387a1793fe9046ede18c65eaad5698ad7411409865cfc7504e",
+      "datasetManifestSha256": "aafe319c211bc0f8068489278630ed0a9de63fd8b3baa715fa64e8e834bd478b"
+    },
+    {
+      "caseId": "synthetic-threshold-debt-cap-unsecured-999999999-v1",
+      "caseDataSha256": "6a2eb70b43cfb0ac73a4ce1abbcae430a6989eaebed4935d32417e30b304c43d",
+      "datasetManifestSha256": "aafe319c211bc0f8068489278630ed0a9de63fd8b3baa715fa64e8e834bd478b"
+    },
+    {
+      "caseId": "synthetic-threshold-plan-term-35-months-v1",
+      "caseDataSha256": "dd47fd37e061c6233c1d6951a0820bae4c598c99397428fb9a4b8a591f9c4822",
+      "datasetManifestSha256": "aafe319c211bc0f8068489278630ed0a9de63fd8b3baa715fa64e8e834bd478b"
+    },
+    {
+      "caseId": "synthetic-threshold-plan-term-36-months-v1",
+      "caseDataSha256": "6c9a791f913777910c457badb63b1b808e42ce98c783f5917feb1a49c6415449",
+      "datasetManifestSha256": "aafe319c211bc0f8068489278630ed0a9de63fd8b3baa715fa64e8e834bd478b"
+    },
+    {
+      "caseId": "synthetic-threshold-plan-term-37-months-v1",
+      "caseDataSha256": "d4ed9c350d9ee68595550433ab37161ab5fd1ee938d9140e9307cdd8fa1ec5c7",
+      "datasetManifestSha256": "2a5766194bfd25ecc0c71e022b19507a31f821e23756019843da37f694f4baba"
+    },
+    {
+      "caseId": "synthetic-threshold-plan-term-59-months-v1",
+      "caseDataSha256": "9f586ebad536aecc4fabfec258aef36ab2bb202e268526774f3c802f8c111a58",
+      "datasetManifestSha256": "2a5766194bfd25ecc0c71e022b19507a31f821e23756019843da37f694f4baba"
+    },
+    {
+      "caseId": "synthetic-threshold-plan-term-60-months-v1",
+      "caseDataSha256": "015f0b877591252027ab9d72a618c2f848869db62b0f4df6a3cbcea6cc4be7cd",
+      "datasetManifestSha256": "2a5766194bfd25ecc0c71e022b19507a31f821e23756019843da37f694f4baba"
+    },
+    {
+      "caseId": "synthetic-threshold-plan-term-61-months-v1",
+      "caseDataSha256": "c6b21a866308b94526ca631a98b100a4a4b5f16b7488485dad2c363e3ce61579",
+      "datasetManifestSha256": "2a5766194bfd25ecc0c71e022b19507a31f821e23756019843da37f694f4baba"
+    }
+  ]
+}

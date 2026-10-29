@@ -1,0 +1,4 @@
+import { jsonBody,requireSameOrigin,errorResponse,requireHumanActor,db } from "../../../lib/server-store";
+import { rolesForActor,updateRoleGrant,requireAppRole } from "../../../lib/app-roles";
+export async function GET(){try{const who=await requireHumanActor(),roles=await rolesForActor(who);const grants=roles.includes("role_admin")?(await db().prepare("SELECT actor_id AS actorId,role,scope_id AS scopeId,status,policy_revision AS policyRevision FROM app_role_grants ORDER BY actor_id,role").all()).results:[];return Response.json({actorId:who,roles,grants,professionalQualificationVerified:false},{headers:{"Cache-Control":"no-store"}});}catch(e){return errorResponse(e);}}
+export async function POST(request:Request){try{requireSameOrigin(request);await requireAppRole("role_admin");return Response.json(await updateRoleGrant(await jsonBody(request)));}catch(e){return errorResponse(e);}}

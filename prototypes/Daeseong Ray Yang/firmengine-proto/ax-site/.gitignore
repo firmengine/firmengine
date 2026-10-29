@@ -65,3 +65,20 @@ __pycache__/
 
 # Local evaluator tied to private source fixtures.
 /scripts/run-sample-evaluation.py
+
+# Borrower sources, extraction ledgers, answers, output and credentials stay private.
+/samples/
+/sample-data/
+/uploads/
+/upload/
+/results/
+/evaluations/
+/evaluation-private/
+/actual-runs/
+*.pdf
+*.docx
+*.xlsx
+*.hwp
+*.zip
+!public/templates/*.docx
+/public/pdf.worker.min.mjs

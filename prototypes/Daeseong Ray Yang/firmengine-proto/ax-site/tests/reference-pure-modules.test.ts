@@ -1,0 +1,58 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { referenceRuntimeHealth, validateReferenceBundle, type ReferenceBundle } from "../lib/reference-bundle.ts";
+import { resolveReferenceBundle } from "../lib/reference-resolver.ts";
+import { planReferenceImpact } from "../lib/reference-impact.ts";
+import { classifyMonitorObservation, monitorSchedulerStatus, projectMonitorSchedule } from "../lib/legal-monitor-status.ts";
+import { groupTransactionEvidence } from "../lib/transaction-groups.ts";
+const hash="a".repeat(64);
+const bundle=(id:string,from:string,to:string):ReferenceBundle=>({id,revision:"r1",sha256:hash,compatibility:"verified" as const,artifacts:[{id:"law",revision:"1",sha256:hash,effectiveFrom:from,effectiveTo:to,jurisdiction:"court-a",dateBasis:"filing",transition:{status:"declared" as const}}]});
+test("bundle structure is integrity metadata, and resolver requires a unique date/jurisdiction match",()=>{
+ const b=bundle("old","2020-01-01","2024-12-31"); assert.equal(validateReferenceBundle(b).valid,true);
+ assert.equal(resolveReferenceBundle([b],{jurisdiction:"court-a",dates:{filing:"2025-01-01"}}).status,"unresolved");
+ assert.equal(resolveReferenceBundle([b,bundle("new","2025-01-01","2030-01-01")],{jurisdiction:"court-a",dates:{filing:"2026-01-01"}}).status,"resolved");
+ assert.equal(resolveReferenceBundle([b],{jurisdiction:"court-b",dates:{filing:"2023-01-01"}}).status,"unresolved");
+ const future=bundle("future","2027-01-01","2030-01-01");
+ assert.equal(resolveReferenceBundle([bundle("current","2020-01-01","2026-12-31"),future],{jurisdiction:"court-a",dates:{filing:"2026-01-01"}}).status,"resolved");
+ const overlap=bundle("overlap","2024-01-01","2026-12-31");
+ assert.equal(resolveReferenceBundle([b,overlap],{jurisdiction:"court-a",dates:{filing:"2024-06-01"}}).status,"unresolved");
+ const transitional=bundle("transition","2020-01-01","2030-01-01"); transitional.artifacts[0].transition={status:"declared",conditions:["unknown legal transition"]};
+ assert.equal(resolveReferenceBundle([transitional],{jurisdiction:"court-a",dates:{filing:"2026-01-01"}}).status,"unresolved");
+ const subset=bundle("subset","2020-01-01","2030-01-01");subset.artifacts=[...subset.artifacts,{id:"future-law",revision:"1",sha256:hash,effectiveFrom:"2027-01-01",jurisdiction:"court-a",dateBasis:"filing",transition:{status:"unknown"}}];
+ const scoped=resolveReferenceBundle([subset],{jurisdiction:"court-a",dates:{filing:"2026-01-01"},requiredArtifacts:["law"]});assert.equal(scoped.status,"resolved");if(scoped.status==="resolved")assert.deepEqual(scoped.artifacts.map(item=>item.id),["law"]);
+ assert.equal(resolveReferenceBundle([subset],{jurisdiction:"court-a",dates:{filing:"2026-01-01"},requiredArtifacts:["future-law"]}).status,"unresolved","a compatibility review cannot decide an unknown transition or make a future artifact applicable");
+ const health=referenceRuntimeHealth({snapshotPresent:true,snapshotReadable:true,snapshotHashValid:true,registryHydrated:false,expectedArtifactIds:["law"]});
+ assert.equal(health.snapshotIntegrity,"valid"); assert.equal(health.registryHydration,"not_hydrated");
+});
+test("impact is selective, unknowns are explicit, and task keys dedupe retry inputs",()=>{
+ const c={caseId:"c1",runId:"r",jurisdiction:"court-a",dates:{filing:"2026-01-01"},dependencyIds:["law"],documentIds:["d"],state:"open" as const};
+ const result=planReferenceImpact([c,c,{caseId:"c2",state:"open"}],{artifactIds:["law"],jurisdictions:["court-a"],dateBasis:"filing",effectiveFrom:"2025-01-01"});
+ assert.deepEqual(result.affected,["c1"]); assert.deepEqual(result.unknown,["c2"]); assert.equal(result.tasks.length,1);
+ const noBasis=planReferenceImpact([c],{artifactIds:["law"],jurisdictions:["court-a"],effectiveFrom:"2025-01-01"});
+ assert.deepEqual(noBasis.unknown,["c1"]); assert.deepEqual(noBasis.affected,[]); assert.deepEqual(result.tasks[0].documentIds,["d"]);
+});
+test("monitor separates paused execution, first observation, failures, no change and attachment-only changes",()=>{
+ assert.equal(monitorSchedulerStatus(true,{enabled:false}).running,false);
+ const schedule=projectMonitorSchedule({configured:true},[{status:"failed",completedAt:"2026-10-28"},{status:"complete",completedAt:"2026-10-27"}]);
+ assert.equal(schedule.desiredConfigured,true); assert.equal(schedule.runtimeStatus,"unverified"); assert.equal(schedule.schedulerEnabled,null); assert.equal(schedule.lastSuccessAt,"2026-10-27"); assert.equal(schedule.lastFailure?.at,"2026-10-28");
+ const first={sourceId:"s",status:"success" as const,bodyHash:"a",attachmentHashes:["x"]};
+ assert.equal(classifyMonitorObservation(first).state,"first_observation");
+ assert.equal(classifyMonitorObservation({...first,status:"failed"},first).baselineUpdated,false);
+ assert.equal(classifyMonitorObservation(first,first).state,"unchanged");
+ assert.equal(classifyMonitorObservation({...first,attachmentHashes:["y"]},first).state,"attachment_changed");
+});
+test("transaction candidates retain counterexamples and mark incomplete periods unknown",()=>{
+ const base={accountId:"a",counterpartyId:"merchant",date:"2026-03-02",amount:"1000",direction:"out" as const,status:"posted" as const};
+ const rows=[{...base,id:"1"},{...base,id:"2",date:"2026-03-10"},{...base,id:"3",date:"2026-03-18"}];
+ const [g]=groupTransactionEvidence({transactions:rows});
+ assert.equal(g.kind,"repeated_withdrawal_candidate"); assert.equal(g.status,"unknown"); assert.equal(g.determination,"none"); assert.ok(g.counterexamples.includes("routine living expense"));
+ const small=groupTransactionEvidence({transactions:rows,reviewThresholdWon:"500000"})[0];
+ assert.equal(small.totalAmountWon,"3000"); assert.equal(small.belowReviewThreshold,true); assert.equal(small.policy?.legalThreshold,false);
+ const own=groupTransactionEvidence({transactions:[{id:"out",accountId:"a",date:"2026-03-01",amount:"50",direction:"out"},{id:"in",accountId:"b",date:"2026-03-02",amount:"50",direction:"in"}]});
+ assert.equal(own[0].kind,"self_transfer_candidate"); assert.equal(own[0].determination,"none");
+ const duplicates=groupTransactionEvidence({transactions:[{id:"d1",accountId:"a",transactionId:"txn",amount:"20",date:"2026-03-01"},{id:"d2",accountId:"a",transactionId:"txn",amount:"20",date:"2026-03-01"}]});
+ assert.ok(duplicates.some(x=>x.kind==="duplicate_candidate"));
+ const refund=groupTransactionEvidence({transactions:[{id:"p",accountId:"a",amount:"80",date:"2026-03-01",direction:"out"},{id:"r",accountId:"a",amount:"80",date:"2026-03-03",direction:"in",relatedTransactionId:"p"}]});
+ assert.ok(refund.some(x=>x.kind==="refund_or_reversal_candidate"));
+ assert.ok(refund.every(x=>x.determination==="none"));
+});

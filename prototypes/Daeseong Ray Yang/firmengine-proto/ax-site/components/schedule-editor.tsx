@@ -1,16 +1,18 @@
 "use client";
-import {useEffect,useState,type FormEvent} from "react";
+import {useEffect,useRef,useState,type FormEvent} from "react";
 import {ArrowLeft,Plus,Save,Trash2} from "lucide-react";
 import type {CaseData} from "../lib/domain";
 import { maximumPlanMonths } from "../lib/reference-parameters";
 import { installBrowserReferenceSnapshot, type ReferenceSnapshot } from "../lib/reference-runtime";
+import { clearLegacyCommandId, isKnownMutationRejection, legacyCommandId, MutationHttpError, requireUsableCaseSnapshot, type PendingClientMutation } from "../lib/client-mutation";
 type AllocationDraft={creditorId:string;principalWon:string;interestWon:string};
 type PhaseDraft={id:string;firstInstallment:string;lastInstallment:string;firstPaymentDate:string;monthlyAvailableWon:string;allocations:AllocationDraft[]};
 const blankPhase=():PhaseDraft=>({id:crypto.randomUUID(),firstInstallment:"",lastInstallment:"",firstPaymentDate:"",monthlyAvailableWon:"",allocations:[]});
 function drafts(data:CaseData):PhaseDraft[]{return (data.context.paymentSchedule?.phases??[]).map(p=>({...p,firstInstallment:String(p.firstInstallment),lastInstallment:String(p.lastInstallment),firstPaymentDate:p.firstPaymentDate??"",monthlyAvailableWon:p.monthlyAvailableWon,allocations:p.allocations.map(a=>({...a}))}));}
-async function api(path:string,init?:RequestInit){const r=await fetch(path,init);const p=await r.json() as {case?:CaseData;cases?:{id:string;name:string}[];error?:string;referenceSnapshot?:ReferenceSnapshot};if(!r.ok)throw new Error(p.error||"요청을 처리하지 못했습니다.");if(p.referenceSnapshot)installBrowserReferenceSnapshot(p.referenceSnapshot);return p;}
+async function api(path:string,init?:RequestInit){const r=await fetch(path,init);const p=await r.json().catch(()=>({})) as {case?:CaseData;cases?:{id:string;name:string}[];error?:string;referenceSnapshot?:ReferenceSnapshot};if(!r.ok)throw new MutationHttpError(p.error||"요청을 처리하지 못했습니다.",r.status);if(p.referenceSnapshot)installBrowserReferenceSnapshot(p.referenceSnapshot);return p;}
 export default function ScheduleEditor(){
  const [cases,setCases]=useState<{id:string;name:string}[]>([]),[caseId,setCaseId]=useState(""),[data,setData]=useState<CaseData|null>(null),[phases,setPhases]=useState<PhaseDraft[]>([]),[expected,setExpected]=useState(""),[review,setReview]=useState(false),[reason,setReason]=useState(""),[error,setError]=useState(""),[saved,setSaved]=useState(false),[busy,setBusy]=useState(false);
+ const pendingMutation=useRef<PendingClientMutation|null>(null);
  useEffect(()=>{api("/api/workspace").then(p=>{const rows=p.cases??[];setCases(rows);const query=new URLSearchParams(location.search),requested=query.get("caseId");setCaseId(rows.some(c=>c.id===requested)?requested!:rows[0]?.id??"");}).catch(e=>setError(e.message));},[]);
  useEffect(()=>{if(!caseId)return;setData(null);api(`/api/cases/${caseId}`).then(p=>{if(!p.case)throw new Error("사건을 불러오지 못했습니다.");setData(p.case);setPhases(drafts(p.case));setExpected(p.case.context.paymentSchedule?.expectedInstallments?.toString()??"");setReview(p.case.context.paymentSchedule?.reviewed===true);setReason(p.case.context.paymentSchedule?.reviewReason??"");}).catch(e=>setError(e.message));},[caseId]);
  function changed(next:PhaseDraft[]){setPhases(next);setReview(false);setSaved(false);}
@@ -19,7 +21,12 @@ export default function ScheduleEditor(){
  async function save(e:FormEvent){e.preventDefault();if(!data)return;setBusy(true);setError("");setSaved(false);try{
   const parsed=phases.map(p=>{if(!/^\d+$/.test(p.firstInstallment)||!/^\d+$/.test(p.lastInstallment)||!/^\d+$/.test(p.monthlyAvailableWon))throw new Error("회차와 월 가용액은 확인된 정수로 입력해 주세요.");for(const a of p.allocations)if(!a.creditorId||!/^\d+$/.test(a.principalWon)||!/^\d+$/.test(a.interestWon))throw new Error("채권자와 원금·이자 배분을 입력해 주세요.");return {id:p.id,firstInstallment:Number(p.firstInstallment),lastInstallment:Number(p.lastInstallment),...(p.firstPaymentDate?{firstPaymentDate:p.firstPaymentDate}:{}),monthlyAvailableWon:p.monthlyAvailableWon,allocations:p.allocations};});
   const paymentSchedule={reviewed:review,reviewReason:review?reason.trim():undefined,expectedInstallments:expected?Number(expected):null,phases:parsed};
-  const out=await api(`/api/cases/${caseId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({revision:data.context.revision,action:"context",context:{paymentSchedule},reason:reason.trim()||"변제일정 초안 CRUD 변경",})});
+  const base={revision:data.context.revision,action:"context",context:{paymentSchedule},reason:reason.trim()||"변제일정 초안 CRUD 변경"};
+  if(!data.clientStateFingerprint)throw new Error("최신 사건 상태 지문을 불러오지 못했습니다. 새로고침한 뒤 다시 시도하세요.");
+  const key=JSON.stringify({caseId,body:base,stateFingerprint:data.clientStateFingerprint});
+  const commandId=legacyCommandId(pendingMutation,key);
+  let out: Awaited<ReturnType<typeof api>>;
+  try{out=requireUsableCaseSnapshot(await api(`/api/cases/${caseId}`,{method:"PATCH",headers:{"Content-Type":"application/json"},body:JSON.stringify({...base,commandId,expectedStateFingerprint:data.clientStateFingerprint})}),caseId);}catch(error){if(isKnownMutationRejection(error))clearLegacyCommandId(pendingMutation,key);throw error;}clearLegacyCommandId(pendingMutation,key);
   if(!out.case)throw new Error("저장 결과를 확인하지 못했습니다.");setData(out.case);setPhases(drafts(out.case));setReview(out.case.context.paymentSchedule?.reviewed===true);setReason(out.case.context.paymentSchedule?.reviewReason??"");setSaved(true);
  }catch(e){setError(e instanceof Error?e.message:"저장하지 못했습니다.");}finally{setBusy(false);}}
  const debtOptions=data?.debts??[];

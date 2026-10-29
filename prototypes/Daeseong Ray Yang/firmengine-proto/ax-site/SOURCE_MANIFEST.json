@@ -3,24 +3,30 @@
   "destination": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site",
   "scope": "source, public blank forms and synthetic tests only",
   "private_data_included": false,
-  "source_digest": "7e72e47d460ac669d6099c267d1b2e0348eb42b1107edbc5c2749845a57b05d2",
+  "source_digest": "a21b2448e6f19e375e05672cb4a18e58ec24251d80b6193a25b0446e8ee1f7c8",
   "files": [
     {
       "path": ".gitignore",
-      "sha256": "1fbf5450ad241781f54e0f762bbd43dd80664c066c408967f1ef601a4167f760",
-      "bytes": 909,
+      "sha256": "97685ef66ef110c4dea3672d1ca208920d88d4f78ac1fa9802eaeb76f8154512",
+      "bytes": 1268,
       "mode": "100644"
     },
     {
       "path": ".openai/hosting.json",
-      "sha256": "bcc60135f698bbe83722987ef0705bfb2f389f9eb1a163007cbb4c9ceab301cf",
-      "bytes": 35,
+      "sha256": "9a82fdff312eecf0ba8bd2a23cd0961545cce99e206e1f9ce3f582b080b9303f",
+      "bytes": 70,
       "mode": "100644"
     },
     {
       "path": "README.md",
-      "sha256": "be00a81546d0a45bb96a78f6a32a85b010bb1b7f1f61a6193dd12f81cf8ac92a",
-      "bytes": 8991,
+      "sha256": "848cd32c4b667502e6de75edd97e4f3ec5714cddbb44a26ecc8b7aa3c1b10eca",
+      "bytes": 2412,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/cases/[id]/analyses/route.ts",
+      "sha256": "ec7b984d51e862a70c7a87a4abc123ee2c1a43752fd40f267a5a00043447d91f",
+      "bytes": 1138,
       "mode": "100644"
     },
     {
@@ -33,6 +39,12 @@
       "path": "app/api/cases/[id]/calculator/route.ts",
       "sha256": "e467b4b46693f1e3498362cd560f541498a58bc3869e3f3c0d7896de8f201b3d",
       "bytes": 1336,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/cases/[id]/commands/route.ts",
+      "sha256": "10782a1e3dd4227497239bb7036ace9892191f9c5c882f5c485e872c3bf8a913",
+      "bytes": 1028,
       "mode": "100644"
     },
     {
@@ -55,8 +67,14 @@
     },
     {
       "path": "app/api/cases/[id]/export/route.ts",
-      "sha256": "ffb2d886a8302e657901b5c3af2ea97c1e6f9540c7ec6d2a2b0013e7e12898bc",
-      "bytes": 4292,
+      "sha256": "3215c89f9cfcfb64eb6020ebca80e3d55c37c600be70fe2406573c05077b68e4",
+      "bytes": 11222,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/cases/[id]/migration/route.ts",
+      "sha256": "53730029d4f4e7c1b5e9d18e086d5061e2956aa1c338e03ee1ae1c2e90b19b9c",
+      "bytes": 1621,
       "mode": "100644"
     },
     {
@@ -66,9 +84,27 @@
       "mode": "100644"
     },
     {
+      "path": "app/api/cases/[id]/recompute/route.ts",
+      "sha256": "069ef647e9d6e59eee8f9d5921f8f75d412d2115016aefc24adc1a134f1091f5",
+      "bytes": 4801,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/cases/[id]/requirements/route.ts",
+      "sha256": "9bf6d4cd222a2508107984e6f961dd8fdb4a701d41f39cb4b3e4432a8f0352ba",
+      "bytes": 548,
+      "mode": "100644"
+    },
+    {
       "path": "app/api/cases/[id]/route.ts",
-      "sha256": "3eac313dfbb480f59dbb2e5da422aba0eefaf8b371b31e13bd179049408d13d6",
-      "bytes": 15769,
+      "sha256": "590911f1478255118a09568ef2067c6e181767a4fd217deb9caecb3a73040faf",
+      "bytes": 9086,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/cases/[id]/workflow/route.ts",
+      "sha256": "118083e7f858e2b6864158cf617092ce86cceece4a32bd0a817cf8071ce050c7",
+      "bytes": 384,
       "mode": "100644"
     },
     {
@@ -79,20 +115,56 @@
     },
     {
       "path": "app/api/checklist-catalog/route.ts",
-      "sha256": "9e4f3656f30ba656e2678ba8feb07f4862a3e0d63d6f166a10fbc998298b5622",
-      "bytes": 805,
+      "sha256": "5d5e802fb0b52a89db844b2ce04367681c025a2ab4edb27f62ce5d2962913641",
+      "bytes": 849,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/evaluation-cases/clone/route.ts",
+      "sha256": "9bb486b835f6e6d43d580be1f2c8d5440701c5c37c2484a96e1801da6775e537",
+      "bytes": 2249,
       "mode": "100644"
     },
     {
       "path": "app/api/evaluation-cases/route.ts",
-      "sha256": "f1079161c59b7a11fe4d785dd1fa42d2e21b90ecfeeed21251151a04a7b32387",
-      "bytes": 5727,
+      "sha256": "2ca617093d4673419fc53e12cecf2ceeba5840138f6bd3a30ea9bb36ff133176",
+      "bytes": 6342,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/intake-reference/route.ts",
+      "sha256": "508344ffb35058662f4b6a783096d45113d6763537cfeee2be5de0d607f648ed",
+      "bytes": 610,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/legal-monitor/route.ts",
+      "sha256": "ee120adf9cccb00d67b6708ce55317c855bcd5ff8896d19197e73a1fbf1adb56",
+      "bytes": 1143,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/reference-data/route.ts",
+      "sha256": "c6cc00b7d0108dc04dba653031d8797e3e6fc1fea40582960c396eda0ef05f17",
+      "bytes": 6748,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/roles/route.ts",
+      "sha256": "45d1e3816fc23639f95b956bb716bffec2e203912c058b6395cc797ee558b2de",
+      "bytes": 894,
+      "mode": "100644"
+    },
+    {
+      "path": "app/api/tasks/route.ts",
+      "sha256": "8139c4bcfb82b5424339d133bdb65ec9c4588b6bd6f5fef810e0138f81085260",
+      "bytes": 1931,
       "mode": "100644"
     },
     {
       "path": "app/api/workspace/route.ts",
-      "sha256": "d423220e9ebc3294b6115a4e3e4052709b8897cb823ef36faf7eb8d38927b195",
-      "bytes": 1705,
+      "sha256": "57c2525dc535db2f71f1016341c608b8846f67556d7eefff63092b76f7505f66",
+      "bytes": 1828,
       "mode": "100644"
     },
     {
@@ -129,6 +201,12 @@
       "path": "app/cases/[id]/review/page.tsx",
       "sha256": "91026eb52e96eed90d537e8882c9fd9b4f6ed951c214615219d7f95694c7f727",
       "bytes": 215,
+      "mode": "100644"
+    },
+    {
+      "path": "app/cases/[id]/workflow/page.tsx",
+      "sha256": "f353eb6bd25d900835adc2609867ddaa0bed106edb362968fff49d7b7c55fb7c",
+      "bytes": 220,
       "mode": "100644"
     },
     {
@@ -187,8 +265,8 @@
     },
     {
       "path": "app/mcp/route.ts",
-      "sha256": "a59c75b26e0510fb7cb5e836edf1321d12fc94c143270931a2de23e511f08b32",
-      "bytes": 414,
+      "sha256": "f6cdc32df1057333a17b96b3d28857b8b2894efd0611882e3cfaad73fd51e70c",
+      "bytes": 1059,
       "mode": "100644"
     },
     {
@@ -198,9 +276,33 @@
       "mode": "100644"
     },
     {
+      "path": "app/reference-data/page.tsx",
+      "sha256": "bead67a8d461f26fc15a38a67d25853342b0931b6614ac2fa5f5adf14fc3a03e",
+      "bytes": 184,
+      "mode": "100644"
+    },
+    {
+      "path": "app/reference-data/reference-data.css",
+      "sha256": "23cf03734a34f3c23e92c2ee427532a7234f5b0451f6f39f572b272c0159178f",
+      "bytes": 24074,
+      "mode": "100644"
+    },
+    {
+      "path": "app/roles/page.tsx",
+      "sha256": "e55df398e7fc4a84010e96e4a6ee7c5af03d8e0411649fb6119de07728c42f9d",
+      "bytes": 164,
+      "mode": "100644"
+    },
+    {
       "path": "app/settings/page.tsx",
       "sha256": "d6d36f6c20e1551606778688165cff9ff7a4371d599fca7f4befeb3c87d8b931",
       "bytes": 135,
+      "mode": "100644"
+    },
+    {
+      "path": "app/tasks/page.tsx",
+      "sha256": "ae145ca7bc4f2f5e912cf143d47dc3d50d1ffc268e1dfe8f7027fb8e52238117",
+      "bytes": 124,
       "mode": "100644"
     },
     {
@@ -213,6 +315,18 @@
       "path": "components.json",
       "sha256": "31f4ca67a4a62572571003d3d5aac85ee6fbfca67a192924bac6b168d95e98fd",
       "bytes": 420,
+      "mode": "100644"
+    },
+    {
+      "path": "components/case-review-actions.tsx",
+      "sha256": "305674ca13610ee04f01772f646bb0d592a86e6916659646faec624f8a7c1572",
+      "bytes": 9393,
+      "mode": "100644"
+    },
+    {
+      "path": "components/case-workflow.tsx",
+      "sha256": "7a36fbbf7ea57822e7369d7baf3aa51a5962d79b419180804cc1391f5c0087c1",
+      "bytes": 39955,
       "mode": "100644"
     },
     {
@@ -235,14 +349,14 @@
     },
     {
       "path": "components/context-editor.tsx",
-      "sha256": "75db2ab8b525c61172c8d88490ee4b79fc0320a056ec4094e067bf62584013a1",
-      "bytes": 13454,
+      "sha256": "9316b4d30e4467c2eca17647c1baf1a06dcfe91992e8fbcdd0c9e9ea8cc9f0c2",
+      "bytes": 21683,
       "mode": "100644"
     },
     {
       "path": "components/data-manager.tsx",
-      "sha256": "56acca62c5f5e917982be2a305fa420934ae7cdfe4aa204791d4f174d3ad96bf",
-      "bytes": 20838,
+      "sha256": "60814f7419780d4967fdb1d6f57461b9d52e72077190e449a83853ba9b5a997e",
+      "bytes": 21977,
       "mode": "100644"
     },
     {
@@ -259,14 +373,32 @@
     },
     {
       "path": "components/legal-proposals.tsx",
-      "sha256": "c791121e22263b3613aa8704c020a478111c99b5006c684165d707b71822596a",
-      "bytes": 4799,
+      "sha256": "aab6ca27e58bbf9220ef0dbf5335d954d563498ec1fff3a7ab388f8d6202a6de",
+      "bytes": 5263,
+      "mode": "100644"
+    },
+    {
+      "path": "components/reference-workspace.tsx",
+      "sha256": "dbbe8c91c2c27255fd40752af223e5306a727a887b6aa96899b5dd23fe6d6b41",
+      "bytes": 63493,
+      "mode": "100644"
+    },
+    {
+      "path": "components/role-manager.tsx",
+      "sha256": "ffba9c5c09af604cb77be3e5fb94e975da068ae28bd1b81da4dd6a58f41af6c2",
+      "bytes": 3725,
       "mode": "100644"
     },
     {
       "path": "components/schedule-editor.tsx",
-      "sha256": "d9f73f899116a4f5ce985d6c24617c332f51030adef0f671aa1d20889eadbe31",
-      "bytes": 12212,
+      "sha256": "7ec9cc00e4eec7682d7781519ee1aaa147e54536a240b1c16351fa07b8d4925b",
+      "bytes": 13446,
+      "mode": "100644"
+    },
+    {
+      "path": "components/task-dashboard.tsx",
+      "sha256": "fe129bf406806c0bda715b4d751a420760fcb508a73d16f0bd20c494e99e4eaa",
+      "bytes": 6750,
       "mode": "100644"
     },
     {
@@ -637,8 +769,8 @@
     },
     {
       "path": "components/workspace.tsx",
-      "sha256": "68e12a6baa84d0c66355a4209dd1e937a31061db001d704dc52f290757c6a298",
-      "bytes": 119772,
+      "sha256": "d9d2937d6526ac98557d179b5bcafc82b8a218a3534614b7c603b9d9b1e9ea73",
+      "bytes": 123895,
       "mode": "100644"
     },
     {
@@ -649,8 +781,20 @@
     },
     {
       "path": "db/schema.ts",
-      "sha256": "cb0d30bcbcc3b3bee31503119cc64ae7320ff14ec5984e9ba451caee4ee32065",
-      "bytes": 5337,
+      "sha256": "119daf9924b5a0a14626d5b8c36a6acae18bd12a7689ba5b1a2f29b470cfcbba",
+      "bytes": 11150,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "facad54270534ce42531196f960702ed5bb1c946a4995d311af50b0e57728a99",
+      "bytes": 1458,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/acceptance-coverage-draft.json",
+      "sha256": "9e54447c183550227371d26112cdda06a03eb1695ee31fb514af6af3e972e0f3",
+      "bytes": 147077,
       "mode": "100644"
     },
     {
@@ -702,15 +846,33 @@
       "mode": "100644"
     },
     {
+      "path": "docs/ax-v35-merge-manifest.json",
+      "sha256": "d677e79f2627d4200035935c42d2533594137d7276ef93691b48eea1e8d2fd70",
+      "bytes": 128551,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/ax-v35-merge.md",
+      "sha256": "6119d2f6449c2e281b89a75ba0361a99c0ec3c94790ebe624be713d749bb9b20",
+      "bytes": 7213,
+      "mode": "100644"
+    },
+    {
       "path": "docs/consultation-checklist.md",
-      "sha256": "e665bebc7fe8a35edeb15cac7a02fc8bb1667f4e49d87c7a3ac1e4ae2ca8e8aa",
-      "bytes": 13773,
+      "sha256": "3a5d4d5c33b827f304af21f89f3e92e69d6a87ba1a8efafe6bb3d4e702b77bd2",
+      "bytes": 887,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/document-filing-readiness.md",
+      "sha256": "70a2c24b40b3130e2ff3da55c36986b969db456a005148e9eafcbdc86178e653",
+      "bytes": 907,
       "mode": "100644"
     },
     {
       "path": "docs/document-generation-metrics.md",
-      "sha256": "10b858bfcdcde4cc4ea1ce7a578159b72c69d1aab382fcd2290838aaeebd2365",
-      "bytes": 2521,
+      "sha256": "fb25c736c5715e39264ce8cbf7e98f92da9b04a4a52e02a41568bbfab750e278",
+      "bytes": 692,
       "mode": "100644"
     },
     {
@@ -720,9 +882,27 @@
       "mode": "100644"
     },
     {
+      "path": "docs/eform-parity-matrix.json",
+      "sha256": "75a1cb9c9910d7840a574fe02d9e2e2ddfaacde8830c937f03e199948b290d41",
+      "bytes": 893,
+      "mode": "100644"
+    },
+    {
       "path": "docs/exception-coverage-matrix.md",
       "sha256": "235317525c0587fae350e5460f6190402bd86ff65583cdb44fccba56457551e4",
       "bytes": 32410,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/feature-inventory.json",
+      "sha256": "0ce1cf0ae80614dc0091e9a6454c90ec6d66d49324fbf613a6cab9f4c96e3162",
+      "bytes": 155103,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/features.md",
+      "sha256": "5f97f07c30c7775754b568317a157fedfc376abe5e6ea936c9854e5f99125a39",
+      "bytes": 3130,
       "mode": "100644"
     },
     {
@@ -732,9 +912,57 @@
       "mode": "100644"
     },
     {
+      "path": "docs/legal-monitor-runbook.md",
+      "sha256": "392b029f1752ac29772e9f3dc7be39bbdb8fe4fa15bfb92be6036b9ca7159174",
+      "bytes": 860,
+      "mode": "100644"
+    },
+    {
       "path": "docs/page-recovery-and-evaluation.md",
       "sha256": "5d6d6e3a8ed11441b0a15b5138952ecc61aaf631cad06a54a89f1cd007ffe8fd",
       "bytes": 7157,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/recovery-runbook.md",
+      "sha256": "2f689d025508bc0a22a31b692b8ad5858f6bf1ce4d0de81fcdf1a599259ba39e",
+      "bytes": 1787,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/refactoring-baseline.json",
+      "sha256": "0d2e7f7bf134e2bd406798e961a7588a18dacb13504d4b8fb61ab1fe840de13b",
+      "bytes": 170246,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/reference-data.md",
+      "sha256": "373fb4ef95be668ea36d0191f3ba6ce4041f20d034d4c719fcfea26ee8cd9275",
+      "bytes": 881,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/reference-inventory.json",
+      "sha256": "957af453f2f191fd95ddf16896d9a4b3d4ccf1f29bfc915e26211807de3e0630",
+      "bytes": 150224,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/release-acceptance.json",
+      "sha256": "80a8dafae4b727c32c08bf70c986ad92558a18f69cfb43bd0cbeab0bbec4d2e4",
+      "bytes": 206977,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/release-coverage-skeleton.json",
+      "sha256": "710b0c4d1382229d9b99a57d4a7362bbe9139750287e459db7786cc94856aabd",
+      "bytes": 370036,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/release-v44.md",
+      "sha256": "d0f8b6842579222e2ebb0bb53081060c2c1b6ca125d8132352f470bd29882087",
+      "bytes": 1927,
       "mode": "100644"
     },
     {
@@ -747,6 +975,18 @@
       "path": "docs/scan-quality-recovery.md",
       "sha256": "911e3bafc8253140d2654fd78dca8e052a6b7aea586e48003f3d834c5807ee10",
       "bytes": 4841,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/verification.md",
+      "sha256": "a2f843a980027854ae7e422c128ef8a02ad09fe14a5bce4dc266829b34321c72",
+      "bytes": 1932,
+      "mode": "100644"
+    },
+    {
+      "path": "docs/workflow.md",
+      "sha256": "6f8ca1846b3e23ef93c291f62836fe073b8c995b0ec34f900fd3be7a36c6b083",
+      "bytes": 1788,
       "mode": "100644"
     },
     {
@@ -792,6 +1032,18 @@
       "mode": "100644"
     },
     {
+      "path": "drizzle/0006_legal_reference_monitor.sql",
+      "sha256": "588001c864faa15a248f88a921ebced92363a28d6df991c2131f95ad8ba5c169",
+      "bytes": 2317,
+      "mode": "100644"
+    },
+    {
+      "path": "drizzle/0007_case_commands.sql",
+      "sha256": "36dcaa2cf89780ef54357dc766f3aa6d2a3a1d66f509634234fa63a4ec4f15a0",
+      "bytes": 1906,
+      "mode": "100644"
+    },
+    {
       "path": "drizzle/meta/0000_snapshot.json",
       "sha256": "2e39075f4c44c5aa103a37747ebf2c4bcd34d0dccd76ea89733266602d0c260a",
       "bytes": 11769,
@@ -816,9 +1068,21 @@
       "mode": "100644"
     },
     {
+      "path": "drizzle/meta/0006_snapshot.json",
+      "sha256": "bcf701af5d76dc9c46f7ad2dae9ffcca69d57b85cecc303b6f8b3570c38cca78",
+      "bytes": 36024,
+      "mode": "100644"
+    },
+    {
+      "path": "drizzle/meta/0007_snapshot.json",
+      "sha256": "2298697fae5244800cf3c5a14ce679959b003fb84fc30e48016ce90d41d930c1",
+      "bytes": 47843,
+      "mode": "100644"
+    },
+    {
       "path": "drizzle/meta/_journal.json",
-      "sha256": "5a1f852b5181073fedc81337d6409685e5a5075f0b0c1806e8a986ff10cbb0d3",
-      "bytes": 926,
+      "sha256": "89d1962368d549cc6a85b266c77c48c8c17282025fd6fc1814f57e7eb826e321",
+      "bytes": 1219,
       "mode": "100644"
     },
     {
@@ -834,6 +1098,12 @@
       "mode": "100644"
     },
     {
+      "path": "lib/app-roles.ts",
+      "sha256": "7f3240ec7e976b050f9228d6eeb5dc13ed4b300d67820d0d789f299dd3fbbb88",
+      "bytes": 4637,
+      "mode": "100644"
+    },
+    {
       "path": "lib/applicant-identity.ts",
       "sha256": "0681ab6e974d269fafa4e5042fc42ce36d633fb556f4c463f5fce6a94ae6b34b",
       "bytes": 3083,
@@ -841,8 +1111,8 @@
     },
     {
       "path": "lib/assessment.ts",
-      "sha256": "b2dc2f35c9f7baa75c4b054077ebff94bf73d99776383a1d2f5340a661230fce",
-      "bytes": 77725,
+      "sha256": "458e7e6ea9e8297adfd00b892bb8c23f70555ebfbf2edc0aa22e113824737586",
+      "bytes": 85462,
       "mode": "100644"
     },
     {
@@ -852,39 +1122,117 @@
       "mode": "100644"
     },
     {
+      "path": "lib/calculation-adapter.ts",
+      "sha256": "5c12804d2f1d1a718caa1d9bfff9e86bda9c3d370f27e2c9d610b9ed34d43e6f",
+      "bytes": 1955,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/calculation-overrides.ts",
+      "sha256": "3e2ca00d0c8dd398fb67a4ef6662266e4702528ecaf08320576ec28ead132b5c",
+      "bytes": 4102,
+      "mode": "100644"
+    },
+    {
       "path": "lib/calculator-tools.ts",
-      "sha256": "d5e05b3a4b6318d8aa4e8dd7e41733cccec3a32edb5b71ff157112ae73e4114c",
-      "bytes": 9950,
+      "sha256": "b627ed5fc5711b6bf8d393ae52b813180af0ee83f42ae06047b4256efb3fc73e",
+      "bytes": 11252,
       "mode": "100644"
     },
     {
       "path": "lib/case-agent-contracts.ts",
-      "sha256": "11fd370db0dc450b723d22fa95d9e27bce98dde9090bc764b738837191c7a4d4",
-      "bytes": 1307,
+      "sha256": "221168067c110b24a93b3aae8fb34935395564056ce21b57cb825aaeea81639d",
+      "bytes": 1925,
       "mode": "100644"
     },
     {
       "path": "lib/case-agent.ts",
-      "sha256": "515f9e6c502c1fdce5f866f7862a1ca87eb2b144391476429c9b60d0b4bff973",
-      "bytes": 1917,
+      "sha256": "0869bb265c6bcfc767f354cfdc7a3d170e2dcdfbd11d5bde127ad992b2208075",
+      "bytes": 2022,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-command-contract.ts",
+      "sha256": "3c9df8eda6d13a5c2b76d65f54edf0984623ac429cf176ec66f05a50ef1a80ab",
+      "bytes": 4249,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-command-store.ts",
+      "sha256": "810e58a0e03565126a225b9c474a1ec90ed3165517b51fbb81dac759a0022937",
+      "bytes": 12833,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-commands.ts",
+      "sha256": "0d1c4a8774ff21017edfd1404c88d5a6e1b16a2b6c89c9cd28344d3c65aeb557",
+      "bytes": 41789,
       "mode": "100644"
     },
     {
       "path": "lib/case-execution.ts",
-      "sha256": "85c39376818df21c163875d4d5844b090d1c02151e4136bef235d35a251fcec9",
-      "bytes": 8448,
+      "sha256": "efd5c64c1b7e014878ebbf048d2b57ec649cc69df2f382a0367816bbc6ff2547",
+      "bytes": 17843,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-migration.ts",
+      "sha256": "1f1392748ac8bb7633cf368ce9ebc51db8570f5b6e2cc7da46bf2270c323688c",
+      "bytes": 1896,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-procedure-events.ts",
+      "sha256": "0a6a1bdbb0cb9264a1f8ac7a52dc79217ecc8042dce9d1ec1d6709b196b141fb",
+      "bytes": 1230,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-requirements.ts",
+      "sha256": "509b6a53a89158c53a2ee219c788d13b4b3fb73dc00a328f90863305314189fa",
+      "bytes": 13858,
       "mode": "100644"
     },
     {
       "path": "lib/case-response.ts",
-      "sha256": "d7e1219158e333b735a79a28800fd281d8ccdd578ee2929329949f6061903ccd",
-      "bytes": 5166,
+      "sha256": "abf975180a9e4430ff77e533cc0093daa7b94ca43b2dd525eb401b78a6ac606d",
+      "bytes": 5435,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-schema-migration.ts",
+      "sha256": "6ed43dffb01f3d6bd1e9730c5d02cabf1304046a0054bd907a213e2df4c41321",
+      "bytes": 11025,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-tasks.ts",
+      "sha256": "229befe70f8e162ef7370ed44b2147e1664d4d034e9bc8b52b392bd665159e4f",
+      "bytes": 2764,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-workflow-server.ts",
+      "sha256": "b52b0270ac2be12e0bab9b593c659038fb4c57c501279cce96d884140764b7b1",
+      "bytes": 6765,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-workflow-state.ts",
+      "sha256": "36710d54fcefef53bc366e8356cf96602209e105c4834d573c440c4e983abe6f",
+      "bytes": 1523,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/case-workflow-view.ts",
+      "sha256": "017bfa0d53015993e8d4c1cb462adbad7babda527a464212dc2ce2517217f783",
+      "bytes": 12140,
       "mode": "100644"
     },
     {
       "path": "lib/category-contract.ts",
-      "sha256": "4885ec28018e5a08ae67e157cdadc6d01a0fabcd2c3c83ef4349d61e9192de43",
-      "bytes": 2444,
+      "sha256": "710cf17b25aba3aab8d2092e889f7e5cd767a0100363247f6c02e41e4b00ac97",
+      "bytes": 2132,
       "mode": "100644"
     },
     {
@@ -895,8 +1243,14 @@
     },
     {
       "path": "lib/classification-recovery.ts",
-      "sha256": "b5a90de9a5667a9076d934cae87c286121d75f1ba85b55dd3ce8483f2a429754",
-      "bytes": 10426,
+      "sha256": "8bb340afaf383e2679c41cd51cb2520053d432c1989c10072dc3bab0f72de053",
+      "bytes": 6435,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/client-mutation.ts",
+      "sha256": "82647e34282794d09d610aef084b7851c42d751993981a58bec8c1e2a6ab4fcd",
+      "bytes": 2278,
       "mode": "100644"
     },
     {
@@ -931,14 +1285,14 @@
     },
     {
       "path": "lib/context-validation.ts",
-      "sha256": "2bb171c2b45603a3a6a46fc417cf6cf487bf0f1f50f7a6d04f658bf1b1e43334",
-      "bytes": 8022,
+      "sha256": "e3e20e46bf57eab3624462d525ae81721d706d7db607bd9c4aeda9012a8586f3",
+      "bytes": 10271,
       "mode": "100644"
     },
     {
       "path": "lib/coverage-review.ts",
-      "sha256": "c0a6a697bf7b8547cec92b4a867a31a190a15bbbda76e5226786b0874f0b2fe3",
-      "bytes": 4748,
+      "sha256": "228b9c14251ce67df724f8b711b25755e1aab92151f031653759d04bab203fdf",
+      "bytes": 3887,
       "mode": "100644"
     },
     {
@@ -951,6 +1305,18 @@
       "path": "lib/debt-source-integrity.ts",
       "sha256": "649ac249f2baa046422bf433b4f6612a397577b34b8352eb2c14daf91db90858",
       "bytes": 10709,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/dependency-graph.ts",
+      "sha256": "ce65d64389cce850c75fcba8731675bd1443422a2ee94a430304c09212f77448",
+      "bytes": 1022,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/disposal-applicability.ts",
+      "sha256": "aaaec72a9b794e1ce490c2a4d3a80b5bb33d3914e52701099dcee202c2524b7f",
+      "bytes": 5034,
       "mode": "100644"
     },
     {
@@ -967,8 +1333,32 @@
     },
     {
       "path": "lib/document-annexes.ts",
-      "sha256": "95e3c4098e7cd33aa80d4bcad4a6779a5cd87976af9aca1b276504dffa9170e6",
-      "bytes": 21590,
+      "sha256": "b3359b6b43e389f0e01405a65ce15add0d7eec69b8138e7e77ef3a1ec51f9feb",
+      "bytes": 25839,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/document-edits.ts",
+      "sha256": "6d8bc0b798b17d6e828b329307789f7f6531c39241683b71c3090205851bafa4",
+      "bytes": 3613,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/document-field-bases.ts",
+      "sha256": "7d914315dfdddf4bbc8a4bf17626204c5dd1c3ca240228f7e44c61c122335e63",
+      "bytes": 2422,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/document-filing-readiness.ts",
+      "sha256": "fc42c0c06e83a0400476c2b3382fccb5668460a72e72f70173a91398994dad99",
+      "bytes": 6368,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/document-fulfillment.ts",
+      "sha256": "1e115c952e3f6e615737d657ad85b6c76de77b3b2e7b3ef0d70512421bdf6a91",
+      "bytes": 19704,
       "mode": "100644"
     },
     {
@@ -978,27 +1368,63 @@
       "mode": "100644"
     },
     {
+      "path": "lib/document-preflight.ts",
+      "sha256": "51876c94b8ebc4f761004501056c2638a9689302e8133d9bc2909ec70c307d86",
+      "bytes": 5645,
+      "mode": "100644"
+    },
+    {
       "path": "lib/document-routing.ts",
       "sha256": "01bb49bdd6eb1411e6f7a6e9a1d83ada1273bc70bdd0e1fa2b7defbf6ad96937",
       "bytes": 7887,
       "mode": "100644"
     },
     {
+      "path": "lib/document-version.ts",
+      "sha256": "743adabca5dabe84eedb0d69c672d9dca20dbcf20b7895315146e07889e0a6d3",
+      "bytes": 120,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/document-workflow-gate.ts",
+      "sha256": "f536a895c713cb470bf7c0607ef4b45b9ca20d6c85a36849461360b3d63b468d",
+      "bytes": 1442,
+      "mode": "100644"
+    },
+    {
       "path": "lib/document-writer.ts",
-      "sha256": "9cf7a200e88329b09269d7b12bc66789059342c006e04f479d9c7a028730eb8b",
-      "bytes": 2696,
+      "sha256": "e6f44d29d4f2a83f7b10cc662e8c56701cc749cb1be9328ed9b5e2c5b247402d",
+      "bytes": 15474,
       "mode": "100644"
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "ee1e76dbfd0589ee8d604562663f4e9ae6a8b518a663ec212941683357746835",
-      "bytes": 70704,
+      "sha256": "dbfdbae597374e1964c15ad390362a7733ebfbf9461f874cafef9cf9f3292c6c",
+      "bytes": 72720,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/evaluation-inventory.ts",
+      "sha256": "91f992e20e7b7928f5e857f7cafa1def8f117f541526e75150c2730b7c3fb529",
+      "bytes": 958,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/evaluation-whitelist.json",
+      "sha256": "b6cd3cc5f4b4dc4d3d41fee457df0fb2593d185b739f1db16d974a3d420ba078",
+      "bytes": 13674,
       "mode": "100644"
     },
     {
       "path": "lib/execution-catalog.ts",
-      "sha256": "b88420c75361d81dd1549674ca3cb875e4ff493b8b4a4b4d3767bed43dbb51e0",
-      "bytes": 13672,
+      "sha256": "abe06c3d43a9d5324ac96ebfb1a3a6d294d5d1e11ce7039f2848f0c79912555e",
+      "bytes": 2390,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/export-artifact-transaction.ts",
+      "sha256": "be807e11391e88ce706b8a77d48cc27c9986965adf4fdd4fd6595de11ab1ee51",
+      "bytes": 4886,
       "mode": "100644"
     },
     {
@@ -1009,14 +1435,20 @@
     },
     {
       "path": "lib/exports.ts",
-      "sha256": "d6cdfb16c4987de4963b5cf1d9434dc4854417fb7368266d370021cde37ea3a0",
-      "bytes": 35187,
+      "sha256": "f47f18917ba8660d473ebaa01346bee2c89db0b8d38010b084b786e477a32f56",
+      "bytes": 35026,
       "mode": "100644"
     },
     {
       "path": "lib/extraction.ts",
-      "sha256": "735f7511c1bd0913abe17c5a182c67bb01cd2a85eea90af52acda7b9ea575002",
-      "bytes": 76203,
+      "sha256": "706b7ac4556e5de343be43e97810d098b33481fb891349fecb0efce0345a109c",
+      "bytes": 51053,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/fact-object-projection.ts",
+      "sha256": "e16835bf8bb2ff92e598470486424180f63d063db45859d5a03460ce63cfab78",
+      "bytes": 14787,
       "mode": "100644"
     },
     {
@@ -1027,14 +1459,20 @@
     },
     {
       "path": "lib/field-observation.ts",
-      "sha256": "c57e0539942389615f7345f4580682aa94de337a969fa718290de41d4459c922",
-      "bytes": 12493,
+      "sha256": "70e9be6bbfcd055fd5d8aca6bb9e48b4e3f46587e2391a7cb93233df633dcfe0",
+      "bytes": 8816,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/form-contracts.ts",
+      "sha256": "41b56823bd8cda45658a688291781c3d682c1472444f5faa5fd79f7e922a9356",
+      "bytes": 5098,
       "mode": "100644"
     },
     {
       "path": "lib/form-mapping.ts",
-      "sha256": "e6ce4224ef0ba413e4460378ee108ac8054f9bd0969ecd6ee3a257ed5fe96b7c",
-      "bytes": 26809,
+      "sha256": "f3c44fad2a38c1178d4c3ce15d3c9919b3be7656bc0db6897391b70681991be0",
+      "bytes": 30102,
       "mode": "100644"
     },
     {
@@ -1056,15 +1494,27 @@
       "mode": "100644"
     },
     {
+      "path": "lib/intake-case-bridge.ts",
+      "sha256": "aaab822430be58ae76ea094ed33d652c58896cb8e28a6c693d07e6ccbed8eb0c",
+      "bytes": 5800,
+      "mode": "100644"
+    },
+    {
       "path": "lib/intake-catalog.ts",
-      "sha256": "2a5aead023f5e20dea03791fad02a6ae416a8040128c0e575879e6191e57ece9",
-      "bytes": 69413,
+      "sha256": "95f51fb649eab5de69682f13904ee24a2fe6e6430436c3cdcc8e0b71b43f4623",
+      "bytes": 546,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/intake-classifier-response.ts",
+      "sha256": "e59934a8d80675fb68392e19563928fa7d44f8c7c29f14fe83d063550a54dc32",
+      "bytes": 6582,
       "mode": "100644"
     },
     {
       "path": "lib/intake-classifier.ts",
-      "sha256": "d642a88cbffd666a314742db4263b2cfa8b40f10e3955e513683718764889df0",
-      "bytes": 9097,
+      "sha256": "35efce52c31b574d777072c23e1c62d5e785b2c15f8b497bf4058879bda4643f",
+      "bytes": 3986,
       "mode": "100644"
     },
     {
@@ -1074,15 +1524,39 @@
       "mode": "100644"
     },
     {
+      "path": "lib/intake-fingerprint.ts",
+      "sha256": "7f0f2d1db3f3069bf5deeda13c6b3555675c80c529d356b7d1c6e42981319a69",
+      "bytes": 2284,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/intake-reference-store.ts",
+      "sha256": "59c4a6dd65c0466e261a3615adca786b9a9b5dda720a25d1c9c1877e8a7faf85",
+      "bytes": 3855,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/intake-reference.ts",
+      "sha256": "262d0700fb02ce5fa68eab2b0ac46788224a26a5142e9236d2f22e0c5288ff99",
+      "bytes": 4148,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/intake-source-spans.ts",
+      "sha256": "014a636248ca6130280c6b1fcd27425b68cd48fad587ce58379de867e89bbc86",
+      "bytes": 10629,
+      "mode": "100644"
+    },
+    {
       "path": "lib/intake-store.ts",
-      "sha256": "8b03db0d2e001be805c1825ee7f0519c1594ffb8d3e8c277016247ed9b2b6575",
-      "bytes": 19711,
+      "sha256": "e1c3d59d077dc82f6bfc6379ec007ea495bb7c05890a5af8a5b4affdcc90484c",
+      "bytes": 22267,
       "mode": "100644"
     },
     {
       "path": "lib/intake-types.ts",
-      "sha256": "4e65f62a3db4e1bf500cc35630e9924ccbaf29a48ca7708778be6139ffcead33",
-      "bytes": 4393,
+      "sha256": "ac74959b654e637576f23a1aaad37263def2f94bebf7248fa1b70894cadfc477",
+      "bytes": 4818,
       "mode": "100644"
     },
     {
@@ -1098,9 +1572,21 @@
       "mode": "100644"
     },
     {
+      "path": "lib/legacy-case-command.ts",
+      "sha256": "e1b37c905ab2e76d8f8da05512656c789e64e6ea076cc97dee2c133623315d2c",
+      "bytes": 2901,
+      "mode": "100644"
+    },
+    {
       "path": "lib/legal-catalog.json",
       "sha256": "80b2ad845cf7e41f019353959cf2612aba74e8904a98feed2380c907c2aab190",
       "bytes": 111907,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/legal-check-dispositions.ts",
+      "sha256": "bd301c944982a76f85ce780951208b0c445430dd5446442f0090a1a0ce6f9870",
+      "bytes": 2927,
       "mode": "100644"
     },
     {
@@ -1110,33 +1596,81 @@
       "mode": "100644"
     },
     {
+      "path": "lib/legal-monitor-core.ts",
+      "sha256": "042324efffc342b8db68b6bdb795008bc59727b021bfb247feeceb2c6f3e3dfe",
+      "bytes": 33388,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/legal-monitor-provider.ts",
+      "sha256": "313c30e63744ada90b58f37d57aed0eff184eda8a66c743d922ea115dea13a5a",
+      "bytes": 9949,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/legal-monitor-sources.ts",
+      "sha256": "67ec8a61d839dbbd14c8522ec928c5ad5e7624dc7a2b233d0ad06bd2dda6f743",
+      "bytes": 9839,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/legal-monitor-status.ts",
+      "sha256": "2350952d6a85c2a6757e7a55dc600794ec4ebe9560699db9ab21382e319a9836",
+      "bytes": 2826,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/legal-monitor-store.ts",
+      "sha256": "2956f1029ab8bb1574b35be81fb1e920ccfabf3485cc76dee28a20bc6dd1e3f8",
+      "bytes": 14119,
+      "mode": "100644"
+    },
+    {
       "path": "lib/legal-proposals.ts",
-      "sha256": "ba767b2426c8be514b95d511d301ab1fac35470e86bf06327c150b515eb39471",
-      "bytes": 14353,
+      "sha256": "2e5088fee89058fd6b18f6259e00449a53ef88291349d1d1ce8b3f32f246e1db",
+      "bytes": 15397,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/legal-review-identity.ts",
+      "sha256": "5933068af9b559d723b6d49785427189fbec33482038f18a3f015aeb57f88057",
+      "bytes": 2877,
       "mode": "100644"
     },
     {
       "path": "lib/legal-review-packet.ts",
-      "sha256": "04ef5d4ba7740d08fcdd0e97100f6b19d940cc736692c68ab217755288055595",
-      "bytes": 23948,
+      "sha256": "26ca63c986821e6e097fd10d9c5dd33a9e9eda22a7a3837b4bb8c86a89a7e6e5",
+      "bytes": 26171,
       "mode": "100644"
     },
     {
       "path": "lib/legal-rules.ts",
-      "sha256": "687bd0220518243f07e07b8c36b993b6e39164a8095bc9abeefc441bc93c94a7",
-      "bytes": 2084,
+      "sha256": "781990f6e4afcae8f2f8b5fd239f7585db3892e159696732aaeb659c8f12b476",
+      "bytes": 2771,
       "mode": "100644"
     },
     {
       "path": "lib/living-cost-proposal.ts",
-      "sha256": "e997a07b2019fee52ef7b73ab76641b3075d3cbfb4fcd6a824ab2e264461724e",
-      "bytes": 4218,
+      "sha256": "381b5e15464c6c91fb572af7148161ebfbd84034ed99cc9457b3031ea582793a",
+      "bytes": 5491,
       "mode": "100644"
     },
     {
       "path": "lib/luna.ts",
-      "sha256": "d0658504040f93e242fd1f35d71065bd91ce524b1c1e606ca9f3a81b14d464e9",
-      "bytes": 3431,
+      "sha256": "ab13d708fc49cb22dffbf750ef96929fb22db567e9467ad9d6ecf1ae4efa2ef1",
+      "bytes": 4853,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/module-contracts.generated.json",
+      "sha256": "05f4e53d391d08765109027492607b9caeb993dc8ba2f38d74422d1b9ca8594c",
+      "bytes": 880549,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/module-contracts.ts",
+      "sha256": "60cf5536969e34bfe26569bbcd1318c8fd334c62d3cc40e569bda9017a4687a2",
+      "bytes": 709,
       "mode": "100644"
     },
     {
@@ -1147,8 +1681,8 @@
     },
     {
       "path": "lib/objection-minimum.ts",
-      "sha256": "ed871cefb1ba44b0a1018b2796cc3655b3cbbd29d02b6f4dfd70f55082976f76",
-      "bytes": 6983,
+      "sha256": "e7dbbec14c42e0dd09d8c65f1d4bb9800be0a3761ae1280c437b7255e753cf85",
+      "bytes": 7957,
       "mode": "100644"
     },
     {
@@ -1159,8 +1693,8 @@
     },
     {
       "path": "lib/office-writer.ts",
-      "sha256": "30d89c2fced468dce5c1344ffdb640d923d4064e4e62e5f8191090fd2b72b447",
-      "bytes": 24515,
+      "sha256": "c215a326c35ea5b4464671afb20b226b5c779e2f4a63026be44d132e0b781d18",
+      "bytes": 26939,
       "mode": "100644"
     },
     {
@@ -1176,15 +1710,27 @@
       "mode": "100644"
     },
     {
+      "path": "lib/party-identity.ts",
+      "sha256": "1185beafcba801567c282c2effdd03565eb2d3459c1f2f56bdedf0f00ae2bb70",
+      "bytes": 2247,
+      "mode": "100644"
+    },
+    {
       "path": "lib/payment-schedule.ts",
-      "sha256": "ae1a6128f422a3c295e74442562d5fddd96b80a39a5b12d8177eaa99f3de954c",
-      "bytes": 6245,
+      "sha256": "b9ed45fb58c0fde98dd565a30b582c4d7336142be9ad7ed80bc6d85f7956ade0",
+      "bytes": 6325,
       "mode": "100644"
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "7b6f28c94a84714532f3bf9400f62dcb76d9aa99dadbd58a9c21320b49f76f7f",
-      "bytes": 94816,
+      "sha256": "ef59534498bbad52f6d23874414d04a4a26d0770337f64d184e342749fb078c1",
+      "bytes": 86013,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/plan-reconciliation.ts",
+      "sha256": "3295ad764f345e2c48231717d34be7c72dc91e9efc8adc5c8a6e2389b9c62b38",
+      "bytes": 7801,
       "mode": "100644"
     },
     {
@@ -1201,8 +1747,20 @@
     },
     {
       "path": "lib/reactive-evaluation.ts",
-      "sha256": "b8cbc9aef3820b95ee3a84dba4d67826ec398f9822788243aa8febe54c56d911",
-      "bytes": 2023,
+      "sha256": "7df31237a4835ff010d77104f4e8f16000e1fa1ec13db31f7f4a82c0491eda27",
+      "bytes": 2439,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-application.ts",
+      "sha256": "c5f4fb80153a8a67138b2987554f60c3cd03b4185b54523612f9c0c9e53d4a14",
+      "bytes": 4073,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-bundle.ts",
+      "sha256": "31cfb3fe3c05eab09b9c8d4b2ab0bd94046e2f3958c180056f5c6ff39c6eb3ee",
+      "bytes": 4964,
       "mode": "100644"
     },
     {
@@ -1218,9 +1776,111 @@
       "mode": "100644"
     },
     {
+      "path": "lib/reference-context.ts",
+      "sha256": "d3c5ce96e8ad39dd5592d93e40890876d2499b5390f61aa08c18c82a21de0b48",
+      "bytes": 4801,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-data.json",
+      "sha256": "6f443b0e8e0ea8a3012f58a435fda4dc0d4c59c0e3aa0e3ff4a0662a5ccbf6b7",
+      "bytes": 20849342,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-decision-tables.json",
+      "sha256": "2e5d60de976b0b7e2c507192399d4286cb2971ae02be99055af5ec6af3c4359e",
+      "bytes": 275369,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-document-policy.json",
+      "sha256": "63202654bf596334ed304817096959b673d5d451c4e3123e00580206beffe66a",
+      "bytes": 2209,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-impact.ts",
+      "sha256": "b3e36dc46ca77f8767136404ab4ab951f36304f9bf0fb2e2706214f88bb674cc",
+      "bytes": 2307,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-intake-catalog.json",
+      "sha256": "bdc22c7aed683c94fed1ff435b1558de74e9632808b2983c85de7276b1589a68",
+      "bytes": 141300,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-monitor-policies.json",
+      "sha256": "606b04ec91eb81811dac1cd47d4212862508084583447e1a7d8d4b9a8c35295a",
+      "bytes": 6891,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-parameters.json",
+      "sha256": "8f4c42cf28db5e9d547ead14e624c75daa5c13913c6ca95e2419e50fd9733170",
+      "bytes": 67208,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-parameters.ts",
+      "sha256": "db6eae565adf74b5c8281cab5f1988f2ccb48372b9f417f91ba44fd76c4e1ba5",
+      "bytes": 3465,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-prompt-policies.json",
+      "sha256": "b8ce8f41b6e650580061da8b069223024c51eded1271e24ecc2a0406f90d5ab8",
+      "bytes": 120786,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-prompts.ts",
+      "sha256": "80540627ffda873dbe3623735f1cbfda3e58f0dbe5ac22ab5c0bb2027598536b",
+      "bytes": 3627,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-registry.ts",
+      "sha256": "5968b85392e156fcaf86c8eececaab94cadfabeeef6c748dcf1c833877042f43",
+      "bytes": 6672,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-release.json",
+      "sha256": "0da9db8fc152aa11073e4305c8afde7445f1e3132f3b32f3b5f9364782d44223",
+      "bytes": 1186,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-resolver.ts",
+      "sha256": "b750f59991ed2e62733ed6fc655eb67ffccbafc410c4d71cad59adc59678c2f2",
+      "bytes": 3011,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-runtime.ts",
+      "sha256": "6ab0d6020e0e811843e9743954f270c764208c9049af85e0f1f7f16d7d700b13",
+      "bytes": 2896,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/reference-store.ts",
+      "sha256": "59d3981af415151c7e6e382f07c31830fed2da4479282ba06d3915f1b3d2bd44",
+      "bytes": 21573,
+      "mode": "100644"
+    },
+    {
       "path": "lib/regional-source.ts",
       "sha256": "21b734f9edf1364a4dc00bc7add8c69d8fc31b903837d1cd8e5eb2caf4863a52",
       "bytes": 1605,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/repayment-plan-model.ts",
+      "sha256": "0d3004bf41ba1f004383047af1b1a27307c5630cf0e707fb952b76e7ceba4c02",
+      "bytes": 8593,
       "mode": "100644"
     },
     {
@@ -1233,6 +1893,12 @@
       "path": "lib/retry-page-policy.ts",
       "sha256": "1145bb15bd407ef3055b8a4a274b46cf4b79b0efd08291f05b9ff8c927142e55",
       "bytes": 425,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/review-dependencies.ts",
+      "sha256": "d60173481c8aabc4fda93cdaeeff8d8c24d29433fbbf34657156da93c032517e",
+      "bytes": 3055,
       "mode": "100644"
     },
     {
@@ -1255,26 +1921,26 @@
     },
     {
       "path": "lib/seoul424-candidate.ts",
-      "sha256": "5ba300881b5e50c9b00b69091bb57e681ea8f21ac9aa49428c8cf58cf7e78331",
-      "bytes": 7143,
+      "sha256": "0ed0f46c94cbaa5993ad4b1d2ff888f3c2eb89522b5915e8ebd42402f7dd42fa",
+      "bytes": 9290,
       "mode": "100644"
     },
     {
       "path": "lib/server-store.ts",
-      "sha256": "64d68bcbd95af247e14b7fdba712097e78114b431abbff00ca96fcfe1c1ee273",
-      "bytes": 19739,
+      "sha256": "7bac0c78cadffad88329a1b3fd8425429df7b56f3f73c9e735fb2a0b7467eccd",
+      "bytes": 36790,
       "mode": "100644"
     },
     {
       "path": "lib/site-calculator-mcp.ts",
-      "sha256": "df705fa0b9b19f706bac0140fbd046afba72ad9825db102b007ed3f5c703b269",
-      "bytes": 2312,
+      "sha256": "3aca45ddd4949e3a63545fe420cb1f21a21d9c3511208ec5dd93f655854c00ce",
+      "bytes": 5169,
       "mode": "100644"
     },
     {
       "path": "lib/source-nature-context.ts",
-      "sha256": "fcdb881489e98442b7ea3df74c49ba7b24e40f93615d31451eaa2b06bc25547c",
-      "bytes": 3336,
+      "sha256": "d2cc7abe70e1a9277210aca52fa8279827f2979643cf857703f848aeb117474f",
+      "bytes": 2543,
       "mode": "100644"
     },
     {
@@ -1315,14 +1981,32 @@
     },
     {
       "path": "lib/structured-case-import.ts",
-      "sha256": "d8c123ee8b29e4e761e464b853686c3d95485d01d315402797995e9b4a2bd857",
-      "bytes": 10491,
+      "sha256": "3dbe7128ef5e467b7c6aeb1926580eab9353ffb5c823eb0b8a14c02532f9ae3d",
+      "bytes": 11938,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/task-dashboard-query.ts",
+      "sha256": "b8d693f91e465ded7a6f5d4513e845be51571b682b80583b441628bdee26e495",
+      "bytes": 1755,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/template-token-catalog.json",
+      "sha256": "137d5abf86a4c033d566f6e1509606246104e7095cf7e12a506fd8de103a9ede",
+      "bytes": 23866,
+      "mode": "100644"
+    },
+    {
+      "path": "lib/transaction-groups.ts",
+      "sha256": "1751dd66f21dec3ca7dff8f5e31cb31918f8f7adc07f76450f375bf0bf438e62",
+      "bytes": 4550,
       "mode": "100644"
     },
     {
       "path": "lib/transaction-review.ts",
-      "sha256": "7ea12250cfc54ee7c650c9aa3f3ab1017ba0f9e3c5ef557381b9ceb047950d90",
-      "bytes": 21806,
+      "sha256": "fa96acb672a6f9b636a374b0a9b020ae7630346b89f003f8891ac28a6f4867b9",
+      "bytes": 22809,
       "mode": "100644"
     },
     {
@@ -1338,9 +2022,15 @@
       "mode": "100644"
     },
     {
+      "path": "lib/workflow-health.ts",
+      "sha256": "8eff8388d546d4c71d27a3d812207f5cc03fcea8bcddc1fe3ea831999c1297e7",
+      "bytes": 3364,
+      "mode": "100644"
+    },
+    {
       "path": "lib/workflow-rules.ts",
-      "sha256": "600ed403489157a454e2b59aa4b551aacb838183717ae6cc7df71a557442f26a",
-      "bytes": 102101,
+      "sha256": "7068fe0d2cb78d22851fa781588b80bba6836936668a74277636f12f3e134d94",
+      "bytes": 23183,
       "mode": "100644"
     },
     {
@@ -1483,8 +2173,8 @@
     },
     {
       "path": "public/templates/README.md",
-      "sha256": "fae82c4439a3e76c1e5042a6b85b368d04b24f4d4f35dc24e0e7d1095434dc47",
-      "bytes": 4698,
+      "sha256": "7e4bf3883705e777f91fe5ec3f4783adc1ea55dcfd84f62c45d65bfcbddd1564",
+      "bytes": 4960,
       "mode": "100644"
     },
     {
@@ -1524,10 +2214,16 @@
       "mode": "100644"
     },
     {
+      "path": "scripts/build-reference-data.mjs",
+      "sha256": "4d171a3c9cf3db5906c81017e3614ff968d3b82bb8c47830dba1eab27a5e68dc",
+      "bytes": 19879,
+      "mode": "100644"
+    },
+    {
       "path": "scripts/build-verified.sh",
       "sha256": "2ae5329ac860076070c9217a43106a15cb5ecf907a0f7baeb9ef903f76b53c68",
       "bytes": 661,
-      "mode": "100755"
+      "mode": "100644"
     },
     {
       "path": "scripts/calculator-mcp.ts",
@@ -1567,8 +2263,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "0ab98bb07dd3c51159a4af963e9a252a3cef36f10cbc10610a89a43f3b321918",
-      "bytes": 25593,
+      "sha256": "2deefc263b66214c37515ab70c60ec55be71c0a703e3632c0e52971b877b4f35",
+      "bytes": 25911,
       "mode": "100644"
     },
     {
@@ -1587,13 +2283,13 @@
       "path": "scripts/install-ci.sh",
       "sha256": "10d8764a61be50351dc3496e13588270de7956f0aa5f1189c49cabb2d89fe5c0",
       "bytes": 6783,
-      "mode": "100755"
+      "mode": "100644"
     },
     {
       "path": "scripts/install-pnpm.sh",
       "sha256": "a684c02c2b493dfbf262a66252a5cd36f81ca995a4024761728662ae63aa40c0",
       "bytes": 9015,
-      "mode": "100755"
+      "mode": "100644"
     },
     {
       "path": "scripts/npm-install.mjs",
@@ -1633,8 +2329,8 @@
     },
     {
       "path": "scripts/run-framework.mjs",
-      "sha256": "9bf9f41a29314cabe0238b8e9c540ec3f7b5a6adafc7c8fb6c3940722d061dca",
-      "bytes": 993,
+      "sha256": "65b25a921711266a792dbec3d6ae4fbf799fe76ed2322e17fb0e3b09d0972f43",
+      "bytes": 1303,
       "mode": "100644"
     },
     {
@@ -1659,7 +2355,7 @@
       "path": "scripts/sites-env.sh",
       "sha256": "d18af7b222db748c9de257d5955b9d7f77ec350dab6321f114f0bc44c20388ac",
       "bytes": 1600,
-      "mode": "100755"
+      "mode": "100644"
     },
     {
       "path": "scripts/test-synthetic-ocr-runner.py",
@@ -1692,6 +2388,12 @@
       "mode": "100644"
     },
     {
+      "path": "scripts/validate-module-contracts.ts",
+      "sha256": "291e239606435185fb98aaabf6d4ff0ba938c961e436642db8fae8cae59d6cab",
+      "bytes": 2688,
+      "mode": "100644"
+    },
+    {
       "path": "scripts/vite/connector-preview-plugin.mjs",
       "sha256": "a6a9fe2086e302f94a3f91e3c1a68a45bb3aa07d4a79faf01b14732191eb4e80",
       "bytes": 7211,
@@ -1710,9 +2412,21 @@
       "mode": "100644"
     },
     {
+      "path": "tests/acceptance-rf16-20-trace.test.ts",
+      "sha256": "c82bbfc4077127f26156e7a8b0ba5058ea7f34533dced4555db97e24287e34bf",
+      "bytes": 2982,
+      "mode": "100644"
+    },
+    {
       "path": "tests/annex.test.ts",
       "sha256": "0c86816096de03b40be56f3ef3bb4636fed1f170652638087aa2d91407dd0416",
       "bytes": 13896,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/app-roles.test.ts",
+      "sha256": "4045466b75832f4a07a35ec5d2cc69917b9072d8b03ce10e27833c649d0b74fa",
+      "bytes": 4274,
       "mode": "100644"
     },
     {
@@ -1723,14 +2437,50 @@
     },
     {
       "path": "tests/calculation-audit.test.ts",
-      "sha256": "ee59377379a992fcdda84cdb8fcaeedef310201e322db5dbf6b707a7fd9f31fe",
-      "bytes": 21076,
+      "sha256": "31242d8afb3e336099a7590787678f4e6a7ffec46bf9717fa3ab3277797127b0",
+      "bytes": 21172,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/calculation-override-runtime.test.ts",
+      "sha256": "0b48f17783179d3a6f0ce6d61edff5c52614d0161da5e2ce9799af98b9beea81",
+      "bytes": 4623,
       "mode": "100644"
     },
     {
       "path": "tests/calculator-tools.test.ts",
       "sha256": "2f8eb9715cbe9cdf7f57adad2ea7dbafa1e855d5d3cbb3a0e3ddaf3b76178408",
       "bytes": 13653,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/case-command-storage.test.ts",
+      "sha256": "7907c1a825bbde10ce8056e7af754ba57f76a8f45e442f95b39b82c209856802",
+      "bytes": 9896,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/case-commands.test.ts",
+      "sha256": "342e45aff763106c9742999ffed9c1ad7dafdd541a217f2d4ca1a50d44019115",
+      "bytes": 10526,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/case-migration-integrity.test.ts",
+      "sha256": "b3ab0f708de47c3058b871415594bf0e3f58215ebab7981349429924359a11c6",
+      "bytes": 3220,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/case-schema-migration.test.ts",
+      "sha256": "bb133e1444b5f33b7ee8b79101e4a352d3ba3aec69c8bb9d71b36b8e1cabf785",
+      "bytes": 8232,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/case-workflow-view.test.ts",
+      "sha256": "4a89d7608f89a18edcd8b03b86af154ed283039f0356b07505321ab1dc4d48a2",
+      "bytes": 8276,
       "mode": "100644"
     },
     {
@@ -1743,6 +2493,12 @@
       "path": "tests/classification-recovery.test.ts",
       "sha256": "747118b8e2093d5ae1a98d3511ad27448b54e8ead49a7e58b68e951fb27e31b6",
       "bytes": 9849,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/client-mutation.test.ts",
+      "sha256": "7906941cb94360bb1d88f872dfa8de5e10d9b1b25b82f60973e5266644f2e0f9",
+      "bytes": 2534,
       "mode": "100644"
     },
     {
@@ -1776,6 +2532,24 @@
       "mode": "100644"
     },
     {
+      "path": "tests/disposal-execution.test.ts",
+      "sha256": "cd600040ac581e334dfb8f70263d4cd1b3f8e430657b988243da6667fcb282ae",
+      "bytes": 7539,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/document-contracts.test.ts",
+      "sha256": "3d898f5a2b24d40d8dfa02b2012844099b02ed87cf32b286de047a992763a5a3",
+      "bytes": 12828,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/document-filing-readiness.test.ts",
+      "sha256": "d0834e20e95868cf1195b3023af1be8bded0c2b920a3295e449b993e3f4955bd",
+      "bytes": 3347,
+      "mode": "100644"
+    },
+    {
       "path": "tests/document-generation-metrics.test.ts",
       "sha256": "a1ec7e6bff90baff35f352e1fe2fc1befb4df34be842d842e66b139c3b6e33ed",
       "bytes": 5747,
@@ -1788,15 +2562,33 @@
       "mode": "100644"
     },
     {
+      "path": "tests/document-snapshot-isolation.test.ts",
+      "sha256": "883a99af0ee7c25e0626838d2a81eb224238a229c8c5faa38683176fdc460fbe",
+      "bytes": 4642,
+      "mode": "100644"
+    },
+    {
       "path": "tests/document-writer.test.ts",
-      "sha256": "e320d14bee4ea9dd23afce9f9245271224a14d16818aabcdbfc4febe474b5f55",
-      "bytes": 3851,
+      "sha256": "d64cb59c9917cb53adf1a7a4f3fe7e5a04627928d4f5947e42d2dfa1b0e78a14",
+      "bytes": 11921,
       "mode": "100644"
     },
     {
       "path": "tests/domain.test.ts",
-      "sha256": "970022bd5a6ef9a0067e784c46b1012c3270cfc4721b90fdc39fe66d83107706",
-      "bytes": 34539,
+      "sha256": "f409975ca5b9abad0ddfa9a1ea621567a893da00c6bc9d053f74fd1bf3589d1f",
+      "bytes": 40877,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/evaluation-inventory.test.ts",
+      "sha256": "b88f69fd52175f280cc4492cdea3a07647f689fa707031baf357603ca3f4e849",
+      "bytes": 801,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/export-artifact-transaction.test.ts",
+      "sha256": "86ad25a32184222896d8d624ebd4f7ea46b08e266a478d946c7acf0fcb22c069",
+      "bytes": 7396,
       "mode": "100644"
     },
     {
@@ -1831,8 +2623,8 @@
     },
     {
       "path": "tests/history-integrity-restore.test.ts",
-      "sha256": "97f101fda4caece0c3d9d3a41ebca11f7c333ffe99cb921619f460f51f8863f2",
-      "bytes": 22398,
+      "sha256": "7d8d0df2af42f7ebe4929fee7c01e08c1ee62b9cec9b826be04a41cd9c87705b",
+      "bytes": 22890,
       "mode": "100644"
     },
     {
@@ -1848,15 +2640,45 @@
       "mode": "100644"
     },
     {
+      "path": "tests/intake-classifier-response.test.ts",
+      "sha256": "6d748ecd87f63ce7cec97701519d5c91048419c8ca15a36bcf2450b1ced82e82",
+      "bytes": 6232,
+      "mode": "100644"
+    },
+    {
       "path": "tests/intake-engine.test.ts",
-      "sha256": "c5ac07f30fd9869ea03a777984c0f3b9edc4dff819abe24d29e00b85b0af9fd9",
-      "bytes": 37714,
+      "sha256": "de657b6f168eec916095db9e6b21d3155e4f533c37e34b8985f103da54946feb",
+      "bytes": 40040,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/intake-prompt.test.ts",
+      "sha256": "0874f133bc8c3319d83ae26e63ec91496baa8812511c37d3277874da3c4085a3",
+      "bytes": 4287,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/intake-reference.test.ts",
+      "sha256": "813329319ac0ab7a1acda22984c9cdd8b60a9855282fdbe4f0f4be1b0edd8d16",
+      "bytes": 10275,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/intake-source-spans.test.ts",
+      "sha256": "fb12c66416a5eccf279cddc6cc35b87ab5bfb5321d68311b2dc47a3f290aac0b",
+      "bytes": 5585,
       "mode": "100644"
     },
     {
       "path": "tests/intake-store.test.ts",
-      "sha256": "4a838c9e06a6cbfc1881e2be6f57e94b1f6c742d7d2a0f4e06a683db1abcf574",
-      "bytes": 13564,
+      "sha256": "e0114f11b6a869614ba170079bc6045cb234237828c313273dcf6809e3ddbaba",
+      "bytes": 20574,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/intake-workflow-domain.test.ts",
+      "sha256": "eabf3cb5c960f253bc369ce6ec0a2640b276d8f4bcf6e240a8745d4582fa24ba",
+      "bytes": 16890,
       "mode": "100644"
     },
     {
@@ -1867,8 +2689,8 @@
     },
     {
       "path": "tests/large-storage.test.ts",
-      "sha256": "bec9d41df7338699f6867b6ac454b5c78138f5822ca90695cc579897d51b575f",
-      "bytes": 5871,
+      "sha256": "6afe97eedcef0d3cb047b208b786046ba3633d466a59ff9d48d6e7d3ad18d5fa",
+      "bytes": 6383,
       "mode": "100644"
     },
     {
@@ -1884,27 +2706,57 @@
       "mode": "100644"
     },
     {
+      "path": "tests/legal-monitor-provider.test.ts",
+      "sha256": "52a54b1be80f94d1cdff5764757ebc94994071f3f7db50a902e53c95f04cf72e",
+      "bytes": 12845,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/legal-monitor-store.test.ts",
+      "sha256": "c05709df78f381b2946ce195b12b0c52d5f5dabc361b17c48bf0c7e8717a1ff6",
+      "bytes": 24187,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/legal-monitor.test.ts",
+      "sha256": "c0a70752255c4e4fce543dc387e2656b21cfe0d9ab6aa4d15c6c2726aff89a3c",
+      "bytes": 28984,
+      "mode": "100644"
+    },
+    {
       "path": "tests/legal-proposals.test.ts",
       "sha256": "569e19cf690f3d0c43d2110e1eba2c6c421ee0d1982dde38fb3ae2bf2e4752d5",
       "bytes": 8241,
       "mode": "100644"
     },
     {
+      "path": "tests/legal-review-identity.test.ts",
+      "sha256": "7038104d35955cb5e2f5d1d10f189859855036a3833a3303e6d9bb9fe8e6b3a2",
+      "bytes": 5028,
+      "mode": "100644"
+    },
+    {
       "path": "tests/legal-review-packet.test.ts",
-      "sha256": "49b8b43eeee3a4e5c81e3cbfb4fd5d73f7adf388db0943094dcfccdc0e10d603",
-      "bytes": 12598,
+      "sha256": "37e6227dd0048dbad9156b662ede56c865d5cfab0b31318f3df6fa5e47021e76",
+      "bytes": 17935,
       "mode": "100644"
     },
     {
       "path": "tests/luna-boundary.test.ts",
-      "sha256": "0dd5481f096601877d91ed7356d1d934ac6c8d9bd31ac12e357e8f92fdd1ef41",
-      "bytes": 2280,
+      "sha256": "967bd42cf9e09b41870c5c719fe58e32244e8c7a9e61566cae68c0b96ef47689",
+      "bytes": 2745,
       "mode": "100644"
     },
     {
       "path": "tests/manual-review-preservation.test.ts",
       "sha256": "0a6e0955401c73636dd55a9f2a9b7acfab90bf2d966c436cdbe5527724826523",
       "bytes": 9834,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/module-contracts.test.ts",
+      "sha256": "0186e06d62a46e2af0105d9d8b233351eda3671d38d94382981c15aa52d24646",
+      "bytes": 1871,
       "mode": "100644"
     },
     {
@@ -1915,8 +2767,8 @@
     },
     {
       "path": "tests/office.test.ts",
-      "sha256": "4894fe0e89f323e36d34e7797d4a5d9f78d0f6920b6e04848eb46bee6dd89f7e",
-      "bytes": 21165,
+      "sha256": "cb0af194d82ad7b1f6fd210a8d4e39dd48da8cfe9a485838954a34e8ed8252cb",
+      "bytes": 21245,
       "mode": "100644"
     },
     {
@@ -1933,8 +2785,8 @@
     },
     {
       "path": "tests/page-refresh-pipeline.test.ts",
-      "sha256": "2bedefba27534844a4f92bb35d1bcefd2850b577362358de261caa9a17ae6473",
-      "bytes": 14023,
+      "sha256": "e407fe27fa7b4b90f49e948fe39a8d171b542a788446ad5548209932b771ee2e",
+      "bytes": 14144,
       "mode": "100644"
     },
     {
@@ -1951,14 +2803,20 @@
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "8ac2d024b1893fd2d1b0aa68d76e97183f351cc1ddfad2fa2defa7b39642a0c0",
-      "bytes": 52590,
+      "sha256": "5d65174714ee60dfac6c6cfa94377cf01af4cddceef2a40a448c0a5f5db8697c",
+      "bytes": 52956,
       "mode": "100644"
     },
     {
       "path": "tests/principal-current-slot.test.ts",
       "sha256": "c41c18af01525bf358f4ee206bfbe6727d0d21effd4b8fad614620342c5a9391",
       "bytes": 7004,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/procedure-events.test.ts",
+      "sha256": "7de897bfc8426fdb0036bf677590632ca0914a6468ec3bcae24cc5a5ce80df58",
+      "bytes": 3965,
       "mode": "100644"
     },
     {
@@ -1974,6 +2832,18 @@
       "mode": "100644"
     },
     {
+      "path": "tests/projection-acceptance.test.ts",
+      "sha256": "76d4ab2c0ad7c86fd770de072fb5c342c53db0d8cec5e5dfe1954c8beb9dfbf2",
+      "bytes": 8724,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/projection-review-modules.test.ts",
+      "sha256": "61d478aa3f0b5cadf18eabcc75bb8504c404f32dafbf377bebeb7fd7d9f3b0c5",
+      "bytes": 8692,
+      "mode": "100644"
+    },
+    {
       "path": "tests/prompt-contract.test.ts",
       "sha256": "615318bdcec2642c7798f61a546df69d5a7e21822814d9ff0c724f17b94abce9",
       "bytes": 1515,
@@ -1981,14 +2851,32 @@
     },
     {
       "path": "tests/proposed-schedule.test.ts",
-      "sha256": "bff83e585d1a148bfd03b23d048cff7d7e3c9985ea8738a5186e27476f9cb179",
-      "bytes": 5036,
+      "sha256": "f715a9879708aaebcb188ae41fc102c15dca31f2fb33a6c8f5e4de9b9f14518a",
+      "bytes": 5135,
       "mode": "100644"
     },
     {
       "path": "tests/provenance.test.ts",
       "sha256": "dc118899caf809cb437c69bfe93372b8465b04f1caaa9a579e010039d49069d0",
       "bytes": 2134,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/refactor-calculation-acceptance.test.ts",
+      "sha256": "15d60dba01fa28f13f1b035c0f8e95a8db75d4a071bb7ae954fd031034ad9f40",
+      "bytes": 28329,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/refactoring-baseline-preservation.test.ts",
+      "sha256": "d89be261a656312df04baf86cf79cad0264b45883be60aa3e4434c35dce56e67",
+      "bytes": 2892,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-application-consumer.test.ts",
+      "sha256": "eb3ac0429cda7950f84a13170cd9367e30dfa581b63d2c9fcc5a5480237768bb",
+      "bytes": 5073,
       "mode": "100644"
     },
     {
@@ -2004,9 +2892,57 @@
       "mode": "100644"
     },
     {
+      "path": "tests/reference-parameters.test.ts",
+      "sha256": "3f44163cdfebb0226a2acd0ee0e100cbd4c7707aefd3b6b555cc027845bcd003",
+      "bytes": 11002,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-prompt-baseline.json",
+      "sha256": "87969080f8af344c55eb7126e564057eac82cc8ebab281b0d9b4c172220799be",
+      "bytes": 28936,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-prompts.test.ts",
+      "sha256": "505726054bb06b7f9a46e03613f60026d76c0b6acd4a02f459a0803b0801c8af",
+      "bytes": 8036,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-pure-modules.test.ts",
+      "sha256": "1cd41456b0978936d0458dc8b1fec7a54bf08e1b1d0b11832580b48f1fa1cfa1",
+      "bytes": 6713,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-registry.test.ts",
+      "sha256": "a5dfb0b66eedfefbb35c089dcb856ea494edf0c6a40cd02b3fa5020988917520",
+      "bytes": 27912,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-release-restore.test.ts",
+      "sha256": "b7ea2ab3af0a95d9f36a0f44becfff0c90afbb7cd822196e9b31090a44269dec",
+      "bytes": 5030,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/reference-route-auth.test.ts",
+      "sha256": "766804b216dc0d8a78bc6068e38ee297bdf24fa201b2d32e4d87ed754fc93355",
+      "bytes": 10274,
+      "mode": "100644"
+    },
+    {
       "path": "tests/regional-source.test.ts",
       "sha256": "dc4133e20e6e053a82ff0cdc0c6f456ecd62c165f4a0ef91f683b38032689f1e",
       "bytes": 3965,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/repayment-plan-model.test.ts",
+      "sha256": "106dfd1360c2d6df6769ede2a4d6eb89055ca1d27ba50a49cef013587605ca35",
+      "bytes": 13376,
       "mode": "100644"
     },
     {
@@ -2035,8 +2971,8 @@
     },
     {
       "path": "tests/server-integrity.test.ts",
-      "sha256": "c5141a85bffed8ef30dc6b15b7e96c134a2e1c4db0d81d9485a39775b315d259",
-      "bytes": 34129,
+      "sha256": "4fae3db56a6daa1d84532b776b2cf22ffb478eb73f59539c1f8a202fdade3e14",
+      "bytes": 51362,
       "mode": "100644"
     },
     {
@@ -2088,15 +3024,21 @@
       "mode": "100644"
     },
     {
+      "path": "tests/task-dashboard-acceptance.test.ts",
+      "sha256": "562f21b1ab5d9efa1eecaf4edcb208f9f838d2ec64d2ac79ed966a12d2ef7a99",
+      "bytes": 6051,
+      "mode": "100644"
+    },
+    {
       "path": "tests/test_export_receipt_projection.py",
-      "sha256": "6d71ecf81454a6c5bdd71629738b428f9044ab0748feb3f512de43ca17ed8dc5",
-      "bytes": 1824,
+      "sha256": "2b141dbb0fd3963438ea342c520988396d603df6e034311c12560773c6b5433f",
+      "bytes": 1840,
       "mode": "100644"
     },
     {
       "path": "tests/test_source_export.py",
-      "sha256": "b6c002adb785f1347b08a43e477fdda779edfcda4b47c6577ddd7fca5f52a5da",
-      "bytes": 3460,
+      "sha256": "4ed286b9ca61cdad8de138dff6fd12239006bb17755c9d84a6c87fa57ee20a24",
+      "bytes": 5040,
       "mode": "100644"
     },
     {
@@ -2113,14 +3055,26 @@
     },
     {
       "path": "tests/transactions.test.ts",
-      "sha256": "fc1d5b7db749402c8fabea1c15288533bc7eb5969587425d779c3e23e92b0d16",
-      "bytes": 9677,
+      "sha256": "42b7921071ac364e185750d0ed1ab52508f0c7c348bdf566243ca2f31f5d5c19",
+      "bytes": 11594,
       "mode": "100644"
     },
     {
       "path": "tests/verification-bindings.test.ts",
       "sha256": "410ffb6022d0b7099ae03b913d3083f54b25f7417dfe3862f3e865eab2703536",
       "bytes": 3549,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/workflow-health.test.ts",
+      "sha256": "5a799f88db298cb30fa7e6140c65a8c7d3e3d4840867b854f3a4c435361cd772",
+      "bytes": 2513,
+      "mode": "100644"
+    },
+    {
+      "path": "tests/workflow-integration.test.ts",
+      "sha256": "72484f81bc7d905cc6fd5da87a4c3742bde147b11e4cdf27181122941e6c9fe0",
+      "bytes": 27261,
       "mode": "100644"
     },
     {
@@ -2148,7 +3102,524 @@
       "mode": "100644"
     }
   ],
-  "status": "historical_pre_v35_public_source_export",
-  "superseded_by": "docs/ax-v43-merge-manifest.json",
-  "note": "This ledger records the earlier sanitized public export. Current local v43 merge files and supplied deployment-source provenance are recorded separately; this historical ledger does not describe the current application tree."
+  "mode_by_path": {
+    ".gitignore": "100644",
+    ".openai/hosting.json": "100644",
+    "README.md": "100644",
+    "app/api/cases/[id]/analyses/route.ts": "100644",
+    "app/api/cases/[id]/artifacts/[file]/route.ts": "100644",
+    "app/api/cases/[id]/calculator/route.ts": "100644",
+    "app/api/cases/[id]/commands/route.ts": "100644",
+    "app/api/cases/[id]/consultations/route.ts": "100644",
+    "app/api/cases/[id]/documents/[doc]/route.ts": "100644",
+    "app/api/cases/[id]/documents/route.ts": "100644",
+    "app/api/cases/[id]/export/route.ts": "100644",
+    "app/api/cases/[id]/migration/route.ts": "100644",
+    "app/api/cases/[id]/process/route.ts": "100644",
+    "app/api/cases/[id]/recompute/route.ts": "100644",
+    "app/api/cases/[id]/requirements/route.ts": "100644",
+    "app/api/cases/[id]/route.ts": "100644",
+    "app/api/cases/[id]/workflow/route.ts": "100644",
+    "app/api/cases/route.ts": "100644",
+    "app/api/checklist-catalog/route.ts": "100644",
+    "app/api/evaluation-cases/clone/route.ts": "100644",
+    "app/api/evaluation-cases/route.ts": "100644",
+    "app/api/intake-reference/route.ts": "100644",
+    "app/api/legal-monitor/route.ts": "100644",
+    "app/api/reference-data/route.ts": "100644",
+    "app/api/roles/route.ts": "100644",
+    "app/api/tasks/route.ts": "100644",
+    "app/api/workspace/route.ts": "100644",
+    "app/cases/[id]/consultation/page.tsx": "100644",
+    "app/cases/[id]/documents/page.tsx": "100644",
+    "app/cases/[id]/exports/page.tsx": "100644",
+    "app/cases/[id]/facts/page.tsx": "100644",
+    "app/cases/[id]/page.tsx": "100644",
+    "app/cases/[id]/review/page.tsx": "100644",
+    "app/cases/[id]/workflow/page.tsx": "100644",
+    "app/chatgpt-auth.ts": "100644",
+    "app/data/checklist/page.tsx": "100644",
+    "app/data/context/page.tsx": "100644",
+    "app/data/lawgraph/page.tsx": "100644",
+    "app/data/page.tsx": "100644",
+    "app/data/schedule/page.tsx": "100644",
+    "app/evaluation/page.tsx": "100644",
+    "app/globals.css": "100644",
+    "app/layout.tsx": "100644",
+    "app/mcp/route.ts": "100644",
+    "app/page.tsx": "100644",
+    "app/reference-data/page.tsx": "100644",
+    "app/reference-data/reference-data.css": "100644",
+    "app/roles/page.tsx": "100644",
+    "app/settings/page.tsx": "100644",
+    "app/tasks/page.tsx": "100644",
+    "cloudflare-env.d.ts": "100644",
+    "components.json": "100644",
+    "components/case-review-actions.tsx": "100644",
+    "components/case-workflow.tsx": "100644",
+    "components/checklist-catalog-manager.tsx": "100644",
+    "components/connector-error.tsx": "100644",
+    "components/consultation-checklist.tsx": "100644",
+    "components/context-editor.tsx": "100644",
+    "components/data-manager.tsx": "100644",
+    "components/field-coverage.tsx": "100644",
+    "components/lawgraph-viewer.tsx": "100644",
+    "components/legal-proposals.tsx": "100644",
+    "components/reference-workspace.tsx": "100644",
+    "components/role-manager.tsx": "100644",
+    "components/schedule-editor.tsx": "100644",
+    "components/task-dashboard.tsx": "100644",
+    "components/ui/accordion.tsx": "100644",
+    "components/ui/alert-dialog.tsx": "100644",
+    "components/ui/alert.tsx": "100644",
+    "components/ui/aspect-ratio.tsx": "100644",
+    "components/ui/attachment.tsx": "100644",
+    "components/ui/avatar.tsx": "100644",
+    "components/ui/badge.tsx": "100644",
+    "components/ui/breadcrumb.tsx": "100644",
+    "components/ui/bubble.tsx": "100644",
+    "components/ui/button-group.tsx": "100644",
+    "components/ui/button.tsx": "100644",
+    "components/ui/calendar.tsx": "100644",
+    "components/ui/card.tsx": "100644",
+    "components/ui/carousel.tsx": "100644",
+    "components/ui/chart.tsx": "100644",
+    "components/ui/checkbox.tsx": "100644",
+    "components/ui/collapsible.tsx": "100644",
+    "components/ui/combobox.tsx": "100644",
+    "components/ui/command.tsx": "100644",
+    "components/ui/context-menu.tsx": "100644",
+    "components/ui/dialog.tsx": "100644",
+    "components/ui/direction.tsx": "100644",
+    "components/ui/drawer.tsx": "100644",
+    "components/ui/dropdown-menu.tsx": "100644",
+    "components/ui/empty.tsx": "100644",
+    "components/ui/field.tsx": "100644",
+    "components/ui/form.tsx": "100644",
+    "components/ui/hover-card.tsx": "100644",
+    "components/ui/input-group.tsx": "100644",
+    "components/ui/input-otp.tsx": "100644",
+    "components/ui/input.tsx": "100644",
+    "components/ui/item.tsx": "100644",
+    "components/ui/kbd.tsx": "100644",
+    "components/ui/label.tsx": "100644",
+    "components/ui/marker.tsx": "100644",
+    "components/ui/menubar.tsx": "100644",
+    "components/ui/message-scroller.tsx": "100644",
+    "components/ui/message.tsx": "100644",
+    "components/ui/native-select.tsx": "100644",
+    "components/ui/navigation-menu.tsx": "100644",
+    "components/ui/pagination.tsx": "100644",
+    "components/ui/popover.tsx": "100644",
+    "components/ui/progress.tsx": "100644",
+    "components/ui/radio-group.tsx": "100644",
+    "components/ui/resizable.tsx": "100644",
+    "components/ui/scroll-area.tsx": "100644",
+    "components/ui/select.tsx": "100644",
+    "components/ui/separator.tsx": "100644",
+    "components/ui/sheet.tsx": "100644",
+    "components/ui/sidebar.tsx": "100644",
+    "components/ui/skeleton.tsx": "100644",
+    "components/ui/slider.tsx": "100644",
+    "components/ui/sonner.tsx": "100644",
+    "components/ui/spinner.tsx": "100644",
+    "components/ui/switch.tsx": "100644",
+    "components/ui/table.tsx": "100644",
+    "components/ui/tabs.tsx": "100644",
+    "components/ui/textarea.tsx": "100644",
+    "components/ui/toggle-group.tsx": "100644",
+    "components/ui/toggle.tsx": "100644",
+    "components/ui/tooltip.tsx": "100644",
+    "components/workspace.tsx": "100644",
+    "db/index.ts": "100644",
+    "db/schema.ts": "100644",
+    "docs/README.md": "100644",
+    "docs/acceptance-coverage-draft.json": "100644",
+    "docs/audit-calculation.md": "100644",
+    "docs/audit-extraction.md": "100644",
+    "docs/audit-legal-exceptions.md": "100644",
+    "docs/audit-legal-proposals.md": "100644",
+    "docs/audit-offline-reprojection.md": "100644",
+    "docs/audit-p0-recovery.md": "100644",
+    "docs/audit-storage.md": "100644",
+    "docs/audit-transport-reliability.md": "100644",
+    "docs/ax-v35-merge-manifest.json": "100644",
+    "docs/ax-v35-merge.md": "100644",
+    "docs/consultation-checklist.md": "100644",
+    "docs/document-filing-readiness.md": "100644",
+    "docs/document-generation-metrics.md": "100644",
+    "docs/document-routing.md": "100644",
+    "docs/eform-parity-matrix.json": "100644",
+    "docs/exception-coverage-matrix.md": "100644",
+    "docs/feature-inventory.json": "100644",
+    "docs/features.md": "100644",
+    "docs/lawgraph.md": "100644",
+    "docs/legal-monitor-runbook.md": "100644",
+    "docs/page-recovery-and-evaluation.md": "100644",
+    "docs/recovery-runbook.md": "100644",
+    "docs/refactoring-baseline.json": "100644",
+    "docs/reference-data.md": "100644",
+    "docs/reference-inventory.json": "100644",
+    "docs/release-acceptance.json": "100644",
+    "docs/release-coverage-skeleton.json": "100644",
+    "docs/release-v44.md": "100644",
+    "docs/runtime-reference.md": "100644",
+    "docs/scan-quality-recovery.md": "100644",
+    "docs/verification.md": "100644",
+    "docs/workflow.md": "100644",
+    "drizzle.config.ts": "100644",
+    "drizzle/0000_chunky_cardiac.sql": "100644",
+    "drizzle/0001_case_storage_token.sql": "100644",
+    "drizzle/0002_page_derivatives.sql": "100644",
+    "drizzle/0003_derivative_plan_id.sql": "100644",
+    "drizzle/0004_broken_gorgon.sql": "100644",
+    "drizzle/0005_sudden_the_twelve.sql": "100644",
+    "drizzle/0006_legal_reference_monitor.sql": "100644",
+    "drizzle/0007_case_commands.sql": "100644",
+    "drizzle/meta/0000_snapshot.json": "100644",
+    "drizzle/meta/0001_snapshot.json": "100644",
+    "drizzle/meta/0004_snapshot.json": "100644",
+    "drizzle/meta/0005_snapshot.json": "100644",
+    "drizzle/meta/0006_snapshot.json": "100644",
+    "drizzle/meta/0007_snapshot.json": "100644",
+    "drizzle/meta/_journal.json": "100644",
+    "eslint.config.mjs": "100644",
+    "hooks/use-mobile.ts": "100644",
+    "lib/app-roles.ts": "100644",
+    "lib/applicant-identity.ts": "100644",
+    "lib/assessment.ts": "100644",
+    "lib/asset-resolution.ts": "100644",
+    "lib/calculation-adapter.ts": "100644",
+    "lib/calculation-overrides.ts": "100644",
+    "lib/calculator-tools.ts": "100644",
+    "lib/case-agent-contracts.ts": "100644",
+    "lib/case-agent.ts": "100644",
+    "lib/case-command-contract.ts": "100644",
+    "lib/case-command-store.ts": "100644",
+    "lib/case-commands.ts": "100644",
+    "lib/case-execution.ts": "100644",
+    "lib/case-migration.ts": "100644",
+    "lib/case-procedure-events.ts": "100644",
+    "lib/case-requirements.ts": "100644",
+    "lib/case-response.ts": "100644",
+    "lib/case-schema-migration.ts": "100644",
+    "lib/case-tasks.ts": "100644",
+    "lib/case-workflow-server.ts": "100644",
+    "lib/case-workflow-state.ts": "100644",
+    "lib/case-workflow-view.ts": "100644",
+    "lib/category-contract.ts": "100644",
+    "lib/classification-inspection.ts": "100644",
+    "lib/classification-recovery.ts": "100644",
+    "lib/client-mutation.ts": "100644",
+    "lib/connector-context.ts": "100644",
+    "lib/connector-contract.mts": "100644",
+    "lib/connector-errors.mts": "100644",
+    "lib/connector-preview.d.ts": "100644",
+    "lib/connectors.ts": "100644",
+    "lib/context-validation.ts": "100644",
+    "lib/coverage-review.ts": "100644",
+    "lib/debt-resolution.ts": "100644",
+    "lib/debt-source-integrity.ts": "100644",
+    "lib/dependency-graph.ts": "100644",
+    "lib/disposal-applicability.ts": "100644",
+    "lib/document-agent-field-contracts.json": "100644",
+    "lib/document-agent-registry.ts": "100644",
+    "lib/document-annexes.ts": "100644",
+    "lib/document-edits.ts": "100644",
+    "lib/document-field-bases.ts": "100644",
+    "lib/document-filing-readiness.ts": "100644",
+    "lib/document-fulfillment.ts": "100644",
+    "lib/document-generation-metrics.ts": "100644",
+    "lib/document-preflight.ts": "100644",
+    "lib/document-routing.ts": "100644",
+    "lib/document-version.ts": "100644",
+    "lib/document-workflow-gate.ts": "100644",
+    "lib/document-writer.ts": "100644",
+    "lib/domain.ts": "100644",
+    "lib/evaluation-inventory.ts": "100644",
+    "lib/evaluation-whitelist.json": "100644",
+    "lib/execution-catalog.ts": "100644",
+    "lib/export-artifact-transaction.ts": "100644",
+    "lib/export-provenance.ts": "100644",
+    "lib/exports.ts": "100644",
+    "lib/extraction.ts": "100644",
+    "lib/fact-object-projection.ts": "100644",
+    "lib/field-applicability-contracts.json": "100644",
+    "lib/field-observation.ts": "100644",
+    "lib/form-contracts.ts": "100644",
+    "lib/form-mapping.ts": "100644",
+    "lib/form-template-data.ts": "100644",
+    "lib/history-integrity-restore.ts": "100644",
+    "lib/income-resolution.ts": "100644",
+    "lib/intake-case-bridge.ts": "100644",
+    "lib/intake-catalog.ts": "100644",
+    "lib/intake-classifier-response.ts": "100644",
+    "lib/intake-classifier.ts": "100644",
+    "lib/intake-engine.ts": "100644",
+    "lib/intake-fingerprint.ts": "100644",
+    "lib/intake-reference-store.ts": "100644",
+    "lib/intake-reference.ts": "100644",
+    "lib/intake-source-spans.ts": "100644",
+    "lib/intake-store.ts": "100644",
+    "lib/intake-types.ts": "100644",
+    "lib/json-response.ts": "100644",
+    "lib/lawgraph.ts": "100644",
+    "lib/legacy-case-command.ts": "100644",
+    "lib/legal-catalog.json": "100644",
+    "lib/legal-check-dispositions.ts": "100644",
+    "lib/legal-exceptions.json": "100644",
+    "lib/legal-monitor-core.ts": "100644",
+    "lib/legal-monitor-provider.ts": "100644",
+    "lib/legal-monitor-sources.ts": "100644",
+    "lib/legal-monitor-status.ts": "100644",
+    "lib/legal-monitor-store.ts": "100644",
+    "lib/legal-proposals.ts": "100644",
+    "lib/legal-review-identity.ts": "100644",
+    "lib/legal-review-packet.ts": "100644",
+    "lib/legal-rules.ts": "100644",
+    "lib/living-cost-proposal.ts": "100644",
+    "lib/luna.ts": "100644",
+    "lib/module-contracts.generated.json": "100644",
+    "lib/module-contracts.ts": "100644",
+    "lib/object-editor.ts": "100644",
+    "lib/objection-minimum.ts": "100644",
+    "lib/observed-source-details.ts": "100644",
+    "lib/office-writer.ts": "100644",
+    "lib/page-job-inspection.ts": "100644",
+    "lib/page-refresh.ts": "100644",
+    "lib/party-identity.ts": "100644",
+    "lib/payment-schedule.ts": "100644",
+    "lib/pipeline.ts": "100644",
+    "lib/plan-reconciliation.ts": "100644",
+    "lib/process-job-scope.ts": "100644",
+    "lib/processing-readiness.ts": "100644",
+    "lib/reactive-evaluation.ts": "100644",
+    "lib/reference-application.ts": "100644",
+    "lib/reference-bundle.ts": "100644",
+    "lib/reference-case-import.ts": "100644",
+    "lib/reference-case-projection.ts": "100644",
+    "lib/reference-context.ts": "100644",
+    "lib/reference-data.json": "100644",
+    "lib/reference-decision-tables.json": "100644",
+    "lib/reference-document-policy.json": "100644",
+    "lib/reference-impact.ts": "100644",
+    "lib/reference-intake-catalog.json": "100644",
+    "lib/reference-monitor-policies.json": "100644",
+    "lib/reference-parameters.json": "100644",
+    "lib/reference-parameters.ts": "100644",
+    "lib/reference-prompt-policies.json": "100644",
+    "lib/reference-prompts.ts": "100644",
+    "lib/reference-registry.ts": "100644",
+    "lib/reference-release.json": "100644",
+    "lib/reference-resolver.ts": "100644",
+    "lib/reference-runtime.ts": "100644",
+    "lib/reference-store.ts": "100644",
+    "lib/regional-source.ts": "100644",
+    "lib/repayment-plan-model.ts": "100644",
+    "lib/reprojection.ts": "100644",
+    "lib/retry-page-policy.ts": "100644",
+    "lib/review-dependencies.ts": "100644",
+    "lib/risk-catalog.json": "100644",
+    "lib/sample-manifest.ts": "100644",
+    "lib/scan-quality.ts": "100644",
+    "lib/seoul424-candidate.ts": "100644",
+    "lib/server-store.ts": "100644",
+    "lib/site-calculator-mcp.ts": "100644",
+    "lib/source-nature-context.ts": "100644",
+    "lib/source-quantity.ts": "100644",
+    "lib/source-review-annexes.ts": "100644",
+    "lib/source-verification-identity.ts": "100644",
+    "lib/source-verification.ts": "100644",
+    "lib/statement-paragraphs.ts": "100644",
+    "lib/statement-scope-relation.ts": "100644",
+    "lib/structured-case-import.ts": "100644",
+    "lib/task-dashboard-query.ts": "100644",
+    "lib/template-token-catalog.json": "100644",
+    "lib/transaction-groups.ts": "100644",
+    "lib/transaction-review.ts": "100644",
+    "lib/utils.ts": "100644",
+    "lib/verification-bindings.ts": "100644",
+    "lib/workflow-health.ts": "100644",
+    "lib/workflow-rules.ts": "100644",
+    "next.config.ts": "100644",
+    "package-lock.json": "100644",
+    "package.json": "100644",
+    "postcss.config.mjs": "100644",
+    "public/favicon.svg": "100644",
+    "public/templates/ANNEX_ASSIGNMENT.docx": "100644",
+    "public/templates/ANNEX_DISPUTED.docx": "100644",
+    "public/templates/ANNEX_OTHER.docx": "100644",
+    "public/templates/ANNEX_SECURED.docx": "100644",
+    "public/templates/ASSET_VALUATION.docx": "100644",
+    "public/templates/D5100.docx": "100644",
+    "public/templates/D5101.docx": "100644",
+    "public/templates/D5103.docx": "100644",
+    "public/templates/D5105.docx": "100644",
+    "public/templates/D5106.docx": "100644",
+    "public/templates/D5108.docx": "100644",
+    "public/templates/D5109.docx": "100644",
+    "public/templates/D5110.docx": "100644",
+    "public/templates/D5111.docx": "100644",
+    "public/templates/D5113.docx": "100644",
+    "public/templates/D5114.docx": "100644",
+    "public/templates/EVIDENCE_INDEX.docx": "100644",
+    "public/templates/PAYMENT_SCHEDULE.docx": "100644",
+    "public/templates/README.md": "100644",
+    "public/templates/additional_sources.json": "100644",
+    "public/templates/catalog.json": "100644",
+    "scripts/SYNTHETIC-OCR-EVALUATION.md": "100644",
+    "scripts/SYNTHETIC-OCR-V2.md": "100644",
+    "scripts/SYNTHETIC-OCR-V3.md": "100644",
+    "scripts/benchmark-workflow.ts": "100644",
+    "scripts/build-reference-data.mjs": "100644",
+    "scripts/build-verified.sh": "100644",
+    "scripts/calculator-mcp.ts": "100644",
+    "scripts/connector-preview/connector-preview-session.mjs": "100644",
+    "scripts/connector-preview/host-binding.mjs": "100644",
+    "scripts/connector-preview/protocol.mjs": "100644",
+    "scripts/connector-preview/worker.mjs": "100644",
+    "scripts/execution-profile.mjs": "100644",
+    "scripts/export-reviewed-source.py": "100644",
+    "scripts/generate-synthetic-ocr.py": "100644",
+    "scripts/install-ci.mjs": "100644",
+    "scripts/install-ci.sh": "100644",
+    "scripts/install-pnpm.sh": "100644",
+    "scripts/npm-install.mjs": "100644",
+    "scripts/pnpm-install.mjs": "100644",
+    "scripts/prepare-static-assets.mjs": "100644",
+    "scripts/quality/SCHEMA.md": "100644",
+    "scripts/quality/evaluate_complete_rubric.py": "100644",
+    "scripts/quality/test_evaluate_complete_rubric.py": "100644",
+    "scripts/run-framework.mjs": "100644",
+    "scripts/run-synthetic-ocr-evaluation.py": "100644",
+    "scripts/score-synthetic-ocr.py": "100644",
+    "scripts/sites-env.mjs": "100644",
+    "scripts/sites-env.sh": "100644",
+    "scripts/test-synthetic-ocr-runner.py": "100644",
+    "scripts/test-synthetic-ocr-v2.py": "100644",
+    "scripts/test-synthetic-ocr-v3.py": "100644",
+    "scripts/test-synthetic-ocr.py": "100644",
+    "scripts/tool-environment.mjs": "100644",
+    "scripts/validate-module-contracts.ts": "100644",
+    "scripts/vite/connector-preview-plugin.mjs": "100644",
+    "scripts/vite/sites-vite-plugin.LICENSE": "100644",
+    "scripts/vite/sites-vite-plugin.ts": "100644",
+    "tests/acceptance-rf16-20-trace.test.ts": "100644",
+    "tests/annex.test.ts": "100644",
+    "tests/app-roles.test.ts": "100644",
+    "tests/asset-resolution.test.ts": "100644",
+    "tests/calculation-audit.test.ts": "100644",
+    "tests/calculation-override-runtime.test.ts": "100644",
+    "tests/calculator-tools.test.ts": "100644",
+    "tests/case-command-storage.test.ts": "100644",
+    "tests/case-commands.test.ts": "100644",
+    "tests/case-migration-integrity.test.ts": "100644",
+    "tests/case-schema-migration.test.ts": "100644",
+    "tests/case-workflow-view.test.ts": "100644",
+    "tests/classification-inspection.test.ts": "100644",
+    "tests/classification-recovery.test.ts": "100644",
+    "tests/client-mutation.test.ts": "100644",
+    "tests/context.test.ts": "100644",
+    "tests/coverage-review.test.ts": "100644",
+    "tests/crud-audit.test.ts": "100644",
+    "tests/debt-resolution.test.ts": "100644",
+    "tests/debt-source-integrity.test.ts": "100644",
+    "tests/disposal-execution.test.ts": "100644",
+    "tests/document-contracts.test.ts": "100644",
+    "tests/document-filing-readiness.test.ts": "100644",
+    "tests/document-generation-metrics.test.ts": "100644",
+    "tests/document-routing.test.ts": "100644",
+    "tests/document-snapshot-isolation.test.ts": "100644",
+    "tests/document-writer.test.ts": "100644",
+    "tests/domain.test.ts": "100644",
+    "tests/evaluation-inventory.test.ts": "100644",
+    "tests/export-artifact-transaction.test.ts": "100644",
+    "tests/export-memory-regression.test.ts": "100644",
+    "tests/extraction-semantics.test.ts": "100644",
+    "tests/extraction.test.ts": "100644",
+    "tests/fact-review-units.test.ts": "100644",
+    "tests/field-observation.test.ts": "100644",
+    "tests/history-integrity-restore.test.ts": "100644",
+    "tests/income-resolution.test.ts": "100644",
+    "tests/insurance-source-slots.test.ts": "100644",
+    "tests/intake-classifier-response.test.ts": "100644",
+    "tests/intake-engine.test.ts": "100644",
+    "tests/intake-prompt.test.ts": "100644",
+    "tests/intake-reference.test.ts": "100644",
+    "tests/intake-source-spans.test.ts": "100644",
+    "tests/intake-store.test.ts": "100644",
+    "tests/intake-workflow-domain.test.ts": "100644",
+    "tests/json-response.test.ts": "100644",
+    "tests/large-storage.test.ts": "100644",
+    "tests/lawgraph.test.ts": "100644",
+    "tests/legal-finalization-gate.test.ts": "100644",
+    "tests/legal-monitor-provider.test.ts": "100644",
+    "tests/legal-monitor-store.test.ts": "100644",
+    "tests/legal-monitor.test.ts": "100644",
+    "tests/legal-proposals.test.ts": "100644",
+    "tests/legal-review-identity.test.ts": "100644",
+    "tests/legal-review-packet.test.ts": "100644",
+    "tests/luna-boundary.test.ts": "100644",
+    "tests/manual-review-preservation.test.ts": "100644",
+    "tests/module-contracts.test.ts": "100644",
+    "tests/objection-minimum.test.ts": "100644",
+    "tests/office.test.ts": "100644",
+    "tests/output-resolution.test.ts": "100644",
+    "tests/page-job-inspection.test.ts": "100644",
+    "tests/page-refresh-pipeline.test.ts": "100644",
+    "tests/page-refresh.test.ts": "100644",
+    "tests/pipeline-audit.test.ts": "100644",
+    "tests/pipeline-commit.test.ts": "100644",
+    "tests/principal-current-slot.test.ts": "100644",
+    "tests/procedure-events.test.ts": "100644",
+    "tests/process-job-scope.test.ts": "100644",
+    "tests/processing-audit.test.ts": "100644",
+    "tests/projection-acceptance.test.ts": "100644",
+    "tests/projection-review-modules.test.ts": "100644",
+    "tests/prompt-contract.test.ts": "100644",
+    "tests/proposed-schedule.test.ts": "100644",
+    "tests/provenance.test.ts": "100644",
+    "tests/refactor-calculation-acceptance.test.ts": "100644",
+    "tests/refactoring-baseline-preservation.test.ts": "100644",
+    "tests/reference-application-consumer.test.ts": "100644",
+    "tests/reference-case-import.test.ts": "100644",
+    "tests/reference-case-projection.test.ts": "100644",
+    "tests/reference-parameters.test.ts": "100644",
+    "tests/reference-prompt-baseline.json": "100644",
+    "tests/reference-prompts.test.ts": "100644",
+    "tests/reference-pure-modules.test.ts": "100644",
+    "tests/reference-registry.test.ts": "100644",
+    "tests/reference-release-restore.test.ts": "100644",
+    "tests/reference-route-auth.test.ts": "100644",
+    "tests/regional-source.test.ts": "100644",
+    "tests/repayment-plan-model.test.ts": "100644",
+    "tests/reprojection-route.test.ts": "100644",
+    "tests/reprojection.test.ts": "100644",
+    "tests/retry-page-policy.test.ts": "100644",
+    "tests/scan-quality.test.ts": "100644",
+    "tests/server-integrity.test.ts": "100644",
+    "tests/source-index-perf.test.ts": "100644",
+    "tests/source-nature-context.test.ts": "100644",
+    "tests/source-quantity.test.ts": "100644",
+    "tests/source-review-annexes.test.ts": "100644",
+    "tests/source-verification.test.ts": "100644",
+    "tests/statement-paragraphs.test.ts": "100644",
+    "tests/structured-case-import.test.ts": "100644",
+    "tests/structured-test-source.test.ts": "100644",
+    "tests/task-dashboard-acceptance.test.ts": "100644",
+    "tests/test_export_receipt_projection.py": "100644",
+    "tests/test_source_export.py": "100644",
+    "tests/test_synthetic_continuation.py": "100644",
+    "tests/test_tone_levels.py": "100644",
+    "tests/transactions.test.ts": "100644",
+    "tests/verification-bindings.test.ts": "100644",
+    "tests/workflow-health.test.ts": "100644",
+    "tests/workflow-integration.test.ts": "100644",
+    "tsconfig.json": "100644",
+    "vendor/shadcn-tailwind-4.13.0.LICENSE.md": "100644",
+    "vendor/shadcn-tailwind-4.13.0.css": "100644",
+    "vite.config.ts": "100644"
+  },
+  "deployment_source_commit": "968578493ed6daf78eab01cf5602f299d0da6598",
+  "public_documentation_note": "v44 feature-focused guides updated for this public mirror; application source is the deployed version."
 }

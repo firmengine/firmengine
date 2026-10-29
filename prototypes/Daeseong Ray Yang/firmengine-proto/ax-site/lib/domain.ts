@@ -1,3 +1,5 @@
+import type { DocumentWriterReceipt } from "./document-writer.ts";
+import type { CaseWorkflowState } from "./case-workflow-state.ts";
 import documentPolicy from "./reference-document-policy.json" with { type: "json" };
 import { readReferenceValue } from "./reference-runtime.ts";
 import { observeField, type FieldObservation, type PageFieldCoverage } from "./field-observation.ts";
@@ -215,11 +217,18 @@ export interface CaseContext {
   ruleReleaseId: string;
   ruleApplicationReviewed: boolean;
   referenceReviewSha256?: string;
+  referenceApplicationRequired?: boolean;
+  referenceBundleId?: string | null;
+  referenceArtifactIds?: string[] | null;
+  referenceDateBasis?: "applicationDate" | "asOf" | null;
+  referenceEffectiveDate?: string | null;
   inventoryComplete: { income: TriState; debt: TriState; asset: TriState };
   planMonths?: number | null;
   exceptionalTermReviewed?: boolean;
   /** Explicit human disposition for a shortened plan, bound to the reviewed evidence and plan. */
   shortenedTermReview?: { months: number; ruleReleaseId: string; reason: string; basisFingerprint: string } | null;
+  /** Explicit, human-confirmed no-disposal applicability, bound to current asset facts. */
+  disposalApplicabilityReview?: { disposition:"not_applicable"; status:"candidate"|"confirmed"; reason:string; basisFingerprint:string; factIds:string[]; reviewedBy?:string; reviewedAt?:string } | null;
   monthlyTrusteeFee?: NumericInput | null;
   monthlyPriorityPayment?: NumericInput | null;
   monthlyEstatePayment?: NumericInput | null;
@@ -262,6 +271,8 @@ export interface ExportManifest {
   requiredKinds: ArtifactKind[];
   files: ExportFile[];
   reviews: { caseworker: ReviewRecord | null; lawyer: ReviewRecord | null };
+  /** Render-time document writer receipt; preserved with the export manifest for edit authority and audit. */
+  documentWriter?: DocumentWriterReceipt;
 }
 export interface ReferenceTestProvenance {
   mode: "synthetic_reference_only";
@@ -281,6 +292,11 @@ export interface ReferenceTestProvenance {
   archivedSnapshots: { datasetVersion: string; datasetSha256: string; archivedAt: string; objects: { incomes: IncomeSource[]; debts: Debt[]; assets: Asset[]; transactions: Transaction[]; household: Household }; contextReviewState: Pick<CaseContext, "inventoryComplete" | "ruleApplicationReviewed" | "incomePeriodReviewed" | "assetValuationBasisReviewed" | "presentValueReviewed" | "allocationBasisReviewed" | "eligibility"> }[];
 }
 export interface CaseData {
+  /** Server persisted workflow; does not confer factual or legal recognition. */
+  workflowState?: CaseWorkflowState;
+  evaluationClone?: {sourceCaseId:string;sourceInputSha256:string;createdAt:string;finalSubmissionProhibited:true};
+  /** Response-only CAS fingerprint. Never used as a stored authority. */
+  clientStateFingerprint?: string;
   context: CaseContext;
   documents: EvidenceDocument[];
   pages: EvidencePage[];

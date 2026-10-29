@@ -1,4 +1,5 @@
 import { currentReferenceSnapshot, referenceIdentity } from "./reference-runtime.ts";
+import { resolveReferenceApplicationForCase } from "./reference-application.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
@@ -58,28 +59,92 @@ export async function getCase(id:string):Promise<CaseData>{
   if(typeof row.storageToken!=="string"||data.context.id!==id||data.context.revision!==row.revision)throw new HttpError(409,"사건 저장 상태를 확인한 뒤 다시 불러오세요.");
   caseSnapshots.set(data,{id,revision:row.revision,token:row.storageToken});return data;
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData){
+export interface CaseMutationContext {
+  commandId:string;requestHash:string;commandType:string;actor:string;beforeStateHash:string;impact:unknown;
+  authorization?:{sql:string;params:unknown[]};
+  guardedStatements?:(token:string)=>D1PreparedStatement[];
+}
+export async function caseStateFingerprint(data:CaseData):Promise<string>{
+  const snapshot=caseSnapshots.get(data);
+  if(!snapshot)throw new HttpError(409,"현재 사건을 다시 불러오세요.");
+  const inputHash=await sha256(new TextEncoder().encode(JSON.stringify(data)));
+  return `case-state/1:${await sha256(new TextEncoder().encode(JSON.stringify(["case-state/1",data.context.id,data.context.revision,snapshot.token,inputHash])))}`;
+}
+export async function readCommandReceipt(caseId:string,commandId:string){
+  return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
+}
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext){
+  for(const snapshot of [previous,data])if(snapshot.workflowState&&(snapshot.workflowState.schema!=="case-workflow/1"||snapshot.workflowState.version!==undefined&&(!Number.isSafeInteger(snapshot.workflowState.version)||snapshot.workflowState.version<1)))throw new HttpError(409,"지원하지 않는 사건 업무 스키마입니다. 호환 판본에서 확인하세요.");
+  if(data.workflowState&&data.workflowState.version===undefined)throw new HttpError(409,"사건 업무 형식 전환을 먼저 완료하세요.");
   const snapshot=caseSnapshots.get(previous);
   if(!snapshot||snapshot.id!==data.context.id||snapshot.revision!==expected||!Number.isSafeInteger(data.context.revision)||data.context.revision<expected)throw new HttpError(409,"원래 불러온 사건 버전이 필요합니다. 최신 내용을 불러온 뒤 다시 시도하세요.");
-  const token=crypto.randomUUID(),serialized=JSON.stringify(data),bytes=new TextEncoder().encode(serialized);let payload=serialized,createdKey:string|undefined;
-  if(bytes.byteLength>=CASE_INLINE_LIMIT){const uuid=crypto.randomUUID();createdKey=`cases/${data.context.id}/state/${uuid}.json`;await bucket().put(createdKey,bytes,{httpMetadata:{contentType:"application/json"}});const pointer:CasePointer={_storage:"r2-case-v1",caseId:data.context.id,revision:data.context.revision,key:createdKey,sha256:await sha256(bytes),summary:caseSummary(data)};payload=JSON.stringify(pointer);}
-  const at=now(),evaluationId=crypto.randomUUID(),inputSha256=await sha256(new TextEncoder().encode(serialized));
-  const pending=pendingDerivedEvaluation({revision:data.context.revision,storageToken:token,inputSha256,generatedAt:at});
-  let result;try{
-    const commands=await db().batch([
-      db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ? WHERE id = ? AND revision = ? AND storage_token = ?")
-        .bind(payload,data.context.revision,data.context.caseName,at,token,data.context.id,expected,snapshot.token),
-      db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)")
-        .bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
-    ]);
-    result=commands[0];
-  }catch(error){if(createdKey)await bucket().delete(createdKey);throw error;}
-  if(!result.meta.changes){if(createdKey)await bucket().delete(createdKey);throw new HttpError(409,"사건이 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");}
+  // Response-only identity must never become part of the persisted input.
+  if(Object.hasOwn(data,"clientStateFingerprint"))throw new HttpError(400,"응답용 지문을 저장할 수 없습니다.");
+  const token=crypto.randomUUID(),serialized=JSON.stringify(data),bytes=new TextEncoder().encode(serialized),inputSha256=await sha256(bytes);
+  const afterStateHash=`case-state/1:${await sha256(new TextEncoder().encode(JSON.stringify(["case-state/1",data.context.id,data.context.revision,token,inputSha256])))}`;
+  const ownedKeys:string[]=[];let payload=serialized;
+  const at=now(),evaluationId=crypto.randomUUID(),receiptId=crypto.randomUUID(),jobId=crypto.randomUUID();
+  const pending=pendingDerivedEvaluation({revision:data.context.revision,storageToken:token,inputSha256,generatedAt:at,referenceApplication:resolveReferenceApplicationForCase(data)});
+  let beforeKey="",afterKey="";
+  const putSnapshot=async(content:Uint8Array,suffix:string)=>{const key=`cases/${data.context.id}/state/${crypto.randomUUID()}-${suffix}.json`;await bucket().put(key,content,{httpMetadata:{contentType:"application/json"}});ownedKeys.push(key);return key;};
+  try{
+    if(mutation){beforeKey=await putSnapshot(new TextEncoder().encode(JSON.stringify(previous)),"before");afterKey=await putSnapshot(bytes,"after");}
+    if(bytes.byteLength>=CASE_INLINE_LIMIT){const key=afterKey||await putSnapshot(bytes,"case");const pointer:CasePointer={_storage:"r2-case-v1",caseId:data.context.id,revision:data.context.revision,key,sha256:inputSha256,summary:caseSummary(data)};payload=JSON.stringify(pointer);}
+  }catch(error){await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw error;}
+  const guard="EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)";
+  const batch:D1PreparedStatement[]=[
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")).bind(payload,data.context.revision,data.context.caseName,at,token,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[])),
+    db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
+  ];
+  if(mutation){
+    batch.push(db().prepare(`INSERT INTO case_mutation_receipts (id,case_id,command_id,request_hash,command_type,actor,before_revision,after_revision,before_state_hash,after_state_hash,before_snapshot_key,after_snapshot_key,impact_payload,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(receiptId,data.context.id,mutation.commandId,mutation.requestHash,mutation.commandType,mutation.actor,expected,data.context.revision,mutation.beforeStateHash,afterStateHash,beforeKey,afterKey,JSON.stringify({...mutation.impact as Record<string,unknown>,snapshotHashes:{before:await sha256(new TextEncoder().encode(JSON.stringify(previous))),after:inputSha256}}),at,data.context.id,data.context.revision,token));
+    batch.push(db().prepare(`INSERT INTO events (id,case_id,actor,type,detail,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(crypto.randomUUID(),data.context.id,mutation.actor,"case.command_committed",JSON.stringify({commandId:mutation.commandId,commandType:mutation.commandType,receiptId,before:mutation.beforeStateHash,after:afterStateHash}),at,data.context.id,data.context.revision,token));
+    batch.push(db().prepare(`UPDATE case_recompute_jobs SET status='superseded',lease_token=NULL,lease_until=NULL,updated_at=? WHERE case_id=? AND status IN ('pending','running','retry_wait') AND ${guard}`).bind(at,data.context.id,data.context.id,data.context.revision,token));
+    batch.push(db().prepare(`INSERT INTO case_recompute_jobs (id,case_id,job_kind,input_fingerprint,contract_fingerprint,status,result_ref,created_at,updated_at) SELECT ?,?,?,?,?,'pending',?,?,? WHERE ${guard}`).bind(jobId,data.context.id,"deterministic_evaluation",afterStateHash,`${EXECUTION_CONTRACT_VERSION}:${pending.referenceSha256}`,JSON.stringify({evaluationId,storageToken:token,inputSha256,revision:data.context.revision}),at,at,data.context.id,data.context.revision,token));
+    for(const task of data.workflowState?.tasks??[])batch.push(db().prepare(`INSERT INTO case_tasks (id,case_id,dedupe_key,type,owner_id,due_at,waiting_on,blocked_by,status,dependency_fingerprint,payload,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard} ON CONFLICT(case_id,dedupe_key) DO UPDATE SET owner_id=excluded.owner_id,due_at=excluded.due_at,waiting_on=excluded.waiting_on,blocked_by=excluded.blocked_by,status=excluded.status,dependency_fingerprint=excluded.dependency_fingerprint,payload=excluded.payload,updated_at=excluded.updated_at`).bind(task.id,data.context.id,task.dedupeKey,task.type,task.ownerId,task.dueAt,task.waitingOn,JSON.stringify(task.blockedBy),task.status,task.dependencyFingerprint,JSON.stringify(task),task.createdAt,task.updatedAt,data.context.id,data.context.revision,token));
+    batch.push(...(mutation.guardedStatements?.(token)??[]));
+  }
+  let committed=false;
+  try{const results=await db().batch(batch);committed=!!results[0].meta.changes;}
+  catch(error){
+    // A transport failure may occur AFTER commit. Never delete referenced snapshots on an ambiguous acknowledgement.
+    let row:{token:string}|null;
+    try{row=await db().prepare("SELECT storage_token AS token FROM cases WHERE id = ?").bind(data.context.id).first<{token:string}>();}
+    catch{throw new HttpError(503,"저장 확인이 지연되었습니다. 같은 명령 식별자로 영수증을 조회한 뒤 재시도하세요.");}
+    const proof=await db().prepare("SELECT id FROM analyses WHERE id=? AND case_id=?").bind(evaluationId,data.context.id).first().catch(()=>undefined);
+    if(row?.token===token||proof)committed=true;
+    else if(proof===undefined)throw new HttpError(503,"저장 영수증 확인이 지연되었습니다. 같은 명령 식별자로 조회해 주세요.");
+    else {await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw error;}
+  }
+  if(!committed){await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw new HttpError(409,"사건이 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");}
   caseSnapshots.delete(previous);caseSnapshots.set(data,{id:data.context.id,revision:data.context.revision,token});
-  await finishDerivedEvaluation(data,evaluationId,pending);
+  if(mutation)await drainCaseRecomputeJobs(data.context.id,1).catch(()=>{});
+  else await finishDerivedEvaluation(data,evaluationId,pending);
+  return {stateFingerprint:afterStateHash,receiptId:mutation?receiptId:undefined,evaluationId};
 }
 
-async function finishDerivedEvaluation(data:CaseData,id:string,pending:DerivedEvaluationEnvelope){
+/** Explicit, bounded deterministic drain. No model or OCR work can enter this queue. */
+export async function drainCaseRecomputeJobs(caseId:string,limit=2){
+  const at=now(),rows=(await db().prepare("SELECT id,status,attempts,result_ref AS resultRef,input_fingerprint AS inputFingerprint,contract_fingerprint AS contractFingerprint FROM case_recompute_jobs WHERE case_id=? AND ((status IN ('pending','retry_wait') AND (next_attempt_at IS NULL OR next_attempt_at<=?)) OR (status='running' AND lease_until<=?)) ORDER BY created_at LIMIT ?").bind(caseId,at,at,Math.min(5,Math.max(1,limit))).all<{id:string;status:string;attempts:number;resultRef:string;inputFingerprint:string;contractFingerprint:string}>()).results;
+  for(const row of rows){
+    const lease=crypto.randomUUID(),until=new Date(Date.now()+60_000).toISOString();
+    const claim=await db().prepare("UPDATE case_recompute_jobs SET status='running',lease_token=?,lease_until=?,attempts=attempts+1,updated_at=? WHERE id=? AND ((status IN ('pending','retry_wait') AND (next_attempt_at IS NULL OR next_attempt_at<=?)) OR (status='running' AND lease_until<=?))").bind(lease,until,at,row.id,at,at).run();if(!claim.meta.changes)continue;
+    try{
+      const ref=JSON.parse(row.resultRef),data=await getCase(caseId);
+      if(await caseStateFingerprint(data)!==row.inputFingerprint||row.contractFingerprint!==`${EXECUTION_CONTRACT_VERSION}:${referenceIdentity()?.sha256??referenceRelease.sha256}`){await db().prepare("UPDATE case_recompute_jobs SET status='superseded',lease_token=NULL,lease_until=NULL,updated_at=? WHERE id=? AND lease_token=?").bind(now(),row.id,lease).run();continue;}
+      await finishDerivedEvaluation(data,ref.evaluationId,pendingDerivedEvaluation({revision:ref.revision,storageToken:ref.storageToken,inputSha256:ref.inputSha256,generatedAt:at,referenceApplication:resolveReferenceApplicationForCase(data)}),{jobId:row.id,token:lease});
+      const result=await db().prepare("SELECT payload FROM analyses WHERE id=? AND type='derived_evaluation'").bind(ref.evaluationId).first<{payload:string}>();
+      if(!result||JSON.parse(result.payload).status!=="complete")throw new Error("Evaluation pending");
+      await db().prepare("UPDATE case_recompute_jobs SET status='complete',lease_token=NULL,lease_until=NULL,last_error=NULL,updated_at=? WHERE id=? AND lease_token=? AND lease_until>? AND EXISTS (SELECT 1 FROM cases WHERE id=? AND revision=? AND storage_token=?)").bind(now(),row.id,lease,now(),caseId,ref.revision,ref.storageToken).run();
+    }catch{
+      const failed=row.attempts+1>=5;
+      await db().prepare("UPDATE case_recompute_jobs SET status=?,lease_token=NULL,lease_until=NULL,last_error='deterministic_evaluation_failed',next_attempt_at=?,updated_at=? WHERE id=? AND lease_token=?").bind(failed?"failed":"retry_wait",new Date(Date.now()+Math.min(300_000,1000*2**row.attempts)).toISOString(),now(),row.id,lease).run();
+    }
+  }
+  return {attempted:rows.length};
+}
+
+async function finishDerivedEvaluation(data:CaseData,id:string,pending:DerivedEvaluationEnvelope,lease?:{jobId:string;token:string}){
   let key:string|undefined;
   try{
     const execution=buildDerivedExecution(data),bytes=new TextEncoder().encode(JSON.stringify(execution)),evaluationSha256=await sha256(bytes);
@@ -90,8 +155,9 @@ async function finishDerivedEvaluation(data:CaseData,id:string,pending:DerivedEv
       await bucket().put(key,bytes,{httpMetadata:{contentType:"application/json"}});
       completed={...pending,status:"complete",evaluationSha256,executionPointer:{key,sha256:evaluationSha256}};
     }
-    const result=await db().prepare("UPDATE analyses SET payload = ? WHERE id = ? AND case_id = ? AND revision = ? AND type = 'derived_evaluation' AND json_extract(payload,'$.status') = 'pending' AND json_extract(payload,'$.storageToken') = ? AND json_extract(payload,'$.inputSha256') = ? AND EXISTS (SELECT 1 FROM cases c WHERE c.id = analyses.case_id AND c.revision = analyses.revision AND c.storage_token = ?)")
-      .bind(JSON.stringify(completed),id,data.context.id,data.context.revision,pending.storageToken,pending.inputSha256,pending.storageToken).run();
+    const leaseGuard=lease?" AND EXISTS (SELECT 1 FROM case_recompute_jobs j WHERE j.id=? AND j.lease_token=? AND j.status='running' AND j.lease_until>?)":"";
+    const values:unknown[]=[JSON.stringify(completed),id,data.context.id,data.context.revision,pending.storageToken,pending.inputSha256,pending.storageToken,...(lease?[lease.jobId,lease.token,now()]:[])];
+    const result=await db().prepare("UPDATE analyses SET payload = ? WHERE id = ? AND case_id = ? AND revision = ? AND type = 'derived_evaluation' AND json_extract(payload,'$.status') = 'pending' AND json_extract(payload,'$.storageToken') = ? AND json_extract(payload,'$.inputSha256') = ? AND EXISTS (SELECT 1 FROM cases c WHERE c.id = analyses.case_id AND c.revision = analyses.revision AND c.storage_token = ?)"+leaseGuard).bind(...values).run();
     if(!result.meta.changes&&key)await bucket().delete(key);
   }catch{
     // The CAS batch durably inserted a pending marker. Reads can retry this exact
@@ -102,7 +168,7 @@ async function finishDerivedEvaluation(data:CaseData,id:string,pending:DerivedEv
 
 type DerivedEvaluationRead={status:"pending";revision:number;inputSha256:string;storageToken?:string}|(DerivedEvaluationEnvelope&{status:"complete";execution:ExecutionSnapshot});
 async function resetAndRetryDerivedEvaluation(data:CaseData,id:string,identity:{id:string;revision:number;token:string},inputSha256:string):Promise<DerivedEvaluationRead|undefined>{
-  const pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now()});
+  const pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now(),referenceApplication:resolveReferenceApplicationForCase(data)});
   const reset=await db().prepare("UPDATE analyses SET payload = ? WHERE id = ? AND case_id = ? AND revision = ? AND type = 'derived_evaluation' AND json_extract(payload,'$.storageToken') = ? AND json_extract(payload,'$.inputSha256') = ? AND EXISTS (SELECT 1 FROM cases c WHERE c.id = analyses.case_id AND c.revision = analyses.revision AND c.storage_token = ?)")
     .bind(JSON.stringify(pending),id,data.context.id,identity.revision,identity.token,inputSha256,identity.token).run();
   if(!reset.meta.changes)return {status:"pending" as const,revision:identity.revision,inputSha256,storageToken:identity.token};
@@ -115,7 +181,7 @@ async function readDerivedEvaluation(data:CaseData,identity:{id:string;revision:
   const rows=(await db().prepare("SELECT a.id,a.payload FROM analyses a JOIN cases c ON c.id = a.case_id AND c.revision = a.revision WHERE a.case_id = ? AND a.revision = ? AND a.type = 'derived_evaluation' AND c.storage_token = ? AND json_valid(a.payload) = 1 AND json_extract(a.payload,'$.storageToken') = ? AND json_extract(a.payload,'$.inputSha256') = ? ORDER BY a.at DESC LIMIT 1")
     .bind(data.context.id,data.context.revision,identity.token,identity.token,inputSha256).all<{id:string;payload:string}>()).results;
   if(!rows.length){
-    const id=crypto.randomUUID(),pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now()});
+    const id=crypto.randomUUID(),pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now(),referenceApplication:resolveReferenceApplicationForCase(data)});
     const inserted=await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)")
       .bind(id,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),now(),data.context.id,identity.revision,identity.token).run();
     if(!inserted.meta.changes)return {status:"pending" as const,revision:identity.revision,inputSha256};
@@ -206,15 +272,15 @@ export async function caseExtras(data:CaseData){
   const expectedCheckIds=new Set(RISK_CATALOG.map(check=>check.id)),checkIds=new Set<string>(),checkStatuses=new Set(["pass","fail","missing","conflict","not_applicable","legal_review"]);for(const row of legalRows){const checks=(row.payload as any)?.checks;if(Array.isArray(checks))for(const check of checks)if(check&&typeof check.id==="string"&&expectedCheckIds.has(check.id)&&checkStatuses.has(check.status)&&typeof check.reason==="string"&&typeof check.nextAction==="string"&&[check.factIds,check.ruleIds,check.missingDocuments].every(values=>Array.isArray(values)&&values.every((value:unknown)=>typeof value==="string")))checkIds.add(check.id);}
   const missingCheckIds=[...expectedCheckIds].filter(checkId=>!checkIds.has(checkId));
   const legalReviewCoverage={currentAnalysisCount:legalRows.length,currentCheckCount:checkIds.size,expectedCheckCount:expectedCheckIds.size,missingCheckIds,complete:!legalPageHasMore&&missingCheckIds.length===0,truncated:legalPageHasMore,nextCursor:legalPageHasMore&&legalRows.length?encodeAnalysisCursor(legalRows.at(-1) as {at:string;id:string}):null};
-  return {referenceSnapshot:currentReferenceSnapshot(),jobs:j,processingReadiness,execution,derivedEvaluation,inputIdentity:{storageInputSha256:inputSha256,storageHashScheme:"json-stringify-sha256/v1",canonicalInputSha256:calculatorInputSha256,canonicalHashScheme:"canonical-json-sha256/v1"},legalReviewCoverage,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
+  return {referenceSnapshot:currentReferenceSnapshot(),jobs:j,processingReadiness,execution,derivedEvaluation,inputIdentity:{stateFingerprint:identity?await caseStateFingerprint(data):undefined,storageInputSha256:inputSha256,storageHashScheme:"json-stringify-sha256/v1",canonicalInputSha256:calculatorInputSha256,canonicalHashScheme:"canonical-json-sha256/v1"},legalReviewCoverage,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
 }
 export function errorResponse(error:unknown){
-  const status=error instanceof HttpError?error.status:500;
+  const status=error instanceof HttpError?error.status:error instanceof Error&&"status" in error&&[400,403,404,409,422,503].includes(Number(error.status))?Number(error.status):500;
   let message=error instanceof Error?error.message:"처리 중 오류가 발생했습니다.";
   if(/no such table/i.test(message))message="저장소 마이그레이션이 아직 적용되지 않았습니다. 배포 상태를 확인하세요.";
   // Never expose upstream payloads, authorization headers, or credentials.
   message=message.replace(/sk-[\w-]+/g,"[비공개]").slice(0,500);
-  return Response.json({error:message},{status,headers:{"Cache-Control":"no-store"}});
+  return Response.json({error:message,...(status===409&&error instanceof Error&&"details" in error&&error.details?{conflict:error.details}:{}),...(error instanceof Error&&"code" in error&&typeof error.code==="string"?{code:error.code}: {})},{status,headers:{"Cache-Control":"no-store"}});
 }
 export async function sha256(bytes:ArrayBuffer|Uint8Array):Promise<string>{
   const data=bytes instanceof Uint8Array?new Uint8Array(bytes).buffer:bytes;

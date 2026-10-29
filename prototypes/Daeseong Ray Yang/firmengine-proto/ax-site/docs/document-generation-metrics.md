@@ -1,19 +1,11 @@
-# Document-generation evaluation metrics
+# 문서 확인 기준
 
-`lib/document-generation-metrics.ts` is a pure, deterministic scorer for a predeclared corpus. Callers supply expected document and field manifests before evaluating output. Expected documents and fields define every denominator; absent predictions, missing documents, and abstentions count as unsuccessful outcomes. Empty expected manifests are flagged, and unexpected output never enlarges or replaces the denominator.
+문서 작성은 세 가지로 나누어 확인합니다.
 
-The report separates:
+1. **값:** 현재 사건의 값이 맞는 항목과 표 행에 들어가는지
+2. **상태:** 누락·충돌·미검토를 완료로 표시하지 않는지
+3. **화면:** 한글, 긴 이름, 반복 표, 페이지 넘김이 읽기 좋은지
 
-- exact document success (all expected fields have exactly matching canonical values);
-- qualified document success (exact content, valid Office output, and valid required input-source references together);
-- whole-underlying-case completeness (every expected field across every scan/template variant is present as a value; wrong values can still be complete);
-- field accuracy and critical-field errors;
-- missing fields/documents and explicit abstentions;
-- physical Office validation, with unrun/missing documents shown separately and included as failures in `passRateAmongExpected`;
-- input-provenance checks against supplied input fact IDs, including whether required source references are missing.
+v44에서는 합성 사건 52건으로 Word 463개와 Excel 52개를 생성했습니다. 대표 Word 24개·214쪽을 화면으로 검수했습니다. 전체 문서를 눈으로 검수한 결과는 아닙니다.
 
-Document text exactness does not imply valid Office output or valid provenance; those measures stay separate. Missing/abstained values fail expected-field accuracy. `originBreakdown` keeps `real_case`, `synthetic`, and `public_example` counts distinct. Underlying case IDs are checked for split overlap, so scan/template variants from one case must share the same split. A single underlying case is explicitly labeled as insufficient for a general 99% claim. Even with multiple cases, this utility reports observed corpus statistics only and always rejects a universal 99% claim. It does not impose a statistical cutoff sample size, grade model self-confidence, or issue legal conclusions.
-
-`observed99ThresholdMet` uses qualified document success, requires zero critical-field errors, and stays false if corpus validation reports an error. An unrun physical check, split leakage, a duplicated sample, or a fabricated source reference cannot satisfy the threshold through matching text alone. This remains a corpus-local observation, not a generalization certificate.
-
-The function validates basic corpus integrity but does not establish that an expected manifest is complete, that an input source is authentic, or that the Office validation procedure is adequate. Those remain corpus-governance and validation responsibilities.
+공식 전자소송 서식과의 일치 여부는 별도 확인 사항입니다. 자세한 결과는 [검증 결과](verification.md)를 확인하세요.

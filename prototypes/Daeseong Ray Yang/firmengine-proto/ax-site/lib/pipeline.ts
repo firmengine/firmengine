@@ -1,3 +1,4 @@
+import { legalReviewInputFingerprint } from "./legal-review-identity.ts";
 import { renderPromptPolicy, legalReviewInstructions } from "./reference-prompts.ts";
 import { buildCaseExecutionPlan } from "./case-execution";
 import { runCaseCalculatorNode } from "./case-agent";
@@ -531,7 +532,7 @@ export async function reviewLegal(caseId:string){
     await event(caseId,"legal_advisory.superseded",{calculatorExecution:calculator.receipt});
     return {remaining:catalog.length,stage:"legal_snapshot_changed",checks:[]};
   }
-  await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),caseId,data.context.revision,"legal_advisory",JSON.stringify({checks,summary:value.summary,evidenceCoverage:packet.coverage,calculatorExecution:calculator.receipt,model:AI_MODEL,usage,scope:"법적 검토 보조 · 승인확률/자동인정 아님"}),now()).run();
+  await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),caseId,data.context.revision,"legal_advisory",JSON.stringify({checks,summary:value.summary,evidenceCoverage:packet.coverage,reviewInputFingerprint:await legalReviewInputFingerprint(data,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION),calculatorExecution:calculator.receipt,model:AI_MODEL,usage,scope:"법적 검토 보조 · 승인확률/자동인정 아님"}),now()).run();
   await event(caseId,"calculator.tool_called",calculator.receipt);
   return {remaining:catalog.length-completed.size-checks.length,stage:"legal_review",checks,evidenceCoverage:packet.coverage,calculatorExecution:calculator.receipt};
 }

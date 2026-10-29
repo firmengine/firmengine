@@ -11,6 +11,13 @@ import { expandPaymentSchedule } from "./payment-schedule.ts";
 import { scanTransactions } from "./transaction-review.ts";
 import { buildCourtPackage } from "./exports.ts";
 import { calculateDisposal } from "./assessment.ts";
+import { buildRepaymentPlanModel } from "./repayment-plan-model.ts";
+import { reconcilePlanLedger } from "./plan-reconciliation.ts";
+import { adaptCalculationInput } from "./calculation-adapter.ts";
+import { resolveReferenceApplicationForCase } from "./reference-application.ts";
+import { evaluateDisposalApplicability } from "./disposal-applicability.ts";
+import { currentReferenceSnapshot } from "./reference-runtime.ts";
+import type { ReferenceBundle } from "./reference-bundle.ts";
 
 type Workflow = ReturnType<typeof evaluateWorkflow>;
 const unique = <T>(items:T[]) => [...new Set(items)];
@@ -34,17 +41,27 @@ function closure(selected:Set<string>) {
   }
   return CALCULATION_SPECS.filter(s=>selected.has(s.id));
 }
+function applyCurrentDisposalApplicability(data:CaseData,workflow:Workflow){
+  const disposition=evaluateDisposalApplicability(data);if(disposition.status!=="confirmed"||(data.disposalScenarios?.length??0)>0)return;
+  const route=workflow.items.find(item=>item.ruleId==="WF-40");if(!route)return;
+  route.applicability="not_applicable";route.status="not_applicable";route.dataStatus="not_applicable";route.legalReviewRequired=false;
+  route.activationChecks=route.activationChecks.map(check=>check.feature==="case.disposals"?{...check,status:"pass",actualValue:false,matches:false,reason:disposition.reason??"현재 재산 근거에 따른 비해당 담당자 검토",factIds:[...disposition.factIds]}:check);
+  route.documents=route.documents.map(document=>({...document,status:"not_applicable"}));route.legalChecks=route.legalChecks.map(check=>({...check,status:"not_applicable",reason:disposition.reason??"현재 재산 근거에 따른 비해당 담당자 검토"}));
+  workflow.summary={...workflow.summary,pass:0,fail:0,missing:0,conflict:0,not_applicable:0,legalReviewRequired:0};for(const item of workflow.items){workflow.summary[item.status]+=1;if(item.legalReviewRequired)workflow.summary.legalReviewRequired+=1;}
+}
 
 /** One plan feeds the UI, agent packet, offline evaluation and MCP. No state mutation. */
 export function buildCaseExecutionPlan(data:CaseData, assessment:Assessment=assessCase(data,CURRENT_RULESET), workflow:Workflow=evaluateWorkflow(data,assessment)) {
   const scenarios=Array.isArray(data.disposalScenarios)?data.disposalScenarios:[];
+  const disposalApplicability=evaluateDisposalApplicability(data);
+  applyCurrentDisposalApplicability(data,workflow);
   const routes=workflow.items.map(item=>{
     const baseState=routeState(item);
     const scenarioContradictsFalse=item.ruleId==="WF-40"&&scenarios.length>0&&item.activationChecks.some(check=>check.feature==="case.disposals"&&check.actualValue===false);
     // A typed scenario may select a candidate path only while activation is unknown.
     // Explicit false and conflict results remain authoritative.
     const state=scenarioContradictsFalse?"conflict":item.ruleId==="WF-40"&&scenarios.length>0&&baseState==="needs_qualification"&&item.activationChecks.every(check=>check.matches===null)?"candidate":baseState;
-    return {workflowId:item.ruleId,subjectId:item.subjectId,state,activation:item.activationChecks,ruleIds:item.ruleIds,calculationIds:[...(WORKFLOW_CALCULATIONS[item.ruleId]??[])]};
+    return {workflowId:item.ruleId,subjectId:item.subjectId,state,...(item.ruleId==="WF-40"&&disposalApplicability.status==="confirmed"&&scenarios.length===0?{applicabilityReason:disposalApplicability.reason}:{}),activation:item.activationChecks,ruleIds:item.ruleIds,calculationIds:[...(WORKFLOW_CALCULATIONS[item.ruleId]??[])]};
   });
   const selected=new Set(routes.filter(r=>r.state==="candidate"||r.state==="confirmed").map(r=>`${r.workflowId}:${r.subjectId}`));
   const active=workflow.items.filter(item=>selected.has(item.id));
@@ -84,10 +101,22 @@ export function buildCaseExecutionPlan(data:CaseData, assessment:Assessment=asse
   };
 }
 
-export function executeCaseNodes(data:CaseData,options:{includeDocumentBindings?:boolean}={}) {
+export function executeCaseNodes(data:CaseData,options:{includeDocumentBindings?:boolean;referenceBundles?:readonly ReferenceBundle[]}={}) {
   const scenarios=Array.isArray(data.disposalScenarios)?data.disposalScenarios:[];
-  const assessment=assessCase(data,CURRENT_RULESET);
+  const baseAssessment=assessCase(data,CURRENT_RULESET);
+  const calculationContract=adaptCalculationInput(data,baseAssessment.calculation);
+  const planLedger=buildRepaymentPlanModel(data,baseAssessment.calculation);
+  const planReconciliation=reconcilePlanLedger(data,baseAssessment.calculation,planLedger);
+  const hasExplicitSchedule=(data.context.paymentSchedule?.phases.length??0)>0;
+  const planValidationApplies=hasExplicitSchedule||baseAssessment.calculation.planTotalWon!==null;
+  const planBlockers=planValidationApplies?[...(planLedger.status==="blocked"||planReconciliation.status==="blocked"?(planReconciliation.issues.length?planReconciliation.issues:planLedger.issues):[]),...(planReconciliation.legalReviewTasks??[]),...(hasExplicitSchedule&&(!data.context.paymentSchedule?.reviewed||!data.context.paymentSchedule.reviewReason?.trim())?["PAYMENT_SCHEDULE_REVIEW_REQUIRED"]:[])]:[];
+  const calculationBlockers=calculationContract.applicable&&calculationContract.status==="blocked"?calculationContract.blockers:[];
+  const contractIssues=[...calculationBlockers,...(calculationContract.applicable?calculationContract.warnings.map(warning=>"CALCULATION_CONTRACT_REVIEW:"+warning):[])];
+  const referenceApplication=resolveReferenceApplicationForCase(data,options.referenceBundles??[],currentReferenceSnapshot());
+  const referenceGate=referenceApplication.finalGate?[referenceApplication.finalGate]:[];
+  const assessment:Assessment={...baseAssessment,generationGate:{...baseAssessment.generationGate,canFinalize:baseAssessment.generationGate.canFinalize&&planBlockers.length===0&&contractIssues.length===0&&referenceGate.length===0,reasons:[...new Set([...baseAssessment.generationGate.reasons,...planBlockers.map(issue=>"PLAN_LEDGER:"+issue),...contractIssues.map(issue=>"CALCULATION_CONTRACT:"+issue),...referenceGate])]}};
   const workflow=evaluateWorkflow(data,assessment);
+  const disposalApplicability=evaluateDisposalApplicability(data);
   const plan=buildCaseExecutionPlan(data,assessment,workflow);
   const proposals=buildLegalProposals(data);
   const schedule=data.context.paymentSchedule ? expandPaymentSchedule(data.context.paymentSchedule.phases,data.context.paymentSchedule.expectedInstallments??undefined) : null;
@@ -126,10 +155,10 @@ export function executeCaseNodes(data:CaseData,options:{includeDocumentBindings?
     return {scenarioId:scenario.id,assetId:scenario.assetId,tool:"calculate_disposal" as const,status:"provisional" as const,calculation,reasons:["DISPOSAL_SCENARIO_REQUIRES_HUMAN_REVIEW"],factIds:scenario.factIds,recognition:scenario.recognition,courtApprovalInferred:false as const,disposalApprovalInferred:false as const};
   }):[{scenarioId:null,assetId:null,tool:"calculate_disposal" as const,status:"blocked" as const,calculation:calculateDisposal({saleAmount:normalizeMoney(undefined),securedPayoff:normalizeMoney(undefined),costs:normalizeMoney(undefined)}),reasons:["DISPOSAL_INTENT_MISSING","DISPOSAL_SALE_AMOUNT_MISSING_OR_INVALID","DISPOSAL_SECURED_PAYOFF_MISSING_OR_INVALID","DISPOSAL_COSTS_MISSING_OR_INVALID"],factIds:[],recognition:"unreviewed" as const,courtApprovalInferred:false as const,disposalApprovalInferred:false as const}]) : undefined;
   return {version:EXECUTION_CONTRACT_VERSION,caseId:data.context.id,caseRevision:data.context.revision,ruleReleaseId:CURRENT_RULESET.id,
-    computedBy:"deterministic-bigint" as const,assessment,workflow,plan,proposals,schedule,
+    computedBy:"deterministic-bigint" as const,assessment,workflow,plan,proposals,schedule,planLedger,planReconciliation,calculationContract,referenceApplication,disposalApplicability,
     ...(disposalResults?{disposalResults}:{}),
     transactionReview:scanTransactions(data),
-    ...(options.includeDocumentBindings?{formBindings:buildFormBindings(data,assessment.calculation),documentPayloads:buildCourtPackage(data,CURRENT_RULESET,assessment).documents}:{}),
+    ...(options.includeDocumentBindings?{formBindings:buildFormBindings(data,assessment.calculation,undefined,planLedger,planReconciliation),documentPayloads:buildCourtPackage(data,CURRENT_RULESET,assessment,undefined,planLedger,planReconciliation).documents}:{}),
     courtApprovalInferred:false as const,
   };
 }

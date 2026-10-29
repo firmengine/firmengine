@@ -5,7 +5,8 @@ export interface ReferenceSnapshot {
   revision: number;
   sha256: string;
   values: Readonly<Record<string, unknown>>;
-  metadata?: Readonly<Record<string, { sourceUrls: string[]; effectiveFrom: string | null; reason: string; reviewedAt: string; reviewedBy: string; recordSha256: string; basisType: string }>>;
+  metadata?: Readonly<Record<string, { sourceUrls: string[]; effectiveFrom: string | null; reason: string; reviewedAt: string; reviewedBy: string; recordSha256: string; basisType: string; applicationContract?: {dateBasis?:string;jurisdiction?:string|null;effectiveTo?:string|null;transition?:{status:"declared"|"unknown";from?:string;to?:string;conditions?:string[]}} }>>;
+  bundleReview?: { status:"verified"; basedOnSha256:string; artifactIds:readonly string[]; artifacts:readonly {id:string;revision:string;sha256:string;effectiveFrom?:string|null;effectiveTo?:string|null;jurisdiction?:string|null;dateBasis?:string|null;transition?:{status:"declared"|"unknown";from?:string;to?:string;conditions?:string[]}}[]; reason:string; reviewedAt:string; reviewedBy:string };
 }
 
 export function freezeReferenceValue<T>(value:T):T {
@@ -16,8 +17,8 @@ export function freezeReferenceValue<T>(value:T):T {
   return value;
 }
 
-export async function referenceSnapshotHash(seed:string,values:Readonly<Record<string,unknown>>,metadata:ReferenceSnapshot["metadata"]={}):Promise<string>{
-  const bytes=new TextEncoder().encode(JSON.stringify({seed,values,metadata}));
+export async function referenceSnapshotHash(seed:string,values:Readonly<Record<string,unknown>>,metadata:ReferenceSnapshot["metadata"]={},bundleReview?:ReferenceSnapshot["bundleReview"]):Promise<string>{
+  const bytes=new TextEncoder().encode(JSON.stringify({seed,values,metadata,...(bundleReview?{bundleReview}: {})}));
   return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(b=>b.toString(16).padStart(2,"0")).join("");
 }
 

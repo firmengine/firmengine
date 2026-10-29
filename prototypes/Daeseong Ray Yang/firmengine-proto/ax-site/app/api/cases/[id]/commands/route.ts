@@ -1,0 +1,5 @@
+import { executeCaseCommand,commandReceipt } from "../../../../../lib/case-command-store";
+import { requireSameOrigin,jsonBody,errorResponse } from "../../../../../lib/server-store";
+type Context={params:Promise<{id:string}>};
+export async function POST(request:Request,{params}:Context){try{requireSameOrigin(request);const {id}=await params,result=await executeCaseCommand(id,await jsonBody(request));return Response.json(result,{status:"pending" in result&&result.pending?202:200,headers:{"Cache-Control":"no-store"}});}catch(error){return errorResponse(error);}}
+export async function GET(request:Request,{params}:Context){try{const {id}=await params,commandId=new URL(request.url).searchParams.get("commandId")??"";if(!/^[a-zA-Z0-9_-]{8,128}$/.test(commandId))return Response.json({error:"명령 식별자가 필요합니다."},{status:400});const receipt=await commandReceipt(id,commandId);return Response.json({found:!!receipt,receipt},{headers:{"Cache-Control":"no-store"}});}catch(error){return errorResponse(error);}}

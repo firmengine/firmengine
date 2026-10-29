@@ -1,0 +1,4547 @@
+{
+  "schemaVersion": "firmengine-acceptance-coverage-draft/1",
+  "sourceBacklog": "FirmEngine_AX_Refactoring_Backlog(2).json",
+  "count": 82,
+  "overallStatus": "947_local_tests_and_typecheck_passed_selected_acceptance_mapped_external_acceptance_incomplete",
+  "scenarios": [
+    {
+      "id": "AT-01",
+      "area": "보존",
+      "given": "v42 계약과 정상 고정 입력",
+      "action": "adapter만 적용",
+      "expected": "524 field ID, 정상 산술·게이트가 유지된다.",
+      "packages": [
+        "RF-01",
+        "RF-02",
+        "RF-09"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/document-agent-registry.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-agent-field-contracts.json",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-applicability-contracts.json",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/execution-catalog.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/execution-catalog.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-registry.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-parameters.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/module-contracts.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-workflow-domain.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/domain.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/calculation-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "baseline_preservation_focused",
+          "testFile": "tests/refactoring-baseline-preservation.test.ts",
+          "testName": "RF-01 canonical source artifacts still match their frozen SHA-256 hashes"
+        },
+        {
+          "log": "baseline_preservation_focused",
+          "testFile": "tests/refactoring-baseline-preservation.test.ts",
+          "testName": "RF-01 all 48 families and 524 field IDs remain present in canonical contracts"
+        },
+        {
+          "log": "calculation_dataset_validation",
+          "testFile": "52-case calculation validation artifact",
+          "testName": "1397 existing scenario checks passed on 52 approved synthetic fixtures"
+        }
+      ],
+      "remaining": "Frozen source digests and canonical IDs/counts pass; 52-fixture expected checks pass. A strict v42-versus-v43 differential of every arithmetic output and gate is not recorded."
+    },
+    {
+      "id": "AT-02",
+      "area": "명령",
+      "given": "같은 commandId와 payload",
+      "action": "요청을 두 번 전송",
+      "expected": "한 번만 적용되고 같은 영수증을 반환한다.",
+      "packages": [
+        "RF-03"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/transactions.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/pipeline-commit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "command orchestration commits context, receipt and recompute job atomically and resolves same-ID retry"
+        }
+      ],
+      "remaining": "Does not cover browser reconnect UX."
+    },
+    {
+      "id": "AT-03",
+      "area": "명령",
+      "given": "같은 commandId, 다른 payload",
+      "action": "재전송",
+      "expected": "충돌을 반환하고 추가 변경하지 않는다.",
+      "packages": [
+        "RF-03"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/transactions.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/pipeline-commit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "command orchestration commits context, receipt and recompute job atomically and resolves same-ID retry"
+        }
+      ],
+      "remaining": "The test verifies same ID with a changed patch is rejected and the original receipt remains authoritative."
+    },
+    {
+      "id": "AT-04",
+      "area": "동시성",
+      "given": "두 직원이 같은 상태를 읽음",
+      "action": "순서대로 다른 수정 저장",
+      "expected": "두 번째는 409와 비교 가능한 변경정보를 받는다.",
+      "packages": [
+        "RF-03"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/transactions.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "command orchestration commits context, receipt and recompute job atomically and resolves same-ID retry"
+        }
+      ],
+      "remaining": "409 stale-state behavior is asserted; user-facing before/after comparison details and two independently loaded staff sessions are not asserted."
+    },
+    {
+      "id": "AT-05",
+      "area": "동시성",
+      "given": "revision은 같지만 storage 상태가 변경됨",
+      "action": "오래된 fingerprint로 저장",
+      "expected": "same-revision 변경도 탐지한다.",
+      "packages": [
+        "RF-03",
+        "RF-05"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/transactions.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "command orchestration commits context, receipt and recompute job atomically and resolves same-ID retry"
+        }
+      ],
+      "remaining": "Local SQLite test confirms same-revision state fingerprint mismatch rejection; deployed D1 remains unverified."
+    },
+    {
+      "id": "AT-06",
+      "area": "복구",
+      "given": "사건 저장 성공 후 평가 중단",
+      "action": "재시도",
+      "expected": "pending이 재개되고 중복 current 결과가 없다.",
+      "packages": [
+        "RF-03",
+        "RF-24"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-generation-metrics.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/transactions.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/pipeline-commit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/history-integrity-restore.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/case-command-storage.test.ts",
+          "testName": "post-commit acknowledgement loss resolves as success and retains receipt blobs after a newer write"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/server-integrity.test.ts",
+          "testName": "a failed deterministic refresh leaves durable pending state and a later read retries it"
+        }
+      ],
+      "remaining": "Local SQLite and in-memory R2 only."
+    },
+    {
+      "id": "AT-07",
+      "area": "복구",
+      "given": "R2 임시 쓰기 성공, D1 CAS 실패",
+      "action": "저장 완료 처리",
+      "expected": "성공 영수증이나 active 포인터가 남지 않는다.",
+      "packages": [
+        "RF-03"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/transactions.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/pipeline-commit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/history-integrity-restore.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [
+        "D1/Cloudflare integration and concurrency behavior require environment-backed execution"
+      ],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/server-integrity.test.ts",
+          "testName": "내보내기 CAS 경합은 우승 manifest와 파일을 보존하고 실패 출력의 staging만 지운다"
+        }
+      ],
+      "remaining": "Local transaction/storage harness; production D1/R2 transaction behavior remains external."
+    },
+    {
+      "id": "AT-08",
+      "area": "재투영",
+      "given": "급여 사실 210만원과 유일한 객체 연결",
+      "action": "245만원으로 정정",
+      "expected": "새 fact/typed 금액·예산·서식이 연결되고 관련 검토는 stale이다.",
+      "packages": [
+        "RF-04",
+        "RF-05"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/object-editor.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/extraction.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reprojection.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/reference-case-projection.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/reprojection.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/reprojection-route.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "legacy changed-value review becomes an idempotent fact correction and leaves it unreviewed"
+        }
+      ],
+      "remaining": "Fact correction and retry/reset are asserted; this command test does not prove typed wage reprojection plus every dependent budget/form invalidation end to end."
+    },
+    {
+      "id": "AT-09",
+      "area": "재투영",
+      "given": "서로 다른 고용주 후보 둘",
+      "action": "값 정정",
+      "expected": "자동 대상 선택 없이 remap task와 후속 차단이 생긴다.",
+      "packages": [
+        "RF-04"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/object-editor.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/extraction.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reprojection.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/reference-case-projection.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/reprojection.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/reprojection-route.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/projection-acceptance.test.ts",
+          "testName": "AT09 correction cannot choose between same-field facts attached to different employers"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/projection-acceptance.test.ts",
+          "testName": "AT09 projection blocks when the typed employer or payer changes across the correction"
+        }
+      ],
+      "remaining": "Employer/payer ambiguity and mapping blocker are directly tested; this is a local projection/reducer assertion, not browser E2E."
+    },
+    {
+      "id": "AT-10",
+      "area": "단위",
+      "given": "원문 245만원",
+      "action": "정규화",
+      "expected": "원문·단위 보존, 정규화 2450000원, 검증·법적인정 자동 승격 없음.",
+      "packages": [
+        "RF-04"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/object-editor.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/extraction.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reprojection.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/extraction.test.ts",
+          "testName": "원·천원·만원의 명시적 원문 단위만 해당 배율로 변환한다"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/source-quantity.test.ts",
+          "testName": "sourceUnit changes create a new fact version and invalidate the prior machine proof"
+        }
+      ],
+      "remaining": "Unit fixtures establish units and fact proof invalidation, not OCR fidelity."
+    },
+    {
+      "id": "AT-11",
+      "area": "삭제",
+      "given": "다른 필드도 지지하는 객체",
+      "action": "한 근거 철회",
+      "expected": "남은 근거로 재검증하거나 검토 필요; 무조건 삭제·유지하지 않는다.",
+      "packages": [
+        "RF-04",
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/object-editor.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/extraction.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reprojection.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/projection-acceptance.test.ts",
+          "testName": "AT11 fact retraction preserves the amount and surviving evidence, but removes acceptance and creates a remap task"
+        }
+      ],
+      "remaining": "Correction/dispute with alternate same-field support and no surviving support are tested; broader multi-object UI behavior remains outside this assertion."
+    },
+    {
+      "id": "AT-12",
+      "area": "상담",
+      "given": "present와 unknown claim",
+      "action": "서류 목록 생성",
+      "expected": "qualification_needed 요구가 남고 질문이 생성된다.",
+      "packages": [
+        "RF-06"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/intake-reference.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-prompt.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-classifier-response.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-workflow-domain.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-engine.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-store.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-source-spans.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-engine.test.ts",
+          "testName": "an explicit unknown cannot become a satisfied requirement"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-store.test.ts",
+          "testName": "unreferenced declared subject is retained in run receipt without creating claims or requirements"
+        }
+      ],
+      "remaining": "The tested unknown/unreferenced branches are safe; the exact mixed present-plus-unknown document rule and requested question output are not covered together."
+    },
+    {
+      "id": "AT-13",
+      "area": "상담",
+      "given": "직원이 기간을 바꾼 목록",
+      "action": "상담 재분류",
+      "expected": "수정 보존 또는 명시적 충돌. 조용한 덮어쓰기 없음.",
+      "packages": [
+        "RF-06"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/intake-reference.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-prompt.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-classifier-response.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-workflow-domain.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-engine.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-store.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-source-spans.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "reclassification reuses exact subject lineage and does not duplicate unchanged requirements"
+        }
+      ],
+      "remaining": "Lineage reuse and unchanged requirements are tested; preservation/conflict of an employee-edited period during reclassification is not."
+    },
+    {
+      "id": "AT-14",
+      "area": "상담",
+      "given": "span은 모두 reviewed이나 중요 피처 claim 없음",
+      "action": "완결성 확인",
+      "expected": "해당 피처는 unknown·추가질문이며 자동 complete가 아니다.",
+      "packages": [
+        "RF-06"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/intake-reference.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-prompt.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-classifier-response.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-workflow-domain.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-engine.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-store.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/intake-source-spans.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-store.test.ts",
+          "testName": "unreferenced declared subject is retained in run receipt without creating claims or requirements"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-source-spans.test.ts",
+          "testName": "long active notes are fully covered without any span exceeding the bounded unit size"
+        }
+      ],
+      "remaining": "No test combines all spans reviewed with a missing feature claim and verifies unknown plus follow-up question."
+    },
+    {
+      "id": "AT-15",
+      "area": "수집",
+      "given": "12개월 요구, 11개월 제출",
+      "action": "충족 계산",
+      "expected": "부분 충족과 부족 기간이 표시된다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "11 of 12 months is partial, hash changes stale, and completion never implies legal/source acceptance"
+        }
+      ],
+      "remaining": "Pure workflow-domain fixture; not a browser or route workflow."
+    },
+    {
+      "id": "AT-16",
+      "area": "수집",
+      "given": "동일 파일이 두 요구의 근거",
+      "action": "다중 연결",
+      "expected": "facts를 복제하지 않고 링크를 공유한다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "intake_task_migration_focused",
+          "testFile": "tests/case-workflow-view.test.ts",
+          "testName": "one current source fact is shared across two requirement links for the same document"
+        }
+      ],
+      "remaining": "Projection helper proves shared source fact linking without duplication. Full browser upload-to-independent-confirmation flow is not exercised."
+    },
+    {
+      "id": "AT-17",
+      "area": "수집",
+      "given": "주서류와 대체서류 OR 정책",
+      "action": "대체 제출",
+      "expected": "대체 정책이 허용한 범위만 충족한다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-engine.test.ts",
+          "testName": "OR uses a satisfied branch without requiring all alternatives or unmentioned branches"
+        }
+      ],
+      "remaining": "Pure classifier fixture."
+    },
+    {
+      "id": "AT-18",
+      "area": "수집",
+      "given": "AND로 필요한 두 자료 중 한 개",
+      "action": "제출 완료 표시",
+      "expected": "전체 충족으로 표시되지 않는다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "crosswalk defaults to mapping_required and only approved required groups or explicit no-fields policy map"
+        }
+      ],
+      "remaining": "Field-group mapping policy is tested; the exact one-of-two AND document submission transition is not isolated."
+    },
+    {
+      "id": "AT-19",
+      "area": "수집",
+      "given": "충족 근거인 문서",
+      "action": "철회 또는 교체",
+      "expected": "충족·typed·계산·문서 현재성이 재평가된다.",
+      "packages": [
+        "RF-07",
+        "RF-04"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/object-editor.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/extraction.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reprojection.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/case-workflow-view.test.ts",
+          "testName": "stale document hash or wrong page role cannot count as accepted evidence"
+        }
+      ],
+      "remaining": "Staleness is tested in the read projection; full retraction through typed calculation and document regeneration is not."
+    },
+    {
+      "id": "AT-20",
+      "area": "업무",
+      "given": "검토 pending 수와 목록",
+      "action": "필터 클릭",
+      "expected": "수와 목록의 대상이 같다.",
+      "packages": [
+        "RF-08"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "components/workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-response.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/task-dashboard-acceptance.test.ts",
+          "testName": "AT-20 task filters use the same owner/status relation for visible rows and total"
+        }
+      ],
+      "remaining": "These assertions cover query/filter consistency, stable task merge, or reducer invariants respectively; the browser dashboard flow and production database are not exercised."
+    },
+    {
+      "id": "AT-21",
+      "area": "업무",
+      "given": "같은 blocker가 재평가로 반복",
+      "action": "task 생성",
+      "expected": "dedupeKey로 같은 task를 갱신한다.",
+      "packages": [
+        "RF-08"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "components/workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-response.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/task-dashboard-acceptance.test.ts",
+          "testName": "AT-21 repeated blocker refreshes the existing task by dedupe key"
+        }
+      ],
+      "remaining": "These assertions cover query/filter consistency, stable task merge, or reducer invariants respectively; the browser dashboard flow and production database are not exercised."
+    },
+    {
+      "id": "AT-22",
+      "area": "업무",
+      "given": "담당자만 변경",
+      "action": "저장",
+      "expected": "계산 입력과 법적 승인 상태는 바뀌지 않는다.",
+      "packages": [
+        "RF-08",
+        "RF-05"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "components/workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-response.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/task-dashboard-acceptance.test.ts",
+          "testName": "AT-22 assignee-only task update preserves calculation inputs and legal approval records"
+        }
+      ],
+      "remaining": "These assertions cover query/filter consistency, stable task merge, or reducer invariants respectively; the browser dashboard flow and production database are not exercised."
+    },
+    {
+      "id": "AT-23",
+      "area": "계산",
+      "given": "순소득300만 생계비200만 보수5만 우선15만 재단0",
+      "action": "월 예산 계산",
+      "expected": "가용100만·일반80만으로 분리된다.",
+      "packages": [
+        "RF-09",
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/calculation-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/calculator-tools.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/proposed-schedule.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-23 · 가용 1,000,000원과 일반채권 예산 800,000원을 분리한다"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-24",
+      "area": "계산",
+      "given": "우선지급액 unknown",
+      "action": "계산",
+      "expected": "0으로 치환하지 않고 관련 예산이 미확정이다.",
+      "packages": [
+        "RF-09"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/calculation-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/calculator-tools.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/proposed-schedule.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-24 · 우선 지급액 unknown은 0이 아니라 미확정 예산으로 유지한다"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-25",
+      "area": "계산",
+      "given": "비해당 처분 시나리오",
+      "action": "계산 계획",
+      "expected": "불필요한 처분 계산을 하지 않고 비해당 사유를 표시한다.",
+      "packages": [
+        "RF-09"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/calculation-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/calculator-tools.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/proposed-schedule.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-25 · absent or stale no-disposal declarations remain unknown; a current reviewed declaration marks WF-40 not-applicable without calculating disposal"
+        }
+      ],
+      "remaining": "Unit-level scenario, not a filed case."
+    },
+    {
+      "id": "AT-26",
+      "area": "계산",
+      "given": "같은 경비가 사업순소득과 생계비에 포함 후보",
+      "action": "계산 검토",
+      "expected": "중복 공제 확인 작업이 생긴다.",
+      "packages": [
+        "RF-09",
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/calculation-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/calculator-tools.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/proposed-schedule.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-26 · 사업순소득과 생계비의 같은 경비 후보는 중복 공제 검토를 만든다"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-27",
+      "area": "일정",
+      "given": "처음12회 일반80만 이후24회95만",
+      "action": "기간 합계",
+      "expected": "일반채권 총액3240만원과 월별 합계가 일치한다.",
+      "packages": [
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-27 · 처음 12회 800,000원과 이후 24회 950,000원의 총액은 32,400,000원이다"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-28",
+      "area": "일정",
+      "given": "테스트 정책 FULL-BY-12가 채권 P1에 적용됨. 원금180만원·이자0·12회말 전액 필요, 제외/분쟁/기납부 없음",
+      "action": "1~12회 P1 지급0원, coverage 검사",
+      "expected": "uncoveredWon=1800000, deadline=12, status=blocked. 행 존재로 통과하지 않는다. 이 정책 fixture는 모든 조세채권의 법적 처리 단정이 아니다.",
+      "packages": [
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-28 · FULL-BY-12 with zero installments reports 1,800,000 uncovered, deadline 12 and blocked"
+        }
+      ],
+      "remaining": "Test policy fixture expressly makes no general legal claim about tax claims."
+    },
+    {
+      "id": "AT-29",
+      "area": "일정",
+      "given": "AT-28과 같은 전액·기한 정책, 1~12회 P1 월125000원",
+      "action": "coverage 검사",
+      "expected": "scheduled=1500000, uncovered=300000, deadline=12, status=blocked. 정책 적용성이 unknown이면 coverage도 unknown과 법률검토 task여야 한다.",
+      "packages": [
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-29 · FULL-BY-12 monthly 125,000 reports 1,500,000 scheduled and 300,000 uncovered; unknown applicability adds legal review"
+        }
+      ],
+      "remaining": "Test policy fixture expressly makes no general legal claim about tax claims."
+    },
+    {
+      "id": "AT-30",
+      "area": "일정",
+      "given": "실제 예산80만, 수동 phase100만",
+      "action": "일정 저장",
+      "expected": "추가 근거 재원 없는 초과는 차단된다.",
+      "packages": [
+        "RF-10",
+        "RF-11"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/context-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/schedule-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-30 · 800,000 actual monthly ordinary budget blocks a 1,000,000 manual phase without another funding source"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-31",
+      "area": "일정",
+      "given": "한 채권의 잔액이 중간에0",
+      "action": "다음 회차",
+      "expected": "과다 지급이 없고 잔여 예산 처리 근거가 필요하다.",
+      "packages": [
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-31 · a debt paid off at installment 1 is not overpaid at installment 2 and remaining budget is explicit"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-32",
+      "area": "일정",
+      "given": "예산100원; ID a,b,c의 원금잔액 각100원; 이자0; 단일배분; 잔여순서 a<b<c",
+      "action": "입력순서를 c,a,b 등으로 바꾸어 allocateProRata 반복",
+      "expected": "ID 기준 a=34,b=33,c=33, 합계100. 입력배열 순서와 무관하며 이는 전체 월별계획이 아닌 단일 배분 함수의 산술 fixture다.",
+      "packages": [
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-32 · allocateProRata is ID-stable under c,a,b input order: a=34, b=33, c=33"
+        }
+      ],
+      "remaining": "Single allocation function fixture, not a complete monthly plan."
+    },
+    {
+      "id": "AT-33",
+      "area": "일정",
+      "given": "phase 순번 누락·중복 또는 날짜 비연속",
+      "action": "저장",
+      "expected": "관련 gap/overlap/date 오류가 차단된다.",
+      "packages": [
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-33 · phase gap, overlap and non-contiguous dates each produce an explicit schedule blocker"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-34",
+      "area": "일정",
+      "given": "v42의 원칙36·최대60개월 규칙이 적용되는 입력",
+      "action": "35/36/37/59/60/61개월 비교",
+      "expected": "plan_term만 보면35·36 pass,37·59·60은 예외검토 없으면 review_required,61 fail. 서울35개월은 별도 단축후보·fingerprint 검토를 요구하며 전체 canFinalize와 구분한다.",
+      "packages": [
+        "RF-09",
+        "RF-10"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/debt-resolution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-34 · plan_term passes at 35/36, requires review at 37/59/60, fails at 61; Seoul shortened-term remains separate"
+        }
+      ],
+      "remaining": "Unit rule fixture; human/legal application remains external."
+    },
+    {
+      "id": "AT-35",
+      "area": "현재가치",
+      "given": "명목합계 충족, PV 근거 미확정",
+      "action": "최종화 시도",
+      "expected": "수치비교와 별개인 기존 검토 gate가 차단한다.",
+      "packages": [
+        "RF-05",
+        "RF-11"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/context-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/schedule-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-35 · nominal total does not substitute for missing present-value basis; finalization remains blocked"
+        }
+      ],
+      "remaining": "Deterministic synthetic calculation fixture."
+    },
+    {
+      "id": "AT-36",
+      "area": "서식",
+      "given": "채권자 주소·원인 근거 존재",
+      "action": "D5106 투영",
+      "expected": "canonical alias가 올바른 행으로 전달된다.",
+      "packages": [
+        "RF-12"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-template-data.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/exports.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "contract registry covers every current DOCX token and distinguishes app requirements from portal parity"
+        }
+      ],
+      "remaining": "Template token inventory is tested; the D5106 creditor address/cause field crosswalk is not isolated here."
+    },
+    {
+      "id": "AT-37",
+      "area": "서식",
+      "given": "월별 채권자 일정 확정",
+      "action": "D5110 투영",
+      "expected": "월값·구간·총액이 같은 ledger와 일치한다.",
+      "packages": [
+        "RF-12"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-template-data.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/exports.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-snapshot-isolation.test.ts",
+          "testName": "physical form arithmetic keeps trustee fees separate and rejects inconsistent persisted totals"
+        }
+      ],
+      "remaining": "Fee arithmetic consistency is asserted; full D5110 month-by-month reconciliation is not."
+    },
+    {
+      "id": "AT-38",
+      "area": "서식",
+      "given": "채권자 순서만 변경",
+      "action": "문서 생성",
+      "expected": "금액과 근거 귀속은 stable ID로 유지된다.",
+      "packages": [
+        "RF-12"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-template-data.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/exports.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "stable debt IDs preserve prose across reordered rows and never attach it by row number"
+        }
+      ],
+      "remaining": "Pure document edit merge fixture."
+    },
+    {
+      "id": "AT-39",
+      "area": "서식",
+      "given": "필수 token 값 누락",
+      "action": "최종 작성",
+      "expected": "preflight가 차단하고 필드·필요자료를 안내한다.",
+      "packages": [
+        "RF-14"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "missing required values and unknown repeat fields block final preflight"
+        }
+      ],
+      "remaining": "Preflight contract unit test."
+    },
+    {
+      "id": "AT-40",
+      "area": "서식",
+      "given": "선택 token 공백",
+      "action": "초안·최종 검토",
+      "expected": "선택 경고와 필수 차단을 구분한다.",
+      "packages": [
+        "RF-14"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "preflight accepts zero, warns on unknown applicability, and blocks only application required fields"
+        }
+      ],
+      "remaining": "Preflight contract unit test."
+    },
+    {
+      "id": "AT-41",
+      "area": "서식",
+      "given": "새 template의 미등록 token",
+      "action": "build 또는 preflight",
+      "expected": "알 수 없는 token이 묵살되지 않는다.",
+      "packages": [
+        "RF-14"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "missing required values and unknown repeat fields block final preflight"
+        }
+      ],
+      "remaining": "Unknown tokens and row fields are rejected by preflight; no separate build-time registry evolution fixture."
+    },
+    {
+      "id": "AT-42",
+      "area": "문서 CRUD",
+      "given": "B와 N은 같고 U만 문장 수정",
+      "action": "재생성",
+      "expected": "유효한 문장 편집을 유지하고 새 artifact를 만든다.",
+      "packages": [
+        "RF-15"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/export/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-writer.test.ts",
+          "testName": "prose overlays merge B/U/N and update form bindings, payload cells, and writer digest"
+        }
+      ],
+      "remaining": "Local writer preparation fixture."
+    },
+    {
+      "id": "AT-43",
+      "area": "문서 CRUD",
+      "given": "U와 N이 B에서 서로 다르게 변경",
+      "action": "재생성",
+      "expected": "삼방 충돌을 보여주고 자동 overwrite하지 않는다.",
+      "packages": [
+        "RF-15"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/export/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-writer.test.ts",
+          "testName": "writer rejects conflicting, orphaned, and amount-like document overlays"
+        }
+      ],
+      "remaining": "Local writer preparation fixture."
+    },
+    {
+      "id": "AT-44",
+      "area": "문서 CRUD",
+      "given": "문서 금액을 직접 수정",
+      "action": "저장",
+      "expected": "원천/판단 입력 경로로 환류하여 재계산한다.",
+      "packages": [
+        "RF-15",
+        "RF-11"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/export/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/context-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/schedule-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "three-way edits preserve prose, conflict on concurrent edits, orphan deleted rows and redirect amount edits"
+        }
+      ],
+      "remaining": "Amount edits are redirected to source handling; a complete source correction, recalculation and regenerated document cycle is not asserted here."
+    },
+    {
+      "id": "AT-45",
+      "area": "문서 CRUD",
+      "given": "편집이 붙은 채권자가 삭제됨",
+      "action": "재생성",
+      "expected": "orphan edit를 표시하고 다른 행에 붙이지 않는다.",
+      "packages": [
+        "RF-15"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/export/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-contracts.test.ts",
+          "testName": "three-way edits preserve prose, conflict on concurrent edits, orphan deleted rows and redirect amount edits"
+        }
+      ],
+      "remaining": "Pure document edit merge fixture."
+    },
+    {
+      "id": "AT-46",
+      "area": "검토",
+      "given": "완료된 문서 검토가 있음",
+      "action": "문서 한 글자 수정",
+      "expected": "새 manifest에 과거 검토가 current가 아니다.",
+      "packages": [
+        "RF-15",
+        "RF-05"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/cases/[id]/export/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "workflow_integration_focused",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "document edit command loads field bases from the current writer manifest and invalidates prior export review"
+        }
+      ],
+      "remaining": "A prose edit invalidates old generated-manifest review in local command-service integration; deployed storage semantics remain external."
+    },
+    {
+      "id": "AT-47",
+      "area": "법률 검토",
+      "given": "같은 check의 상충하는 현재 run",
+      "action": "화면 표시",
+      "expected": "중복 단순 합산 대신 conflict와 근거를 보여준다.",
+      "packages": [
+        "RF-13"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/pipeline.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/lawgraph.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-review-packet.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/legal-proposals.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-exceptions.json",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "document_contracts_focused",
+          "testFile": "tests/legal-review-identity.test.ts",
+          "testName": "same-subject current runs expose outcome conflict and evidence without letting an acceptance clear it"
+        }
+      ],
+      "remaining": "Pure legal-review projection assertion; full browser rendering/selection is not tested."
+    },
+    {
+      "id": "AT-48",
+      "area": "법률 검토",
+      "given": "coverage 일부 또는 truncated",
+      "action": "완료 여부 표시",
+      "expected": "검토 완결로 표시되지 않는다.",
+      "packages": [
+        "RF-13",
+        "RF-08"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/pipeline.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/lawgraph.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-review-packet.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/legal-proposals.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-exceptions.json",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-response.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/legal-review-packet.test.ts",
+          "testName": "truncated fact and legal rule text cannot support pass, and boolean negatives stay boolean"
+        }
+      ],
+      "remaining": "The tested packet coverage cannot support pass from truncated evidence; complete staff UI display is not covered."
+    },
+    {
+      "id": "AT-49",
+      "area": "기준",
+      "given": "미래 시행 기준 승인",
+      "action": "현재일 계산",
+      "expected": "시행 전 기준을 자동 적용하지 않는다.",
+      "packages": [
+        "RF-16",
+        "RF-17"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/reference-context.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-runtime.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-case-projection.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/reference-data/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-registry.test.ts",
+          "testName": "activation rejects impossible term ordering, future effective dates and stale review bases before writing"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-50",
+      "area": "기준",
+      "given": "같은 관할·날짜에 겹친 기준",
+      "action": "resolver",
+      "expected": "임의 최신 선택 없이 검토 필요로 반환한다.",
+      "packages": [
+        "RF-16"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/reference-context.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-runtime.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-case-projection.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-application-consumer.test.ts",
+          "testName": "overlapping bundles stay unresolved and only explicit applicability adds a finalization gate"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-51",
+      "area": "기준",
+      "given": "과거 제출 문서와 당시 release",
+      "action": "새 기준 적용",
+      "expected": "과거 파일 보존, 진행 결과만 새 비교 대상으로 생성된다.",
+      "packages": [
+        "RF-16",
+        "RF-19"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/reference-context.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-runtime.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-case-projection.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-release-restore.test.ts",
+          "testName": "restoring an older reference release creates a new row, preserves case artifacts, and leaves case application gated for fresh bundle review"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-52",
+      "area": "기준",
+      "given": "승인 전 또는 base 변경된 제안",
+      "action": "promotion",
+      "expected": "변경을 거절하고 재검토를 요청한다.",
+      "packages": [
+        "RF-17"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/reference-data/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-registry.test.ts",
+          "testName": "stale proposal clients cannot insert a change against an unexpected active release"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-53",
+      "area": "권한",
+      "given": "서비스 actor 또는 무권한 역할",
+      "action": "사람 승인",
+      "expected": "403 등 명시적 거절이 발생한다.",
+      "packages": [
+        "RF-05",
+        "RF-17"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/reference-data/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/server-integrity.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-route-auth.test.ts",
+          "testName": "an actor without reference_approve is rejected before release activation"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-54",
+      "area": "권한",
+      "given": "기본 단일 지정 직원 승인 정책",
+      "action": "기준 검토",
+      "expected": "실제 권한 내에서 가능하며 존재하지 않는 두 번째 승인자를 강요하지 않는다.",
+      "packages": [
+        "RF-17"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/reference-data/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/server-integrity.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-registry.test.ts",
+          "testName": "activation binds authority, effective date, reviewer and value into the new immutable release identity"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-55",
+      "area": "권한",
+      "given": "고위험4-eyes 정책 활성",
+      "action": "제안자 자가 승인",
+      "expected": "해당 범위에서만 distinctActor가 강제된다.",
+      "packages": [
+        "RF-17"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/reference-data/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [
+        {
+          "path": "tests/server-integrity.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        },
+        {
+          "path": "tests/crud-audit.test.ts",
+          "line": 1,
+          "status": "file_in_full_suite_final_scenario_assertion_mapped_separately"
+        }
+      ],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-registry.test.ts",
+          "testName": "proposal fingerprints bind approval to exact proposal contents and optional four-eyes policy"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-56",
+      "area": "모니터",
+      "given": "앱 configured true, native paused",
+      "action": "상태 표시",
+      "expected": "설정됨과 중단됨을 함께 정확히 보여준다.",
+      "packages": [
+        "RF-18"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/legal-monitor-core.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-provider.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-pure-modules.test.ts",
+          "testName": "monitor separates paused execution, first observation, failures, no change and attachment-only changes"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-57",
+      "area": "모니터",
+      "given": "정상 baseline 후 수집 실패",
+      "action": "다음 관측",
+      "expected": "정상 baseline 유지, 실패·미확인 상태와 작업 생성.",
+      "packages": [
+        "RF-18"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/legal-monitor-core.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-provider.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/legal-monitor-store.test.ts",
+          "testName": "failed and deferred sources retain the last successful observation"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-58",
+      "area": "모니터",
+      "given": "본문 동일, 첨부 서식만 변경",
+      "action": "관측",
+      "expected": "해당 form contract 검토 후보가 생성된다.",
+      "packages": [
+        "RF-18"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/legal-monitor-core.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-provider.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/legal-monitor-store.test.ts",
+          "testName": "attachment-only changes create distinct history snapshots even when the parent hash is unchanged"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-59",
+      "area": "영향 분석",
+      "given": "변경 parameter를 사용하지 않는 사건",
+      "action": "promotion",
+      "expected": "자동 재작성 대상에 포함하지 않으며 unknown coverage는 따로 표시한다.",
+      "packages": [
+        "RF-19"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reactive-evaluation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-route-auth.test.ts",
+          "testName": "impact preview is read-only, limited to requested owner-authorized cases, and exposes unknown dependencies without mutating files"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-60",
+      "area": "이상탐지",
+      "given": "50만원 미만 반복 출금 묶음",
+      "action": "후보 검사",
+      "expected": "정책 기간·합계·정상 설명 후보와 함께 소명 후보가 나온다.",
+      "packages": [
+        "RF-20"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/transaction-review.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/workflow-rules.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-review-packet.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-pure-modules.test.ts",
+          "testName": "transaction candidates retain counterexamples and mark incomplete periods unknown"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-61",
+      "area": "이상탐지",
+      "given": "자기계좌 이체·환불·생활비 반례",
+      "action": "후보 검사",
+      "expected": "법적 위반 확정 없이 증거와 불확실성을 구분한다.",
+      "packages": [
+        "RF-20"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/transaction-review.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/workflow-rules.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-review-packet.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/reference-pure-modules.test.ts",
+          "testName": "transaction candidates retain counterexamples and mark incomplete periods unknown"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-62",
+      "area": "이상탐지",
+      "given": "대출 유입과 타 재원 혼재",
+      "action": "사용처 연결",
+      "expected": "확정 귀속 대신 후보 경로와 미확정 범위를 표시한다.",
+      "packages": [
+        "RF-20"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/transaction-review.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/workflow-rules.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-review-packet.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/transactions.test.ts",
+          "testName": "loan inflow mixed with other funds stays an unallocated source and does not infer the later withdrawal's purpose"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-63",
+      "area": "전환",
+      "given": "같은 migration을 재실행",
+      "action": "적용",
+      "expected": "fact·요구·작업 중복 없이 동일 결과 영수증을 반환한다.",
+      "packages": [
+        "RF-22"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/structured-case-import.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-case-import.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "case_schema_migration_focused",
+          "testFile": "tests/case-schema-migration.test.ts",
+          "testName": "explicit migration is idempotent, keeps one receipt, and creates no duplicate evidence or workflow rows"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/workflow-integration.test.ts",
+          "testName": "schema migration uses durable command CAS and one immutable receipt across retries"
+        }
+      ],
+      "remaining": "Pure migration plans/receipts and command CAS idempotent retry are tested locally; deployed D1 transaction behavior remains unverified."
+    },
+    {
+      "id": "AT-64",
+      "area": "최종 gate",
+      "given": "assumed_extracted_synthetic 사건",
+      "action": "최종 작성",
+      "expected": "기존 synthetic final 차단이 유지된다.",
+      "packages": [
+        "RF-14",
+        "RF-23"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/evaluation-inventory.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-writer.test.ts",
+          "testName": "writer rejects stale evaluation, synthetic final, and incomplete review gates"
+        }
+      ],
+      "remaining": "Synthetic final generation gate only; not a real filing."
+    },
+    {
+      "id": "AT-65",
+      "area": "출력",
+      "given": "긴 이름·많은 채권자·조건부 별지",
+      "action": "Office 렌더",
+      "expected": "행 누락·깨진 글자·합계 잘림 없이 사람이 읽고 입력할 수 있다.",
+      "packages": [
+        "RF-21",
+        "RF-23"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/form-template-data.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/evaluation-inventory.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-writer.test.ts",
+          "testName": "prepared prose overlay reaches a real locally rendered DOCX artifact"
+        }
+      ],
+      "remaining": "Local DOCX generation covered; lengthy multi-creditor visual review, official form parity and actual portal entry remain unverified."
+    },
+    {
+      "id": "AT-66",
+      "area": "포털",
+      "given": "검증한 e-form 분기와 동일 payload",
+      "action": "허용 환경 대조",
+      "expected": "항목·enum·단위·계산·반복행·첨부의 차이가 기록된다.",
+      "packages": [
+        "RF-21"
+      ],
+      "status": "blocked_external",
+      "sourceHooks": [
+        {
+          "path": "lib/form-template-data.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/office-writer.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [
+        "official e-form parity must be verified against current court forms"
+      ],
+      "coverageAssessment": "Official e-form parity requires current official court forms and portal comparison; no external parity run was performed.",
+      "evidence": [],
+      "remaining": "Official e-form parity requires current official court forms and portal comparison; no external parity run was performed."
+    },
+    {
+      "id": "AT-67",
+      "area": "복원",
+      "given": "신규필드가 저장된 사건",
+      "action": "구버전 호환 복원",
+      "expected": "데이터 소실 없이 읽거나 쓰기를 보수 중단한다.",
+      "packages": [
+        "RF-22",
+        "RF-24"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/structured-case-import.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-case-import.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-generation-metrics.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-monitor-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "case_schema_migration_focused",
+          "testFile": "tests/case-schema-migration.test.ts",
+          "testName": "defaults migration preserves future workflow fields and old defaults remain readable"
+        }
+      ],
+      "remaining": "The pure dry-run/apply path is tested; storage/API atomicity and cross-case rollout are not exercised."
+    },
+    {
+      "id": "AT-68",
+      "area": "확장",
+      "given": "문서 생성만 완료",
+      "action": "사건 상태",
+      "expected": "submitted·received·인가로 자동 승격되지 않는다.",
+      "packages": [
+        "RF-26"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/document-writer.test.ts",
+          "testName": "final review generation does not certify e-form parity or filing readiness"
+        }
+      ],
+      "remaining": "Generation receipt is checked in a local writer fixture."
+    },
+    {
+      "id": "AT-69",
+      "area": "상담 현재성",
+      "given": "현재 v2 IntakeInputFingerprint와 완성된 run",
+      "action": "요구 목록 채택 또는 담당자 변경",
+      "expected": "상담 입력 fingerprint가 같으면 run은 stale이 아니고 bridge 작업만 갱신된다.",
+      "packages": [
+        "RF-06"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-store.test.ts",
+          "testName": "v2 semantic freshness ignores workflow adoption but detects court and as-of changes"
+        }
+      ],
+      "remaining": "Freshness after workflow adoption is asserted; bridge task-only updates are not checked."
+    },
+    {
+      "id": "AT-70",
+      "area": "상담 현재성",
+      "given": "현재 v2 run",
+      "action": "상담 원문·court/asOf·catalog·prompt 중 하나 변경",
+      "expected": "상담 run stale, 기존 결과는 이력. 새 결과로 요구 override를 덮어쓰지 않는다.",
+      "packages": [
+        "RF-06"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-store.test.ts",
+          "testName": "v2 semantic freshness ignores workflow adoption but detects court and as-of changes"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-store.test.ts",
+          "testName": "historical source labels stay bound to the run's immutable catalogue"
+        }
+      ],
+      "remaining": "Court/date/catalog semantic staleness and immutable run history are tested; prompt-change behavior and preservation of every manual override are not covered together."
+    },
+    {
+      "id": "AT-71",
+      "area": "서류 crosswalk",
+      "given": "상담 documentType에 workflowDocumentTypes가 없거나 registry family 미존재",
+      "action": "요구 채택·제출",
+      "expected": "mapping_required이며 모든 필드를 임의 필수로 만들거나 fulfilled로 처리하지 않는다.",
+      "packages": [
+        "RF-02",
+        "RF-06",
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/execution-catalog.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-registry.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-parameters.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "crosswalk defaults to mapping_required and only approved required groups or explicit no-fields policy map"
+        }
+      ],
+      "remaining": "Pure crosswalk fixture."
+    },
+    {
+      "id": "AT-72",
+      "area": "대상 연결",
+      "given": "같은 사람의 계좌2개 또는 고용주2개",
+      "action": "동일 종류 요구 생성",
+      "expected": "scopeKey가 달라 별도 요구로 유지되고 이름만으로 병합되지 않는다.",
+      "packages": [
+        "RF-06"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "origin key merges compatible automatic requirements but preserves scope distinctions"
+        }
+      ],
+      "remaining": "Pure requirement origin/scope fixture."
+    },
+    {
+      "id": "AT-73",
+      "area": "권한 bootstrap",
+      "given": "검증된 Site owner와 일반 human",
+      "action": "역할 초기화·수정",
+      "expected": "신뢰한 owner만 역할을 지정하고 이유·정책 판본·audit를 기록한다. 일반 human은 자기 role을 부여할 수 없다.",
+      "packages": [
+        "RF-17"
+      ],
+      "status": "pass_local_integration",
+      "sourceHooks": [
+        {
+          "path": "components/reference-workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "app/api/reference-data/route.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/app-roles.test.ts",
+          "testName": "verified owner bootstrap and audited grants do not let ordinary staff self-assign roles"
+        }
+      ],
+      "remaining": "Exact named assertion passes in the final local suite. This does not establish deployed provider/database behavior or a full browser workflow."
+    },
+    {
+      "id": "AT-74",
+      "area": "데이터 범위",
+      "given": "합성52 fixture receipt와 원본 input hash",
+      "action": "복제 검증 시작",
+      "expected": "whitelist와 hash 일치만 실행, protected/private gold 제외, OCR·paidLegal flags 기본false.",
+      "packages": [
+        "RF-01",
+        "RF-22"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/document-agent-registry.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-agent-field-contracts.json",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-applicability-contracts.json",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/execution-catalog.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "db/schema.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/structured-case-import.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/reference-case-import.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [
+        "real OCR/source-image quality and paid evaluation are external; no OCR run claimed"
+      ],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-store.test.ts",
+          "testName": "protected original and typed evaluation fixtures reject consultation writes and paid calls"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/case-commands.test.ts",
+          "testName": "synthetic evidence cannot receive verified facts, accepted facts, object acceptance, or legal disposition"
+        }
+      ],
+      "remaining": "Synthetic clone/source immutability and whitelisted IDs are tested; restored dataset and protected held-out gold are intentionally not exercised."
+    },
+    {
+      "id": "AT-75",
+      "area": "단축 후보",
+      "given": "pure unit fixture: court seoul, date2026-10-27, categoryRoutes 중 statutory_single_parent=yes와 근거 ID, 나머지는 no, 35개월",
+      "action": "candidate 계산 후 별도 shortenedTermReview 유무 비교",
+      "expected": "candidate_for_human_review. plan_term은 pass. matching review 전 seoul_424_shortened_term=review_required, 정확한 months35/ruleId/reason/current basisFingerprint를 갖춘 review 후 해당 check=pass. 다른 final gate는 독립적이다. DB에 인정값을 주입하지 않는 unit fixture다.",
+      "packages": [
+        "RF-05",
+        "RF-09",
+        "RF-11"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-execution.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/calculator-tools.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-agent.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/context-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/schedule-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [
+        "D1/Cloudflare integration and concurrency behavior require environment-backed execution"
+      ],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-75 · Seoul 35-month unit candidate is distinct from plan_term and requires a matching current shortenedTermReview"
+        }
+      ],
+      "remaining": "Pure synthetic rule fixture; no database recognition state is written."
+    },
+    {
+      "id": "AT-76",
+      "area": "단축 검토",
+      "given": "AT-75의 현재 fingerprint 검토가 있는 unit fixture",
+      "action": "후보 근거 fact를 변경하고 기존 fingerprint 유지",
+      "expected": "seoul_424_shortened_term이 pass가 아니고 canFinalize=false. 단순35개월 plan_term pass와 구별한다. 실제 합성 DB사건의 인정값은 변경하지 않는다.",
+      "packages": [
+        "RF-05",
+        "RF-11"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/domain.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/export-provenance.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/context-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/schedule-editor.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [
+        "D1/Cloudflare integration and concurrency behavior require environment-backed execution"
+      ],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/refactor-calculation-acceptance.test.ts",
+          "testName": "AT-76 · changing the shortened-term candidate fact invalidates the old review fingerprint while plan_term remains pass"
+        }
+      ],
+      "remaining": "Pure synthetic rule fixture; no database recognition state is written."
+    },
+    {
+      "id": "AT-77",
+      "area": "문서 연결",
+      "given": "candidate 상태 SubjectLink",
+      "action": "document.match operation=accept",
+      "expected": "확정된 subjectLinkId와 문서 범위가 없으면 거절한다. typedEntityId를 subjectLinkId로 대체해 보낼 수 없다.",
+      "packages": [
+        "RF-06",
+        "RF-07"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "match acceptance enforces confirmed subject, active document, and current hash"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/case-commands.test.ts",
+          "testName": "source references and workflow enum branches reject stale or fabricated identifiers"
+        }
+      ],
+      "remaining": "Domain match guards and command enums are tested; the exact typedEntityId-as-subjectLinkId misuse is not isolated."
+    },
+    {
+      "id": "AT-78",
+      "area": "충족 확인",
+      "given": "accepted match, 현재 완전한 field/기간 평가, 확인필요 정책",
+      "action": "자동 평가만 완료",
+      "expected": "eligible_for_confirmation이며 staff confirmation 전 satisfied가 아니다. 기존 적합한 검토 receipt를 재사용할 수 있으나 source/legal recognition을 새로 만들지 않는다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "11 of 12 months is partial, hash changes stale, and completion never implies legal/source acceptance"
+        },
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/case-workflow-view.test.ts",
+          "testName": "view derives completion only from current accepted match, evidence page, and source-backed current fact"
+        }
+      ],
+      "remaining": "Projection tests distinguish eligible_for_confirmation from satisfied; browser confirmation flow is outside scope."
+    },
+    {
+      "id": "AT-79",
+      "area": "면제 복원",
+      "given": "정책이 허용한 waived_by_review 요구",
+      "action": "requirement.override operation=reopen",
+      "expected": "면제를 해제하고 현재 자료로 다시 평가. 실제 충족과 비해당으로 자동 승격하지 않는다.",
+      "packages": [
+        "RF-06",
+        "RF-07"
+      ],
+      "status": "partial",
+      "sourceHooks": [
+        {
+          "path": "lib/intake-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-engine.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/intake-types.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/consultation-checklist.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "waiver and non-applicability overrides require human basis and waiver policy"
+        }
+      ],
+      "remaining": "Waiver basis rules are tested; reopening a waived requirement and re-running its current assessment are not."
+    },
+    {
+      "id": "AT-80",
+      "area": "다중 페이지",
+      "given": "필수 evidence2쪽 중1쪽 completed,1쪽 review_required",
+      "action": "수신 판독 view 집계",
+      "expected": "primaryStatus=attention_required, pageCounts에 두 상태 모두 유지. read_complete/fulfilled로 표시하지 않는다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "receipt view preserves per-page statuses and does not mark partial or unreadable evidence complete"
+        }
+      ],
+      "remaining": "Pure receipt aggregation fixture."
+    },
+    {
+      "id": "AT-81",
+      "area": "판독 상태",
+      "given": "모든 evidence job completed,필수 field 하나 unreadable",
+      "action": "수신 판독 및 충족 계산",
+      "expected": "primaryStatus=attention_required, readingIssues에 원문 위치, engineFulfillment는 partial 또는 missing. optional unreadable만 있으면 read_complete일 수 있으나 warning은 남는다.",
+      "packages": [
+        "RF-07"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/intake-workflow-domain.test.ts",
+          "testName": "receipt view preserves per-page statuses and does not mark partial or unreadable evidence complete"
+        }
+      ],
+      "remaining": "Pure receipt aggregation fixture."
+    },
+    {
+      "id": "AT-82",
+      "area": "상태 계약",
+      "given": "engine complete지만 staffDisposition unreviewed 및 직원확인 필수",
+      "action": "requirement status projection",
+      "expected": "eligible_for_confirmation. canonical engine enum에 satisfied를 저장할 수 없고 확인 후에만 final satisfied가 된다.",
+      "packages": [
+        "RF-07",
+        "RF-08"
+      ],
+      "status": "pass_local_unit",
+      "sourceHooks": [
+        {
+          "path": "lib/document-routing.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/processing-readiness.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/field-observation.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/field-coverage.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "components/workspace.tsx",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/case-response.ts",
+          "line": 1,
+          "kind": "package source module"
+        },
+        {
+          "path": "lib/server-store.ts",
+          "line": 1,
+          "kind": "package source module"
+        }
+      ],
+      "candidateTestHooks": [],
+      "externalGates": [],
+      "coverageAssessment": "Final local suite evidence is linked; status describes only named assertions.",
+      "evidence": [
+        {
+          "log": "full_suite_final",
+          "testFile": "tests/case-workflow-view.test.ts",
+          "testName": "view derives completion only from current accepted match, evidence page, and source-backed current fact"
+        }
+      ],
+      "remaining": "Pure requirement projection; command/browser confirmation path is not end-to-end covered."
+    }
+  ],
+  "remainingExternalGates": [
+    {
+      "gate": "OCR/source fidelity and paid legal evaluation",
+      "status": "not_run",
+      "reason": "No OCR or paid legal evaluation was requested/performed."
+    },
+    {
+      "gate": "Official court e-form parity",
+      "status": "not_verified",
+      "reason": "Must compare exported outputs against current official forms."
+    },
+    {
+      "gate": "Human legal review and court discretion",
+      "status": "external",
+      "reason": "Cannot be asserted by deterministic code/test hooks."
+    },
+    {
+      "gate": "Cloudflare D1 integration/concurrency",
+      "status": "environment_execution_required",
+      "reason": "Source-level tests do not establish deployed D1 transaction semantics."
+    },
+    {
+      "gate": "Deployment/production readiness",
+      "status": "not_run",
+      "reason": "No deployment performed."
+    }
+  ],
+  "executedTestEvidence": [
+    {
+      "suite": "final_repository_suite",
+      "result": "passed",
+      "counts": {
+        "passed": 947,
+        "failed": 0,
+        "skipped": 0
+      },
+      "log": "../integration-tests-final.tap",
+      "sha256": "4921a2b6e9a0e8fe36ecbbfc454d5353371cab27e970878d6bb07b3f9d219d8a"
+    },
+    {
+      "suite": "final_typescript_check",
+      "result": "passed",
+      "log": "../refactor-tsc-complete.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "statusPolicy": "Scenario statuses mirror docs/release-acceptance.json and are limited to named assertions. 947 local tests and the final typecheck passed; the 82-scenario end-to-end suite and external gates remain incomplete."
+}

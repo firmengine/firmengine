@@ -7,7 +7,7 @@ import sourceContracts from "./document-agent-field-contracts.json" with { type:
 import type { ArtifactKind } from "./domain.ts";
 
 /** Executable boundaries, not a second implementation of the arithmetic. */
-export const EXECUTION_CONTRACT_VERSION = "case-execution/1.1.0";
+export const EXECUTION_CONTRACT_VERSION = "case-execution/1.2.0";
 export interface CalculationSpec {
   id: string; title: string; executor: string; inputs: string[]; dependsOn: string[]; resultPaths: string[];
   outputs: string[]; documents: ArtifactKind[]; formBindings: string[];

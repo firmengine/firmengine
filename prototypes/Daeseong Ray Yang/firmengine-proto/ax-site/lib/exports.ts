@@ -4,7 +4,11 @@ import { createCaseReadIndex, currentFacts, describeStructuredSourceRefs, factHa
 import type { ArtifactKind, CaseData, CaseReadIndex, ExportManifest, Fact, RuleSet } from "./domain.ts";
 import { assessCase } from "./assessment.ts";
 import type { Assessment } from "./assessment.ts";
-import { bankAccountsAnnex, leasesAnnex, repaymentScheduleAnnex, proposedInstallmentAnnex } from "./document-annexes.ts";
+import { bankAccountsAnnex, leasesAnnex, repaymentPlanLedgerAnnex } from "./document-annexes.ts";
+import { buildRepaymentPlanModel } from "./repayment-plan-model.ts";
+import type { PlanLedger } from "./repayment-plan-model.ts";
+import { reconcilePlanLedger } from "./plan-reconciliation.ts";
+import type { PlanReconciliation } from "./plan-reconciliation.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { observedSourceDetails } from "./observed-source-details.ts";
@@ -112,9 +116,11 @@ const recognitionLabels = { unreviewed: "인정 검토 전", accepted: "인정 �
 const kindLabels: Record<string, string> = { wage: "근로", business: "사업", rent: "임대", interest: "이자", dividend: "배당", pension: "연금", benefit: "급여·수급", other: "기타", ordinary: "일반채권", secured: "담보채권", tax: "조세채권", estate: "재단채권", non_dischargeable: "면책 제외 검토", disputed: "다툼 있는 채권", unknown: "분류 미확정" };
 
 /** Native document writers consume this payload; no court finding is invented to fill blanks. */
-export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssessment?: Assessment,sourceIndex:CaseReadIndex=createCaseReadIndex(data)): ExportPackage {
+export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssessment?: Assessment,sourceIndex:CaseReadIndex=createCaseReadIndex(data),planLedgerInput?:PlanLedger,planReconciliationInput?:PlanReconciliation): ExportPackage {
   const assessment = existingAssessment?.caseRevision === data.context.revision ? existingAssessment : assessCase(data, rules,sourceIndex);
   const c = assessment.calculation;
+  const planLedger=planLedgerInput??buildRepaymentPlanModel(data,c);
+  const planReconciliation=planReconciliationInput??reconcilePlanLedger(data,c,planLedger);
   const resolvedAssets = resolveAssetRows(data,sourceIndex).rows;
   const resolvedDebts = resolveDebtRows(data,sourceIndex).rows;
   const name = data.context.applicant?.name || applicantIdentityValue(data,"name",sourceIndex);
@@ -169,9 +175,7 @@ export function buildCourtPackage(data: CaseData, rules: RuleSet, existingAssess
   if(requiredAnnexKinds.includes("repayment_schedule")){
     const schedule=data.context.paymentSchedule;
     const hasManualPhases=!!schedule?.phases.length;
-    const annex=hasManualPhases
-      ?repaymentScheduleAnnex(schedule!.phases,schedule!.expectedInstallments??undefined)
-      :proposedInstallmentAnnex(data,c,sourceIndex);
+    const annex=repaymentPlanLedgerAnnex(data,c,planLedger,planReconciliation);
     const reviewed=hasManualPhases&&schedule?.reviewed===true&&!!schedule.reviewReason?.trim();
     const tables:ExportTable[]=[{title:annex.title,headers:annex.headers,rows:annex.rows}];if(annex.summary)tables.push(annex.summary);
     documents.push({kind:"repayment_schedule",title:reviewed?"변제예정액표 (검토 기록 있음)":hasManualPhases?"변제계획 수동입력 회차표 (검토 전)":"변제계획 제안 회차표 (자동 계산·승인 전)",filename:"12_repayment_schedule.docx",paragraphs:[...common,...annex.notes,reviewed?"단계 입력 검토 기록이 있습니다. 검토 근거: "+schedule!.reviewReason:hasManualPhases?"상태: 수동입력 일정을 보존했습니다. 날짜·합계·검토 상태를 별도로 확인하세요.":"상태: 자동 제안은 기간·월액·채권별 배분 입력이 모두 있을 때만 만듭니다. 변제일과 법적 승인 여부는 추정하지 않습니다."],tables});

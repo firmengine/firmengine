@@ -1,0 +1,13 @@
+import { commandHash } from "./case-command-contract.ts";
+export type TaskStatus="open"|"in_progress"|"waiting"|"resolved"|"dismissed";
+export interface CaseTask {id:string;dedupeKey:string;type:string;title:string;ownerId:string|null;dueAt:string|null;waitingOn:string|null;blockedBy:string[];status:TaskStatus;dependencyFingerprint:string;evidenceIds:string[];reason:string;createdAt:string;updatedAt:string;history:{at:string;actor:string;status:TaskStatus;reason:string}[]}
+export function mergeCaseTasks(existing:CaseTask[],incoming:CaseTask[]):CaseTask[]{const out=structuredClone(existing);for(const task of incoming){const prior=out.find(x=>x.dedupeKey===task.dedupeKey);if(!prior)out.push(structuredClone(task));else if(prior.dependencyFingerprint!==task.dependencyFingerprint){Object.assign(prior,{...task,id:prior.id,ownerId:prior.ownerId,dueAt:prior.dueAt,createdAt:prior.createdAt,history:prior.history,status:"open"});}}return out;}
+export function updateCaseTask(task:CaseTask,patch:Partial<Pick<CaseTask,"ownerId"|"dueAt"|"waitingOn"|"status">>,actor:string,reason:string,at:string):CaseTask{
+  if(!actor||!reason.trim())throw new Error("담당자와 변경 이유가 필요합니다.");
+  if(patch.status&&!(["open","in_progress","waiting","resolved","dismissed"] as string[]).includes(patch.status))throw new Error("지원하지 않는 작업 상태입니다.");
+  if(patch.dueAt!==undefined&&patch.dueAt!==null&&(!/^\d{4}-\d{2}-\d{2}$/.test(patch.dueAt)||new Date(`${patch.dueAt}T00:00:00Z`).toISOString().slice(0,10)!==patch.dueAt))throw new Error("기한을 확인하세요.");
+  return {...task,...patch,updatedAt:at,history:[...task.history,{at,actor,status:patch.status??task.status,reason}]};
+}
+export const selectTasks=(tasks:CaseTask[],filter:{ownerId?:string;status?:TaskStatus}={})=>tasks.filter(t=>(!filter.ownerId||t.ownerId===filter.ownerId)&&(!filter.status||t.status===filter.status));
+export function taskSummary(tasks:CaseTask[],filter:{ownerId?:string;status?:TaskStatus}={}){const items=selectTasks(tasks,filter);return {items,count:items.length,byStatus:Object.fromEntries(["open","in_progress","waiting","resolved","dismissed"].map(s=>[s,items.filter(t=>t.status===s).length]))};}
+export async function makeCaseTask(input:{type:string;subject:string;title:string;dependency:unknown;evidenceIds?:string[];reason?:string;at?:string}):Promise<CaseTask>{const at=input.at??new Date().toISOString();return {id:crypto.randomUUID(),dedupeKey:`${input.type}:${input.subject}`,type:input.type,title:input.title,ownerId:null,dueAt:null,waitingOn:null,blockedBy:[],status:"open",dependencyFingerprint:await commandHash(input.dependency),evidenceIds:input.evidenceIds??[],reason:input.reason??"",createdAt:at,updatedAt:at,history:[]};}

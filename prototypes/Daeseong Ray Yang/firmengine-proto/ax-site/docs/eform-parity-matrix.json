@@ -1,0 +1,11 @@
+{
+  "schema": "eform-parity-matrix/1",
+  "status": "unverified",
+  "statement": "No official portal or authenticated e-form verification evidence is recorded in this repository. Public blank-template mappings and reconstructed DOCX output do not establish electronic filing parity.",
+  "verifiedScope": [],
+  "unverifiedScope": [
+    {"court": "all", "document": "all", "repaymentType": "all", "controls": ["labels", "requiredness", "enums", "units", "automatic calculations", "repeat rows", "attachments", "submission behavior"]}
+  ],
+  "evidenceRequirements": ["official source or authorized portal evidence", "form release/version", "court and repayment branch", "control name and source field", "requiredness and enum/unit", "repeat-row and attachment constraints", "reviewer and verification date"],
+  "guard": "Do not represent any unverified court or branch as passed or equivalent."
+}

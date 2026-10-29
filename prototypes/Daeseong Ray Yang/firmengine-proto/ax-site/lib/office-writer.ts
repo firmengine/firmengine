@@ -12,6 +12,9 @@ import type { FormProvenance } from "./form-mapping.ts";
 import type { ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { buildExportProvenance,type ExportPageReceipt,type ExportProvenance } from "./export-provenance.ts";
 import { assessDocumentFilingReadiness, type FilingReadinessReport } from "./document-filing-readiness.ts";
+import { buildRepaymentPlanModel } from "./repayment-plan-model.ts";
+import { reconcilePlanLedger } from "./plan-reconciliation.ts";
+import { adaptCalculationInput } from "./calculation-adapter.ts";
 
 export type OfficeMode = "draft" | "final";
 export interface OfficeArtifact {
@@ -50,7 +53,7 @@ export interface RenderedOffice {
   mode: OfficeMode;
   generatedAt: string;
   extractionMethod: "reopened-docx-xml-and-xlsx-cells";
-  metadata:ExportProvenance;
+  metadata:ExportProvenance & {writer_receipt?:unknown};
   filingReadiness?: FilingReadinessReport;
   documents: { kind: ArtifactKind; name: string; title: string; paragraphs: string[]; tables: RenderedTable[]; blocks: RenderedBlock[]; form?: FormProvenance }[];
   fields: RenderedField[];
@@ -190,23 +193,29 @@ async function artifact(kind: OfficeArtifact["kind"], name: string, mime: string
   return { id: `${kind}-${hash.slice(0, 20)}`, kind, name, mime, bytes, hash, sha256: hash };
 }
 
-export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet; payload?: ExportPackage; mode?: OfficeMode; pageReceipts?:ExportPageReceipt[]; preparedExecution?:ExecutionSnapshot }): Promise<OfficeArtifact[]> {
+export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet; payload?: ExportPackage; mode?: OfficeMode; pageReceipts?:ExportPageReceipt[]; preparedExecution?:ExecutionSnapshot; writerReceipt?:unknown }): Promise<OfficeArtifact[]> {
   const mode = input.mode ?? "draft";
   const sourceIndex=createCaseReadIndex(input.data);
   const assessment = input.preparedExecution?.assessment ?? assessCase(input.data, input.rules,sourceIndex);
+  const calculationContract=input.preparedExecution?.calculationContract??adaptCalculationInput(input.data,assessment.calculation);
+  const planLedger=input.preparedExecution?.planLedger??buildRepaymentPlanModel(input.data,assessment.calculation);
+  const planReconciliation=input.preparedExecution?.planReconciliation??reconcilePlanLedger(input.data,assessment.calculation,planLedger);
+  const planValidationApplies=(input.data.context.paymentSchedule?.phases.length??0)>0||assessment.calculation.planTotalWon!==null;
+  const planIssues=planValidationApplies?[...new Set([...(planLedger.status==="blocked"||planReconciliation.status==="blocked"?[...planLedger.issues,...planReconciliation.issues]:[]),...(planReconciliation.legalReviewTasks??[]),...((input.data.context.paymentSchedule?.phases.length??0)>0&&(!input.data.context.paymentSchedule?.reviewed||!input.data.context.paymentSchedule.reviewReason?.trim())?["PAYMENT_SCHEDULE_REVIEW_REQUIRED"]:[])])]:[];
+  const calculationIssues=calculationContract.applicable?[...(calculationContract.status==="blocked"?calculationContract.blockers:[]),...(calculationContract.status==="provisional"?calculationContract.warnings.map(issue=>"CALCULATION_CONTRACT_REVIEW:"+issue):[])]:[];
   if(input.preparedExecution&&(input.preparedExecution.caseId!==input.data.context.id||input.preparedExecution.caseRevision!==input.data.context.revision||!input.preparedExecution.formBindings||!input.preparedExecution.documentPayloads))throw new Error("내보낼 저장 계산·서식 결과가 현재 사건 버전과 일치하지 않습니다.");
-  if (mode === "final" && !assessment.generationGate.canFinalize) throw new Error("미확정 자료·인정·법리 검토가 남아 최종 검토본 생성을 보류했습니다.");
+  if (mode === "final" && (!assessment.generationGate.canFinalize||planIssues.length>0||calculationIssues.length>0)) throw new Error("미확정 자료·인정·법리 검토, 계산 입력 또는 변제 일정 정합성 문제가 남아 최종 검토본 생성을 보류했습니다."+([...planIssues,...calculationIssues].length?" "+[...planIssues,...calculationIssues].join(", "):""));
   if (input.payload && (input.payload.caseId !== input.data.context.id || input.payload.caseRevision !== input.data.context.revision)) throw new Error("내보낼 사건 버전이 변경되었습니다.");
   // Rebuild from the canonical ledger so an old/mutated payload cannot override current values.
-  const rebuiltPayload = buildCourtPackage(input.data, input.rules, assessment,sourceIndex);
+  const rebuiltPayload = buildCourtPackage(input.data, input.rules, assessment,sourceIndex,planLedger,planReconciliation);
   const payload:ExportPackage = input.preparedExecution ? {...rebuiltPayload,documents:input.preparedExecution.documentPayloads!} : rebuiltPayload;
-  const formBindings=input.preparedExecution?.formBindings ?? buildFormBindings(input.data,assessment.calculation,sourceIndex);
+  const formBindings=input.preparedExecution?.formBindings ?? buildFormBindings(input.data,assessment.calculation,sourceIndex,planLedger,planReconciliation);
   const artifacts: OfficeArtifact[] = [];
-  const rendered: RenderedOffice = { schemaVersion: "firmengine-office-v1", caseId: payload.caseId, caseRevision: payload.caseRevision, mode, generatedAt: payload.generatedAt, extractionMethod: "reopened-docx-xml-and-xlsx-cells", metadata:buildExportProvenance(input.data,input.pageReceipts), documents: [], fields: [], workbook: [], artifacts: [] };
+  const rendered: RenderedOffice = { schemaVersion: "firmengine-office-v1", caseId: payload.caseId, caseRevision: payload.caseRevision, mode, generatedAt: payload.generatedAt, extractionMethod: "reopened-docx-xml-and-xlsx-cells", metadata:{...buildExportProvenance(input.data,input.pageReceipts),...(input.writerReceipt===undefined?{}:{writer_receipt:input.writerReceipt})}, documents: [], fields: [], workbook: [], artifacts: [] };
   for (const item of payload.documents) {
     const displayed = mode === "final" ? { ...item, title: item.title.replaceAll("초안", "최종 검토본"), paragraphs: item.paragraphs.map((p) => p.replaceAll("검토용 편집 초안", "최종 검토용 편집본")) } : item;
     const appendix = await writeDocx(displayed, payload, mode);
-    const mappedForm = await renderPublicForm({ kind: item.kind, data: input.data, calculation: assessment.calculation, appendixDocx: appendix, mode,sourceIndex,bindings:formBindings });
+    const mappedForm = await renderPublicForm({ kind: item.kind, data: input.data, calculation: assessment.calculation, appendixDocx: appendix, mode,sourceIndex,bindings:formBindings,planLedger,planReconciliation });
     const bytes = mappedForm?.bytes ?? appendix;
     const output = await artifact(item.kind, item.filename, DOCX_MIME, bytes);
     artifacts.push(output);

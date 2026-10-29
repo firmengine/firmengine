@@ -5,6 +5,7 @@ import { LEGAL_MONITOR_SOURCES, LEGAL_MONITOR_SOURCE_POLICY } from "./legal-moni
 import { makeLegalMonitorProvider } from "./legal-monitor-provider.ts";
 import { referenceMonitorRules } from "./reference-registry.ts";
 import { referenceHash } from "./reference-store.ts";
+import { projectMonitorSchedule } from "./legal-monitor-status.ts";
 import { referenceIdentity } from "./reference-runtime.ts";
 import { intakeReferenceMonitorScope } from "./intake-reference-store.ts";
 
@@ -37,7 +38,7 @@ export async function legalMonitorOverview(){
   const state=states.results.map(row=>({id:row.id,...parse<Record<string,unknown>>(row.payload),updatedAt:row.updatedAt}));
   const schedule=state.find(s=>s.id==="schedule") as Record<string,unknown>|undefined;
   const credentials=env as unknown as {LAW_OPEN_DATA_OC?:string};
-  return {sources:sources.map(source=>({...source,enabled:source.enabled!==false&&(!source.api||!!credentials.LAW_OPEN_DATA_OC),...(source.api&&!credentials.LAW_OPEN_DATA_OC?{disabledReason:"법제처 API 인증값 미설정 · 공식 공개 페이지와 웹검색은 계속 확인"}:{})})),states:state,runs:runs.results.map(row=>({...row,payload:parse(row.payload)})),alerts:alerts.results.map(row=>({...parse<Record<string,unknown>>(row.payload),id:row.id,createdAt:row.createdAt,acknowledgedAt:row.acknowledgedAt})),counts:counts??{total:0,unread:0},schedule:{cadence:"daily",timezone:"Asia/Seoul",hour:9,notification:"chatgpt_and_in_app",configured:!!schedule?.configured,...schedule},policy:LEGAL_MONITOR_SOURCE_POLICY,referenceRelease:referenceIdentity(),intakeReference};
+  return {sources:sources.map(source=>({...source,enabled:source.enabled!==false&&(!source.api||!!credentials.LAW_OPEN_DATA_OC),...(source.api&&!credentials.LAW_OPEN_DATA_OC?{disabledReason:"법제처 API 인증값 미설정 · 공식 공개 페이지와 웹검색은 계속 확인"}:{})})),states:state,runs:runs.results.map(row=>({...row,payload:parse(row.payload)})),alerts:alerts.results.map(row=>({...parse<Record<string,unknown>>(row.payload),id:row.id,createdAt:row.createdAt,acknowledgedAt:row.acknowledgedAt})),counts:counts??{total:0,unread:0},schedule:projectMonitorSchedule(schedule,runs.results),policy:LEGAL_MONITOR_SOURCE_POLICY,referenceRelease:referenceIdentity(),intakeReference};
 }
 
 export async function runStoredLegalMonitor(input:{agent?:MonitorAgent|"all";cursor?:number;maxSources?:number}={}){
@@ -123,6 +124,6 @@ export async function acknowledgeLegalMonitorAlert(id:string,actor:string){
 }
 export async function saveLegalMonitorSchedule(input:{automationId:string;configured:boolean}){
   if(typeof input.automationId!=="string"||input.automationId.length>300)throw new HttpError(400,"예약 실행 식별자를 확인하세요.");
-  const value={cadence:"daily",timezone:"Asia/Seoul",hour:9,notification:"chatgpt_and_in_app",configured:input.configured,automationId:input.automationId};
+  const value={cadence:"daily",timezone:"Asia/Seoul",hour:9,notification:"chatgpt_and_in_app",configured:input.configured,desiredConfigured:input.configured,automationId:input.automationId,observedRuntime:"unverified",schedulerEnabled:null};
   await db().prepare("INSERT INTO legal_monitor_state (id,payload,updated_at) VALUES ('schedule',?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at").bind(JSON.stringify(value),now()).run();return value;
 }

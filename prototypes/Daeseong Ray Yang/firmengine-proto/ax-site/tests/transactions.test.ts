@@ -108,3 +108,29 @@ test("함수는 사건과 사실 원장을 수정하지 않는다", () => {
   const data = fixture(); row(data, "a", "9007199254740993"); const before = JSON.stringify(data);
   assert.equal(scanTransactions(data).totals.outflowWon, "9007199254740993"); assert.equal(JSON.stringify(data), before);
 });
+
+test("transaction grouping adapter is additive and does not infer complete periods", () => {
+  const data = fixture();
+  for (const [id, date] of [["g1", "2026-10-01"], ["g2", "2026-10-08"], ["g3", "2026-10-15"]] as const) {
+    const tx = row(data, id, "1000", "out", "account-A", date); tx.counterparty = "merchant-1";
+  }
+  const result = scanTransactions(data);
+  const group = result.evidenceGroups.find(candidate => candidate.kind === "repeated_withdrawal_candidate");
+  assert.ok(group);
+  assert.equal(group.status, "unknown");
+  assert.ok(group.unknowns.includes("period_incomplete:2026-10"));
+  assert.equal(group.determination, "none");
+  assert.equal(group.policy?.legalThreshold, false);
+  assert.equal(group.belowReviewThreshold, true);
+});
+
+test("loan inflow mixed with other funds stays an unallocated source and does not infer the later withdrawal's purpose",()=>{
+  const data=fixture(),loan=row(data,"loan-in","1200000","in","account-A","2026-10-01"),salary=row(data,"salary-in","800000","in","account-A","2026-10-02"),withdrawal=row(data,"mixed-withdrawal","1500000","out","account-A","2026-10-03");
+  append(data,loan,"transaction.memo","대출 실행");append(data,salary,"transaction.memo","급여");append(data,withdrawal,"transaction.memo","계좌 출금");
+  const result=scanTransactions(data);
+  assert.equal(result.items.find(item=>item.id.includes("loan")&&item.transactionIds.includes("loan-in"))?.status,"missing");
+  assert.equal(result.items.find(item=>item.id.startsWith("policy-outflow:")&&item.transactionIds.includes("mixed-withdrawal"))?.status,"missing");
+  assert.equal(result.transferCandidates.some(candidate=>candidate.outflowTransactionId==="mixed-withdrawal"),false);
+  assert.equal(result.totals.inflowWon,"2000000");assert.equal(result.totals.outflowWon,"1500000");
+  assert.equal(result.transferCandidates.some(candidate=>candidate.automaticConfirmation),false);
+});

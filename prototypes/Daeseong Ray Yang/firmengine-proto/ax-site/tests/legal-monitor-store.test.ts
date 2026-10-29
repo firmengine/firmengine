@@ -91,7 +91,7 @@ function fixture(run: (options: CoreOptions, fixture: Fixture) => Promise<CoreRe
   const coreOptions: CoreOptions[] = [];
   class HttpError extends Error { status: number; constructor(status: number, message: string) { super(message); this.status = status; } }
   class ClockDate extends Date { static now() { return clock; } }
-  const module = { exports: {} as StoreApi };
+  const moduleStub = { exports: {} as StoreApi };
   const f = {
     database, coreOptions,
     get now() { return new Date(clock).toISOString(); },
@@ -100,7 +100,7 @@ function fixture(run: (options: CoreOptions, fixture: Fixture) => Promise<CoreRe
     advance(ms: number) { clock += ms; },
     discover(items: MonitorDiscovery[]) { discoveries = items; },
     failDiscovery(fail: boolean) { discoveryFailure = fail; },
-    run: (input?: Parameters<StoreApi["runStoredLegalMonitor"]>[0]) => module.exports.runStoredLegalMonitor(input),
+    run: (input?: Parameters<StoreApi["runStoredLegalMonitor"]>[0]) => moduleStub.exports.runStoredLegalMonitor(input),
   };
   const mocks: Record<string, unknown> = {
     "cloudflare:workers": { env: {} },
@@ -111,12 +111,13 @@ function fixture(run: (options: CoreOptions, fixture: Fixture) => Promise<CoreRe
     "./legal-monitor-provider.ts": { makeLegalMonitorProvider: () => ({ discover: async () => { discoveryCalls++; if (discoveryFailure) throw new Error("SYNTHETIC_DISCOVERY_FAILURE"); return structuredClone(discoveries); }, analyze: async () => ({ summary: "Synthetic review" }), usage: () => ({ input_tokens: 0, output_tokens: 0 }) }) },
     "./reference-registry.ts": { referenceMonitorRules: () => [{ id: "param.synthetic", title: "Synthetic criterion", category: "court_practice", sourceIds: [source.id], sourceUrls: [source.url] }] },
     "./reference-store.ts": { referenceHash: async (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex") },
+    "./legal-monitor-status.ts": { projectMonitorSchedule: (config: Record<string,unknown> = {}, runs: Array<{status:string;completedAt?:string|null}> = []) => ({ cadence:"daily", timezone:"Asia/Seoul", hour:9, notification:"chatgpt_and_in_app", configured:config.configured===true, desiredConfigured:config.configured===true, automationId:typeof config.automationId==="string"?config.automationId:null, runtimeStatus:config.observedRuntime==="enabled"||config.observedRuntime==="disabled"?config.observedRuntime:"unverified", schedulerEnabled:config.observedRuntime==="enabled"?true:config.observedRuntime==="disabled"?false:null, lastSuccessAt:runs.find(r=>r.status==="complete")?.completedAt??null, lastFailure:(()=>{const row=runs.find(r=>r.status==="failed"||r.status==="partial");return row?{status:row.status,at:row.completedAt??null}:null;})() }) },
     "./reference-runtime.ts": { referenceIdentity: () => ({ id: "synthetic-release", revision: 1, sha256: hash("f") }) },
   };
   new Function("require", "module", "exports", "Date", output)((name: string) => {
     if (name in mocks) return mocks[name];
     throw new Error(`Unexpected import in isolated monitor test: ${name}`);
-  }, module, module.exports, ClockDate);
+  }, moduleStub, moduleStub.exports, ClockDate);
   return f;
 }
 async function discoverFromCore(options: CoreOptions) {

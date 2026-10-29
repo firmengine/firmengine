@@ -1,3 +1,4 @@
+import * as legalReviewIdentity from "../lib/legal-review-identity.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -41,6 +42,7 @@ function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtra
   const modules:Record<string,any>={
     "./reference-prompts.ts":referencePrompts,
     "./case-agent":{runCaseCalculatorNode:()=>{throw new Error("legal review not used by extraction fixture");}},
+    "./legal-review-identity.ts":legalReviewIdentity,
     "./calculator-tools":{snapshotSha256:()=>{throw new Error("legal review not used by extraction fixture");}},
     "./case-execution": {buildCaseExecutionPlan:()=>({evidenceRequests:[]}),executeCaseNodes:()=>{throw new Error("Unexpected legal review in page commit test");},agentExecutionContext:()=>{throw new Error("Unexpected legal review packet in page commit test");}},
     "./regional-source":regionalSource,"./coverage-review":coverageReview,"./classification-recovery":classificationRecovery,"./source-nature-context":sourceNatureContext,"./document-routing":documentRouting,"./document-agent-registry":documentAgentRegistry,"./document-agent-field-contracts.json":fieldContractData,"./applicant-identity":applicantIdentity,"./page-refresh":pageRefresh,"./verification-bindings":verificationBindings,"./statement-paragraphs":{sourceStatementText:()=>undefined},

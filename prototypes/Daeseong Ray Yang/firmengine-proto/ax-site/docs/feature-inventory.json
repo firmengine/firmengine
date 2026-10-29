@@ -1,0 +1,6291 @@
+{
+  "schemaVersion": "firmengine-feature-inventory/1",
+  "sourceCommit": "72b23f2c3faee5656caeeb1e6e6afce9a65de3cb",
+  "pages": [
+    {
+      "route": "/cases/{id}/consultation",
+      "file": "app/cases/[id]/consultation/page.tsx",
+      "symbols": [],
+      "feature": "Consultation review: capture intake answers and turn eligible evidence into case context.",
+      "exceptionBehavior": "Load/save/analyze failures are shown; clipboard copy failure is surfaced as a permission error.",
+      "component": "components/consultation-checklist.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/consultation/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/consultation-checklist.tsx"
+      }
+    },
+    {
+      "route": "/cases/{id}/documents",
+      "file": "app/cases/[id]/documents/page.tsx",
+      "symbols": [],
+      "feature": "Document workspace: add source documents, run page processing, review extraction and document status.",
+      "exceptionBehavior": "Page-job and extraction failures remain visible per job; unverified or conflicting source facts remain review items.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/documents/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/cases/{id}/exports",
+      "file": "app/cases/[id]/exports/page.tsx",
+      "symbols": [],
+      "feature": "Export center: prepare office files and inspect export readiness/provenance.",
+      "exceptionBehavior": "Export remains blocked by filing/finalization requirements and reports write errors.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/exports/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/cases/{id}/facts",
+      "file": "app/cases/[id]/facts/page.tsx",
+      "symbols": [],
+      "feature": "Fact editor: inspect and edit income, debt, asset and transaction objects with source references and review state.",
+      "exceptionBehavior": "Invalid source refs, missing reason, stale/missing object IDs, invalid money/date/enums and incomplete legal decisions are rejected; corrections reset review state.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/facts/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/cases/{id}",
+      "file": "app/cases/[id]/page.tsx",
+      "symbols": [],
+      "feature": "Case overview: inspect case status, readiness and linked work areas.",
+      "exceptionBehavior": "Case processing reports per-job errors and remaining work; invalid or stale case updates are surfaced without applying the stale change.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/cases/{id}/review",
+      "file": "app/cases/[id]/review/page.tsx",
+      "symbols": [],
+      "feature": "Case review: inspect calculations, legal checks, blockers and human review decisions.",
+      "exceptionBehavior": "Readiness and legal review blockers stay visible; final legal approval is not inferred.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/review/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/data/checklist",
+      "file": "app/data/checklist/page.tsx",
+      "symbols": [],
+      "feature": "Checklist catalog: review required document kinds and case-specific conditions.",
+      "exceptionBehavior": "Catalog load/save failures are surfaced; unsaved edits can be reverted.",
+      "component": "components/checklist-catalog-manager.tsx",
+      "featureEvidence": {
+        "path": "app/data/checklist/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/checklist-catalog-manager.tsx"
+      }
+    },
+    {
+      "route": "/data/context",
+      "file": "app/data/context/page.tsx",
+      "symbols": [],
+      "feature": "Case context inspector: inspect structured inputs and source-backed facts.",
+      "exceptionBehavior": "Missing caseId prompts case selection; request errors are shown; context edits require a reason and revision.",
+      "component": "components/context-editor.tsx",
+      "featureEvidence": {
+        "path": "app/data/context/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/context-editor.tsx"
+      }
+    },
+    {
+      "route": "/data/lawgraph",
+      "file": "app/data/lawgraph/page.tsx",
+      "symbols": [],
+      "feature": "Law graph: inspect legal rules, dependencies and source links.",
+      "exceptionBehavior": "Viewer is read-only; graph data is sourced from legal catalog and no legal decision is made by navigation.",
+      "component": "components/lawgraph-viewer.tsx",
+      "featureEvidence": {
+        "path": "app/data/lawgraph/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/lawgraph-viewer.tsx"
+      }
+    },
+    {
+      "route": "/data",
+      "file": "app/data/page.tsx",
+      "symbols": [],
+      "feature": "Data hub for checklist, context, law graph and schedule tools.",
+      "exceptionBehavior": "Load and case-list failures are tracked separately; save failures preserve the editor state and show a message.",
+      "component": "components/data-manager.tsx",
+      "featureEvidence": {
+        "path": "app/data/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/data-manager.tsx"
+      }
+    },
+    {
+      "route": "/data/schedule",
+      "file": "app/data/schedule/page.tsx",
+      "symbols": [],
+      "feature": "Repayment schedule: inspect or edit proposed installments and validation status.",
+      "exceptionBehavior": "Missing case/invalid schedule or save failure is shown; schedule edits require a review reason and valid budget/date structure.",
+      "component": "components/schedule-editor.tsx",
+      "featureEvidence": {
+        "path": "app/data/schedule/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/schedule-editor.tsx"
+      }
+    },
+    {
+      "route": "/evaluation",
+      "file": "app/evaluation/page.tsx",
+      "symbols": [],
+      "feature": "Evaluation console: inspect reference cases and dataset projection/coverage.",
+      "exceptionBehavior": "Projection coverage distinguishes mapped, unmapped, ambiguous and unsupported observations; this page does not claim OCR accuracy.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/evaluation/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/",
+      "file": "app/page.tsx",
+      "symbols": [],
+      "feature": "Case workspace: create/select cases and enter the case workflow.",
+      "exceptionBehavior": "Workspace surfaces request/job errors through notifications; malformed structured fact JSON is rejected before save.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/reference-data",
+      "file": "app/reference-data/page.tsx",
+      "symbols": [],
+      "feature": "Reference-data browser: search current rules, parameters, source provenance and releases.",
+      "exceptionBehavior": "Unsafe URLs are omitted; load/search errors should remain visible and proposed changes require review.",
+      "component": "components/reference-workspace.tsx",
+      "featureEvidence": {
+        "path": "app/reference-data/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/reference-workspace.tsx"
+      }
+    },
+    {
+      "route": "/settings",
+      "file": "app/settings/page.tsx",
+      "symbols": [],
+      "feature": "Settings: configure application workspace preferences.",
+      "exceptionBehavior": "Settings behavior is handled within Workspace; missing/invalid state should be surfaced by the workspace request boundary.",
+      "component": "components/workspace.tsx",
+      "featureEvidence": {
+        "path": "app/settings/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/workspace.tsx"
+      }
+    },
+    {
+      "route": "/cases/{id}/workflow",
+      "file": "app/cases/[id]/workflow/page.tsx",
+      "symbols": [],
+      "feature": "Case workflow: review requirements, subject links, document matches, tasks, legal decisions, procedure updates and bounded operational health diagnostics.",
+      "exceptionBehavior": "Stale fingerprints, missing evidence, role denial and command errors are surfaced; engine fulfillment does not imply staff confirmation; health reports partial diagnostic coverage without source values.",
+      "component": "components/case-workflow.tsx",
+      "featureEvidence": {
+        "path": "app/cases/[id]/workflow/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/case-workflow.tsx"
+      }
+    },
+    {
+      "route": "/tasks",
+      "file": "app/tasks/page.tsx",
+      "symbols": [],
+      "feature": "Task dashboard: filter case tasks by owner and status, inspect blockers and open the linked case workflow.",
+      "exceptionBehavior": "Empty/filtered results remain distinct from errors; updates require authorized command and stale-state checks.",
+      "component": "components/task-dashboard.tsx",
+      "featureEvidence": {
+        "path": "app/tasks/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/task-dashboard.tsx"
+      }
+    },
+    {
+      "route": "/roles",
+      "file": "app/roles/page.tsx",
+      "symbols": [],
+      "feature": "Role administration: inspect and grant/revoke audited workspace roles.",
+      "exceptionBehavior": "Only verified owner bootstrap and authorized grant paths can change roles; errors are surfaced.",
+      "component": "components/role-manager.tsx",
+      "featureEvidence": {
+        "path": "app/roles/page.tsx",
+        "line": 1,
+        "delegatesTo": "components/role-manager.tsx"
+      }
+    }
+  ],
+  "apiRoutes": [
+    {
+      "route": "/api/cases/{id}/analyses",
+      "file": "app/api/cases/[id]/analyses/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 3
+        }
+      ],
+      "feature": "Read case analyses; returns stored case-scoped results.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 10,
+          "evidence": "}catch(error){return errorResponse(error);}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/artifacts/{file}",
+      "file": "app/api/cases/[id]/artifacts/[file]/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 2
+        }
+      ],
+      "feature": "Read a case artifact; rejects unknown or out-of-scope files.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 8,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/calculator",
+      "file": "app/api/cases/[id]/calculator/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 7
+        }
+      ],
+      "feature": "Run deterministic calculator tools for a case snapshot; validates input and revision context.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 16,
+          "evidence": "} catch(error) { return errorResponse(error); }"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/consultations",
+      "file": "app/api/cases/[id]/consultations/route.ts",
+      "handlers": [
+        {
+          "symbol": "runtime",
+          "line": 3
+        },
+        {
+          "symbol": "GET",
+          "line": 5
+        },
+        {
+          "symbol": "POST",
+          "line": 6
+        }
+      ],
+      "feature": "Read/write consultation state; validates case and consultation payload.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 5,
+          "evidence": "export async function GET(request:Request,{params}:Context){try{requireSameOrigin(request);return Response.json(await getConsultationView((await params).id),{headers:{\"Cache-Control\":\"no-store\"}});}catch(error){return er"
+        },
+        {
+          "line": 6,
+          "evidence": "export async function POST(request:Request,{params}:Context){try{requireSameOrigin(request);const {id}=await params,body=await jsonBody(request);if(!body||typeof body!==\"object\"||Array.isArray(body))throw new HttpError(4"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/documents/{doc}",
+      "file": "app/api/cases/[id]/documents/[doc]/route.ts",
+      "handlers": [
+        {
+          "symbol": "PUT",
+          "line": 12
+        },
+        {
+          "symbol": "GET",
+          "line": 94
+        }
+      ],
+      "feature": "Read/update/delete a document; enforces case-document identity.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 19,
+          "evidence": "const stream=request.body.pipeThrough(new TransformStream<Uint8Array,Uint8Array>({transform(chunk,controller){bytes+=chunk.byteLength;if(bytes>100_000_000)throw new Error(\"100MB 제한을 넘었습니다.\");hash.update(chunk);controller"
+        },
+        {
+          "line": 26,
+          "evidence": "const uploading=bucket().put(key,fixed.readable,{httpMetadata:{contentType:mime}}).catch(error=>{abort.abort(error);throw error;});"
+        },
+        {
+          "line": 37,
+          "evidence": "if(!retained)try{await bucket().delete(key);}catch{/* Unreferenced staging data is never exposed as an original. */}"
+        },
+        {
+          "line": 50,
+          "evidence": "const jobResult=await db().prepare(\"SELECT result FROM page_jobs WHERE id = ? AND case_id = ?\").bind(`${doc}:${page}`,id).first<{result:string|null}>();try{currentPlan=JSON.parse(jobResult?.result??\"{}\");}catch{}"
+        },
+        {
+          "line": 57,
+          "evidence": "let bbox:unknown,transform:unknown;try{bbox=JSON.parse(bboxText);transform=JSON.parse(transformText);}catch{throw new HttpError(400,\"후보의 위치 정보를 읽을 수 없습니다.\");}"
+        },
+        {
+          "line": 81,
+          "evidence": "}catch(error){const sameVariant=await db().prepare(\"SELECT id,variant_hash FROM page_derivatives WHERE case_id = ? AND document_id = ? AND page = ? AND plan_id = ? AND variant = ?\").bind(id,doc,page,planId,variant).first"
+        },
+        {
+          "line": 93,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        },
+        {
+          "line": 103,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/documents",
+      "file": "app/api/cases/[id]/documents/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 4
+        }
+      ],
+      "feature": "List/add case documents; validates document metadata and storage boundaries.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 24,
+          "evidence": "}catch(error){"
+        },
+        {
+          "line": 28,
+          "evidence": "return Response.json({documentId,knownSample:body.sha256===SAMPLE_SHA256,pageRoles},{status:201});"
+        },
+        {
+          "line": 29,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/export",
+      "file": "app/api/cases/[id]/export/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 11
+        }
+      ],
+      "feature": "Build/export case artifacts subject to readiness gates.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 16,
+          "evidence": "catch(error){const code=error instanceof Error?error.message:\"DOCUMENT_WRITER_BLOCKED\";const messages:Record<string,string>={SYNTHETIC_FINAL_PROHIBITED:\"합성 시험자료로 제출본을 확정할 수 없습니다.\",DOCUMENT_FINAL_REVIEW_REQUIRED:\"전체 증빙 처리"
+        },
+        {
+          "line": 46,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/process",
+      "file": "app/api/cases/[id]/process/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 11
+        },
+        {
+          "symbol": "POST",
+          "line": 40
+        }
+      ],
+      "feature": "Process case documents and derived evaluation under readiness/idempotency rules.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 10,
+          "evidence": "const failure=(error:unknown)=>errorResponse(error instanceof ReprojectionError||error instanceof ProcessJobScopeError?new HttpError(error.status,error.message):error);"
+        },
+        {
+          "line": 18,
+          "evidence": "}catch(e){return failure(e);}}"
+        },
+        {
+          "line": 35,
+          "evidence": "}catch(error){"
+        },
+        {
+          "line": 36,
+          "evidence": "if(!caseSaved)try{await db().prepare(\"UPDATE page_jobs SET result = ?,updated_at = ? WHERE id = ? AND case_id = ? AND result = ? AND status = ? AND stage = 'completed'\").bind(staged.rawResult,now(),staged.job.id,id,claim"
+        },
+        {
+          "line": 46,
+          "evidence": "if(body.action===\"next\")result=await processNext(id,jobIds);else if(body.action===\"next_batch\"){if(!jobIds)throw new HttpError(400,\"병렬 처리할 증거 페이지 범위가 필요합니다.\");let parallelism:number;try{parallelism=clampDocumentParalleli"
+        },
+        {
+          "line": 49,
+          "evidence": "}catch(e){return failure(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}",
+      "file": "app/api/cases/[id]/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 18
+        },
+        {
+          "symbol": "POST",
+          "line": 22
+        },
+        {
+          "symbol": "PATCH",
+          "line": 41
+        }
+      ],
+      "feature": "Read/update a case; uses revision and case-scope validation.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 21,
+          "evidence": "}return jsonResponse(await caseResponse(id),request,{headers:{\"Cache-Control\":\"no-store\"}});}catch(e){return errorResponse(e);}}"
+        },
+        {
+          "line": 40,
+          "evidence": "}catch(e){return errorResponse(e instanceof ReferenceImportError?new HttpError(e.status,e.message):e);}}"
+        },
+        {
+          "line": 64,
+          "evidence": "try{const parsedContext=parseContextPatch(body.context,previous.context);Object.assign(next.context,parsedContext);if(parsedContext.shortenedTermReview===null)delete next.context.shortenedTermReview;if(body.household)nex"
+        },
+        {
+          "line": 103,
+          "evidence": "catch(error){throw new HttpError(409,error instanceof Error?error.message:\"생성물 검토 상태가 변경되었습니다.\");}"
+        },
+        {
+          "line": 118,
+          "evidence": "}catch(e){return errorResponse(e instanceof ReferenceImportError?new HttpError(e.status,e.message):e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases",
+      "file": "app/api/cases/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 5
+        }
+      ],
+      "feature": "List/create cases; validates request payload and persistence conflicts.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 13,
+          "evidence": "return Response.json(await caseResponse(await getCase(c.context.id)),{status:201,headers:{\"Location\":`/api/cases/${c.context.id}`,\"Cache-Control\":\"no-store\"}});"
+        },
+        {
+          "line": 14,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/checklist-catalog",
+      "file": "app/api/checklist-catalog/route.ts",
+      "handlers": [
+        {
+          "symbol": "runtime",
+          "line": 3
+        },
+        {
+          "symbol": "GET",
+          "line": 4
+        },
+        {
+          "symbol": "PUT",
+          "line": 5
+        }
+      ],
+      "feature": "Return checklist catalog and conditional requirements.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 4,
+          "evidence": "export async function GET(request:Request){try{requireSameOrigin(request);return Response.json(await getIntakeCatalog(),{headers:{\"Cache-Control\":\"no-store\"}});}catch(error){return errorResponse(error);}}"
+        },
+        {
+          "line": 5,
+          "evidence": "export async function PUT(request:Request){try{requireSameOrigin(request);await requireHumanActor();const body=await jsonBody(request);if(!body||typeof body!==\"object\"||Array.isArray(body))throw new HttpError(400,\"요청 형식을"
+        }
+      ]
+    },
+    {
+      "route": "/api/evaluation-cases",
+      "file": "app/api/evaluation-cases/route.ts",
+      "handlers": [
+        {
+          "symbol": "runtime",
+          "line": 7
+        },
+        {
+          "symbol": "POST",
+          "line": 9
+        },
+        {
+          "symbol": "GET",
+          "line": 65
+        }
+      ],
+      "feature": "List/reference evaluation cases for review.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 16,
+          "evidence": "try { parsed = JSON.parse(raw); } catch { throw new HttpError(400, \"JSON을 읽을 수 없습니다.\"); }"
+        },
+        {
+          "line": 19,
+          "evidence": "catch (error) { throw new HttpError(400, error instanceof Error ? error.message : \"평가 사례 묶음이 올바르지 않습니다.\"); }"
+        },
+        {
+          "line": 40,
+          "evidence": "} catch {"
+        },
+        {
+          "line": 59,
+          "evidence": "return Response.json({ ...result, receiptSha256 }, { status: 200, headers: { \"Cache-Control\": \"no-store\" } });"
+        },
+        {
+          "line": 60,
+          "evidence": "} catch (error) {"
+        },
+        {
+          "line": 70,
+          "evidence": "catch (error) { throw new HttpError(400, error instanceof Error ? error.message : \"조회 조건이 올바르지 않습니다.\"); }"
+        },
+        {
+          "line": 78,
+          "evidence": "} catch { return null; }"
+        },
+        {
+          "line": 81,
+          "evidence": "} catch (error) {"
+        }
+      ]
+    },
+    {
+      "route": "/api/intake-reference",
+      "file": "app/api/intake-reference/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 5
+        }
+      ],
+      "feature": "Return intake reference catalog/version metadata.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 7,
+          "evidence": "catch (error) { return errorResponse(error instanceof Error && error.message === \"INTAKE_CATALOG_INTEGRITY_FAILED\" ? new HttpError(409, \"상담 서류 기준정보의 저장 판본과 해시를 확인해 주세요.\") : error); }"
+        }
+      ]
+    },
+    {
+      "route": "/api/legal-monitor",
+      "file": "app/api/legal-monitor/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 4
+        },
+        {
+          "symbol": "POST",
+          "line": 5
+        }
+      ],
+      "feature": "Read monitor state or run source monitoring; candidate changes require review.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 4,
+          "evidence": "export async function GET(){try{return response(await legalMonitorOverview());}catch(error){return errorResponse(error);}}"
+        },
+        {
+          "line": 11,
+          "evidence": "}catch(error){return errorResponse(error);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/reference-data",
+      "file": "app/api/reference-data/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 8
+        },
+        {
+          "symbol": "POST",
+          "line": 13
+        }
+      ],
+      "feature": "Query the active reference release and records.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 12,
+          "evidence": "}catch(error){return errorResponse(error);}}"
+        },
+        {
+          "line": 19,
+          "evidence": "}catch(error){if(error instanceof Error&&/^(INVALID_|UNKNOWN_|REFERENCE_|OFFICIAL_)/.test(error.message))return errorResponse(new HttpError(error.message.includes(\"CONFLICT\")?409:400,error.message));return errorResponse("
+        }
+      ]
+    },
+    {
+      "route": "/api/workspace",
+      "file": "app/api/workspace/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 7
+        }
+      ],
+      "feature": "Read/write workspace configuration or case workspace data.",
+      "exceptionBehavior": "See exceptionEvidence for concrete route validation/error branches. Failure behavior is inventoried, not tested here.",
+      "exceptionEvidence": [
+        {
+          "line": 13,
+          "evidence": "const cases=rows.results.map(r=>{const stored=JSON.parse(r.payload) as CaseData|{_storage?:string;caseId?:string;revision?:number;summary?:{documents:number;facts:number;status:string}};const summary=stored&&\"_storage\" i"
+        },
+        {
+          "line": 16,
+          "evidence": "}catch(e){return errorResponse(e);}}"
+        }
+      ]
+    },
+    {
+      "route": "/api/cases/{id}/workflow",
+      "file": "app/api/cases/[id]/workflow/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 3
+        }
+      ],
+      "feature": "Read workflow projection of requirements, evidence, tasks, roles, jobs and diagnostics.",
+      "exceptionBehavior": "Stale/invalid case IDs and storage errors are returned as structured errors; view is read-only."
+    },
+    {
+      "route": "/api/cases/{id}/commands",
+      "file": "app/api/cases/[id]/commands/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 4
+        },
+        {
+          "symbol": "GET command receipt",
+          "line": 5
+        }
+      ],
+      "feature": "Apply typed case commands with captured revision and state fingerprint.",
+      "exceptionBehavior": "Missing reason, unsupported command, stale state, role denial and duplicate command conflicts are rejected."
+    },
+    {
+      "route": "/api/tasks",
+      "file": "app/api/tasks/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 7
+        }
+      ],
+      "feature": "Query durable case tasks with owner/status filters and aggregate totals.",
+      "exceptionBehavior": "Invalid filters and role-limited access are rejected; filtered total follows same relation as rows."
+    },
+    {
+      "route": "/api/roles",
+      "file": "app/api/roles/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 3
+        },
+        {
+          "symbol": "POST",
+          "line": 4
+        }
+      ],
+      "feature": "Read and administer authorized roles with audited grant operations.",
+      "exceptionBehavior": "Unauthenticated or non-owner grant attempts are rejected."
+    },
+    {
+      "route": "/api/evaluation-cases/clone",
+      "file": "app/api/evaluation-cases/clone/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 5
+        }
+      ],
+      "feature": "Create a whitelisted synthetic evaluation clone.",
+      "exceptionBehavior": "Unlisted source, hash mismatch or invalid target fails closed; source remains unchanged."
+    },
+    {
+      "route": "/api/cases/{id}/migration",
+      "file": "app/api/cases/[id]/migration/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 7
+        }
+      ],
+      "feature": "Prepare a read-only schema migration preview for one authorized case and return source/result hashes plus semantic diff.",
+      "exceptionBehavior": "Unsupported mode/schema, protected case, missing authorization or stale command state fails closed."
+    },
+    {
+      "route": "/api/cases/{id}/requirements",
+      "file": "app/api/cases/[id]/requirements/route.ts",
+      "handlers": [
+        {
+          "symbol": "GET",
+          "line": 3
+        }
+      ],
+      "feature": "Read case requirement definitions and current fulfillment/review states.",
+      "exceptionBehavior": "Projection is read-only; stale evidence and unresolved mappings remain visible."
+    },
+    {
+      "route": "/api/cases/{id}/recompute",
+      "file": "app/api/cases/[id]/recompute/route.ts",
+      "handlers": [
+        {
+          "symbol": "POST",
+          "line": 13
+        }
+      ],
+      "feature": "Request revision/fingerprint-bound recomputation through durable job orchestration.",
+      "exceptionBehavior": "Role denial, stale fingerprint, invalid payload and duplicate/conflicting command are rejected or return the existing receipt."
+    }
+  ],
+  "mcp": {
+    "route": "app/mcp/route.ts",
+    "line": 1,
+    "handlers": [
+      {
+        "symbol": "POST",
+        "line": 17
+      },
+      {
+        "symbol": "POST",
+        "line": 17
+      }
+    ],
+    "toolDefinitionsEvidence": "Inspect route body around MCP server/listTools registration; tools are declared inside module-level setup.",
+    "routeHandler": "POST",
+    "handlerLine": 14,
+    "toolRegistrationFile": "lib/site-calculator-mcp.ts",
+    "toolRegistrations": [
+      {
+        "name": "get_execution_catalog",
+        "line": 31
+      },
+      {
+        "name": "calculate_disposal",
+        "line": 31
+      },
+      {
+        "name": "get_reference_catalog",
+        "line": 34
+      },
+      {
+        "name": "run_legal_monitors",
+        "line": 35
+      },
+      {
+        "name": "get_legal_change_alerts",
+        "line": 36
+      },
+      {
+        "name": "get_intake_reference",
+        "line": 37
+      }
+    ],
+    "caseToolRegistrationLine": 21,
+    "evidenceNote": "Registration code references are implementation evidence; this inventory does not assert external client invocation or execution."
+  },
+  "primaryAndDetailFunctions": [
+    {
+      "file": "lib/applicant-identity.ts",
+      "symbol": "applicantIdentityValue",
+      "line": 14
+    },
+    {
+      "file": "lib/applicant-identity.ts",
+      "symbol": "reconcileApplicantContext",
+      "line": 37
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "sourceFactMoneyValue",
+      "line": 109
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "monthlyIncome",
+      "line": 169
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "liquidationContribution",
+      "line": 193
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "allocateProRata",
+      "line": 215
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "calculateCase",
+      "line": 330
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "assessCase",
+      "line": 514
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "calculateDisposal",
+      "line": 717
+    },
+    {
+      "file": "lib/asset-resolution.ts",
+      "symbol": "resolveAssetRows",
+      "line": 78
+    },
+    {
+      "file": "lib/calculation-adapter.ts",
+      "symbol": "adaptCalculationInput",
+      "line": 5
+    },
+    {
+      "file": "lib/calculation-overrides.ts",
+      "symbol": "calculationBaseFingerprint",
+      "line": 6
+    },
+    {
+      "file": "lib/calculation-overrides.ts",
+      "symbol": "proposeCalculationOverride",
+      "line": 8
+    },
+    {
+      "file": "lib/calculation-overrides.ts",
+      "symbol": "adoptCalculationOverride",
+      "line": 12
+    },
+    {
+      "file": "lib/calculator-tools.ts",
+      "symbol": "TOOL_INPUT_SCHEMAS",
+      "line": 29
+    },
+    {
+      "file": "lib/calculator-tools.ts",
+      "symbol": "CALCULATOR_TOOL_DESCRIPTIONS",
+      "line": 37
+    },
+    {
+      "file": "lib/calculator-tools.ts",
+      "symbol": "snapshotSha256",
+      "line": 50
+    },
+    {
+      "file": "lib/calculator-tools.ts",
+      "symbol": "callCalculatorTool",
+      "line": 77
+    },
+    {
+      "file": "lib/case-agent-contracts.ts",
+      "symbol": "AGENT_NODE_CONTRACTS",
+      "line": 1
+    },
+    {
+      "file": "lib/case-agent-contracts.ts",
+      "symbol": "REFERENCE_MONITOR_AGENTS",
+      "line": 12
+    },
+    {
+      "file": "lib/case-agent.ts",
+      "symbol": "runCaseCalculatorNode",
+      "line": 18
+    },
+    {
+      "file": "lib/case-execution.ts",
+      "symbol": "buildCaseExecutionPlan",
+      "line": 39
+    },
+    {
+      "file": "lib/case-execution.ts",
+      "symbol": "executeCaseNodes",
+      "line": 87
+    },
+    {
+      "file": "lib/case-execution.ts",
+      "symbol": "agentExecutionContext",
+      "line": 138
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "requirementOriginKey",
+      "line": 18
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "makeCaseRequirement",
+      "line": 22
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "mergeRequirements",
+      "line": 37
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "applyRequirementOverride",
+      "line": 48
+    },
+    {
+      "file": "lib/case-response.ts",
+      "symbol": "caseResponse",
+      "line": 8
+    },
+    {
+      "file": "lib/case-response.ts",
+      "symbol": "caseProgress",
+      "line": 19
+    },
+    {
+      "file": "lib/category-contract.ts",
+      "symbol": "RECORD_CATEGORIES",
+      "line": 3
+    },
+    {
+      "file": "lib/category-contract.ts",
+      "symbol": "RECORD_CATEGORY_STATUS_PROMPT_VERSION",
+      "line": 5
+    },
+    {
+      "file": "lib/category-contract.ts",
+      "symbol": "RECORD_CATEGORY_POLICY",
+      "line": 7
+    },
+    {
+      "file": "lib/category-contract.ts",
+      "symbol": "RECORD_CATEGORY_POLICY_INSTRUCTIONS",
+      "line": 19
+    },
+    {
+      "file": "lib/category-contract.ts",
+      "symbol": "requiresRecordCategoryStatus",
+      "line": 22
+    },
+    {
+      "file": "lib/classification-inspection.ts",
+      "symbol": "inspectClassificationJob",
+      "line": 35
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_FAMILY_IDS",
+      "line": 3
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_FAMILY_CATALOG",
+      "line": 7
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_CATALOG_RELEASE",
+      "line": 13
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "hasValidClassificationCatalog",
+      "line": 16
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "MAX_CLASSIFICATION_ATTEMPTS",
+      "line": 21
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "SOURCE_NATURES",
+      "line": 22
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "SOURCE_NATURE_INSTRUCTIONS",
+      "line": 25
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "canRecoverClassification",
+      "line": 48
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "recoveredClassificationRole",
+      "line": 53
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "observedClassificationRole",
+      "line": 54
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "canUseRescueRole",
+      "line": 66
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_SCHEMA",
+      "line": 83
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_RECOVERY_SCHEMA",
+      "line": 84
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_INSTRUCTIONS",
+      "line": 86
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "CLASSIFICATION_RECOVERY_INSTRUCTIONS",
+      "line": 87
+    },
+    {
+      "file": "lib/connector-context.ts",
+      "symbol": "runWithConnectorBinding",
+      "line": 8
+    },
+    {
+      "file": "lib/connector-context.ts",
+      "symbol": "getConnectorBinding",
+      "line": 15
+    },
+    {
+      "file": "lib/connectors.ts",
+      "symbol": "connectorsForRequest",
+      "line": 5
+    },
+    {
+      "file": "lib/context-validation.ts",
+      "symbol": "CONTEXT_PATCH_SCHEMA",
+      "line": 32
+    },
+    {
+      "file": "lib/context-validation.ts",
+      "symbol": "parseContextPatch",
+      "line": 45
+    },
+    {
+      "file": "lib/context-validation.ts",
+      "symbol": "parseHouseholdPatch",
+      "line": 53
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "MAX_MISSING_FIELD_CUES",
+      "line": 5
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "MISSING_FIELD_REVIEW_INSTRUCTIONS",
+      "line": 6
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "validateMissingFieldCues",
+      "line": 27
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "shouldRetryMissingSource",
+      "line": 52
+    },
+    {
+      "file": "lib/debt-resolution.ts",
+      "symbol": "resolveDebtRows",
+      "line": 32
+    },
+    {
+      "file": "lib/debt-source-integrity.ts",
+      "symbol": "createDebtSourceIntegrityResolver",
+      "line": 83
+    },
+    {
+      "file": "lib/dependency-graph.ts",
+      "symbol": "DEPENDENCY_NODES",
+      "line": 4
+    },
+    {
+      "file": "lib/dependency-graph.ts",
+      "symbol": "dependencyGraph",
+      "line": 11
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "DOCUMENT_AGENT_REGISTRY_VERSION",
+      "line": 6
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "FIELD_CATALOG_RELEASE",
+      "line": 7
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "FIELD_CATALOG_RELEASE_SHA256",
+      "line": 8
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "DEFAULT_DOCUMENT_PARALLELISM",
+      "line": 9
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "MAX_DOCUMENT_PARALLELISM",
+      "line": 10
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "buildDownstreamDemand",
+      "line": 23
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "documentFamilyContract",
+      "line": 83
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "compactFamilyFieldContract",
+      "line": 90
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "documentFieldContract",
+      "line": 96
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "documentTypeMatchesFamily",
+      "line": 106
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "routeDocumentTask",
+      "line": 113
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "createDocumentTaskEnvelope",
+      "line": 121
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "clampDocumentParallelism",
+      "line": 142
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "mapBounded",
+      "line": 149
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "continuationRelationship",
+      "line": 164
+    },
+    {
+      "file": "lib/document-annexes.ts",
+      "symbol": "bankAccountsAnnex",
+      "line": 34
+    },
+    {
+      "file": "lib/document-annexes.ts",
+      "symbol": "leasesAnnex",
+      "line": 35
+    },
+    {
+      "file": "lib/document-annexes.ts",
+      "symbol": "repaymentScheduleAnnex",
+      "line": 36
+    },
+    {
+      "file": "lib/document-annexes.ts",
+      "symbol": "proposedInstallmentAnnex",
+      "line": 61
+    },
+    {
+      "file": "lib/document-edits.ts",
+      "symbol": "mergeDocumentEdits",
+      "line": 8
+    },
+    {
+      "file": "lib/document-edits.ts",
+      "symbol": "computeDocumentIdentity",
+      "line": 27
+    },
+    {
+      "file": "lib/document-filing-readiness.ts",
+      "symbol": "assessDocumentFilingReadiness",
+      "line": 140
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "transitionDocumentMatch",
+      "line": 14
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "matchFingerprint",
+      "line": 37
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "deriveRequirementStatus",
+      "line": 38
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "evaluateDocumentGeneration",
+      "line": 65
+    },
+    {
+      "file": "lib/document-preflight.ts",
+      "symbol": "evaluateDocumentPreflight",
+      "line": 9
+    },
+    {
+      "file": "lib/document-routing.ts",
+      "symbol": "DOCUMENT_FAMILY_ALIASES",
+      "line": 2
+    },
+    {
+      "file": "lib/document-routing.ts",
+      "symbol": "CATALOG_FAMILY_DOCUMENT_TYPES",
+      "line": 29
+    },
+    {
+      "file": "lib/document-routing.ts",
+      "symbol": "documentTypeForCatalogFamily",
+      "line": 35
+    },
+    {
+      "file": "lib/document-routing.ts",
+      "symbol": "catalogFamilyForDocumentType",
+      "line": 38
+    },
+    {
+      "file": "lib/document-routing.ts",
+      "symbol": "documentFamily",
+      "line": 54
+    },
+    {
+      "file": "lib/document-routing.ts",
+      "symbol": "equivalentDocumentTypes",
+      "line": 81
+    },
+    {
+      "file": "lib/document-writer.ts",
+      "symbol": "prepareDocumentWrite",
+      "line": 28
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "REQUIRED_ARTIFACT_KINDS",
+      "line": 321
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "requiredKindsForCase",
+      "line": 322
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "AI_MODEL",
+      "line": 330
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "DRAFT_RULESET",
+      "line": 331
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "createCase",
+      "line": 335
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "normalizeMoney",
+      "line": 343
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "moneyValue",
+      "line": 360
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "formatWon",
+      "line": 367
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "createCaseReadIndex",
+      "line": 384
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "currentFacts",
+      "line": 398
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "validSourceRef",
+      "line": 405
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "validStructuredSourceRef",
+      "line": 432
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "factHasValidStructuredRefs",
+      "line": 495
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "structuredSourceRowKeys",
+      "line": 500
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "describeStructuredSourceRefs",
+      "line": 509
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "factSourceLineageIssues",
+      "line": 526
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "factLineageIssues",
+      "line": 589
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "touchCase",
+      "line": 602
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "reviewFact",
+      "line": 610
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "retractDocument",
+      "line": 672
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "extractionCacheKey",
+      "line": 690
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "applyExtraction",
+      "line": 729
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "manifestFingerprint",
+      "line": 894
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "manifestIssues",
+      "line": 897
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "currentExportReviews",
+      "line": 905
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "archiveExport",
+      "line": 915
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "reviewExport",
+      "line": 923
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "EXTRACTION_SCHEMA",
+      "line": 939
+    },
+    {
+      "file": "lib/evaluation-inventory.ts",
+      "symbol": "parseEvaluationInventoryQuery",
+      "line": 2
+    },
+    {
+      "file": "lib/execution-catalog.ts",
+      "symbol": "EXECUTION_CONTRACT_VERSION",
+      "line": 10
+    },
+    {
+      "file": "lib/execution-catalog.ts",
+      "symbol": "CALCULATION_SPECS",
+      "line": 17
+    },
+    {
+      "file": "lib/execution-catalog.ts",
+      "symbol": "WORKFLOW_CALCULATIONS",
+      "line": 18
+    },
+    {
+      "file": "lib/execution-catalog.ts",
+      "symbol": "getCalculationSpecs",
+      "line": 19
+    },
+    {
+      "file": "lib/execution-catalog.ts",
+      "symbol": "executionCatalog",
+      "line": 23
+    },
+    {
+      "file": "lib/export-artifact-transaction.ts",
+      "symbol": "commitExportArtifactTransaction",
+      "line": 66
+    },
+    {
+      "file": "lib/export-provenance.ts",
+      "symbol": "buildExportProvenance",
+      "line": 23
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "buildCourtPackage",
+      "line": 115
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "escapeHtml",
+      "line": 234
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "printableHtml",
+      "line": 237
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "newExportManifest",
+      "line": 243
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "sourceQuote",
+      "line": 247
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "PROMPT_VERSION",
+      "line": 9
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS",
+      "line": 11
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "DOC_FIELDS",
+      "line": 13
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "sourceInstructions",
+      "line": 39
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "PAGE_COMPLETENESS_INSTRUCTIONS",
+      "line": 49
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "PAGE_SCHEMA",
+      "line": 53
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "CLASSIFY_SCHEMA",
+      "line": 54
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "VERIFY_SCHEMA",
+      "line": 55
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "applyConfirmedCorrection",
+      "line": 61
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "isValidSourceBBox",
+      "line": 97
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "getRepairTargets",
+      "line": 113
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "applyFirstVerification",
+      "line": 131
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "applyTargetedRepair",
+      "line": 155
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "preserveAgreedFieldsAfterOmission",
+      "line": 196
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "EXTRACT_INSTRUCTIONS",
+      "line": 220
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "projectPage",
+      "line": 257
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "validatePageRead",
+      "line": 430
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "projectFactCorrections",
+      "line": 20
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "FIELD_OBSERVATION_VERSION",
+      "line": 4
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "SOURCE_STATES",
+      "line": 5
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "VERIFICATION_STATES",
+      "line": 8
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "SOURCE_BBOX_INSTRUCTIONS",
+      "line": 10
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "observeField",
+      "line": 47
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "pageFieldCoverage",
+      "line": 89
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "FIELD_OBSERVATION_INSTRUCTIONS",
+      "line": 103
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "FORM_CONTRACT_VERSION",
+      "line": 3
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "buildFormContractRegistry",
+      "line": 29
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "FORM_CONTRACTS",
+      "line": 50
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "FORM_MAPPING_VERSION",
+      "line": 14
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "MISSING_FORM_VALUE",
+      "line": 15
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "BASIC_FORM_CODES",
+      "line": 16
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "buildFormBindings",
+      "line": 70
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "renderPublicForm",
+      "line": 199
+    },
+    {
+      "file": "lib/form-template-data.ts",
+      "symbol": "PUBLIC_FORM_METADATA",
+      "line": 2
+    },
+    {
+      "file": "lib/form-template-data.ts",
+      "symbol": "PUBLIC_FORM_BASE64",
+      "line": 725
+    },
+    {
+      "file": "lib/history-integrity-restore.ts",
+      "symbol": "parseRestoreInput",
+      "line": 10
+    },
+    {
+      "file": "lib/history-integrity-restore.ts",
+      "symbol": "buildRestorePlan",
+      "line": 69
+    },
+    {
+      "file": "lib/income-resolution.ts",
+      "symbol": "resolveIncomeRows",
+      "line": 57
+    },
+    {
+      "file": "lib/intake-case-bridge.ts",
+      "symbol": "INTAKE_CROSSWALK_SCHEMA",
+      "line": 6
+    },
+    {
+      "file": "lib/intake-case-bridge.ts",
+      "symbol": "buildIntakeCrosswalk",
+      "line": 14
+    },
+    {
+      "file": "lib/intake-case-bridge.ts",
+      "symbol": "adoptIntakeRun",
+      "line": 24
+    },
+    {
+      "file": "lib/intake-catalog.ts",
+      "symbol": "INTAKE_CATALOG_SEED",
+      "line": 9
+    },
+    {
+      "file": "lib/intake-classifier-response.ts",
+      "symbol": "adaptIntakeClassifierResponse",
+      "line": 26
+    },
+    {
+      "file": "lib/intake-classifier.ts",
+      "symbol": "intakeClassifierInstructions",
+      "line": 6
+    },
+    {
+      "file": "lib/intake-classifier.ts",
+      "symbol": "INTAKE_CLASSIFIER_INSTRUCTIONS",
+      "line": 10
+    },
+    {
+      "file": "lib/intake-classifier.ts",
+      "symbol": "buildIntakeClassifierRequest",
+      "line": 13
+    },
+    {
+      "file": "lib/intake-engine.ts",
+      "symbol": "INTAKE_LIMITS",
+      "line": 9
+    },
+    {
+      "file": "lib/intake-engine.ts",
+      "symbol": "INTAKE_NEGATIVE_SUBJECT_LABELS",
+      "line": 14
+    },
+    {
+      "file": "lib/intake-engine.ts",
+      "symbol": "validateIntakeCatalog",
+      "line": 84
+    },
+    {
+      "file": "lib/intake-engine.ts",
+      "symbol": "intakeSourceNotes",
+      "line": 150
+    },
+    {
+      "file": "lib/intake-engine.ts",
+      "symbol": "validateIntakeClaims",
+      "line": 187
+    },
+    {
+      "file": "lib/intake-engine.ts",
+      "symbol": "matchIntakeChecklist",
+      "line": 269
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "INTAKE_FINGERPRINT_SCHEMA",
+      "line": 4
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "intakeSemanticPayload",
+      "line": 22
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "intakeInputFingerprint",
+      "line": 31
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "intakeAuditIdentity",
+      "line": 37
+    },
+    {
+      "file": "lib/intake-reference-store.ts",
+      "symbol": "readIntakeReferences",
+      "line": 14
+    },
+    {
+      "file": "lib/intake-reference-store.ts",
+      "symbol": "intakeReferenceMonitorScope",
+      "line": 49
+    },
+    {
+      "file": "lib/intake-reference-store.ts",
+      "symbol": "intakeReferenceMonitorRules",
+      "line": 53
+    },
+    {
+      "file": "lib/intake-reference.ts",
+      "symbol": "INTAKE_REFERENCE_SCHEMA_VERSION",
+      "line": 7
+    },
+    {
+      "file": "lib/intake-reference.ts",
+      "symbol": "intakeReferenceRecords",
+      "line": 28
+    },
+    {
+      "file": "lib/intake-reference.ts",
+      "symbol": "intakeMonitorProjection",
+      "line": 57
+    },
+    {
+      "file": "lib/intake-source-spans.ts",
+      "symbol": "INTAKE_SOURCE_SPAN_MAX_CHARS",
+      "line": 4
+    },
+    {
+      "file": "lib/intake-source-spans.ts",
+      "symbol": "INTAKE_SOURCE_SPAN_MAX_COUNT",
+      "line": 5
+    },
+    {
+      "file": "lib/intake-source-spans.ts",
+      "symbol": "buildIntakeSourceSpans",
+      "line": 125
+    },
+    {
+      "file": "lib/intake-source-spans.ts",
+      "symbol": "resolveIntakeSourceSpanRefs",
+      "line": 188
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "PROTECTED_INTAKE_CASE_SHA256",
+      "line": 12
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "getIntakeCatalog",
+      "line": 21
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "saveIntakeCatalog",
+      "line": 40
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "activeConsultationNotes",
+      "line": 58
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "isIntakeReadOnly",
+      "line": 62
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "consultationHistorySha256",
+      "line": 82
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "getConsultationView",
+      "line": 84
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "appendConsultation",
+      "line": 103
+    },
+    {
+      "file": "lib/intake-store.ts",
+      "symbol": "analyzeConsultation",
+      "line": 131
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "INTAKE_SCHEMA_VERSION",
+      "line": 2
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "INTAKE_ENGINE_VERSION",
+      "line": 3
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "INTAKE_PROMPT_VERSION",
+      "line": 4
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "INTAKE_NOTE_MAX_CHARS",
+      "line": 5
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "INTAKE_ACTIVE_MAX_CHARS",
+      "line": 6
+    },
+    {
+      "file": "lib/json-response.ts",
+      "symbol": "jsonResponse",
+      "line": 6
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "LAWGRAPH",
+      "line": 148
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "getLawGraphScenario",
+      "line": 160
+    },
+    {
+      "file": "lib/legal-check-dispositions.ts",
+      "symbol": "recordLegalCheckDisposition",
+      "line": 7
+    },
+    {
+      "file": "lib/legal-check-dispositions.ts",
+      "symbol": "legalCheckDispositionState",
+      "line": 13
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "OFFICIAL_MONITOR_DOMAINS",
+      "line": 46
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "DEFAULT_MONITOR_LIMITS",
+      "line": 47
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "isOfficialMonitorUrl",
+      "line": 54
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "canonicalMonitorUrl",
+      "line": 57
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "normalizeMonitorText",
+      "line": 66
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "runLegalMonitor",
+      "line": 150
+    },
+    {
+      "file": "lib/legal-monitor-provider.ts",
+      "symbol": "MONITOR_PROMPT_POLICIES",
+      "line": 8
+    },
+    {
+      "file": "lib/legal-monitor-provider.ts",
+      "symbol": "monitorPromptPolicy",
+      "line": 11
+    },
+    {
+      "file": "lib/legal-monitor-provider.ts",
+      "symbol": "makeLegalMonitorProvider",
+      "line": 39
+    },
+    {
+      "file": "lib/legal-monitor-sources.ts",
+      "symbol": "LEGAL_MONITOR_SOURCES",
+      "line": 55
+    },
+    {
+      "file": "lib/legal-monitor-sources.ts",
+      "symbol": "LEGAL_MONITOR_SOURCE_POLICY",
+      "line": 56
+    },
+    {
+      "file": "lib/legal-monitor-status.ts",
+      "symbol": "monitorSchedulerStatus",
+      "line": 4
+    },
+    {
+      "file": "lib/legal-monitor-status.ts",
+      "symbol": "classifyMonitorObservation",
+      "line": 7
+    },
+    {
+      "file": "lib/legal-monitor-store.ts",
+      "symbol": "legalMonitorOverview",
+      "line": 29
+    },
+    {
+      "file": "lib/legal-monitor-store.ts",
+      "symbol": "runStoredLegalMonitor",
+      "line": 43
+    },
+    {
+      "file": "lib/legal-monitor-store.ts",
+      "symbol": "acknowledgeLegalMonitorAlert",
+      "line": 120
+    },
+    {
+      "file": "lib/legal-monitor-store.ts",
+      "symbol": "saveLegalMonitorSchedule",
+      "line": 124
+    },
+    {
+      "file": "lib/legal-proposals.ts",
+      "symbol": "deriveNoPrivateCreditors",
+      "line": 54
+    },
+    {
+      "file": "lib/legal-proposals.ts",
+      "symbol": "deriveNoRecentDebt",
+      "line": 62
+    },
+    {
+      "file": "lib/legal-proposals.ts",
+      "symbol": "buildLegalProposals",
+      "line": 105
+    },
+    {
+      "file": "lib/legal-proposals.ts",
+      "symbol": "shortenedTermBasisFingerprint",
+      "line": 138
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "LEGAL_REVIEW_BATCH_SIZE",
+      "line": 5
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "LEGAL_REVIEW_PACKET_CHAR_BUDGET",
+      "line": 6
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "buildLegalReviewPacket",
+      "line": 35
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "currentCompletedLegalCheckIds",
+      "line": 66
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "gateLegalReviewChecks",
+      "line": 73
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "CURRENT_RULESET",
+      "line": 8
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "currentRuleSet",
+      "line": 23
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "LEGAL_CATALOG",
+      "line": 27
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "RISK_CATALOG",
+      "line": 30
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "RULE_RESEARCH_METADATA",
+      "line": 32
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "DOCUMENT_FEATURE_MAPS",
+      "line": 48
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "SEOUL_LIVING_PARAMETERS",
+      "line": 51
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "seoulLivingParameters",
+      "line": 52
+    },
+    {
+      "file": "lib/living-cost-proposal.ts",
+      "symbol": "MEDIAN_INCOME_SOURCE_URL",
+      "line": 4
+    },
+    {
+      "file": "lib/living-cost-proposal.ts",
+      "symbol": "SEOUL_RULE_405_SOURCE_URL",
+      "line": 5
+    },
+    {
+      "file": "lib/living-cost-proposal.ts",
+      "symbol": "proposeLivingCost",
+      "line": 30
+    },
+    {
+      "file": "lib/luna.ts",
+      "symbol": "LUNA_REQUEST_TIMEOUT_MS",
+      "line": 9
+    },
+    {
+      "file": "lib/luna.ts",
+      "symbol": "callLuna",
+      "line": 10
+    },
+    {
+      "file": "lib/luna.ts",
+      "symbol": "imageContent",
+      "line": 40
+    },
+    {
+      "file": "lib/module-contracts.ts",
+      "symbol": "MODULE_CONTRACTS",
+      "line": 4
+    },
+    {
+      "file": "lib/module-contracts.ts",
+      "symbol": "fieldContract",
+      "line": 6
+    },
+    {
+      "file": "lib/module-contracts.ts",
+      "symbol": "contractsForFamily",
+      "line": 7
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "EDITABLE_COLLECTIONS",
+      "line": 2
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "OBJECT_FIELDS",
+      "line": 5
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "objectFieldValue",
+      "line": 31
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "upsertObject",
+      "line": 42
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "removeObject",
+      "line": 105
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "OBJECTION_MINIMUM_SOURCE_URL",
+      "line": 5
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "OBJECTION_MINIMUM_CLAUSE",
+      "line": 6
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "OBJECTION_MINIMUM_SOURCE_TEXT",
+      "line": 7
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "OBJECTION_MINIMUM_RULE_VERSION",
+      "line": 8
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "OBJECTION_MINIMUM_EFFECTIVE_FROM",
+      "line": 9
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "currentObjectionMinimumRuleVersion",
+      "line": 12
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "currentObjectionMinimumEffectiveFrom",
+      "line": 13
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "evaluateObjectionMinimum",
+      "line": 54
+    },
+    {
+      "file": "lib/observed-source-details.ts",
+      "symbol": "observedSourceDetails",
+      "line": 26
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "serializeRenderedOffice",
+      "line": 62
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "readRenderedDocx",
+      "line": 140
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "artifactHash",
+      "line": 183
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "writeOfficePackage",
+      "line": 193
+    },
+    {
+      "file": "lib/page-job-inspection.ts",
+      "symbol": "inspectStoredPageJob",
+      "line": 41
+    },
+    {
+      "file": "lib/page-job-inspection.ts",
+      "symbol": "inspectPreservedFamilyRead",
+      "line": 77
+    },
+    {
+      "file": "lib/page-job-inspection.ts",
+      "symbol": "reprojectCasePage",
+      "line": 106
+    },
+    {
+      "file": "lib/page-refresh.ts",
+      "symbol": "clearAutomatedPageReceipts",
+      "line": 20
+    },
+    {
+      "file": "lib/page-refresh.ts",
+      "symbol": "canStartFreshPageRead",
+      "line": 38
+    },
+    {
+      "file": "lib/page-refresh.ts",
+      "symbol": "freshPageCheckpoint",
+      "line": 46
+    },
+    {
+      "file": "lib/party-identity.ts",
+      "symbol": "candidateSubjectLinks",
+      "line": 10
+    },
+    {
+      "file": "lib/party-identity.ts",
+      "symbol": "confirmSubjectLink",
+      "line": 16
+    },
+    {
+      "file": "lib/party-identity.ts",
+      "symbol": "rejectSubjectLink",
+      "line": 21
+    },
+    {
+      "file": "lib/payment-schedule.ts",
+      "symbol": "expandPaymentSchedule",
+      "line": 11
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "mergeRegionalResults",
+      "line": 52
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "processNext",
+      "line": 123
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "processNextBatch",
+      "line": 422
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "retryFailed",
+      "line": 433
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "retryPage",
+      "line": 438
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "reverifyPage",
+      "line": 460
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "reconcileCase",
+      "line": 498
+    },
+    {
+      "file": "lib/pipeline.ts",
+      "symbol": "reviewLegal",
+      "line": 514
+    },
+    {
+      "file": "lib/plan-reconciliation.ts",
+      "symbol": "reconcilePlanLedger",
+      "line": 6
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "MAX_PROCESS_JOB_IDS",
+      "line": 1
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "ProcessJobScopeError",
+      "line": 3
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "parseProcessJobIds",
+      "line": 6
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "parseProcessJobIdsQuery",
+      "line": 18
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "processJobScopeSql",
+      "line": 24
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "buildProcessJobSelect",
+      "line": 30
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "isCurrentEvidenceJob",
+      "line": 38
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "rescuePlanInScope",
+      "line": 43
+    },
+    {
+      "file": "lib/process-job-scope.ts",
+      "symbol": "assertProcessJobRows",
+      "line": 49
+    },
+    {
+      "file": "lib/processing-readiness.ts",
+      "symbol": "inspectProcessingReadiness",
+      "line": 9
+    },
+    {
+      "file": "lib/processing-readiness.ts",
+      "symbol": "applyProcessingGate",
+      "line": 26
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "DERIVED_EVALUATION_SCHEMA",
+      "line": 7
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "DERIVED_EVALUATION_INLINE_LIMIT",
+      "line": 8
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "buildDerivedExecution",
+      "line": 24
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "pendingDerivedEvaluation",
+      "line": 28
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "completeDerivedEvaluation",
+      "line": 34
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "isDerivedEvaluation",
+      "line": 39
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "validateReferenceBundle",
+      "line": 17
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferenceImportError",
+      "line": 24
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "canonicalReferenceDatasetJson",
+      "line": 37
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "referenceDatasetSha256",
+      "line": 38
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "prepareReferenceCaseImport",
+      "line": 57
+    },
+    {
+      "file": "lib/reference-case-projection.ts",
+      "symbol": "projectReferenceCaseDataset",
+      "line": 183
+    },
+    {
+      "file": "lib/reference-context.ts",
+      "symbol": "seedReferenceSnapshot",
+      "line": 8
+    },
+    {
+      "file": "lib/reference-context.ts",
+      "symbol": "loadReferenceSnapshot",
+      "line": 9
+    },
+    {
+      "file": "lib/reference-context.ts",
+      "symbol": "runWithReferenceContext",
+      "line": 33
+    },
+    {
+      "file": "lib/reference-context.ts",
+      "symbol": "runWithReferenceSnapshot",
+      "line": 37
+    },
+    {
+      "file": "lib/reference-impact.ts",
+      "symbol": "planReferenceImpact",
+      "line": 7
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "REFERENCE_PARAMETER_ROWS",
+      "line": 30
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "referenceParameterDefinition",
+      "line": 34
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "referenceParameter",
+      "line": 41
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "referencePositiveInteger",
+      "line": 45
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "referenceMoney",
+      "line": 50
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "referenceRatio",
+      "line": 56
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "maximumCalculationMonths",
+      "line": 61
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "maximumPlanMonths",
+      "line": 62
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "ordinaryPlanMonths",
+      "line": 67
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "shareBasisPoints",
+      "line": 68
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "referenceFormula",
+      "line": 69
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "REFERENCE_PROMPT_POLICIES",
+      "line": 22
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "REFERENCE_PROMPT_SCHEMA_VERSION",
+      "line": 23
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "referencePromptPolicy",
+      "line": 27
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "renderPromptPolicy",
+      "line": 35
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "readPromptPolicyInteger",
+      "line": 48
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "legalReviewInstructions",
+      "line": 60
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "REFERENCE_RELEASE",
+      "line": 15
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "REFERENCE_RECORDS",
+      "line": 16
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "referenceRecord",
+      "line": 18
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "currentReferenceRecord",
+      "line": 19
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "referenceRecordsPage",
+      "line": 25
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "referenceMonitorRules",
+      "line": 31
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "validateReferenceValue",
+      "line": 52
+    },
+    {
+      "file": "lib/reference-resolver.ts",
+      "symbol": "resolveReferenceBundle",
+      "line": 6
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "freezeReferenceValue",
+      "line": 11
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "referenceSnapshotHash",
+      "line": 19
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "installReferenceProvider",
+      "line": 28
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "currentReferenceSnapshot",
+      "line": 30
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "readReferenceValue",
+      "line": 32
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "installBrowserReferenceSnapshot",
+      "line": 38
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "referenceIdentity",
+      "line": 44
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "referenceHash",
+      "line": 5
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "referenceStorageStatus",
+      "line": 6
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "bootstrapReferenceData",
+      "line": 11
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "proposeReferenceChange",
+      "line": 22
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "activateReferenceChange",
+      "line": 35
+    },
+    {
+      "file": "lib/regional-source.ts",
+      "symbol": "pageCoordinateRead",
+      "line": 15
+    },
+    {
+      "file": "lib/regional-source.ts",
+      "symbol": "pageCoordinateChecks",
+      "line": 20
+    },
+    {
+      "file": "lib/regional-source.ts",
+      "symbol": "pageCoordinateReviewPass",
+      "line": 25
+    },
+    {
+      "file": "lib/repayment-plan-model.ts",
+      "symbol": "buildRepaymentPlanModel",
+      "line": 14
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "ReprojectionError",
+      "line": 7
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "PAGE_PROJECTION_VERSION",
+      "line": 11
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "parseHistoricalReadProvenance",
+      "line": 51
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "hasCurrentProjection",
+      "line": 61
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "hasBoundExtractionProvenance",
+      "line": 66
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "requireReprojectionProvenance",
+      "line": 75
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "prepareStoredReadReprojection",
+      "line": 79
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "reprojectStoredPage",
+      "line": 152
+    },
+    {
+      "file": "lib/retry-page-policy.ts",
+      "symbol": "canRetryEvidencePage",
+      "line": 2
+    },
+    {
+      "file": "lib/review-dependencies.ts",
+      "symbol": "deriveReviewDependencies",
+      "line": 5
+    },
+    {
+      "file": "lib/review-dependencies.ts",
+      "symbol": "reviewDependenciesCurrent",
+      "line": 16
+    },
+    {
+      "file": "lib/sample-manifest.ts",
+      "symbol": "SAMPLE_SHA256",
+      "line": 2
+    },
+    {
+      "file": "lib/sample-manifest.ts",
+      "symbol": "samplePageRole",
+      "line": 3
+    },
+    {
+      "file": "lib/sample-manifest.ts",
+      "symbol": "BENCHMARK",
+      "line": 6
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "CLASSIFICATION_RESCUE_RECIPE",
+      "line": 6
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "MAX_RESCUE_VARIANTS",
+      "line": 8
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "mapLumaLevelsValue",
+      "line": 11
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "mapLumaLevelsPixel",
+      "line": 14
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "validBox",
+      "line": 20
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "expandBox",
+      "line": 23
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "rescueSpecs",
+      "line": 26
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "transformCanvas",
+      "line": 44
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "canvasJpeg",
+      "line": 58
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "SEOUL_424_SOURCE_URL",
+      "line": 35
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "SEOUL_424_WAGE_CLAUSE",
+      "line": 36
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "evaluateSeoul424",
+      "line": 54
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "HttpError",
+      "line": 12
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "now",
+      "line": 13
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "db",
+      "line": 14
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "bucket",
+      "line": 15
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "connection",
+      "line": 16
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "actor",
+      "line": 17
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "requireHumanActor",
+      "line": 21
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "requireSameOrigin",
+      "line": 28
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "jsonBody",
+      "line": 33
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "caseSummary",
+      "line": 44
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "getCase",
+      "line": 47
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "saveCase",
+      "line": 61
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "event",
+      "line": 146
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "jobs",
+      "line": 150
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "persistedRescuePlans",
+      "line": 153
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "getProcessingReadiness",
+      "line": 154
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "readCaseAnalyses",
+      "line": 167
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "requireUploadedSource",
+      "line": 185
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "caseExtras",
+      "line": 191
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "errorResponse",
+      "line": 211
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "sha256",
+      "line": 219
+    },
+    {
+      "file": "lib/site-calculator-mcp.ts",
+      "symbol": "createSiteCalculatorHandler",
+      "line": 15
+    },
+    {
+      "file": "lib/source-nature-context.ts",
+      "symbol": "SOURCE_NATURE_QUOTE_MAX_CHARS",
+      "line": 4
+    },
+    {
+      "file": "lib/source-nature-context.ts",
+      "symbol": "sourceNatureDiagnosticContext",
+      "line": 56
+    },
+    {
+      "file": "lib/source-nature-context.ts",
+      "symbol": "SOURCE_NATURE_HANDOFF_INSTRUCTIONS",
+      "line": 69
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "DEBT_TOTAL_KEYS",
+      "line": 3
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "DEBT_COST_KEYS",
+      "line": 4
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "isDebtComponentSlot",
+      "line": 6
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "debtComponentSlotKey",
+      "line": 8
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "INSURANCE_SURRENDER_KEYS",
+      "line": 22
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "isInsuranceSurrenderQuote",
+      "line": 24
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "quotedInsuranceSurrenderAmount",
+      "line": 26
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "insuranceReviewFieldKey",
+      "line": 32
+    },
+    {
+      "file": "lib/source-quantity.ts",
+      "symbol": "isSourceMoney",
+      "line": 39
+    },
+    {
+      "file": "lib/source-review-annexes.ts",
+      "symbol": "transactionSourceAnnex",
+      "line": 177
+    },
+    {
+      "file": "lib/source-review-annexes.ts",
+      "symbol": "transactionSourcePrintTables",
+      "line": 207
+    },
+    {
+      "file": "lib/source-review-annexes.ts",
+      "symbol": "guaranteeSourceAnnex",
+      "line": 219
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "sourceQuotesOverlap",
+      "line": 7
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "isValidSourceBBox",
+      "line": 19
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "sameSourceBBox",
+      "line": 23
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "sourceBBoxesAreDistinctAndDisjoint",
+      "line": 27
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "bboxLocatorFingerprintSegment",
+      "line": 37
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "fingerprintHasBBoxLocator",
+      "line": 50
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "SOURCE_VERIFICATION_METHOD",
+      "line": 7
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "SOURCE_VERIFICATION_MODEL",
+      "line": 8
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "createSourceVerificationReceipts",
+      "line": 140
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "sourceVerificationReceiptMatches",
+      "line": 169
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "sourceVerificationFieldLocation",
+      "line": 204
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "createPreservedOmissionReceipts",
+      "line": 211
+    },
+    {
+      "file": "lib/statement-paragraphs.ts",
+      "symbol": "sourceStatementText",
+      "line": 29
+    },
+    {
+      "file": "lib/statement-paragraphs.ts",
+      "symbol": "applicantStatementForForm",
+      "line": 136
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "parseStatementScopeRelation",
+      "line": 20
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "sameSourceQuote",
+      "line": 41
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "sourceQuoteOccurrenceCount",
+      "line": 44
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "sourceQuoteContained",
+      "line": 53
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "STRUCTURED_CASE_IMPORT_SCHEMA",
+      "line": 3
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "STRUCTURED_CASE_IMPORT_MAX_BYTES",
+      "line": 4
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "STRUCTURED_CASE_IMPORT_MAX_CASES",
+      "line": 5
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "canonicalJson",
+      "line": 19
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "canonicalSha256",
+      "line": 33
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "structuredCaseManifestSha256",
+      "line": 39
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "storedCaseMatchesImport",
+      "line": 43
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "validateStructuredCaseImport",
+      "line": 100
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "structuredCaseCounts",
+      "line": 140
+    },
+    {
+      "file": "lib/transaction-groups.ts",
+      "symbol": "groupTransactionEvidence",
+      "line": 8
+    },
+    {
+      "file": "lib/transaction-review.ts",
+      "symbol": "scanTransactions",
+      "line": 102
+    },
+    {
+      "file": "lib/utils.ts",
+      "symbol": "cn",
+      "line": 4
+    },
+    {
+      "file": "lib/verification-bindings.ts",
+      "symbol": "indexedVerificationRead",
+      "line": 9
+    },
+    {
+      "file": "lib/verification-bindings.ts",
+      "symbol": "bindVerificationChecks",
+      "line": 28
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "WORKFLOW_RULES",
+      "line": 49
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "getWorkflowRules",
+      "line": 50
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "evaluateWorkflow",
+      "line": 219
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "LEGACY_WORKFLOW_ORIGIN",
+      "line": 270
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "LEGACY_DOCUMENT_TYPES",
+      "line": 271
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "LEGACY_FEATURE_CATALOG",
+      "line": 272
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "LEGACY_DOCUMENT_REQUIREMENTS",
+      "line": 273
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "CorpusOrigin",
+      "line": 5
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "OfficeCheck",
+      "line": 6
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "ExpectedField",
+      "line": 7
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "ExpectedDocument",
+      "line": 8
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "FieldPrediction",
+      "line": 9
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "GeneratedDocument",
+      "line": 10
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "CorpusSample",
+      "line": 11
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "Ratio",
+      "line": 21
+    },
+    {
+      "file": "lib/document-generation-metrics.ts",
+      "symbol": "GenerationMetrics",
+      "line": 22
+    },
+    {
+      "file": "lib/task-dashboard-query.ts",
+      "symbol": "TaskDashboardFilters",
+      "line": 1
+    },
+    {
+      "file": "lib/task-dashboard-query.ts",
+      "symbol": "taskDashboardQuery",
+      "line": 3
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "ReferenceArtifact",
+      "line": 2
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "ReferenceBundle",
+      "line": 8
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "BundleValidation",
+      "line": 13
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "ReferenceRuntimeHealthInput",
+      "line": 31
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "referenceRuntimeHealth",
+      "line": 33
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "ReferenceArtifactSeed",
+      "line": 42
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "referenceBundleFromSnapshot",
+      "line": 43
+    },
+    {
+      "file": "lib/reference-bundle.ts",
+      "symbol": "inspectReferenceBundle",
+      "line": 48
+    },
+    {
+      "file": "lib/reference-prompts.ts",
+      "symbol": "ReferencePromptPolicy",
+      "line": 4
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "LegalReviewRisk",
+      "line": 8
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "LegalReviewPacketInput",
+      "line": 9
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "LegalReviewPacket",
+      "line": 10
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "legalCheckCoverageComplete",
+      "line": 17
+    },
+    {
+      "file": "lib/legal-review-packet.ts",
+      "symbol": "AdvisoryCheck",
+      "line": 78
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "CASE_SCHEMA_MIGRATION_VERSION",
+      "line": 5
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "CASE_SCHEMA_MIGRATION_RECEIPT_SCHEMA",
+      "line": 6
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "MigrationMode",
+      "line": 7
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "CaseSchemaMigrationRequest",
+      "line": 8
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "CaseSchemaMigrationReceipt",
+      "line": 12
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "CaseSchemaMigrationPlan",
+      "line": 17
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "assertWritableWorkflowSchema",
+      "line": 27
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "prepareCaseSchemaMigration",
+      "line": 81
+    },
+    {
+      "file": "lib/case-schema-migration.ts",
+      "symbol": "applyCaseSchemaMigration",
+      "line": 97
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "WorkflowStatus",
+      "line": 9
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "WorkflowTarget",
+      "line": 11
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "WorkflowField",
+      "line": 12
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "WorkflowDocument",
+      "line": 17
+    },
+    {
+      "file": "lib/workflow-rules.ts",
+      "symbol": "WorkflowRule",
+      "line": 21
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "ObjectionPresence",
+      "line": 2
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "ObjectionMinimumStatus",
+      "line": 3
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "ReviewedWonEvidence",
+      "line": 18
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "ObjectionMinimumInput",
+      "line": 24
+    },
+    {
+      "file": "lib/objection-minimum.ts",
+      "symbol": "ObjectionMinimumResult",
+      "line": 36
+    },
+    {
+      "file": "lib/document-field-bases.ts",
+      "symbol": "DocumentFieldBase",
+      "line": 8
+    },
+    {
+      "file": "lib/document-field-bases.ts",
+      "symbol": "buildDocumentFieldBases",
+      "line": 13
+    },
+    {
+      "file": "lib/plan-reconciliation.ts",
+      "symbol": "PlanReconciliation",
+      "line": 5
+    },
+    {
+      "file": "lib/plan-reconciliation.ts",
+      "symbol": "PriorityCoveragePolicy",
+      "line": 16
+    },
+    {
+      "file": "lib/case-workflow-server.ts",
+      "symbol": "caseWorkflowResponse",
+      "line": 17
+    },
+    {
+      "file": "lib/income-resolution.ts",
+      "symbol": "IncomeResolution",
+      "line": 3
+    },
+    {
+      "file": "lib/asset-resolution.ts",
+      "symbol": "AssetResolution",
+      "line": 3
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "CaseMutationContext",
+      "line": 62
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "caseStateFingerprint",
+      "line": 67
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "readCommandReceipt",
+      "line": 73
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "drainCaseRecomputeJobs",
+      "line": 127
+    },
+    {
+      "file": "lib/server-store.ts",
+      "symbol": "AnalysisPageOptions",
+      "line": 228
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "StructuredCaseImportEntry",
+      "line": 8
+    },
+    {
+      "file": "lib/structured-case-import.ts",
+      "symbol": "StructuredCaseImportBatch",
+      "line": 13
+    },
+    {
+      "file": "lib/disposal-applicability.ts",
+      "symbol": "DisposalApplicabilityStatus",
+      "line": 4
+    },
+    {
+      "file": "lib/disposal-applicability.ts",
+      "symbol": "DisposalApplicabilityResult",
+      "line": 5
+    },
+    {
+      "file": "lib/disposal-applicability.ts",
+      "symbol": "disposalApplicabilityBasisFactIds",
+      "line": 10
+    },
+    {
+      "file": "lib/disposal-applicability.ts",
+      "symbol": "disposalApplicabilityBasisFingerprint",
+      "line": 18
+    },
+    {
+      "file": "lib/disposal-applicability.ts",
+      "symbol": "evaluateDisposalApplicability",
+      "line": 30
+    },
+    {
+      "file": "lib/intake-reference.ts",
+      "symbol": "IntakeReferenceKind",
+      "line": 8
+    },
+    {
+      "file": "lib/intake-reference.ts",
+      "symbol": "IntakeReferenceRecord",
+      "line": 9
+    },
+    {
+      "file": "lib/observed-source-details.ts",
+      "symbol": "ObservedDetailTable",
+      "line": 4
+    },
+    {
+      "file": "lib/reference-context.ts",
+      "symbol": "inspectReferenceSnapshotBundle",
+      "line": 51
+    },
+    {
+      "file": "lib/transaction-review.ts",
+      "symbol": "TransactionCheckStatus",
+      "line": 6
+    },
+    {
+      "file": "lib/transaction-review.ts",
+      "symbol": "TransactionReviewItem",
+      "line": 7
+    },
+    {
+      "file": "lib/transaction-review.ts",
+      "symbol": "TransferCandidate",
+      "line": 16
+    },
+    {
+      "file": "lib/transaction-review.ts",
+      "symbol": "groupTransactionCandidates",
+      "line": 103
+    },
+    {
+      "file": "lib/reference-impact.ts",
+      "symbol": "ReferenceDependency",
+      "line": 1
+    },
+    {
+      "file": "lib/reference-impact.ts",
+      "symbol": "ReferenceChange",
+      "line": 2
+    },
+    {
+      "file": "lib/reference-impact.ts",
+      "symbol": "ImpactTask",
+      "line": 3
+    },
+    {
+      "file": "lib/reference-impact.ts",
+      "symbol": "ReferenceImpact",
+      "line": 4
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "ReferenceParameterCategory",
+      "line": 4
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "ReferenceParameterDefinition",
+      "line": 5
+    },
+    {
+      "file": "lib/reference-parameters.ts",
+      "symbol": "ReferenceRatio",
+      "line": 55
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "COMMAND_VERSION",
+      "line": 2
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "COMMAND_TYPES",
+      "line": 3
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "CommandType",
+      "line": 4
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "CaseCommand",
+      "line": 5
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "CommandError",
+      "line": 6
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "parseCaseCommand",
+      "line": 9
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "assertKeys",
+      "line": 22
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "canonicalJson",
+      "line": 25
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "commandHash",
+      "line": 31
+    },
+    {
+      "file": "lib/case-command-contract.ts",
+      "symbol": "commandRequiredRole",
+      "line": 32
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "Tri",
+      "line": 2
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "EvidenceValue",
+      "line": 3
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "MonthlyWageEvidence",
+      "line": 5
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "WageHistoryEvidence",
+      "line": 6
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "CandidateStatus",
+      "line": 16
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "Seoul424Input",
+      "line": 17
+    },
+    {
+      "file": "lib/seoul424-candidate.ts",
+      "symbol": "CandidateResult",
+      "line": 29
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "SourceBBox",
+      "line": 4
+    },
+    {
+      "file": "lib/source-verification-identity.ts",
+      "symbol": "BBoxReceiptLocator",
+      "line": 14
+    },
+    {
+      "file": "lib/reference-runtime.ts",
+      "symbol": "ReferenceSnapshot",
+      "line": 3
+    },
+    {
+      "file": "lib/site-calculator-mcp.ts",
+      "symbol": "ReferenceMcpServices",
+      "line": 9
+    },
+    {
+      "file": "lib/dependency-graph.ts",
+      "symbol": "DependencyNode",
+      "line": 3
+    },
+    {
+      "file": "lib/case-workflow-view.ts",
+      "symbol": "CaseWorkflowRequirementView",
+      "line": 7
+    },
+    {
+      "file": "lib/case-workflow-view.ts",
+      "symbol": "CaseWorkflowView",
+      "line": 18
+    },
+    {
+      "file": "lib/case-workflow-view.ts",
+      "symbol": "buildCaseWorkflowView",
+      "line": 70
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "MissingFieldSourceState",
+      "line": 8
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "MissingFieldCue",
+      "line": 9
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "MissingFieldRead",
+      "line": 15
+    },
+    {
+      "file": "lib/coverage-review.ts",
+      "symbol": "MissingFieldReviewResult",
+      "line": 19
+    },
+    {
+      "file": "lib/calculation-overrides.ts",
+      "symbol": "OverrideField",
+      "line": 5
+    },
+    {
+      "file": "lib/calculation-overrides.ts",
+      "symbol": "CalculationOverride",
+      "line": 6
+    },
+    {
+      "file": "lib/party-identity.ts",
+      "symbol": "SubjectLinkStatus",
+      "line": 3
+    },
+    {
+      "file": "lib/party-identity.ts",
+      "symbol": "SubjectLink",
+      "line": 4
+    },
+    {
+      "file": "lib/legacy-case-command.ts",
+      "symbol": "legacyCaseCommand",
+      "line": 4
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "RequirementOverride",
+      "line": 3
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "RequirementFieldTarget",
+      "line": 4
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "RequirementCrosswalkReview",
+      "line": 5
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "RequirementStaffDisposition",
+      "line": 10
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "CaseRequirement",
+      "line": 14
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "RequirementOrigin",
+      "line": 30
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "isValidRequirementTarget",
+      "line": 42
+    },
+    {
+      "file": "lib/case-requirements.ts",
+      "symbol": "applyRequirementMappingReview",
+      "line": 69
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorAgent",
+      "line": 2
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorSourceKind",
+      "line": 3
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorRuleProjection",
+      "line": 4
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorSource",
+      "line": 5
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorAttachment",
+      "line": 11
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorObservation",
+      "line": 12
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorCandidateStatus",
+      "line": 18
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorCandidate",
+      "line": 19
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorSourceHealth",
+      "line": 26
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorDiscovery",
+      "line": 27
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorAnalysis",
+      "line": 28
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorLimits",
+      "line": 29
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorRunOptions",
+      "line": 33
+    },
+    {
+      "file": "lib/legal-monitor-core.ts",
+      "symbol": "MonitorRunResult",
+      "line": 40
+    },
+    {
+      "file": "lib/page-refresh.ts",
+      "symbol": "PageReadIntent",
+      "line": 3
+    },
+    {
+      "file": "lib/page-refresh.ts",
+      "symbol": "ReverificationProvenance",
+      "line": 4
+    },
+    {
+      "file": "lib/page-refresh.ts",
+      "symbol": "PriorReadArchive",
+      "line": 17
+    },
+    {
+      "file": "lib/calculator-tools.ts",
+      "symbol": "CalculatorToolName",
+      "line": 36
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "ClassificationFamilyId",
+      "line": 14
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "SourceNature",
+      "line": 23
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "ClassifiedBoundary",
+      "line": 26
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "ClassificationRead",
+      "line": 27
+    },
+    {
+      "file": "lib/classification-recovery.ts",
+      "symbol": "ClassificationRecoveryRead",
+      "line": 44
+    },
+    {
+      "file": "lib/source-review-annexes.ts",
+      "symbol": "SourceReviewTable",
+      "line": 4
+    },
+    {
+      "file": "lib/document-writer.ts",
+      "symbol": "WriterFormResult",
+      "line": 13
+    },
+    {
+      "file": "lib/document-writer.ts",
+      "symbol": "DocumentWriterReceipt",
+      "line": 19
+    },
+    {
+      "file": "lib/document-writer.ts",
+      "symbol": "PreparedDocumentWrite",
+      "line": 44
+    },
+    {
+      "file": "lib/document-writer.ts",
+      "symbol": "stableFormRowIds",
+      "line": 50
+    },
+    {
+      "file": "lib/document-writer.ts",
+      "symbol": "finalizeDocumentWriterReceipt",
+      "line": 177
+    },
+    {
+      "file": "lib/payment-schedule.ts",
+      "symbol": "CreditorPhaseAllocation",
+      "line": 3
+    },
+    {
+      "file": "lib/payment-schedule.ts",
+      "symbol": "Phase",
+      "line": 4
+    },
+    {
+      "file": "lib/payment-schedule.ts",
+      "symbol": "ScheduleRow",
+      "line": 5
+    },
+    {
+      "file": "lib/payment-schedule.ts",
+      "symbol": "PhaseTotal",
+      "line": 6
+    },
+    {
+      "file": "lib/payment-schedule.ts",
+      "symbol": "ScheduleResult",
+      "line": 7
+    },
+    {
+      "file": "lib/reference-case-projection.ts",
+      "symbol": "ReferenceProjectionCoverage",
+      "line": 94
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "LegalCatalogRule",
+      "line": 54
+    },
+    {
+      "file": "lib/legal-rules.ts",
+      "symbol": "LegacyRiskEntry",
+      "line": 55
+    },
+    {
+      "file": "lib/reference-resolver.ts",
+      "symbol": "ReferenceRequest",
+      "line": 4
+    },
+    {
+      "file": "lib/reference-resolver.ts",
+      "symbol": "ReferenceResolution",
+      "line": 5
+    },
+    {
+      "file": "lib/case-workflow-state.ts",
+      "symbol": "CaseWorkflowState",
+      "line": 5
+    },
+    {
+      "file": "lib/case-workflow-state.ts",
+      "symbol": "emptyCaseWorkflow",
+      "line": 15
+    },
+    {
+      "file": "lib/case-workflow-state.ts",
+      "symbol": "caseWorkflow",
+      "line": 16
+    },
+    {
+      "file": "lib/module-contracts.ts",
+      "symbol": "ModuleContracts",
+      "line": 3
+    },
+    {
+      "file": "lib/module-contracts.ts",
+      "symbol": "FieldCrosswalk",
+      "line": 5
+    },
+    {
+      "file": "lib/legal-check-dispositions.ts",
+      "symbol": "LegalDispositionRole",
+      "line": 1
+    },
+    {
+      "file": "lib/legal-check-dispositions.ts",
+      "symbol": "LegalCheckDisposition",
+      "line": 2
+    },
+    {
+      "file": "lib/legal-check-dispositions.ts",
+      "symbol": "LegalCheckRun",
+      "line": 3
+    },
+    {
+      "file": "lib/legal-check-dispositions.ts",
+      "symbol": "LegalDispositionState",
+      "line": 4
+    },
+    {
+      "file": "lib/export-artifact-transaction.ts",
+      "symbol": "StagedExportArtifact",
+      "line": 6
+    },
+    {
+      "file": "lib/export-artifact-transaction.ts",
+      "symbol": "ExportArtifactCleanupReport",
+      "line": 13
+    },
+    {
+      "file": "lib/export-artifact-transaction.ts",
+      "symbol": "ExportArtifactTransactionInput",
+      "line": 20
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "ReferenceProposalInput",
+      "line": 20
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "ReferenceApplicationContract",
+      "line": 21
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "ReferenceProposal",
+      "line": 22
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "fingerprintReferenceProposal",
+      "line": 23
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "listPendingReferenceChanges",
+      "line": 26
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "getPendingReferenceChange",
+      "line": 30
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "listReferenceReleaseHistory",
+      "line": 34
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "previewReferenceReleaseRestore",
+      "line": 54
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "restoreReferenceRelease",
+      "line": 61
+    },
+    {
+      "file": "lib/reference-store.ts",
+      "symbol": "approveReferenceBundle",
+      "line": 98
+    },
+    {
+      "file": "lib/export-provenance.ts",
+      "symbol": "ExportPageReceipt",
+      "line": 3
+    },
+    {
+      "file": "lib/export-provenance.ts",
+      "symbol": "ExportProvenance",
+      "line": 6
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "MatchState",
+      "line": 4
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "EngineFulfillment",
+      "line": 5
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "StaffDisposition",
+      "line": 6
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "RequirementStatus",
+      "line": 7
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "DocumentMatch",
+      "line": 8
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "ReceptionPage",
+      "line": 13
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "ReceptionFieldIssue",
+      "line": 16
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "DocumentReceptionInput",
+      "line": 21
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "DocumentReceptionView",
+      "line": 29
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "aggregateDocumentReception",
+      "line": 40
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "MatchContext",
+      "line": 85
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "FulfillmentDependencyInput",
+      "line": 86
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "fulfillmentDependencyFingerprint",
+      "line": 100
+    },
+    {
+      "file": "lib/document-fulfillment.ts",
+      "symbol": "createRequirementStaffDisposition",
+      "line": 107
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "EditableCollection",
+      "line": 3
+    },
+    {
+      "file": "lib/object-editor.ts",
+      "symbol": "EditField",
+      "line": 4
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Json",
+      "line": 11
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "TriState",
+      "line": 12
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Money",
+      "line": 13
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "FactState",
+      "line": 14
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Recognition",
+      "line": 15
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "IncomeKind",
+      "line": 16
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "DebtClassification",
+      "line": 17
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "NumericInput",
+      "line": 19
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "SourceRef",
+      "line": 26
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "StructuredSourceRef",
+      "line": 34
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "StructuredTestProvenance",
+      "line": 38
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "EvidenceDocument",
+      "line": 43
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "EvidencePage",
+      "line": 55
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Fact",
+      "line": 64
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "IncomeSource",
+      "line": 109
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Debt",
+      "line": 130
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Asset",
+      "line": 161
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Household",
+      "line": 176
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "Transaction",
+      "line": 185
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "DisposalScenario",
+      "line": 197
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "CaseContext",
+      "line": 207
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "ArtifactKind",
+      "line": 253
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "ExportFile",
+      "line": 254
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "ReviewRecord",
+      "line": 261
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "ExportManifest",
+      "line": 267
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "ReferenceTestProvenance",
+      "line": 277
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "CaseData",
+      "line": 294
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "RuleSource",
+      "line": 317
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "RuleSet",
+      "line": 325
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "CaseReadIndex",
+      "line": 388
+    },
+    {
+      "file": "lib/domain.ts",
+      "symbol": "ExtractionPayload",
+      "line": 711
+    },
+    {
+      "file": "lib/case-commands.ts",
+      "symbol": "CommandAuthority",
+      "line": 23
+    },
+    {
+      "file": "lib/case-commands.ts",
+      "symbol": "documentEditBaseHash",
+      "line": 40
+    },
+    {
+      "file": "lib/case-commands.ts",
+      "symbol": "assertMutableCase",
+      "line": 41
+    },
+    {
+      "file": "lib/case-commands.ts",
+      "symbol": "reduceCaseCommand",
+      "line": 51
+    },
+    {
+      "file": "lib/document-edits.ts",
+      "symbol": "EditableFieldKind",
+      "line": 1
+    },
+    {
+      "file": "lib/document-edits.ts",
+      "symbol": "DocumentEdit",
+      "line": 2
+    },
+    {
+      "file": "lib/document-edits.ts",
+      "symbol": "EditConflict",
+      "line": 3
+    },
+    {
+      "file": "lib/document-edits.ts",
+      "symbol": "EditMergeResult",
+      "line": 4
+    },
+    {
+      "file": "lib/reference-application.ts",
+      "symbol": "ReferenceApplicationReceipt",
+      "line": 7
+    },
+    {
+      "file": "lib/reference-application.ts",
+      "symbol": "referenceBundleForSnapshot",
+      "line": 14
+    },
+    {
+      "file": "lib/reference-application.ts",
+      "symbol": "inspectReferenceSnapshotBundle",
+      "line": 18
+    },
+    {
+      "file": "lib/reference-application.ts",
+      "symbol": "resolveReferenceApplicationForCase",
+      "line": 20
+    },
+    {
+      "file": "lib/transaction-groups.ts",
+      "symbol": "TransactionEvidence",
+      "line": 1
+    },
+    {
+      "file": "lib/transaction-groups.ts",
+      "symbol": "TransactionGroup",
+      "line": 2
+    },
+    {
+      "file": "lib/transaction-groups.ts",
+      "symbol": "TransactionGroupInput",
+      "line": 3
+    },
+    {
+      "file": "lib/case-agent.ts",
+      "symbol": "CaseExecution",
+      "line": 7
+    },
+    {
+      "file": "lib/case-agent.ts",
+      "symbol": "CalculatorExecutionReceipt",
+      "line": 8
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "ReferenceConsumer",
+      "line": 5
+    },
+    {
+      "file": "lib/reference-registry.ts",
+      "symbol": "ReferenceRecord",
+      "line": 6
+    },
+    {
+      "file": "lib/case-procedure-events.ts",
+      "symbol": "PROCEDURE_STATES",
+      "line": 1
+    },
+    {
+      "file": "lib/case-procedure-events.ts",
+      "symbol": "ProcedureEvent",
+      "line": 2
+    },
+    {
+      "file": "lib/case-procedure-events.ts",
+      "symbol": "validateProcedureEvent",
+      "line": 3
+    },
+    {
+      "file": "lib/document-filing-readiness.ts",
+      "symbol": "FilingFormulaStatus",
+      "line": 7
+    },
+    {
+      "file": "lib/document-filing-readiness.ts",
+      "symbol": "FilingReadinessTable",
+      "line": 14
+    },
+    {
+      "file": "lib/document-filing-readiness.ts",
+      "symbol": "FilingReadinessDocument",
+      "line": 20
+    },
+    {
+      "file": "lib/document-filing-readiness.ts",
+      "symbol": "DocumentFilingReadiness",
+      "line": 35
+    },
+    {
+      "file": "lib/document-filing-readiness.ts",
+      "symbol": "FilingReadinessReport",
+      "line": 46
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "CalculationTrace",
+      "line": 14
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "Allocation",
+      "line": 23
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "CalculationResult",
+      "line": 35
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "Finding",
+      "line": 62
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "AssessmentStatus",
+      "line": 74
+    },
+    {
+      "file": "lib/assessment.ts",
+      "symbol": "Assessment",
+      "line": 75
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "SourceState",
+      "line": 6
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "ApplicabilityClaim",
+      "line": 7
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "VerificationState",
+      "line": 9
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "ObservationInput",
+      "line": 11
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "FieldObservation",
+      "line": 18
+    },
+    {
+      "file": "lib/field-observation.ts",
+      "symbol": "PageFieldCoverage",
+      "line": 37
+    },
+    {
+      "file": "lib/source-nature-context.ts",
+      "symbol": "SourceNatureRead",
+      "line": 6
+    },
+    {
+      "file": "lib/source-nature-context.ts",
+      "symbol": "SourceNatureDiagnosticContext",
+      "line": 11
+    },
+    {
+      "file": "lib/source-nature-context.ts",
+      "symbol": "SourceNatureObservation",
+      "line": 15
+    },
+    {
+      "file": "lib/intake-case-bridge.ts",
+      "symbol": "IntakeCrosswalkEntry",
+      "line": 8
+    },
+    {
+      "file": "lib/intake-case-bridge.ts",
+      "symbol": "IntakeCaseWorkflow",
+      "line": 14
+    },
+    {
+      "file": "lib/intake-case-bridge.ts",
+      "symbol": "CrosswalkApproval",
+      "line": 15
+    },
+    {
+      "file": "lib/workflow-health.ts",
+      "symbol": "HealthJob",
+      "line": 4
+    },
+    {
+      "file": "lib/workflow-health.ts",
+      "symbol": "HealthCommand",
+      "line": 5
+    },
+    {
+      "file": "lib/workflow-health.ts",
+      "symbol": "workflowHealth",
+      "line": 7
+    },
+    {
+      "file": "lib/workflow-health.ts",
+      "symbol": "WorkflowHealth",
+      "line": 30
+    },
+    {
+      "file": "lib/intake-source-spans.ts",
+      "symbol": "IntakeSourceSpan",
+      "line": 9
+    },
+    {
+      "file": "lib/category-contract.ts",
+      "symbol": "RecordCategory",
+      "line": 4
+    },
+    {
+      "file": "lib/review-dependencies.ts",
+      "symbol": "ReviewDependencies",
+      "line": 3
+    },
+    {
+      "file": "lib/review-dependencies.ts",
+      "symbol": "canonicalJson",
+      "line": 4
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "NormalizedBox",
+      "line": 3
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "RescueReason",
+      "line": 4
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "RescueRecipeVersion",
+      "line": 5
+    },
+    {
+      "file": "lib/scan-quality.ts",
+      "symbol": "RescueSpec",
+      "line": 7
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION",
+      "line": 5
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "IntakeSemanticInput",
+      "line": 6
+    },
+    {
+      "file": "lib/intake-fingerprint.ts",
+      "symbol": "IntakeAuditIdentity",
+      "line": 17
+    },
+    {
+      "file": "lib/repayment-plan-model.ts",
+      "symbol": "PlanClaimClass",
+      "line": 4
+    },
+    {
+      "file": "lib/repayment-plan-model.ts",
+      "symbol": "PlanLedgerRow",
+      "line": 5
+    },
+    {
+      "file": "lib/repayment-plan-model.ts",
+      "symbol": "PlanLedger",
+      "line": 10
+    },
+    {
+      "file": "lib/case-migration.ts",
+      "symbol": "EvaluationWhitelistEntry",
+      "line": 5
+    },
+    {
+      "file": "lib/case-migration.ts",
+      "symbol": "EvaluationWhitelist",
+      "line": 6
+    },
+    {
+      "file": "lib/case-migration.ts",
+      "symbol": "cloneEvaluationCase",
+      "line": 8
+    },
+    {
+      "file": "lib/case-migration.ts",
+      "symbol": "evaluationCloneMatchesSource",
+      "line": 18
+    },
+    {
+      "file": "lib/document-preflight.ts",
+      "symbol": "DocumentMode",
+      "line": 3
+    },
+    {
+      "file": "lib/document-preflight.ts",
+      "symbol": "DocumentPreflightIdentity",
+      "line": 4
+    },
+    {
+      "file": "lib/document-preflight.ts",
+      "symbol": "PreflightIssue",
+      "line": 5
+    },
+    {
+      "file": "lib/document-preflight.ts",
+      "symbol": "DocumentPreflightResult",
+      "line": 6
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "ReadField",
+      "line": 9
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "ReadRecord",
+      "line": 10
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "PageRead",
+      "line": 11
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "Check",
+      "line": 12
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "ReviewPass",
+      "line": 13
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "FieldError",
+      "line": 25
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "SourceVerificationInput",
+      "line": 26
+    },
+    {
+      "file": "lib/source-verification.ts",
+      "symbol": "SourceVerificationReceipt",
+      "line": 30
+    },
+    {
+      "file": "lib/verification-bindings.ts",
+      "symbol": "VerificationBindingResult",
+      "line": 3
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "PendingClientMutation",
+      "line": 2
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "MutableRef",
+      "line": 3
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "legacyCommandId",
+      "line": 4
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "clearLegacyCommandId",
+      "line": 9
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "MutationHttpError",
+      "line": 12
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "requireUsableCaseSnapshot",
+      "line": 17
+    },
+    {
+      "file": "lib/client-mutation.ts",
+      "symbol": "isKnownMutationRejection",
+      "line": 26
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "StatementScopeRelationV1",
+      "line": 2
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "StatementScopeRelationV2",
+      "line": 9
+    },
+    {
+      "file": "lib/statement-scope-relation.ts",
+      "symbol": "StatementScopeRelation",
+      "line": 13
+    },
+    {
+      "file": "lib/debt-source-integrity.ts",
+      "symbol": "DebtSourceIntegrity",
+      "line": 13
+    },
+    {
+      "file": "lib/intake-classifier-response.ts",
+      "symbol": "IntakeClassifierReceipt",
+      "line": 20
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "DocumentTaskRole",
+      "line": 12
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "LogicalBoundaryStatus",
+      "line": 13
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "DownstreamDemand",
+      "line": 15
+    },
+    {
+      "file": "lib/document-agent-registry.ts",
+      "symbol": "DocumentTaskEnvelope",
+      "line": 40
+    },
+    {
+      "file": "lib/document-workflow-gate.ts",
+      "symbol": "FinalWorkflowRequirement",
+      "line": 1
+    },
+    {
+      "file": "lib/document-workflow-gate.ts",
+      "symbol": "FinalWorkflowLegalCheck",
+      "line": 2
+    },
+    {
+      "file": "lib/document-workflow-gate.ts",
+      "symbol": "finalWorkflowBlockers",
+      "line": 5
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "ExtractCategory",
+      "line": 45
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "ReadField",
+      "line": 46
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "ReadRecord",
+      "line": 47
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "PageRead",
+      "line": 48
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "FieldReviewCheck",
+      "line": 65
+    },
+    {
+      "file": "lib/extraction.ts",
+      "symbol": "RepairTarget",
+      "line": 66
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeScope",
+      "line": 7
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeState",
+      "line": 8
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeFeature",
+      "line": 9
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeSource",
+      "line": 10
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeDocumentType",
+      "line": 11
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeCondition",
+      "line": 12
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeDocumentNeed",
+      "line": 13
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeRule",
+      "line": 14
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeCatalog",
+      "line": 15
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "ConsultationNote",
+      "line": 16
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeQuote",
+      "line": 17
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeClaim",
+      "line": 18
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "RawIntakeClaim",
+      "line": 19
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeQuestion",
+      "line": 20
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeRequirement",
+      "line": 21
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeResult",
+      "line": 22
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeRun",
+      "line": 23
+    },
+    {
+      "file": "lib/intake-types.ts",
+      "symbol": "IntakeChecklistView",
+      "line": 29
+    },
+    {
+      "file": "lib/history-integrity-restore.ts",
+      "symbol": "RestoreInput",
+      "line": 7
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "FactObjectTarget",
+      "line": 3
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "ProjectionBlocker",
+      "line": 4
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "FactProjection",
+      "line": 5
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "ProjectionAudit",
+      "line": 59
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "AppliedFactProjection",
+      "line": 60
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "applyFactProjection",
+      "line": 63
+    },
+    {
+      "file": "lib/fact-object-projection.ts",
+      "symbol": "invalidateFactSupport",
+      "line": 93
+    },
+    {
+      "file": "lib/document-annexes.ts",
+      "symbol": "AnnexTable",
+      "line": 32
+    },
+    {
+      "file": "lib/document-annexes.ts",
+      "symbol": "repaymentPlanLedgerAnnex",
+      "line": 34
+    },
+    {
+      "file": "lib/case-command-store.ts",
+      "symbol": "commandReceipt",
+      "line": 21
+    },
+    {
+      "file": "lib/case-command-store.ts",
+      "symbol": "executeLegacyCaseCommand",
+      "line": 49
+    },
+    {
+      "file": "lib/case-command-store.ts",
+      "symbol": "executeCaseCommand",
+      "line": 67
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "TaskStatus",
+      "line": 2
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "CaseTask",
+      "line": 3
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "mergeCaseTasks",
+      "line": 4
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "updateCaseTask",
+      "line": 5
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "selectTasks",
+      "line": 11
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "taskSummary",
+      "line": 12
+    },
+    {
+      "file": "lib/case-tasks.ts",
+      "symbol": "makeCaseTask",
+      "line": 13
+    },
+    {
+      "file": "lib/calculation-adapter.ts",
+      "symbol": "CalculationContract",
+      "line": 3
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "APP_ROLES",
+      "line": 3
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "AppRole",
+      "line": 4
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "RoleGrant",
+      "line": 5
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "roleGrantApplies",
+      "line": 6
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "rolesForActor",
+      "line": 7
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "requireAppRole",
+      "line": 19
+    },
+    {
+      "file": "lib/app-roles.ts",
+      "symbol": "updateRoleGrant",
+      "line": 22
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "ExecutionCategory",
+      "line": 7
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "FeatureMapping",
+      "line": 8
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "GraphNode",
+      "line": 9
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "GraphEdge",
+      "line": 10
+    },
+    {
+      "file": "lib/lawgraph.ts",
+      "symbol": "LawGraphScenario",
+      "line": 15
+    },
+    {
+      "file": "lib/execution-catalog.ts",
+      "symbol": "CalculationSpec",
+      "line": 11
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "OfficeMode",
+      "line": 19
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "OfficeArtifact",
+      "line": 20
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "RenderedTable",
+      "line": 29
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "RenderedField",
+      "line": 36
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "RenderedBlock",
+      "line": 48
+    },
+    {
+      "file": "lib/office-writer.ts",
+      "symbol": "RenderedOffice",
+      "line": 49
+    },
+    {
+      "file": "lib/processing-readiness.ts",
+      "symbol": "StoredDocumentState",
+      "line": 4
+    },
+    {
+      "file": "lib/processing-readiness.ts",
+      "symbol": "StoredPageState",
+      "line": 5
+    },
+    {
+      "file": "lib/processing-readiness.ts",
+      "symbol": "ProcessingReadiness",
+      "line": 6
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "FormBindings",
+      "line": 19
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "FormProvenance",
+      "line": 23
+    },
+    {
+      "file": "lib/form-mapping.ts",
+      "symbol": "MappedPublicForm",
+      "line": 34
+    },
+    {
+      "file": "lib/living-cost-proposal.ts",
+      "symbol": "LivingCostProposal",
+      "line": 7
+    },
+    {
+      "file": "lib/legal-monitor-status.ts",
+      "symbol": "MonitorSourceObservation",
+      "line": 1
+    },
+    {
+      "file": "lib/legal-monitor-status.ts",
+      "symbol": "MonitorSourceStatus",
+      "line": 2
+    },
+    {
+      "file": "lib/legal-monitor-status.ts",
+      "symbol": "MonitorRunStatus",
+      "line": 16
+    },
+    {
+      "file": "lib/legal-monitor-status.ts",
+      "symbol": "projectMonitorSchedule",
+      "line": 18
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "ExecutionSnapshot",
+      "line": 10
+    },
+    {
+      "file": "lib/reactive-evaluation.ts",
+      "symbol": "DerivedEvaluationEnvelope",
+      "line": 11
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "StoredPageJobForReprojection",
+      "line": 13
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "StoredReadResult",
+      "line": 27
+    },
+    {
+      "file": "lib/reprojection.ts",
+      "symbol": "HistoricalReadProvenance",
+      "line": 39
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "FormValueKind",
+      "line": 5
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "Requiredness",
+      "line": 6
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "FormFieldContract",
+      "line": 7
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "RepeatGroupContract",
+      "line": 15
+    },
+    {
+      "file": "lib/form-contracts.ts",
+      "symbol": "FormContract",
+      "line": 16
+    },
+    {
+      "file": "lib/luna.ts",
+      "symbol": "Usage",
+      "line": 4
+    },
+    {
+      "file": "lib/luna.ts",
+      "symbol": "LunaCallArgs",
+      "line": 5
+    },
+    {
+      "file": "lib/luna.ts",
+      "symbol": "LunaCallResult",
+      "line": 6
+    },
+    {
+      "file": "lib/legal-review-identity.ts",
+      "symbol": "LegalDispositionIdentity",
+      "line": 3
+    },
+    {
+      "file": "lib/legal-review-identity.ts",
+      "symbol": "LegalReviewRunIdentity",
+      "line": 4
+    },
+    {
+      "file": "lib/legal-review-identity.ts",
+      "symbol": "LegalRunConflictProjection",
+      "line": 5
+    },
+    {
+      "file": "lib/legal-review-identity.ts",
+      "symbol": "projectLegalRunConflicts",
+      "line": 7
+    },
+    {
+      "file": "lib/legal-review-identity.ts",
+      "symbol": "currentLegalDispositionOutcome",
+      "line": 16
+    },
+    {
+      "file": "lib/legal-review-identity.ts",
+      "symbol": "legalReviewInputFingerprint",
+      "line": 23
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferencePresenceState",
+      "line": 5
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferencePageBinding",
+      "line": 6
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferenceDocumentBinding",
+      "line": 7
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferenceSourceRef",
+      "line": 8
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferenceFieldObservation",
+      "line": 9
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferenceObjectRow",
+      "line": 16
+    },
+    {
+      "file": "lib/reference-case-import.ts",
+      "symbol": "ReferenceTestDataset",
+      "line": 17
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "ExportTable",
+      "line": 20
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "CourtDocument",
+      "line": 21
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "WorkbookSheet",
+      "line": 28
+    },
+    {
+      "file": "lib/exports.ts",
+      "symbol": "ExportPackage",
+      "line": 33
+    },
+    {
+      "file": "lib/legal-monitor-provider.ts",
+      "symbol": "MonitorProviderUsage",
+      "line": 6
+    },
+    {
+      "file": "lib/legal-monitor-provider.ts",
+      "symbol": "MonitorLunaCall",
+      "line": 7
+    },
+    {
+      "file": "components/field-coverage.tsx",
+      "symbol": "FieldCoveragePanel",
+      "line": 11
+    },
+    {
+      "file": "components/case-review-actions.tsx",
+      "symbol": "ReviewArtifact",
+      "line": 8
+    },
+    {
+      "file": "components/case-review-actions.tsx",
+      "symbol": "ReviewFieldBase",
+      "line": 9
+    },
+    {
+      "file": "components/case-review-actions.tsx",
+      "symbol": "CurrentLegalRun",
+      "line": 10
+    },
+    {
+      "file": "components/case-review-actions.tsx",
+      "symbol": "CaseReviewActionsProps",
+      "line": 11
+    },
+    {
+      "file": "components/case-review-actions.tsx",
+      "symbol": "CaseReviewActions",
+      "line": 26
+    },
+    {
+      "file": "components/reference-workspace.tsx",
+      "symbol": "ReferenceWorkspace",
+      "line": 95
+    },
+    {
+      "file": "components/context-editor.tsx",
+      "symbol": "ContextEditor",
+      "line": 14
+    },
+    {
+      "file": "components/consultation-checklist.tsx",
+      "symbol": "ConsultationChecklist",
+      "line": 38
+    },
+    {
+      "file": "components/case-workflow.tsx",
+      "symbol": "CaseWorkflow",
+      "line": 54
+    },
+    {
+      "file": "components/role-manager.tsx",
+      "symbol": "RoleManager",
+      "line": 8
+    },
+    {
+      "file": "components/checklist-catalog-manager.tsx",
+      "symbol": "ChecklistCatalogManager",
+      "line": 36
+    },
+    {
+      "file": "components/connector-error.tsx",
+      "symbol": "ConnectorError",
+      "line": 6
+    },
+    {
+      "file": "components/lawgraph-viewer.tsx",
+      "symbol": "LawgraphViewer",
+      "line": 6
+    },
+    {
+      "file": "components/data-manager.tsx",
+      "symbol": "DataManager",
+      "line": 13
+    },
+    {
+      "file": "components/legal-proposals.tsx",
+      "symbol": "LegalProposals",
+      "line": 6
+    },
+    {
+      "file": "components/task-dashboard.tsx",
+      "symbol": "TaskDashboard",
+      "line": 11
+    },
+    {
+      "file": "components/schedule-editor.tsx",
+      "symbol": "ScheduleEditor",
+      "line": 13
+    },
+    {
+      "file": "components/workspace.tsx",
+      "symbol": "Workspace",
+      "line": 82
+    },
+    {
+      "file": "components/ui/chart.tsx",
+      "symbol": "ChartConfig",
+      "line": 17
+    },
+    {
+      "file": "app/api/legal-monitor/route.ts",
+      "symbol": "GET",
+      "line": 5
+    },
+    {
+      "file": "app/api/legal-monitor/route.ts",
+      "symbol": "POST",
+      "line": 6
+    },
+    {
+      "file": "app/api/intake-reference/route.ts",
+      "symbol": "GET",
+      "line": 5
+    },
+    {
+      "file": "app/api/reference-data/route.ts",
+      "symbol": "GET",
+      "line": 34
+    },
+    {
+      "file": "app/api/reference-data/route.ts",
+      "symbol": "POST",
+      "line": 45
+    },
+    {
+      "file": "app/api/workspace/route.ts",
+      "symbol": "GET",
+      "line": 7
+    },
+    {
+      "file": "app/api/checklist-catalog/route.ts",
+      "symbol": "runtime",
+      "line": 3
+    },
+    {
+      "file": "app/api/checklist-catalog/route.ts",
+      "symbol": "GET",
+      "line": 4
+    },
+    {
+      "file": "app/api/checklist-catalog/route.ts",
+      "symbol": "PUT",
+      "line": 5
+    },
+    {
+      "file": "app/api/evaluation-cases/route.ts",
+      "symbol": "runtime",
+      "line": 7
+    },
+    {
+      "file": "app/api/evaluation-cases/route.ts",
+      "symbol": "POST",
+      "line": 9
+    },
+    {
+      "file": "app/api/evaluation-cases/route.ts",
+      "symbol": "GET",
+      "line": 65
+    },
+    {
+      "file": "app/api/evaluation-cases/clone/route.ts",
+      "symbol": "POST",
+      "line": 5
+    },
+    {
+      "file": "app/api/tasks/route.ts",
+      "symbol": "GET",
+      "line": 7
+    },
+    {
+      "file": "app/api/roles/route.ts",
+      "symbol": "GET",
+      "line": 3
+    },
+    {
+      "file": "app/api/roles/route.ts",
+      "symbol": "POST",
+      "line": 4
+    },
+    {
+      "file": "app/api/cases/route.ts",
+      "symbol": "POST",
+      "line": 5
+    },
+    {
+      "file": "app/api/cases/[id]/route.ts",
+      "symbol": "GET",
+      "line": 12
+    },
+    {
+      "file": "app/api/cases/[id]/route.ts",
+      "symbol": "POST",
+      "line": 16
+    },
+    {
+      "file": "app/api/cases/[id]/route.ts",
+      "symbol": "PATCH",
+      "line": 35
+    },
+    {
+      "file": "app/api/cases/[id]/migration/route.ts",
+      "symbol": "GET",
+      "line": 7
+    },
+    {
+      "file": "app/api/cases/[id]/workflow/route.ts",
+      "symbol": "GET",
+      "line": 3
+    },
+    {
+      "file": "app/api/cases/[id]/calculator/route.ts",
+      "symbol": "POST",
+      "line": 7
+    },
+    {
+      "file": "app/api/cases/[id]/requirements/route.ts",
+      "symbol": "GET",
+      "line": 3
+    },
+    {
+      "file": "app/api/cases/[id]/documents/route.ts",
+      "symbol": "POST",
+      "line": 4
+    },
+    {
+      "file": "app/api/cases/[id]/documents/[doc]/route.ts",
+      "symbol": "PUT",
+      "line": 12
+    },
+    {
+      "file": "app/api/cases/[id]/documents/[doc]/route.ts",
+      "symbol": "GET",
+      "line": 94
+    },
+    {
+      "file": "app/api/cases/[id]/export/route.ts",
+      "symbol": "POST",
+      "line": 45
+    },
+    {
+      "file": "app/api/cases/[id]/analyses/route.ts",
+      "symbol": "GET",
+      "line": 3
+    },
+    {
+      "file": "app/api/cases/[id]/consultations/route.ts",
+      "symbol": "runtime",
+      "line": 3
+    },
+    {
+      "file": "app/api/cases/[id]/consultations/route.ts",
+      "symbol": "GET",
+      "line": 5
+    },
+    {
+      "file": "app/api/cases/[id]/consultations/route.ts",
+      "symbol": "POST",
+      "line": 6
+    },
+    {
+      "file": "app/api/cases/[id]/artifacts/[file]/route.ts",
+      "symbol": "GET",
+      "line": 2
+    },
+    {
+      "file": "app/api/cases/[id]/process/route.ts",
+      "symbol": "GET",
+      "line": 11
+    },
+    {
+      "file": "app/api/cases/[id]/process/route.ts",
+      "symbol": "POST",
+      "line": 40
+    },
+    {
+      "file": "app/api/cases/[id]/commands/route.ts",
+      "symbol": "POST",
+      "line": 4
+    },
+    {
+      "file": "app/api/cases/[id]/commands/route.ts",
+      "symbol": "GET",
+      "line": 5
+    },
+    {
+      "file": "app/api/cases/[id]/recompute/route.ts",
+      "symbol": "POST",
+      "line": 13
+    }
+  ],
+  "exceptions": [
+    {
+      "file": "lib/legal-exceptions.json",
+      "line": 1,
+      "identity": "legal exception catalog",
+      "casesOrRules": 46,
+      "detail": "scenario exception catalog consumed by executionCatalog() in lib/execution-catalog.ts:29"
+    },
+    {
+      "file": "lib/legal-catalog.json",
+      "line": 1,
+      "identity": "implementation_research_catalog_not_legal_opinion",
+      "casesOrRules": 50
+    },
+    {
+      "file": "lib/risk-catalog.json",
+      "line": 1,
+      "identity": "legal exception catalog",
+      "casesOrRules": 0
+    }
+  ],
+  "scenarioCoverage": {
+    "total": 82,
+    "status": "947_local_tests_passed_scenario_scopes_mapped_external_acceptance_incomplete",
+    "coverageHooks": [
+      {
+        "file": "tests/annex.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/asset-resolution.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/calculation-audit.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/calculator-tools.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/classification-inspection.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/classification-recovery.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/context.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/coverage-review.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/crud-audit.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/debt-resolution.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/debt-source-integrity.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/disposal-execution.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/document-contracts.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/document-filing-readiness.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/document-generation-metrics.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/document-routing.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/document-snapshot-isolation.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/document-writer.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/domain.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/evaluation-inventory.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/export-artifact-transaction.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/export-memory-regression.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/extraction-semantics.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/extraction.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/fact-review-units.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/field-observation.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/history-integrity-restore.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/income-resolution.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/insurance-source-slots.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-classifier-response.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-engine.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-prompt.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-reference.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-source-spans.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-store.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/intake-workflow-domain.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/json-response.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/large-storage.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/lawgraph.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/legal-finalization-gate.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/legal-monitor-provider.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/legal-monitor-store.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/legal-monitor.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/legal-proposals.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/legal-review-packet.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/luna-boundary.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/manual-review-preservation.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/objection-minimum.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/office.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/output-resolution.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/page-job-inspection.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/page-refresh-pipeline.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/page-refresh.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/pipeline-audit.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/pipeline-commit.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/principal-current-slot.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/process-job-scope.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/processing-audit.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/projection-review-modules.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/prompt-contract.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/proposed-schedule.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/provenance.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reference-case-import.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reference-case-projection.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reference-parameters.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reference-prompts.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reference-pure-modules.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reference-registry.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/regional-source.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reprojection-route.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/reprojection.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/retry-page-policy.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/scan-quality.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/server-integrity.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/source-index-perf.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/source-nature-context.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/source-quantity.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/source-review-annexes.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/source-verification.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/statement-paragraphs.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/structured-case-import.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/structured-test-source.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/transactions.test.ts",
+        "line": 1
+      },
+      {
+        "file": "tests/verification-bindings.test.ts",
+        "line": 1
+      }
+    ],
+    "note": "Named checks are mapped per AT in the release report. Full browser E2E, deployed D1/R2, official e-form parity and held-out legal/OCR evaluation remain separate.",
+    "evidenceReport": "docs/release-acceptance.json",
+    "latestRun": {
+      "path": "../integration-tests-final.tap",
+      "sha256": "4921a2b6e9a0e8fe36ecbbfc454d5353371cab27e970878d6bb07b3f9d219d8a",
+      "result": "947 passed, 0 failed, 0 skipped",
+      "typecheck": "../refactor-tsc-complete.log passed"
+    }
+  },
+  "primaryAndDetailFeatures": [
+    {
+      "module": "lib/extraction.ts",
+      "feature": "Classifies document type, extracts anchored page fields, verifies and repairs disagreements, preserves partial rows and source status.",
+      "evidence": [
+        {
+          "file": "lib/extraction.ts",
+          "symbol": "sourceInstructions",
+          "line": 39
+        },
+        {
+          "file": "lib/extraction.ts",
+          "symbol": "applyFirstVerification",
+          "line": 131
+        },
+        {
+          "file": "lib/extraction.ts",
+          "symbol": "applyTargetedRepair",
+          "line": 155
+        }
+      ],
+      "exceptions": "Unknown family remains unknown; conflicts, missing checks, invalid boxes and unreadable fields remain unresolved."
+    },
+    {
+      "module": "lib/reference-case-projection.ts",
+      "feature": "Projects only exact contract-backed observations to typed income/debt/asset/transaction and applicant bindings; maintains per-field coverage counters.",
+      "evidence": [
+        {
+          "file": "lib/reference-case-projection.ts",
+          "symbol": "mappingFor",
+          "line": 123
+        },
+        {
+          "file": "lib/reference-case-projection.ts",
+          "symbol": "projectReferenceCaseDataset",
+          "line": 183
+        }
+      ],
+      "exceptions": "Role/value mismatches, unsupported fields, missing units, ambiguous applicant fields and row grouping failures remain case observations."
+    },
+    {
+      "module": "lib/object-editor.ts",
+      "feature": "Edits/retracts structured case objects with source references, reason, actor, range checks and review reset behavior.",
+      "evidence": [
+        {
+          "file": "lib/object-editor.ts",
+          "symbol": "upsertObject",
+          "line": 42
+        },
+        {
+          "file": "lib/object-editor.ts",
+          "symbol": "removeObject",
+          "line": 105
+        }
+      ],
+      "exceptions": "Rejects stale/nonexistent IDs, invalid dates/money/select values, missing evidence/reason and incomplete decision reviews."
+    },
+    {
+      "module": "lib/document-filing-readiness.ts",
+      "feature": "Computes document filing readiness and unmet evidence requirements.",
+      "evidence": [
+        {
+          "file": "lib/document-filing-readiness.ts",
+          "line": 1
+        }
+      ],
+      "exceptions": "Unresolved required documents block readiness."
+    },
+    {
+      "module": "lib/document-writer.ts",
+      "feature": "Prepares document writes behind synthetic/final and filing gates.",
+      "evidence": [
+        {
+          "file": "lib/document-writer.ts",
+          "symbol": "prepareDocumentWrite",
+          "line": 28
+        }
+      ],
+      "exceptions": "Incomplete review, stale data and synthetic-case restrictions prevent final output."
+    },
+    {
+      "module": "lib/calculator-tools.ts",
+      "feature": "Validates calculator tool inputs and returns deterministic calculations with version and reference hashes.",
+      "evidence": [
+        {
+          "file": "lib/calculator-tools.ts",
+          "symbol": "callCalculatorTool",
+          "line": 77
+        }
+      ],
+      "exceptions": "Invalid input returns structured error; court approval is never inferred."
+    },
+    {
+      "module": "lib/case-requirements.ts",
+      "feature": "Derives case-specific required documents and workflow requirements.",
+      "evidence": [
+        {
+          "file": "lib/case-requirements.ts",
+          "line": 1
+        }
+      ],
+      "exceptions": "Unknown applicability remains a blocker/review item."
+    },
+    {
+      "module": "lib/legal-monitor-store.ts",
+      "feature": "Stores source-monitor observations, run status and review alerts.",
+      "evidence": [
+        {
+          "file": "lib/legal-monitor-store.ts",
+          "line": 1
+        }
+      ],
+      "exceptions": "Candidate changes do not activate rules or alter case recognition."
+    },
+    {
+      "module": "lib/case-workflow-server.ts",
+      "feature": "Serves a read-only workflow projection and durable typed case commands for requirement, evidence, task, legal disposition and procedure work.",
+      "evidence": [
+        {
+          "file": "lib/case-workflow-server.ts",
+          "line": 1
+        },
+        {
+          "file": "lib/case-commands.ts",
+          "symbol": "reduceCaseCommand",
+          "line": 1
+        }
+      ],
+      "exceptions": "Revision/fingerprint conflicts, role denial, synthetic-case restrictions, missing reasons and stale evidence fail closed; receipt lookup supports retry recovery."
+    },
+    {
+      "module": "lib/task-dashboard-query.ts",
+      "feature": "Queries durable case tasks by owner/status with totals derived from the same filter relation; task commands persist owner, status, due date and waiting state.",
+      "evidence": [
+        {
+          "file": "lib/task-dashboard-query.ts",
+          "line": 1
+        },
+        {
+          "file": "lib/case-tasks.ts",
+          "line": 1
+        }
+      ],
+      "exceptions": "Invalid filters and unauthorized access are rejected; task changes do not mutate calculation inputs or legal disposition records."
+    },
+    {
+      "module": "lib/app-roles.ts",
+      "feature": "Provides scoped role grants, verified-owner bootstrap and audited grant updates.",
+      "evidence": [
+        {
+          "file": "lib/app-roles.ts",
+          "line": 1
+        }
+      ],
+      "exceptions": "Ordinary staff cannot self-assign roles; professional qualification verification is not asserted by the role API."
+    },
+    {
+      "module": "lib/workflow-health.ts",
+      "feature": "Builds bounded operational health diagnostics for jobs, retries, task age, blockers, artifacts and command history while excluding source values and personal details.",
+      "evidence": [
+        {
+          "file": "lib/workflow-health.ts",
+          "symbol": "workflowHealth",
+          "line": 7
+        },
+        {
+          "file": "app/api/cases/[id]/workflow/route.ts",
+          "line": 3
+        }
+      ],
+      "exceptions": "Partial diagnostic coverage is explicit; monitor runtime is reported not observed, model calls are not started, and retry requires current fingerprint."
+    },
+    {
+      "module": "lib/case-schema-migration.ts",
+      "feature": "Prepares and applies an explicit, bounded, versioned per-case workflow schema migration with source/result hashes and an immutable idempotent receipt.",
+      "evidence": [
+        {
+          "file": "lib/case-schema-migration.ts",
+          "symbol": "prepareCaseSchemaMigration",
+          "line": 81
+        },
+        {
+          "file": "lib/case-schema-migration.ts",
+          "symbol": "applyCaseSchemaMigration",
+          "line": 97
+        },
+        {
+          "file": "app/api/cases/[id]/migration/route.ts",
+          "line": 7
+        }
+      ],
+      "exceptions": "Protected/original cases, unsupported schema/version/mode, stale revision/hash, forged plan and invalid scope are rejected; common command CAS protects durable apply."
+    },
+    {
+      "module": "docs/recovery-runbook.md",
+      "feature": "Documents operator responsibilities and manual recovery steps for pending/failed jobs, stale commands, task blockers and generated artifacts.",
+      "evidence": [
+        {
+          "file": "docs/recovery-runbook.md",
+          "line": 1
+        }
+      ],
+      "exceptions": "Runbook does not trigger automatic retry or certify legal review."
+    }
+  ],
+  "counts": {
+    "pages": 18,
+    "apiRoutes": 24,
+    "primaryAndDetailFunctions": 970,
+    "exceptions": 3,
+    "primaryAndDetailFeatures": 14
+  }
+}

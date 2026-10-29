@@ -12,7 +12,8 @@ import {
   currentReferenceSnapshot, referenceSnapshotHash, type ReferenceSnapshot,
 } from "../lib/reference-runtime.ts";
 import { referenceParameter } from "../lib/reference-parameters.ts";
-import { proposeReferenceChange, activateReferenceChange, referenceHash } from "../lib/reference-store.ts";
+import { proposeReferenceChange, activateReferenceChange, approveReferenceBundle, referenceHash, fingerprintReferenceProposal } from "../lib/reference-store.ts";
+import { referenceBundleFromSnapshot } from "../lib/reference-bundle.ts";
 
 type Json = Record<string, unknown>;
 function readJson<T>(path: string): T { return JSON.parse(readFileSync(new URL(`../${path}`, import.meta.url), "utf8")) as T; }
@@ -313,9 +314,11 @@ test("proposal effective dates must exist in the calendar rather than normalize 
 });
 
 test("activation binds authority, effective date, reviewer and value into the new immutable release identity", async () => {
-  const candidate = { referenceId: ordinaryId, value: 24, baseSha256: REFERENCE_RELEASE.sha256, sourceUrls: [officialSource], effectiveFrom: "2026-10-01", reason: "Synthetic reviewed term change", basisType: "official_source" };
-  const { database, writes } = fakeDatabase(seedRow(), { payload: JSON.stringify(candidate), status: "pending_review" });
-  const active = await activateReferenceChange(database, "synthetic-proposal", REFERENCE_RELEASE.sha256, "synthetic-human-reviewer");
+  const candidate = { referenceId: ordinaryId, oldValue: 36, value: 24, baseSha256: REFERENCE_RELEASE.sha256, sourceUrls: [officialSource], effectiveFrom: "2026-10-01", reason: "Synthetic reviewed term change", basisType: "official_source" };
+  const proposal = { id: "synthetic-proposal", ...candidate, status: "pending_review", createdAt: "2026-10-28T00:00:00.000Z", actor: "synthetic-author" };
+  const proposalFingerprint = await fingerprintReferenceProposal(proposal);
+  const { database, writes } = fakeDatabase(seedRow(), { payload: JSON.stringify({ ...proposal, proposalFingerprint }), status: "pending_review" });
+  const active = await activateReferenceChange(database, "synthetic-proposal", REFERENCE_RELEASE.sha256, "synthetic-human-reviewer", proposalFingerprint);
   assert.equal(active.revision, 2);
   assert.notEqual(active.sha256, REFERENCE_RELEASE.sha256);
   assert.equal(active.sha256, await referenceSnapshotHash(REFERENCE_RELEASE.sha256, active.values, active.metadata));
@@ -336,14 +339,43 @@ test("activation binds authority, effective date, reviewer and value into the ne
   assert.equal(required(ordinaryId).value, 36);
 });
 
+test("proposal fingerprints bind approval to exact proposal contents and optional four-eyes policy", async () => {
+  const base = { id:"synthetic-proposal", referenceId:ordinaryId, oldValue:36, value:24, baseSha256:REFERENCE_RELEASE.sha256, sourceUrls:[officialSource], effectiveFrom:"2026-10-01", reason:"Synthetic reviewed term change", basisType:"official_source", status:"pending_review", createdAt:"2026-10-28T00:00:00.000Z", actor:"synthetic-author" };
+  const fingerprint = await fingerprintReferenceProposal(base);
+  const { database, writes } = fakeDatabase(seedRow(), { payload:JSON.stringify({...base,reason:"Tampered proposal",proposalFingerprint:fingerprint}),status:"pending_review" });
+  await assert.rejects(activateReferenceChange(database,"synthetic-proposal",REFERENCE_RELEASE.sha256,"synthetic-reviewer",fingerprint),/REFERENCE_PROPOSAL_FINGERPRINT_CONFLICT/);
+  assert.equal(writes.length,0);
+  const { database:fourEyesDb,writes:fourEyesWrites }=fakeDatabase(seedRow(),{payload:JSON.stringify({...base,proposalFingerprint:fingerprint}),status:"pending_review"});
+  await assert.rejects(activateReferenceChange(fourEyesDb,"synthetic-proposal",REFERENCE_RELEASE.sha256,"synthetic-author",fingerprint,{fourEyesRequired:true}),/REFERENCE_FOUR_EYES_REQUIRED/);
+  assert.equal(fourEyesWrites.length,0);
+});
+
+test("bundle compatibility is a separate approval bound to one active snapshot and does not resolve unknown transitions",async()=>{
+  const {database,writes}=fakeDatabase(seedRow());
+  const active=await approveReferenceBundle(database,{artifactIds:[ordinaryId],expectedActiveSha256:REFERENCE_RELEASE.sha256,reason:"Reviewed this exact artifact set for joint application."},"synthetic-reference-approver");
+  assert.equal(active.bundleReview?.status,"verified");assert.equal(active.bundleReview?.basedOnSha256,REFERENCE_RELEASE.sha256);assert.deepEqual(active.bundleReview?.artifactIds,[ordinaryId]);
+  assert.equal(active.sha256,await referenceSnapshotHash(REFERENCE_RELEASE.sha256,active.values,active.metadata,active.bundleReview));
+  assert.equal(writes.length,2);assert.ok(writes.every(write=>!write.sql.includes("legal_reference_changes")),"bundle review is separate from record proposal approval");
+  const stored:ReleaseRow={id:active.id,revision:active.revision,sha256:active.sha256,seedSha256:REFERENCE_RELEASE.sha256,payload:JSON.stringify({values:active.values,metadata:active.metadata,bundleReview:active.bundleReview})};
+  const loaded=await loadReferenceSnapshot(fakeDatabase(stored).database);assert.equal(loaded.bundleReview?.artifacts[0].id,active.bundleReview?.artifacts[0].id);assert.equal(loaded.bundleReview?.artifacts[0].sha256,active.bundleReview?.artifacts[0].sha256);
+  const bundle=referenceBundleFromSnapshot({...active,metadata:{[ordinaryId]:{effectiveFrom:"2026-01-01",applicationContract:{dateBasis:"applicationDate",jurisdiction:"court-a",transition:{status:"unknown"}}}}},[{id:ordinaryId,sha256:required(ordinaryId).sha256}]);
+  assert.equal(bundle.compatibility,"verified");assert.deepEqual(bundle.artifacts.map(item=>item.id),[ordinaryId]);
+  const unresolved=await import("../lib/reference-resolver.ts").then(({resolveReferenceBundle})=>resolveReferenceBundle([bundle],{jurisdiction:"court-a",dates:{applicationDate:"2026-06-01"},requiredArtifacts:[ordinaryId]}));
+  assert.equal(unresolved.status,"unresolved");
+  const nextRecordRelease={...active,id:"synthetic-next-record-release",revision:active.revision+1,sha256:"d".repeat(64),bundleReview:undefined};
+  const invalidated=referenceBundleFromSnapshot(nextRecordRelease,[{id:ordinaryId,sha256:required(ordinaryId).sha256}]);assert.equal(invalidated.compatibility,"unknown","a later source release without a fresh whole-set review cannot inherit approval");
+});
+
 test("activation rejects impossible term ordering, future effective dates and stale review bases before writing", async () => {
   for (const [candidate, expected] of [
-    [{ referenceId: ordinaryId, value: 61, effectiveFrom: "2026-10-01", baseSha256: REFERENCE_RELEASE.sha256 }, /REFERENCE_TERM_INVARIANT/],
-    [{ referenceId: ordinaryId, value: 24, effectiveFrom: "9999-12-31", baseSha256: REFERENCE_RELEASE.sha256 }, /REFERENCE_CHANGE_NOT_YET_EFFECTIVE/],
-    [{ referenceId: ordinaryId, value: 24, effectiveFrom: "2026-10-01", baseSha256: "e".repeat(64) }, /REFERENCE_RELEASE_CONFLICT/],
+    [{ referenceId: ordinaryId, oldValue: 36, value: 61, effectiveFrom: "2026-10-01", baseSha256: REFERENCE_RELEASE.sha256 }, /REFERENCE_TERM_INVARIANT/],
+    [{ referenceId: ordinaryId, oldValue: 36, value: 24, effectiveFrom: "9999-12-31", baseSha256: REFERENCE_RELEASE.sha256 }, /REFERENCE_CHANGE_NOT_YET_EFFECTIVE/],
+    [{ referenceId: ordinaryId, oldValue: 36, value: 24, effectiveFrom: "2026-10-01", baseSha256: "e".repeat(64) }, /REFERENCE_RELEASE_CONFLICT/],
   ] as const) {
-    const { database, writes } = fakeDatabase(seedRow(), { payload: JSON.stringify({ ...candidate, sourceUrls: [officialSource], reason: "Synthetic reviewed change", basisType: "official_source" }), status: "pending_review" });
-    await assert.rejects(activateReferenceChange(database, "synthetic-proposal", REFERENCE_RELEASE.sha256, "synthetic-reviewer"), expected);
+    const proposal = { id: "synthetic-proposal", ...candidate, sourceUrls: [officialSource], reason: "Synthetic reviewed change", basisType: "official_source", status: "pending_review", createdAt: "2026-10-28T00:00:00.000Z", actor: "synthetic-author" };
+    const proposalFingerprint = await fingerprintReferenceProposal(proposal);
+    const { database, writes } = fakeDatabase(seedRow(), { payload: JSON.stringify({ ...proposal, proposalFingerprint }), status: "pending_review" });
+    await assert.rejects(activateReferenceChange(database, "synthetic-proposal", REFERENCE_RELEASE.sha256, "synthetic-reviewer", proposalFingerprint), expected);
     assert.equal(writes.length, 0);
   }
 });

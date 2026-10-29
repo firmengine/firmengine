@@ -7,6 +7,7 @@ import { adaptIntakeClassifierResponse } from "./intake-classifier-response.ts";
 import { resolveIntakeSourceSpanRefs } from "./intake-source-spans.ts";
 import { matchIntakeChecklist, validateIntakeCatalog, validateIntakeClaims } from "./intake-engine.ts";
 import { INTAKE_ACTIVE_MAX_CHARS, INTAKE_NOTE_MAX_CHARS, INTAKE_ENGINE_VERSION, INTAKE_PROMPT_VERSION, type ConsultationNote, type IntakeCatalog, type IntakeChecklistView, type IntakeRun } from "./intake-types.ts";
+import { INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION, INTAKE_FINGERPRINT_SCHEMA, intakeInputFingerprint } from "./intake-fingerprint.ts";
 
 /** One-way identifier preserves the protected-case guard without publishing case metadata. */
 export const PROTECTED_INTAKE_CASE_SHA256 = "1dfd979da22e0b7222eec78973c993ae0e1220748fd558ac2e236350c9d92aae";
@@ -74,12 +75,15 @@ async function intakeSnapshot(id:string){
 }
 async function readNotes(caseId:string){
   const head=await db().prepare("SELECT revision,active_run_id AS activeRunId FROM consultation_heads WHERE case_id = ?").bind(caseId).first<Head>();
-  const notes=(await db().prepare("SELECT id,case_id AS caseId,sequence,text,text_sha256 AS textSha256,occurred_at AS occurredAt,supersedes_id AS supersedesId,actor,created_at AS createdAt FROM consultation_notes WHERE case_id = ? ORDER BY sequence").bind(caseId).all<ConsultationNote>()).results;
+  const notes:ConsultationNote[]=(await db().prepare("SELECT id,case_id AS caseId,sequence,text,text_sha256 AS textSha256,occurred_at AS occurredAt,supersedes_id AS supersedesId,actor,created_at AS createdAt FROM consultation_notes WHERE case_id = ? ORDER BY sequence").bind(caseId).all<ConsultationNote>()).results;
   if(notes.length>100||notes.length!==(head?.revision??0)||notes.some((n,i)=>n.sequence!==i+1))throw new HttpError(409,"상담 이력이 변경되었습니다. 다시 불러오세요.");
   for(const note of notes)if(await textDigest(note.text)!==note.textSha256)throw new HttpError(409,"상담 원문 무결성 확인에 실패했습니다.");
   return {head:head??{revision:0,activeRunId:null},notes};
 }
 export async function consultationHistorySha256(notes:ConsultationNote[]){return digest(notes.map(n=>({id:n.id,sequence:n.sequence,textSha256:n.textSha256,occurredAt:n.occurredAt,supersedesId:n.supersedesId})));}
+async function semanticFingerprint(notes:ConsultationNote[],data:CaseData,catalogHash:string){
+  return intakeInputFingerprint({notes,catalogHash,courtId:data.context.courtId,asOf:data.context.asOf,engineVersion:INTAKE_ENGINE_VERSION,promptVersion:INTAKE_PROMPT_VERSION,model:AI_MODEL,outputContractVersion:INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION});
+}
 
 export async function getConsultationView(caseId:string):Promise<IntakeChecklistView>{
   const snapshot=await intakeSnapshot(caseId),catalog=await getIntakeCatalog(),{head,notes}=await readNotes(caseId);
@@ -89,11 +93,25 @@ export async function getConsultationView(caseId:string):Promise<IntakeChecklist
     if(!row.payloadSha256||await textDigest(row.payload)!==row.payloadSha256)throw new HttpError(409,"저장된 상담 분석의 무결성 확인에 실패했습니다. 원본 이력은 보존되어 있습니다.");
     try{run=JSON.parse(row.payload) as IntakeRun;}catch{throw new HttpError(409,"저장된 상담 분석을 확인하지 못했습니다.");}
     if(run.id!==row.id||run.caseId!==caseId||run.caseId!==row.caseId||run.caseRevision!==row.caseRevision||run.caseStorageToken!==row.caseStorageToken||run.consultationRevision!==row.consultationRevision||run.catalogVersion!==row.catalogVersion)throw new HttpError(409,"상담 분석과 저장 판본의 연결을 확인하지 못했습니다.");
-    const reasons:string[]=[];
-    if(run.caseRevision!==snapshot.data.context.revision||run.caseStorageToken!==snapshot.identity.token||run.caseInputSha256!==snapshot.inputSha256)reasons.push("사건 자료 변경");
-    if(run.consultationRevision!==head.revision||run.consultationSha256!==await consultationHistorySha256(notes))reasons.push("상담 이력 변경");
-    if(run.catalogVersion!==catalog.catalog.version||run.catalogSha256!==catalog.sha256)reasons.push("서류 기준정보 변경");
-    if(run.engineVersion!==INTAKE_ENGINE_VERSION||run.promptVersion!==INTAKE_PROMPT_VERSION||run.model!==AI_MODEL)reasons.push("분류·매칭 기준 변경");
+    const reasons:string[]=[],historyHash=await consultationHistorySha256(notes);
+    const currentV2=run.intakeInputFingerprintVersion===INTAKE_FINGERPRINT_SCHEMA&&typeof run.intakeInputFingerprint==="string";
+    if(currentV2){
+      // v2 means semantic classifier inputs only. Case revision/token/whole-case
+      // hash remain audit metadata and workflow adoption cannot invalidate this run.
+      if(run.consultationSha256!==historyHash)reasons.push("상담 이력 변경");
+      if(run.catalogSha256!==catalog.sha256)reasons.push("서류 기준정보 변경");
+      if(run.semanticContext?.courtId!==snapshot.data.context.courtId||run.semanticContext?.asOf!==snapshot.data.context.asOf)reasons.push("관할·기준일 변경");
+      if(run.engineVersion!==INTAKE_ENGINE_VERSION||run.promptVersion!==INTAKE_PROMPT_VERSION||run.model!==AI_MODEL||run.semanticContext?.outputContractVersion!==INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION)reasons.push("분류·매칭 기준 변경");
+      const currentFingerprint=await semanticFingerprint(notes,snapshot.data,catalog.sha256);
+      if(currentFingerprint!==run.intakeInputFingerprint&&!reasons.length)reasons.push("상담 분류 의미 입력 변경");
+    }else{
+      // Legacy v1 payloads and receipts remain immutable and use their original
+      // full-case identity semantics. Do not synthesize a v2 proof from them.
+      if(run.caseRevision!==snapshot.data.context.revision||run.caseStorageToken!==snapshot.identity.token||run.caseInputSha256!==snapshot.inputSha256)reasons.push("사건 자료 변경");
+      if(run.consultationRevision!==head.revision||run.consultationSha256!==historyHash)reasons.push("상담 이력 변경");
+      if(run.catalogVersion!==catalog.catalog.version||run.catalogSha256!==catalog.sha256)reasons.push("서류 기준정보 변경");
+      if(run.engineVersion!==INTAKE_ENGINE_VERSION||run.promptVersion!==INTAKE_PROMPT_VERSION||run.model!==AI_MODEL)reasons.push("분류·매칭 기준 변경");
+    }
     run={...run,stale:reasons.length>0,staleReasons:reasons};
   }
   const latestAttempt=await db().prepare("SELECT id,status,lease_until AS leaseUntil,error,updated_at AS updatedAt FROM consultation_runs WHERE case_id = ? ORDER BY updated_at DESC LIMIT 1").bind(caseId).first<NonNullable<IntakeChecklistView["latestAttempt"]>>();
@@ -137,8 +155,11 @@ export async function analyzeConsultation(caseId:string,body:Record<string,unkno
   if(!activeNotes.length)throw new HttpError(400,"상담 이력을 먼저 저장하세요.");
   if(activeNotes.reduce((sum,n)=>sum+n.text.length,0)>INTAKE_ACTIVE_MAX_CHARS)throw new HttpError(413,"분석 가능한 상담 원문 크기를 초과했습니다.");
   const historyHash=await consultationHistorySha256(notes);
-  const fingerprint=await digest({caseId,caseRevision:expectedCase,caseToken:snapshot.identity.token,caseInput:snapshot.inputSha256,consultationRevision:expectedConsultation,historyHash,catalogVersion:expectedCatalog,catalogHash:catalog.sha256,engine:INTAKE_ENGINE_VERSION,prompt:INTAKE_PROMPT_VERSION,model:AI_MODEL});
-  const existing=await db().prepare("SELECT id,status,lease_until AS leaseUntil FROM consultation_runs WHERE fingerprint = ?").bind(fingerprint).first<{id:string;status:string;leaseUntil:string|null}>();
+  const semanticHash=await semanticFingerprint(notes,snapshot.data,catalog.sha256);
+  // The semantic hash intentionally omits case identity; the globally unique
+  // database key scopes reuse to one case without changing semantic freshness.
+  const fingerprint=await digest({scopeCaseId:caseId,semanticHash});
+  const existing=await db().prepare("SELECT id,status,lease_until AS leaseUntil FROM consultation_runs WHERE fingerprint = ? AND case_id = ?").bind(fingerprint,caseId).first<{id:string;status:string;leaseUntil:string|null}>();
   if(existing?.status==="complete")return getConsultationView(caseId);
   const at=now(),leaseUntil=new Date(Date.now()+90_000).toISOString(),runId=existing?.id??crypto.randomUUID(),by=await actor();
   if(existing?.status==="pending"&&existing.leaseUntil&&existing.leaseUntil>at)throw new HttpError(409,"동일한 상담 분석이 진행 중입니다. 잠시 후 결과를 새로 불러오세요.");
@@ -156,7 +177,7 @@ export async function analyzeConsultation(caseId:string,body:Record<string,unkno
     let classifierReceipt;
     try{const normalized=adaptIntakeClassifierResponse(response.value,classifierRequest.sourceSpans,catalog.catalog);classifierReceipt=normalized.classifierReceipt;claims=validateIntakeClaims(resolveIntakeSourceSpanRefs({claims:normalized.claims},activeNotes),activeNotes,catalog.catalog);}catch(error){throw new HttpError(422,`상담 분류의 근거를 확인하지 못했습니다. ${error instanceof Error?error.message:"원문을 검토해 주세요."}`);}
     const result=matchIntakeChecklist({claims,catalog:catalog.catalog,courtId:snapshot.data.context.courtId,asOf:snapshot.data.context.asOf});
-    const run:IntakeRun={id:runId,caseId,caseRevision:expectedCase,caseStorageToken:snapshot.identity.token,caseInputSha256:snapshot.inputSha256,consultationRevision:expectedConsultation,consultationSha256:historyHash,catalogVersion:expectedCatalog,catalogSha256:catalog.sha256,catalogSnapshot:{features:catalog.catalog.features.map(({id,label})=>({id,label})),sources:catalog.catalog.sources,rules:catalog.catalog.rules.map(({id,title})=>({id,title}))},engineVersion:INTAKE_ENGINE_VERSION,promptVersion:INTAKE_PROMPT_VERSION,model:AI_MODEL,createdAt:now(),result,usage:{inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,durationMs:response.usage.durationMs},classifierReceipt};
+    const run:IntakeRun={id:runId,caseId,caseRevision:expectedCase,caseStorageToken:snapshot.identity.token,caseInputSha256:snapshot.inputSha256,consultationRevision:expectedConsultation,consultationSha256:historyHash,catalogVersion:expectedCatalog,catalogSha256:catalog.sha256,catalogSnapshot:{features:catalog.catalog.features.map(({id,label})=>({id,label})),sources:catalog.catalog.sources,rules:catalog.catalog.rules.map(({id,title})=>({id,title}))},engineVersion:INTAKE_ENGINE_VERSION,promptVersion:INTAKE_PROMPT_VERSION,model:AI_MODEL,createdAt:now(),result,usage:{inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,durationMs:response.usage.durationMs},classifierReceipt,intakeInputFingerprintVersion:INTAKE_FINGERPRINT_SCHEMA,intakeInputFingerprint:semanticHash,semanticContext:{courtId:snapshot.data.context.courtId,asOf:snapshot.data.context.asOf,outputContractVersion:INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION}};
     const serializedRun=JSON.stringify(run),runHash=await textDigest(serializedRun);
     const saved=await db().batch([
       db().prepare("UPDATE consultation_runs SET status = 'complete',payload = ?,payload_sha256 = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND status = 'pending' AND lease_until = ?").bind(serializedRun,runHash,now(),runId,leaseUntil),

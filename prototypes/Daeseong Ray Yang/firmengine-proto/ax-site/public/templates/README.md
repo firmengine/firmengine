@@ -29,3 +29,7 @@ XLSX의 금액과 산식은 값·정밀도·출처 보존을 위해 텍스트로
 ## 공개 소스 배포 범위
 
 이 배포에는 실행용 빈 DOCX와 매핑 메타데이터를 포함합니다. 법원 원본 PDF/HWP의 복제본은 제외하며, catalog.json과 additional_sources.json의 공식 다운로드 URL·해시를 참조하세요.
+
+## 공개 소스 배포 범위
+
+이 배포에는 실행용 빈 DOCX와 매핑 메타데이터를 포함합니다. 법원 원본 PDF/HWP의 복제본은 제외하며, catalog.json과 additional_sources.json의 공식 다운로드 URL·해시를 참조하세요.

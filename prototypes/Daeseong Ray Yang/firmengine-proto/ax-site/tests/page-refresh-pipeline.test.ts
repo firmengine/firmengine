@@ -1,3 +1,4 @@
+import * as legalReviewIdentity from "../lib/legal-review-identity.ts";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
@@ -22,7 +23,7 @@ function fixture(options: { status?: string; immutableRole?: string; archiveFail
   const archives: Array<{ key: string; raw: string }> = [], writes: unknown[][] = [], saved: domain.CaseData[] = [];
   const modules: Record<string, unknown> = {
     "./process-job-scope": processJobScope,
-    "./domain": domain, "./page-refresh": pageRefresh, "./retry-page-policy": retryPolicy,"./extraction":{validatePageRead:(read:unknown)=>read,PROMPT_VERSION:"luna-evidence-3.13.0"},
+    "./legal-review-identity.ts":legalReviewIdentity,"./domain": domain, "./page-refresh": pageRefresh, "./retry-page-policy": retryPolicy,"./extraction":{validatePageRead:(read:unknown)=>read,PROMPT_VERSION:"luna-evidence-3.13.0"},
     "./sample-manifest": { samplePageRole: () => ({ role: options.immutableRole ?? "evidence" }) },"./legal-rules":{CURRENT_RULESET:{id:"synthetic-rules"}},
     "./server-store": {
       HttpError: TestError, now: () => "2026-10-27T12:00:00.000Z", getCase: async () => data,

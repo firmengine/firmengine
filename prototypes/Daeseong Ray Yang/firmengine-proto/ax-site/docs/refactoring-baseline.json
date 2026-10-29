@@ -1,0 +1,4622 @@
+{
+  "schemaVersion": "firmengine-refactoring-baseline/1",
+  "source": {
+    "version": 43,
+    "commit": "72b23f2c3faee5656caeeb1e6e6afce9a65de3cb",
+    "priorStrategyBaseline": {
+      "version": 42,
+      "commit": "4a5c8f5bdf5c56bd71f1a5d1b9484a5007d993e3",
+      "artifact": "implementation_strategy_not_implementation"
+    }
+  },
+  "counts": {
+    "documentFamilies": 48,
+    "extractionFields": 524,
+    "intakeFeatures": 49,
+    "intakeDocuments": 74,
+    "intakeRules": 54,
+    "calculationGroups": 18,
+    "workflowLinks": 46,
+    "referenceParameters": 60
+  },
+  "canonicalSources": {
+    "lib/document-agent-field-contracts.json": {
+      "sha256": "8c915b4920504fc88fe23946ae70e256569a454655d4626949d465b13cb7f9be"
+    },
+    "lib/field-applicability-contracts.json": {
+      "sha256": "1479a9e5406c9d019079874890e84690387709d65f8e2c2b59a073230cdf9967"
+    },
+    "lib/reference-intake-catalog.json": {
+      "sha256": "bdc22c7aed683c94fed1ff435b1558de74e9632808b2983c85de7276b1589a68"
+    },
+    "lib/reference-decision-tables.json": {
+      "sha256": "2e5d60de976b0b7e2c507192399d4286cb2971ae02be99055af5ec6af3c4359e"
+    },
+    "lib/reference-parameters.json": {
+      "sha256": "8f4c42cf28db5e9d547ead14e624c75daa5c13913c6ca95e2419e50fd9733170"
+    }
+  },
+  "canonicalIds": {
+    "documentFamilies": [
+      {
+        "id": "debt_certificate",
+        "canonicalType": "debt_balance_certificate",
+        "sha256": "47b51e410884f4d6ab913e10d3b5bbec1d74509003b6c71caa5db83ea03077de"
+      },
+      {
+        "id": "credit_report",
+        "canonicalType": "credit_information_history",
+        "sha256": "276f814c9e6037b96b0fd4beec1c8c95d66b116d46a95e8c9fe604b87ffa0a43"
+      },
+      {
+        "id": "secured_claim_security",
+        "canonicalType": "security_registration",
+        "sha256": "5bafb8187e25706df115afe01d829fd0391fb72d90417d58d7bb32a0ee6764ad"
+      },
+      {
+        "id": "guarantee_joint_claim",
+        "canonicalType": "guarantee_or_joint_claim",
+        "sha256": "42b5db7aefd2fb307c1db9c43a0e3189c4c7a94cc6c569dbd74502b8c2fce1ae"
+      },
+      {
+        "id": "tax_public_arrear",
+        "canonicalType": "tax_or_public_claim",
+        "sha256": "0262539da7e91ce20a2d27ce73c90aecc4cd216c2b0e3554cbeffa13621363c4"
+      },
+      {
+        "id": "bank_account_balance",
+        "canonicalType": "account_or_integrated_account_search",
+        "sha256": "d5c96592b95de206398796d6e959190ff3e2b796a3b28053c24f96b8da0c7727"
+      },
+      {
+        "id": "bank_transactions",
+        "canonicalType": "bank_statement_transaction",
+        "sha256": "c96b21ff8bfa97fc9fb6c2da3c6e6ff1c9dd9babc27135e932841218131963d8"
+      },
+      {
+        "id": "cash_deposit_asset",
+        "canonicalType": "cash_or_deposit_asset",
+        "sha256": "3341475931c6f7377945e5aac27453a96401a87bfaae2ff7af9bb5cd3b24304c"
+      },
+      {
+        "id": "insurance_policy_asset",
+        "canonicalType": "insurance_policy_value",
+        "sha256": "d4b0dbc7c65b19a99371f2f78164bba491e32ba404f68e8e7cef3c3ae6263c82"
+      },
+      {
+        "id": "vehicle_registry",
+        "canonicalType": "vehicle_registration",
+        "sha256": "c016d18dc09f6f19ec879bd03324fffb43b413a43eedb91f58305fcb9ceb18f0"
+      },
+      {
+        "id": "vehicle_valuation",
+        "canonicalType": "vehicle_valuation_report",
+        "sha256": "17ccb544303978aebfac758f67c64ababb5c330bed3da6384bef006826192c6d"
+      },
+      {
+        "id": "real_property_register",
+        "canonicalType": "real_property_registry",
+        "sha256": "ce94e9dc4d69426b2a9e26dcbc9127a9a4654bb64f7037f6d68da89a34a4add1"
+      },
+      {
+        "id": "real_property_valuation",
+        "canonicalType": "real_property_valuation",
+        "sha256": "bb37a322b9dc00eaddd04ab46315d125d75097967c11b4f516018d2e3123a57b"
+      },
+      {
+        "id": "property_search",
+        "canonicalType": "property_search_result",
+        "sha256": "5ab88a944e00eccd28e20f8c32ccbfa0b96a6801156dd4cc576d195d575aef25"
+      },
+      {
+        "id": "lease_housing",
+        "canonicalType": "lease_or_housing_cost",
+        "sha256": "41d56ae91583f30dc8c91c0112f85e602a68caaa59666c119f42bb0fcf45126f"
+      },
+      {
+        "id": "local_tax",
+        "canonicalType": "local_tax_notice",
+        "sha256": "20589387c0e0b44f116cc33f1abb81526f5d4f5f778037ed192ba684c94ad0bb"
+      },
+      {
+        "id": "health_insurance_arrears",
+        "canonicalType": "health_insurance_contribution_record",
+        "sha256": "5c07d201e12bed03cb162fe51f51bf528b50ce3afc2869146abcb020b7787540"
+      },
+      {
+        "id": "pension_contribution_benefit",
+        "canonicalType": "pension_or_retirement_record",
+        "sha256": "b3388c44c8221cddd4bdc02f661b9dd8e095ac793264dd1f3fb8d73b75717829"
+      },
+      {
+        "id": "tax_income",
+        "canonicalType": "tax_income_return_or_certificate",
+        "sha256": "f67f9589cb31cd2b65f6899ceb95407e872f2803fa0a76f8164f4c4d0db77f16"
+      },
+      {
+        "id": "business_registration",
+        "canonicalType": "business_registration_certificate",
+        "sha256": "4771d03da3cfcf2d3df92dad12eac5b4bcdc216ff6c4927293340eba54333ba4"
+      },
+      {
+        "id": "business_assets_liabilities",
+        "canonicalType": "business_ledger_or_asset_claim",
+        "sha256": "8925d019b3c5be01621b25a0990e62134dc5b0aaab1e4ddbdc33866274e37de3"
+      },
+      {
+        "id": "litigation_enforcement",
+        "canonicalType": "judgment_attachment_garnishment",
+        "sha256": "e2affeb02e6c4b918710746f9eeadab415e0f147ed31b98d1fe3593179f4d6b1"
+      },
+      {
+        "id": "asset_transfer_disposition",
+        "canonicalType": "transfer_sale_disposal",
+        "sha256": "0661d721512f90273f2cabf52ef70cfb76849f1a85be9f212255ca1276a4a586"
+      },
+      {
+        "id": "creditor_assignment_dispute",
+        "canonicalType": "claim_assignment_or_dispute",
+        "sha256": "96f3df271f370f1e38466ee0748487e35cab25f1e3d4d1ef9341ab8b72641e29"
+      },
+      {
+        "id": "account_garnishment",
+        "canonicalType": "account_garnishment_or_freeze",
+        "sha256": "872c5678907086a087463d579d93f931abc87d21f5a73d7c2253be2a3620302a"
+      },
+      {
+        "id": "accounting_source",
+        "canonicalType": "ledger_or_financial_statement",
+        "sha256": "711fd19ea81bbf5085aee4aaeaab93ec2e5c675d414bf254face9ba5386d32f4"
+      },
+      {
+        "id": "identity_residence_record",
+        "canonicalType": "identity_residence_record",
+        "sha256": "b4e6b23954f5d0ca44d1a24d656365620b4c510be056fd362d7b906d9d9e80d9"
+      },
+      {
+        "id": "employment_relationship",
+        "canonicalType": "employment_relationship",
+        "sha256": "060e861f62c7e60c39fdefe00d9621780470bf68925adf61265125ffea6a0c4c"
+      },
+      {
+        "id": "payroll_payslip",
+        "canonicalType": "payroll_payslip",
+        "sha256": "0597452266b48b2fc348ee889c0cdef1c227853f78b6a86dac1e4ebaf631ada0"
+      },
+      {
+        "id": "wage_withholding_tax",
+        "canonicalType": "wage_withholding_tax",
+        "sha256": "d402075bb2f73c770d4a29498d2d70c8673343ede08231f3913f76c73a4d5321"
+      },
+      {
+        "id": "current_nonwage_income",
+        "canonicalType": "current_nonwage_income",
+        "sha256": "b942d5be17a4f1076e60aa1ee493e1556696cd26ea4b93a88262eeafe83efa6e"
+      },
+      {
+        "id": "business_sales_vat",
+        "canonicalType": "business_sales_vat",
+        "sha256": "f5c7d3b6b2e8389643cd85e1c844fe196cd31b0eeb7574465329e70310fe62b3"
+      },
+      {
+        "id": "business_costs_and_ledgers",
+        "canonicalType": "business_costs_and_ledgers",
+        "sha256": "97e5ec0dff189702008d7ca469e8ebb2cedb1d7df15dc9e773debf880bb27d30"
+      },
+      {
+        "id": "business_current_income_summary",
+        "canonicalType": "business_current_income_summary",
+        "sha256": "19f2ff457f0e8c141b01a36f69238b3238f9dc8afe3648d3129fdb7546767d51"
+      },
+      {
+        "id": "pension_benefit_income",
+        "canonicalType": "pension_benefit_income",
+        "sha256": "22daa5fb7a68789b1871db9eff34f7c3e2277f846b8972990f1df7df82b67fa4"
+      },
+      {
+        "id": "household_composition_support",
+        "canonicalType": "household_composition_support",
+        "sha256": "d438e0cc2be19a846f1516cbf413a7e3cacf577db6036f5829b97122bbed89d2"
+      },
+      {
+        "id": "household_living_expense",
+        "canonicalType": "household_living_expense",
+        "sha256": "2054895bff98004b52e24ac61eb7a64fbd84016c89e29f2043c48fa11d838659"
+      },
+      {
+        "id": "conditional_medical_expense",
+        "canonicalType": "conditional_medical_expense",
+        "sha256": "b94487ce007ebbad75a9e756e5df8abd2d1d45289527142fa5d016446994f15e"
+      },
+      {
+        "id": "conditional_education_childcare",
+        "canonicalType": "conditional_education_childcare",
+        "sha256": "4adc92bd81d0c6779642c80bd19c3133e4f6d9374c772c7a7a3d09da7cea0f3f"
+      },
+      {
+        "id": "applicant_narrative_statement",
+        "canonicalType": "applicant_narrative_statement",
+        "sha256": "ecdc1e378b47add53be9e1f6e80897c6f567403640ef22eaf341e18a3eb2b68a"
+      },
+      {
+        "id": "procedure_prior_insolvency",
+        "canonicalType": "procedure_prior_insolvency",
+        "sha256": "dd157a708d768e60235a43d07420503308e5a56777a54825220a2579f7650cc9"
+      },
+      {
+        "id": "procedure_court_orders",
+        "canonicalType": "procedure_court_orders",
+        "sha256": "9939976298079a858947c7e83b9ad3f23aa5c3c250f2717388b65d8541bbbd25"
+      },
+      {
+        "id": "procedure_enforcement_garnishment",
+        "canonicalType": "procedure_enforcement_garnishment",
+        "sha256": "db2848e4c1999c44cd7432a9aaa824a308e6b39b0d222073788b1d7910d1983a"
+      },
+      {
+        "id": "procedure_private_creditor_request",
+        "canonicalType": "procedure_private_creditor_request",
+        "sha256": "15415b37860b87879f693ea7d107727683fa322da273ffdb77ccf20f97130df7"
+      },
+      {
+        "id": "application_identity_venue",
+        "canonicalType": "application_identity_venue",
+        "sha256": "67d54e7ac7b677eebca6e9dfd0afd02b2407652eef39e692185d5e8b8027f581"
+      },
+      {
+        "id": "conditional_case_specific_request",
+        "canonicalType": "conditional_case_specific_request",
+        "sha256": "ca0122a644538c6d7319f2b58af07c05dd6e5e3b665a21b0661612036ad3b99f"
+      },
+      {
+        "id": "conditional_plan_funding_source",
+        "canonicalType": "conditional_plan_funding_source",
+        "sha256": "6ba8375e4a37280bacf7ac1a26263c74a0b290bb33858ad32d1dc31b5f593be8"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event",
+        "canonicalType": "conditional_nonstandard_income_or_household_event",
+        "sha256": "90a0b7684cb1f4aaecf62ea7b0e3169114546cd1333d103069a1b70389c8548f"
+      }
+    ],
+    "extractionFields": [
+      {
+        "id": "debt_certificate::creditor",
+        "familyId": "debt_certificate",
+        "sha256": "15c04c229e66f081a1f4306e50cd6e610d9f9d74f1d7516e2e06893c7b4387f2"
+      },
+      {
+        "id": "debt_certificate::issuer",
+        "familyId": "debt_certificate",
+        "sha256": "671e4598b1ff50b4e201ec898deb5227b65a94a69bb79db7d52c4b2e31ee740c"
+      },
+      {
+        "id": "debt_certificate::debtor",
+        "familyId": "debt_certificate",
+        "sha256": "c0228c09d4f30ba4143121879945ae275cb57661f1e711aff4a665b7c3bbc7e0"
+      },
+      {
+        "id": "debt_certificate::contract_id",
+        "familyId": "debt_certificate",
+        "sha256": "bb3bf187b8ba89969de10e72768d7f34eea8aceac02795a06faa17a0d669186f"
+      },
+      {
+        "id": "debt_certificate::origination_date",
+        "familyId": "debt_certificate",
+        "sha256": "f6711a8566e233f9708c650eda90be25ee55c350f209fb19dd35439e4df182b9"
+      },
+      {
+        "id": "debt_certificate::original_principal",
+        "familyId": "debt_certificate",
+        "sha256": "3fb371fc697833e76f5ee99e0e0d951878c8593d3f5a06ec27092b2ae90b5663"
+      },
+      {
+        "id": "debt_certificate::principal_balance",
+        "familyId": "debt_certificate",
+        "sha256": "4480c90bb5a431488470b72f5702c56938a2f9e1d725c62c8f366a68316abf8f"
+      },
+      {
+        "id": "debt_certificate::interest_balance",
+        "familyId": "debt_certificate",
+        "sha256": "74889ff86193eebff8f05bb465b6cd0d0ea25a4cda1adcbf5b81b84736a8f9be"
+      },
+      {
+        "id": "debt_certificate::overdue_interest",
+        "familyId": "debt_certificate",
+        "sha256": "175e3a5597562fa0db22bf827113a5afbcd1442d59440cc64a5d93705f340493"
+      },
+      {
+        "id": "debt_certificate::fees",
+        "familyId": "debt_certificate",
+        "sha256": "eb4c8b11e62ebf1601d612b8bd343fe8ab6550fd12eada1ab73e9f897eb6274a"
+      },
+      {
+        "id": "debt_certificate::total_claim",
+        "familyId": "debt_certificate",
+        "sha256": "45181225c8c19bb6dae94db4093b1cf84df85d63c4e163e6aaa39e563d82cebc"
+      },
+      {
+        "id": "debt_certificate::as_of_date",
+        "familyId": "debt_certificate",
+        "sha256": "99a6fa2ac30678343a919ce90d03e2c2dceca16eab9d15e30f4d90c97a9ef2e7"
+      },
+      {
+        "id": "debt_certificate::issue_date",
+        "familyId": "debt_certificate",
+        "sha256": "7350e6b20bdc96a59cc803f37469b1a7445f521f2ee0c0e657f9044ba00cff2e"
+      },
+      {
+        "id": "credit_report::event_kind",
+        "familyId": "credit_report",
+        "sha256": "0f91d43730794e759315c44616fc9237a5ea05823c34511dcf6a799d5981281f"
+      },
+      {
+        "id": "credit_report::institution",
+        "familyId": "credit_report",
+        "sha256": "14426de71473576d73c5f23bd0e4c4f3c17548708b7170d9565f009eb24d2d01"
+      },
+      {
+        "id": "credit_report::product_code",
+        "familyId": "credit_report",
+        "sha256": "087c616db103e13e657ba2a3e1e73b27b8e9b2033124f020361ab774c439e93b"
+      },
+      {
+        "id": "credit_report::event_date",
+        "familyId": "credit_report",
+        "sha256": "0ab201bbdcd39c0708b7de22b1c3422a607acb53bf88c98d0067f4a58e17e3a2"
+      },
+      {
+        "id": "credit_report::reported_amount",
+        "familyId": "credit_report",
+        "sha256": "b11670b62252f716dbb9659723872e9ec991bf72679427e5bd79e1bef12b8713"
+      },
+      {
+        "id": "credit_report::currency_unit",
+        "familyId": "credit_report",
+        "sha256": "191de662c2e6992b5d82b94d280460484a88a864a2024962bfa604a14788371a"
+      },
+      {
+        "id": "credit_report::status",
+        "familyId": "credit_report",
+        "sha256": "5aa0c3bbe7c09cab6a4e57b246128c2ea00454e519c3275d90aef7ea9fa09121"
+      },
+      {
+        "id": "secured_claim_security::secured_party",
+        "familyId": "secured_claim_security",
+        "sha256": "028f25875634b183768c421402bd598eef8adbfe57b643124c3b5195c96bfc20"
+      },
+      {
+        "id": "secured_claim_security::grantor",
+        "familyId": "secured_claim_security",
+        "sha256": "1a1e9dc5f016bb0b9a55098f84c091b54055ba814e19482e5192779edbb97fd8"
+      },
+      {
+        "id": "secured_claim_security::collateral_id",
+        "familyId": "secured_claim_security",
+        "sha256": "f4f9bbecbf8aac281a9108e27109239abb6837935111ef7ca7dafcfd0bad2925"
+      },
+      {
+        "id": "secured_claim_security::security_type",
+        "familyId": "secured_claim_security",
+        "sha256": "52d8d3692327ac0d7aab4f2833c2b9e6f8a9bd956f64530b6352ca5f0cdb2928"
+      },
+      {
+        "id": "secured_claim_security::registered_maximum",
+        "familyId": "secured_claim_security",
+        "sha256": "4fdd9e40d386fa5db55dfe4bccbe0eb25af6d5470fd4b20b7fcebd5f909f4291"
+      },
+      {
+        "id": "secured_claim_security::actual_payoff",
+        "familyId": "secured_claim_security",
+        "sha256": "7fb0bade5e2a997ffac3f8bf98951f746af007930fcf3214b36763021525382f"
+      },
+      {
+        "id": "secured_claim_security::priority",
+        "familyId": "secured_claim_security",
+        "sha256": "1fd5ecca613b4a718ae39841108731dcfa531b7c6bfe9b1cd9603dbf65127671"
+      },
+      {
+        "id": "secured_claim_security::registration_date",
+        "familyId": "secured_claim_security",
+        "sha256": "1f53d57beda4dd1322349c20afae1c820aa07706ee1f62808ea6cadc3fcf844a"
+      },
+      {
+        "id": "secured_claim_security::discharge_date",
+        "familyId": "secured_claim_security",
+        "sha256": "c6ce2f61137eca70cb3080b1b6fb9fc1a3b1d35cd8f66e45bc88f6bf91096f13"
+      },
+      {
+        "id": "guarantee_joint_claim::applicant_role",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "edbd1bf58f5727eb33ccee64c0764f9572317ec18857b18ba55a55710330c12e"
+      },
+      {
+        "id": "guarantee_joint_claim::principal_debtor",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "0d89752c8e9d1143d0c552df39cf93f63a9932d821343cb6c54668b71f1a3ef7"
+      },
+      {
+        "id": "guarantee_joint_claim::creditor",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "19ae6e62dfe91cfb92af361758d7c5bda3c3bfc636ac70e72e5b1cb7d197bad7"
+      },
+      {
+        "id": "guarantee_joint_claim::underlying_claim_id",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "aed74f4ec85be339cf04a85073c4a54a895c7e705063397724c696060a1001b6"
+      },
+      {
+        "id": "guarantee_joint_claim::guarantee_limit",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "864e3cd16c454c88fd19fcd9b1079b5c40122fa5e12fd49d50941f2b4e27547e"
+      },
+      {
+        "id": "guarantee_joint_claim::guarantee_claimed",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "92b048615c9fb8de9321a0d138a61e746ae9d7c7f463577c5c708d100336ad90"
+      },
+      {
+        "id": "guarantee_joint_claim::recourse_status",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "1b54c0c8f1819c1330a7bf2f6637774025bf923ab3de82fe54201f3093e56aad"
+      },
+      {
+        "id": "guarantee_joint_claim::dispute_status",
+        "familyId": "guarantee_joint_claim",
+        "sha256": "0a87e8f1b79ae490fb25ba329b355cbe57711976c6f870fa47852dff997d10f5"
+      },
+      {
+        "id": "tax_public_arrear::authority",
+        "familyId": "tax_public_arrear",
+        "sha256": "579b4fb27a3510ad9721ed447b9306fcad2185e9d8a79d61730293439c3882b8"
+      },
+      {
+        "id": "tax_public_arrear::debtor",
+        "familyId": "tax_public_arrear",
+        "sha256": "f1e95ab5352feccdb546972af7af79485dfb2555a3ef62ebd6dc5a3a2d3f0fa0"
+      },
+      {
+        "id": "tax_public_arrear::tax_type",
+        "familyId": "tax_public_arrear",
+        "sha256": "96f2bb0dad311b03b27d00c742d8414060f75408a1c3482d0a91ab8ce9a7e38d"
+      },
+      {
+        "id": "tax_public_arrear::tax_period",
+        "familyId": "tax_public_arrear",
+        "sha256": "905b81b2c201bfbd214f946008d6bc1d40786c1b9c2550194ba97848337ddbf7"
+      },
+      {
+        "id": "tax_public_arrear::assessment_date",
+        "familyId": "tax_public_arrear",
+        "sha256": "2c63820a6045b474a39f1a6abdc4641347d6adb5e64a3fbf2932650c6b807004"
+      },
+      {
+        "id": "tax_public_arrear::due_date",
+        "familyId": "tax_public_arrear",
+        "sha256": "6c6b004d23a957545cf4cc2e899229973209e0443e62fdaccf1f168c0fb36a2d"
+      },
+      {
+        "id": "tax_public_arrear::principal_arrear",
+        "familyId": "tax_public_arrear",
+        "sha256": "11c1a92d06df40efc57e9c0be027e5aa93324cd936d8988d20d6abb2858f7913"
+      },
+      {
+        "id": "tax_public_arrear::surcharge_interest",
+        "familyId": "tax_public_arrear",
+        "sha256": "fc4dca56ad6cf83330a49202c88ed06144be062c8e595c35daff2433b987566d"
+      },
+      {
+        "id": "tax_public_arrear::costs",
+        "familyId": "tax_public_arrear",
+        "sha256": "346e490960d5a348190fe1a9e1c83def82d0e8a159a96d7fb10686402ab2ab69"
+      },
+      {
+        "id": "tax_public_arrear::total_due",
+        "familyId": "tax_public_arrear",
+        "sha256": "851f542b4a3d98b7721250c0b20861285c1e9d32086510b5c686b10fe4dd2e42"
+      },
+      {
+        "id": "tax_public_arrear::as_of_date",
+        "familyId": "tax_public_arrear",
+        "sha256": "e4a18cd7b8af961e7df90e237d9ab111e8267f19dae635c94761569d88d3b977"
+      },
+      {
+        "id": "tax_public_arrear::issue_date",
+        "familyId": "tax_public_arrear",
+        "sha256": "f64fda7ac909af75f12327cff666208399621acb530185a93030a567cbe80a6c"
+      },
+      {
+        "id": "bank_account_balance::institution",
+        "familyId": "bank_account_balance",
+        "sha256": "bb24c246fb511a53a5f27643dc22928bbf83b635acba46c575eb2ff7cb659f91"
+      },
+      {
+        "id": "bank_account_balance::account_holder",
+        "familyId": "bank_account_balance",
+        "sha256": "cf06b67b0d09d55fc63ba052abae6d001bfba9180991a64f849e819a69a52c79"
+      },
+      {
+        "id": "bank_account_balance::account_id",
+        "familyId": "bank_account_balance",
+        "sha256": "94f310d1c95fadbad4e3747471df87e19db6bf0ac0be76842fb7d6a0f720b2bf"
+      },
+      {
+        "id": "bank_account_balance::account_status",
+        "familyId": "bank_account_balance",
+        "sha256": "60ce5f42af8dbb58266122def070cb863051be99370e852be5dd6212d4c27808"
+      },
+      {
+        "id": "bank_account_balance::balance",
+        "familyId": "bank_account_balance",
+        "sha256": "891d6ec4fb0c9a1650946340d96efdf893cf670708757f7f43f9d65fa2631308"
+      },
+      {
+        "id": "bank_account_balance::balance_as_of",
+        "familyId": "bank_account_balance",
+        "sha256": "3d49c70a02d6779d258d279dbb17ddb5e1b5c2eedf82dd9b7c3e34093b2d4d06"
+      },
+      {
+        "id": "bank_account_balance::issue_date",
+        "familyId": "bank_account_balance",
+        "sha256": "bd769ffbf28acae8bb4ce26a085e5d8e259ea3d944b0c3de8c34b38c093f9a32"
+      },
+      {
+        "id": "bank_account_balance::currency",
+        "familyId": "bank_account_balance",
+        "sha256": "dad4e3bbcc5a4b25e162fb9c293af0b5743413ec9089238624df8478fd375f1a"
+      },
+      {
+        "id": "bank_transactions::account_id",
+        "familyId": "bank_transactions",
+        "sha256": "366eb56abe607157771494e86bf89d0fda962f440007691aabcfda2de35f12e5"
+      },
+      {
+        "id": "bank_transactions::transaction_id",
+        "familyId": "bank_transactions",
+        "sha256": "8740f3e07690e58eb2f0329179658aabe33072f9977c733a304a3c8d771dbf3e"
+      },
+      {
+        "id": "bank_transactions::transaction_datetime",
+        "familyId": "bank_transactions",
+        "sha256": "f006b4bddbc3066314d06ce068d500d9d535e5277b4c7cb5c63df49b67bb008e"
+      },
+      {
+        "id": "bank_transactions::direction",
+        "familyId": "bank_transactions",
+        "sha256": "7713ff2a451203a02b2442845034e2132439340698be39239a4743c937ed5ba4"
+      },
+      {
+        "id": "bank_transactions::amount",
+        "familyId": "bank_transactions",
+        "sha256": "077533cb2db9e9c6492b7e2f3f07ea534baae3fa71fc5637be92c470ab3a728d"
+      },
+      {
+        "id": "bank_transactions::post_balance",
+        "familyId": "bank_transactions",
+        "sha256": "698b560fa348cdce40eb23249db21f525a4cdafe3fdc7f79680fac1b70c96035"
+      },
+      {
+        "id": "bank_transactions::counterparty",
+        "familyId": "bank_transactions",
+        "sha256": "7fa68ff63669edf762e0967134dd893e4deada15f8de639fceef0067f3f33d11"
+      },
+      {
+        "id": "bank_transactions::memo",
+        "familyId": "bank_transactions",
+        "sha256": "bbdfc49fc49b79b62fa2c3713389a79103d76a0b2e6ee8efbc4162d334a5a36a"
+      },
+      {
+        "id": "bank_transactions::transaction_nature",
+        "familyId": "bank_transactions",
+        "sha256": "5b7add4a86176cfd4004d2bce6d2c934c5cee92234f00ebb06520628fb034080"
+      },
+      {
+        "id": "bank_transactions::period_start",
+        "familyId": "bank_transactions",
+        "sha256": "0ddf7bc790ba0d6d370c065e2648474158fe47d41ec1fba6916f733f307eeada"
+      },
+      {
+        "id": "bank_transactions::period_end",
+        "familyId": "bank_transactions",
+        "sha256": "10765b1f261c7c908408bdd31487bd32a7f47b35be63a5a1b816d87ee796384d"
+      },
+      {
+        "id": "bank_transactions::issue_date",
+        "familyId": "bank_transactions",
+        "sha256": "1d29b9f0dbc8a587cf9c7f5c66e7ac016cb4d73a0271e07dfc406bdcb4cded9d"
+      },
+      {
+        "id": "cash_deposit_asset::owner",
+        "familyId": "cash_deposit_asset",
+        "sha256": "e9d55da2ae70ea3b370615182279c5cc9eb5ba519ba01811b814aefbecbc8f17"
+      },
+      {
+        "id": "cash_deposit_asset::asset_id",
+        "familyId": "cash_deposit_asset",
+        "sha256": "ed15ae6e3dbbc1787e327ca47b789d141ceac0c130e3b5a2c0a6990bd8315150"
+      },
+      {
+        "id": "cash_deposit_asset::asset_kind",
+        "familyId": "cash_deposit_asset",
+        "sha256": "5af495e8bf54d7eba96d508303743a1e01996220db66d366937cc7dc7f93581d"
+      },
+      {
+        "id": "cash_deposit_asset::gross_value",
+        "familyId": "cash_deposit_asset",
+        "sha256": "4988fb1435e51ccd0d5f1f7f35f910327e3e6417254ac3e2cf9c9b6360c49850"
+      },
+      {
+        "id": "cash_deposit_asset::ownership_share",
+        "familyId": "cash_deposit_asset",
+        "sha256": "b6e0f2ea29624ac89b2b375c04cf6e9b384767e5d9fe37260fcd428833711330"
+      },
+      {
+        "id": "cash_deposit_asset::encumbrance",
+        "familyId": "cash_deposit_asset",
+        "sha256": "e8c1cf0bfad3f4246589cd7c33e115ca5e51c0ba2a2e76f30e6949b4299df7e5"
+      },
+      {
+        "id": "cash_deposit_asset::actual_payoff",
+        "familyId": "cash_deposit_asset",
+        "sha256": "8d45cc83f7c82f7156303fd2b579de1a020a9a5af69b9e763ba78571d5448c76"
+      },
+      {
+        "id": "cash_deposit_asset::protected_or_excluded_claim",
+        "familyId": "cash_deposit_asset",
+        "sha256": "9321416c5602ad7bdbb3007b36f59b1d75f7f1ce987fd8d6671257aec4a9dd37"
+      },
+      {
+        "id": "cash_deposit_asset::as_of_date",
+        "familyId": "cash_deposit_asset",
+        "sha256": "2aa84680722737fdb5795ac9d76e02a85808fcbefcc1afa4e52a137c1a52293b"
+      },
+      {
+        "id": "cash_deposit_asset::valuation_basis",
+        "familyId": "cash_deposit_asset",
+        "sha256": "5b1f480dcc0e4b243f79d5e9c4d1b5378ec23ead02dafa07e48b4ab8c8208c92"
+      },
+      {
+        "id": "insurance_policy_asset::contract_holder",
+        "familyId": "insurance_policy_asset",
+        "sha256": "e043ef30eb5ad906c367e58254c3595e15400fbf42d2e84ba5fa85149ca50627"
+      },
+      {
+        "id": "insurance_policy_asset::insured",
+        "familyId": "insurance_policy_asset",
+        "sha256": "3e72f06952bc7db43e85a1a1459b2bf74ebda021fab76e09cdae7ccde444d07f"
+      },
+      {
+        "id": "insurance_policy_asset::beneficiary",
+        "familyId": "insurance_policy_asset",
+        "sha256": "dc782190c5fdbf1b4651883cf0de92c46a5fd30b6112702d869846e973065cf5"
+      },
+      {
+        "id": "insurance_policy_asset::insurer",
+        "familyId": "insurance_policy_asset",
+        "sha256": "3ece9812822cf1a54b38cbadba42525936f5a54122a3cf781ed0798d77e799e3"
+      },
+      {
+        "id": "insurance_policy_asset::policy_id",
+        "familyId": "insurance_policy_asset",
+        "sha256": "3310b229d6e54754216f6ae6edd9876b55e8ed94fcc1b298d408d409b4fd7bdf"
+      },
+      {
+        "id": "insurance_policy_asset::policy_status",
+        "familyId": "insurance_policy_asset",
+        "sha256": "353420a184312133d34985c9970a23e5a11ee30577a3a709d3d499f959bf9323"
+      },
+      {
+        "id": "insurance_policy_asset::start_date",
+        "familyId": "insurance_policy_asset",
+        "sha256": "d7d4cfe32d0191c481e8f72314979d9c4b54d60593ff2605389769ad0354845b"
+      },
+      {
+        "id": "insurance_policy_asset::end_date",
+        "familyId": "insurance_policy_asset",
+        "sha256": "f1659ecfce8105f31b546b90aaf992eb717d5cdc6570a1ce82bc2dfe72fc7271"
+      },
+      {
+        "id": "insurance_policy_asset::premium_per_payment",
+        "familyId": "insurance_policy_asset",
+        "sha256": "d55e10ef06b2f2e8f42dc9cd5b8d3b8ae9c854200eebcee10cfb4bebf14278ed"
+      },
+      {
+        "id": "insurance_policy_asset::total_premium",
+        "familyId": "insurance_policy_asset",
+        "sha256": "c6d5440893a686258111af88dd68a2886f5af8d2f056c6dd831855648297f438"
+      },
+      {
+        "id": "insurance_policy_asset::coverage_amount",
+        "familyId": "insurance_policy_asset",
+        "sha256": "ba919980b0d7861450c3c8bb5d015d7e1234ba9990a191d7649b7bf664927593"
+      },
+      {
+        "id": "insurance_policy_asset::surrender_value",
+        "familyId": "insurance_policy_asset",
+        "sha256": "0c571526ab5d75caecc4b103db24361dcf41922167a09a7692c15c2070e12148"
+      },
+      {
+        "id": "insurance_policy_asset::policy_loan_balance",
+        "familyId": "insurance_policy_asset",
+        "sha256": "d5eb42f0c8ae4f95d163bccfa1f85d2d4027ff0fcd6a287dbcc1bf6e3d607e07"
+      },
+      {
+        "id": "insurance_policy_asset::pledge",
+        "familyId": "insurance_policy_asset",
+        "sha256": "40606097498768c4acac77ca6c75583ff42085ddfa3ef5141d0777d292ff95f8"
+      },
+      {
+        "id": "insurance_policy_asset::refund_net_basis",
+        "familyId": "insurance_policy_asset",
+        "sha256": "2d33c46536918f3e6e4ff5d40a931aea1dba7ae3aa0fbc61531b51036934dee4"
+      },
+      {
+        "id": "insurance_policy_asset::as_of_date",
+        "familyId": "insurance_policy_asset",
+        "sha256": "037b3735d2591067b345db68e9ad32965c2dedaf2e681e3f5ab6da3d8e058387"
+      },
+      {
+        "id": "insurance_policy_asset::issue_date",
+        "familyId": "insurance_policy_asset",
+        "sha256": "c1c78addb6e863857207ee920045c22f77f1f229666258b83415d3c59d7b2990"
+      },
+      {
+        "id": "vehicle_registry::registered_owner",
+        "familyId": "vehicle_registry",
+        "sha256": "c944c8f09934381d9272e40d3daff54d1fd092b1d483ba74c63b452dfa06b059"
+      },
+      {
+        "id": "vehicle_registry::co_owners",
+        "familyId": "vehicle_registry",
+        "sha256": "a77b2d3031f94303ea9e54b40af9fd5ea74d3c3cf96059659561e84e457accdf"
+      },
+      {
+        "id": "vehicle_registry::vehicle_id",
+        "familyId": "vehicle_registry",
+        "sha256": "e1a2a71d2d3e47060d321cf8ca8f2ead3bcce10ed9beb5916928cc1b210520d3"
+      },
+      {
+        "id": "vehicle_registry::ownership_share",
+        "familyId": "vehicle_registry",
+        "sha256": "562e0e8d7f5f0d89f857fb0f68aa85a48e33c712f3ecf00429527b3c6836b492"
+      },
+      {
+        "id": "vehicle_registry::registration_status",
+        "familyId": "vehicle_registry",
+        "sha256": "962cb875e9b61397f5a10d2f09d3cbde797a964773bb7a82ab8a5466db802b29"
+      },
+      {
+        "id": "vehicle_registry::acquisition_date",
+        "familyId": "vehicle_registry",
+        "sha256": "1159a660d189ace65f4247b6636c067df10ffc000a0ac3e4e6ba65ca1f84f4c5"
+      },
+      {
+        "id": "vehicle_registry::transfer_date",
+        "familyId": "vehicle_registry",
+        "sha256": "ceff910d849b75041fefbf1d45b4bff3a57f05d5523c647687f0c68b42e6fe5e"
+      },
+      {
+        "id": "vehicle_registry::lien_holder",
+        "familyId": "vehicle_registry",
+        "sha256": "0237b5f28e299790c05ec58fe645248911b00a763deda4f60ded94007ffcfd66"
+      },
+      {
+        "id": "vehicle_registry::registered_lien_amount",
+        "familyId": "vehicle_registry",
+        "sha256": "b1f6343425382db9f426fb671b3207fa8c6ba2bd4e334b82fb96a025c611db4a"
+      },
+      {
+        "id": "vehicle_registry::lien_date",
+        "familyId": "vehicle_registry",
+        "sha256": "0191abaa7cd070c3da1bf010e3f11af8153bc15f5f2f28eb6c9ade71ec72d7dc"
+      },
+      {
+        "id": "vehicle_registry::release_date",
+        "familyId": "vehicle_registry",
+        "sha256": "2fe20355c0eb40e060e50aaf1fd15b28116ef37cb4e30debcf14835a183261b1"
+      },
+      {
+        "id": "vehicle_valuation::owner",
+        "familyId": "vehicle_valuation",
+        "sha256": "01caabdadc850cbcdfb78eb95dbc04a9b974dfd20cb68831ed2f9a4faacec017"
+      },
+      {
+        "id": "vehicle_valuation::vehicle_id",
+        "familyId": "vehicle_valuation",
+        "sha256": "248e7f69f2ffa8f0ddb79fe7c900881400820a9806c36431af26fa94868ff73a"
+      },
+      {
+        "id": "vehicle_valuation::model_year",
+        "familyId": "vehicle_valuation",
+        "sha256": "349589f5d2c52a3ab6f19896628e8ded3f8c121a89e504da7dbf1c086ac43b7d"
+      },
+      {
+        "id": "vehicle_valuation::mileage",
+        "familyId": "vehicle_valuation",
+        "sha256": "c50d45b6642ddb5ec00407c73ca09b614d9aced5b9f0365479bbdd4fc5948098"
+      },
+      {
+        "id": "vehicle_valuation::market_value",
+        "familyId": "vehicle_valuation",
+        "sha256": "23022849d5f56bb33029f573f6d75576cab411be87076ed7c39b1ff4f7fabe1e"
+      },
+      {
+        "id": "vehicle_valuation::valuation_method",
+        "familyId": "vehicle_valuation",
+        "sha256": "c8b183b34e6acefc69d3d536eda243200a0b3c18885607a60dae32ffe4f6b2fb"
+      },
+      {
+        "id": "vehicle_valuation::valuation_date",
+        "familyId": "vehicle_valuation",
+        "sha256": "ffd8e74868140f4b49d921e30706b2880e43cc98968307ef1ca397fdf6cc5165"
+      },
+      {
+        "id": "vehicle_valuation::actual_payoff",
+        "familyId": "vehicle_valuation",
+        "sha256": "29357a4c77d2ca325a55b756f6b323d1c12114fa712b9217b606a0a11df8ce69"
+      },
+      {
+        "id": "vehicle_valuation::registered_lien_amount",
+        "familyId": "vehicle_valuation",
+        "sha256": "450d1f6c0d911ea841fa57bac135a9fee84e6408f7692c278e8b85380566c5a1"
+      },
+      {
+        "id": "real_property_register::registered_owner",
+        "familyId": "real_property_register",
+        "sha256": "455ecabf7411a5ee7d96448451cabe231f1bdc0b1383a555497e8bc5bef1246b"
+      },
+      {
+        "id": "real_property_register::ownership_share",
+        "familyId": "real_property_register",
+        "sha256": "ae8f2aa103d693f1001c554078ed3cd74f8006da00881187d5d55496f0ecf7a7"
+      },
+      {
+        "id": "real_property_register::property_id",
+        "familyId": "real_property_register",
+        "sha256": "bdef55e350ddbc262f878aa0d9ccd19073e45a08e54f7f209513a29e3b8f2cc6"
+      },
+      {
+        "id": "real_property_register::property_type",
+        "familyId": "real_property_register",
+        "sha256": "d08feb14e48dcd22daca578e184055f6477c214fe02dee274149e5c63470e63a"
+      },
+      {
+        "id": "real_property_register::acquisition_date",
+        "familyId": "real_property_register",
+        "sha256": "acd77e6de1dbbe3102c5353a952e02fcbf63b2919d7edd6f38efb5ee761aea5c"
+      },
+      {
+        "id": "real_property_register::registered_value",
+        "familyId": "real_property_register",
+        "sha256": "9b8700a5c4b0edcf60be0cbf8b783e4907e1f5079e0fbb61cf65f893fc65cf21"
+      },
+      {
+        "id": "real_property_register::mortgage_holder",
+        "familyId": "real_property_register",
+        "sha256": "348226e0a3953e0a0e3d3d0618855d741c61a78635a4a9db8ab35444004d38b7"
+      },
+      {
+        "id": "real_property_register::maximum_claim",
+        "familyId": "real_property_register",
+        "sha256": "50b7e81f1025a0d5e7b715fa776aa5251fa0c07a95c0f05f7a6c42f3a2f58b3d"
+      },
+      {
+        "id": "real_property_register::registration_date",
+        "familyId": "real_property_register",
+        "sha256": "9fba7052f78a9d641c19bcbcfb7a412d7aaa19c9cd6f3c80125c9700625fd97f"
+      },
+      {
+        "id": "real_property_register::release_date",
+        "familyId": "real_property_register",
+        "sha256": "fa93ff5cc7ac0b8de2cf39cc681b0f030f850b50784a141fcab532ca7ea94eac"
+      },
+      {
+        "id": "real_property_register::issue_date",
+        "familyId": "real_property_register",
+        "sha256": "3ba0df80cdf10febb0c0ba2710e9763d2d12708ddeb42304888e9e3544abaef8"
+      },
+      {
+        "id": "real_property_valuation::owner",
+        "familyId": "real_property_valuation",
+        "sha256": "6b69bc9d80f95f077b528fd417a474f1b9c43b2a2445466b70ee2c66b5d3d65b"
+      },
+      {
+        "id": "real_property_valuation::property_id",
+        "familyId": "real_property_valuation",
+        "sha256": "1a9ef8140bd7b3c4c04ee4330fd9cb817b214d8332e45ad46ed319baf5cceb74"
+      },
+      {
+        "id": "real_property_valuation::market_value",
+        "familyId": "real_property_valuation",
+        "sha256": "d9da273ccd53a43869cab4d738ff66aca95c8e0defcea427df62573106f29543"
+      },
+      {
+        "id": "real_property_valuation::valuation_method",
+        "familyId": "real_property_valuation",
+        "sha256": "cf7de70efca073778e6d432ea6d838b7a160094bed343efbeb2769c9708ae82c"
+      },
+      {
+        "id": "real_property_valuation::valuation_date",
+        "familyId": "real_property_valuation",
+        "sha256": "62df3a6613225a0ff0e413d4bb6848842cd27a90337af18084f328b9bde48d22"
+      },
+      {
+        "id": "real_property_valuation::ownership_share",
+        "familyId": "real_property_valuation",
+        "sha256": "68317f06b20a8f7741b393ef62eee463841f8a38c3e5f8633a1ad26c5c074a85"
+      },
+      {
+        "id": "real_property_valuation::actual_payoff",
+        "familyId": "real_property_valuation",
+        "sha256": "971efb07967762d67b56c49253c08f7f8e26c2309c9ade577763f73f1716b6d3"
+      },
+      {
+        "id": "real_property_valuation::disposal_cost",
+        "familyId": "real_property_valuation",
+        "sha256": "a7ee738bfc926c794ef81dd5a443ee80e662c2c53893b4919738a2ce6f63f76d"
+      },
+      {
+        "id": "property_search::searched_subject",
+        "familyId": "property_search",
+        "sha256": "88470d6cf4f178419bdb2da23bcab1d894abb9578220b6b7bd34d196a1fade04"
+      },
+      {
+        "id": "property_search::jurisdiction_scope",
+        "familyId": "property_search",
+        "sha256": "c37330d77be4445285565a7850444dee7524cbd6098876190f4d0efc131e1cb8"
+      },
+      {
+        "id": "property_search::property_found",
+        "familyId": "property_search",
+        "sha256": "43143148a78c243cb61963cde4867624cade935747f820ce488e645e53e5e6a3"
+      },
+      {
+        "id": "property_search::property_id",
+        "familyId": "property_search",
+        "sha256": "740e7523daf9efff32127fc15bcaf32193ec129d4eaf5d66656781d53bfa6f66"
+      },
+      {
+        "id": "property_search::registered_owner",
+        "familyId": "property_search",
+        "sha256": "bea8d9f0f21f3566d80fd0c08428815d6d6a842b38dee1eb2c21887043483e0d"
+      },
+      {
+        "id": "property_search::ownership_share",
+        "familyId": "property_search",
+        "sha256": "6c69a6757e1845b7ac1699ad74fc0e2e27cb69474aecb229b827f840ee022c3c"
+      },
+      {
+        "id": "property_search::search_as_of",
+        "familyId": "property_search",
+        "sha256": "abf4645eb5f67a343690fef82ebc7a7ac9d16dedcd11cb86a776d61bca8a6823"
+      },
+      {
+        "id": "property_search::issue_date",
+        "familyId": "property_search",
+        "sha256": "99d0c8b4753482b142e73b2634d3378bf32bf40340c0cf5e837eb1c7295c45b7"
+      },
+      {
+        "id": "lease_housing::landlord",
+        "familyId": "lease_housing",
+        "sha256": "1255657943556429d7355f09dae53be557c0f1e90688fdb94cbbaab389f6348e"
+      },
+      {
+        "id": "lease_housing::tenant",
+        "familyId": "lease_housing",
+        "sha256": "ab5826b055a6eae4f556fb340bd4f105ff492c5a34e0db11ad7d6c3d0053f424"
+      },
+      {
+        "id": "lease_housing::applicant_relation",
+        "familyId": "lease_housing",
+        "sha256": "d905b02c3d594b65e051d2ba3a2256c9a4b0e8ade243440090952140c0f331f5"
+      },
+      {
+        "id": "lease_housing::property_id",
+        "familyId": "lease_housing",
+        "sha256": "996fdd1fcfd5e34b9712fe8c96ff4d08379b7fd04862cdfaca70502451861f1e"
+      },
+      {
+        "id": "lease_housing::use",
+        "familyId": "lease_housing",
+        "sha256": "b32ad590dea1639d3d5ae93ba0855c9bbd24b7ee9d10e81d775eda433fc905d5"
+      },
+      {
+        "id": "lease_housing::deposit",
+        "familyId": "lease_housing",
+        "sha256": "472d45437358d60067b635483108854a34acfbfc126a4897b3c4b12b222d6aed"
+      },
+      {
+        "id": "lease_housing::monthly_rent",
+        "familyId": "lease_housing",
+        "sha256": "03c8962bf1ce7e7d294492ce147a2e5736826cdc4581dd191466ab67646493f3"
+      },
+      {
+        "id": "lease_housing::period_start",
+        "familyId": "lease_housing",
+        "sha256": "684810c94a8c43291d7c92ed744b6b20bee44e481e9ca9e3b97bfb79e7eaa31a"
+      },
+      {
+        "id": "lease_housing::period_end",
+        "familyId": "lease_housing",
+        "sha256": "83bbb8fdb3cfddffbe1e57d5f6b7a667265b7620731b1e4b88548655ebf4748d"
+      },
+      {
+        "id": "lease_housing::renewal_status",
+        "familyId": "lease_housing",
+        "sha256": "b1de36f9d1fe40abc3ab3c36e83fee4d7feb2200d7c7f69ce0f712a598c2f4c0"
+      },
+      {
+        "id": "lease_housing::security_assignment",
+        "familyId": "lease_housing",
+        "sha256": "76f01f77bbcbf3e75ae94fd592ae7071b47e685f39115631f6bef851aa1eafad"
+      },
+      {
+        "id": "lease_housing::secured_balance",
+        "familyId": "lease_housing",
+        "sha256": "eafc6cd2bbde2f169977df01d0c92cad87eab8d2ccd9344f402ea517136128fe"
+      },
+      {
+        "id": "lease_housing::arrears_deduction",
+        "familyId": "lease_housing",
+        "sha256": "50bca8e872d15420ebf233d26963db71ae90fc3ff932d16867c51ffc36e708c4"
+      },
+      {
+        "id": "lease_housing::issue_date",
+        "familyId": "lease_housing",
+        "sha256": "0debaa2ce68cd717fb09da6329a29a2a5a28db34ac09db1b994803b96b329b5f"
+      },
+      {
+        "id": "local_tax::taxpayer",
+        "familyId": "local_tax",
+        "sha256": "1cc8ce4ab316528caccc4f31344e8c57e83295bff547f00083be4bf8a9ec756c"
+      },
+      {
+        "id": "local_tax::authority",
+        "familyId": "local_tax",
+        "sha256": "75c1d85b9c7c2441561c3a655cfdb30a0f13d91dd14bee2aff95fb4aff87b327"
+      },
+      {
+        "id": "local_tax::tax_type",
+        "familyId": "local_tax",
+        "sha256": "6da2f394858a11b62375f113800dd64d3df4d9f5fd8c24ee425ce49ae6adb094"
+      },
+      {
+        "id": "local_tax::tax_period",
+        "familyId": "local_tax",
+        "sha256": "d5f086ecdc372104e1a6796e50ecb40d19ba381a56ff629023f975d62c9edfb9"
+      },
+      {
+        "id": "local_tax::tax_base",
+        "familyId": "local_tax",
+        "sha256": "c2c824f15dec8b8745c6863665a6b8b7efdf9e481645c008c91804b22a080022"
+      },
+      {
+        "id": "local_tax::assessed_amount",
+        "familyId": "local_tax",
+        "sha256": "1254edd6bc5fa91588f270a8d42c427ff22ae20837b1f5eaa2bbb65083f67442"
+      },
+      {
+        "id": "local_tax::paid_amount",
+        "familyId": "local_tax",
+        "sha256": "5b9bfe8973f0f742c274ccea43b736004d2341a0139d9756d85fbe6435490413"
+      },
+      {
+        "id": "local_tax::arrears",
+        "familyId": "local_tax",
+        "sha256": "455ae133e932401894eacb28b0bda1a7e4d59f53366087bc366d13778dd03694"
+      },
+      {
+        "id": "local_tax::surcharge",
+        "familyId": "local_tax",
+        "sha256": "cd19aab2791a139f24c67e743a0fa5bd2c0cde9c3ce83bfb225a97f1c80bf2a1"
+      },
+      {
+        "id": "local_tax::collection_cost",
+        "familyId": "local_tax",
+        "sha256": "fad08a7ea7f8b23e05ffb896b8033c34dd681d23c4d1e8b849cae2d56cf9781b"
+      },
+      {
+        "id": "local_tax::as_of_date",
+        "familyId": "local_tax",
+        "sha256": "b7c23ac720d11b48dd1f9effe0f456d3433236fed4d2ed63fee1216b54e956c8"
+      },
+      {
+        "id": "local_tax::issue_date",
+        "familyId": "local_tax",
+        "sha256": "a404d5215a8a75daec42c36f0bbd3b95caf6d6a76436a5584257a12b4c0b9b1b"
+      },
+      {
+        "id": "health_insurance_arrears::subscriber",
+        "familyId": "health_insurance_arrears",
+        "sha256": "984367808dcc3fc19f5417e920ffb127df33cf999bd2b34041cec0b88c4178e5"
+      },
+      {
+        "id": "health_insurance_arrears::authority",
+        "familyId": "health_insurance_arrears",
+        "sha256": "dbb24804eb961da29c51f96463ef3bd30abf3f6fc10454fe48caa1804e4d4b1b"
+      },
+      {
+        "id": "health_insurance_arrears::period_start",
+        "familyId": "health_insurance_arrears",
+        "sha256": "b754dcad77eb5c0d238ef616721dbab004cd87f38fefc343fb0d181250cbd17b"
+      },
+      {
+        "id": "health_insurance_arrears::period_end",
+        "familyId": "health_insurance_arrears",
+        "sha256": "84d1509ee50288777e61eefa2792e295df35488108ba2f10b93f8306f347c2ba"
+      },
+      {
+        "id": "health_insurance_arrears::unpaid_contribution",
+        "familyId": "health_insurance_arrears",
+        "sha256": "2730b967762c9f3f9dfeb85de15207bf38d8695437fc728a2f8b8b47540e31f1"
+      },
+      {
+        "id": "health_insurance_arrears::late_charge",
+        "familyId": "health_insurance_arrears",
+        "sha256": "1d3ab363e3530113831b7abe64280055099c462b32d66c907b3fbf69982f32ed"
+      },
+      {
+        "id": "health_insurance_arrears::disposal_cost",
+        "familyId": "health_insurance_arrears",
+        "sha256": "21d23217e60151524f0fe7607974d0a0bd263fdd2189d40e95423265e1c57252"
+      },
+      {
+        "id": "health_insurance_arrears::total_arrear",
+        "familyId": "health_insurance_arrears",
+        "sha256": "a4d16c4cfcab529e39f607120d1ff22e931a5768e94ac2dac5b12c1a37917105"
+      },
+      {
+        "id": "health_insurance_arrears::as_of_date",
+        "familyId": "health_insurance_arrears",
+        "sha256": "2989a17a957d867032e0331f85d9caa37e6424f4b7aa3e11eec50b04f6ebbf69"
+      },
+      {
+        "id": "health_insurance_arrears::issue_date",
+        "familyId": "health_insurance_arrears",
+        "sha256": "2228b3b55d69a6497935705a539c8951cf1bdb57b5256f1df1e33d3751040f5f"
+      },
+      {
+        "id": "pension_contribution_benefit::member",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "c90f60724e8c4dcaa8fe7b9e7e715c71cf156833fc167697f11a8ec2f7be1085"
+      },
+      {
+        "id": "pension_contribution_benefit::provider",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "8c97c5fd0f0c544081b23d3a549c7a675cbb5502b3e28abf285b46659320cebb"
+      },
+      {
+        "id": "pension_contribution_benefit::plan_id",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "391ed21192ec70812257604c51bcda5c415ebd9f46be074831875ec1137f0d49"
+      },
+      {
+        "id": "pension_contribution_benefit::contribution",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "94aff45e4fe81f5c1100f82add37d52f2ccbf4c2d4b4002b09fca99a57492759"
+      },
+      {
+        "id": "pension_contribution_benefit::vested_balance",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "68918aa74ba1d1daefd5eaac38143351687ba0f281ed78f770e8a9a907c3dde1"
+      },
+      {
+        "id": "pension_contribution_benefit::benefit_type",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "0793e2e585e37ce307f52f2ef79935eca748c205e10a1eec5b4fdc7832119638"
+      },
+      {
+        "id": "pension_contribution_benefit::benefit_amount",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "8c76c5331aaefa5e54d6bfe9902520a45a3b013b163d73fc7bdb55658ce1af00"
+      },
+      {
+        "id": "pension_contribution_benefit::payment_start",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "db4e3410e7a974b9e8ba151599c2af9665dcd2d20588c27e4089b71ea143ca5f"
+      },
+      {
+        "id": "pension_contribution_benefit::period_start",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "1de23b82620448ea1451f31e1b0dc626de75451a82a825ceca279e5817b1dc1f"
+      },
+      {
+        "id": "pension_contribution_benefit::period_end",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "ec6ee929af85a60f39cea4c6e6398d0959205a790c980b2c6def79623bd51228"
+      },
+      {
+        "id": "pension_contribution_benefit::withdrawal_value",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "c995382386022cda1145fa4c3efe4677e82d2fdff991c67e948bb6d9b6f5d2ff"
+      },
+      {
+        "id": "pension_contribution_benefit::encumbrance",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "48112cb2fc32182bffecbce6f07333dca80cba709845f355359da9aa7fc8c848"
+      },
+      {
+        "id": "pension_contribution_benefit::as_of_date",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "8cd59ecc1b4570c4c7d8518a59b4a94510eca9b403bd1005b03acda33d65f329"
+      },
+      {
+        "id": "pension_contribution_benefit::issue_date",
+        "familyId": "pension_contribution_benefit",
+        "sha256": "272a2175b68e22172caa18c2d50a08187b694d7629a853f677daa11c43290c5f"
+      },
+      {
+        "id": "tax_income::taxpayer",
+        "familyId": "tax_income",
+        "sha256": "ca43104fbfdc066029103eb4974766e49004bede1bb61c90e8e2d4665fea7a27"
+      },
+      {
+        "id": "tax_income::tax_year",
+        "familyId": "tax_income",
+        "sha256": "a4f2c47c515e995eea81bbc27d70418799bebe237280a63485c9016526a190bc"
+      },
+      {
+        "id": "tax_income::income_kind",
+        "familyId": "tax_income",
+        "sha256": "8eb871b7ce38028a1d1f63ac0e9ebdffb76f2eb557382f4c4329e80791a5dd1f"
+      },
+      {
+        "id": "tax_income::gross_receipts",
+        "familyId": "tax_income",
+        "sha256": "7d1927ad5aa212e788de56ad3682b70cf46b04947a5ebf8ce5a1c9e237b3ca5c"
+      },
+      {
+        "id": "tax_income::necessary_expenses",
+        "familyId": "tax_income",
+        "sha256": "10983a3de5d9ca21e022dac869e99bf2a55da1afe66b8769bfbab89e7871b1b1"
+      },
+      {
+        "id": "tax_income::income_after_expenses",
+        "familyId": "tax_income",
+        "sha256": "69c26124dda8f8e110a2076fff73a0269a1193a4fc72e3563debf5c8d6567b69"
+      },
+      {
+        "id": "tax_income::tax_assessed",
+        "familyId": "tax_income",
+        "sha256": "0bd90d7e24ddc559a4d5c826be8e7e3c6ac4ced809dae20e7bc7345cb741a84f"
+      },
+      {
+        "id": "tax_income::tax_paid",
+        "familyId": "tax_income",
+        "sha256": "8704b390b7c669a8eadb142a04e74619fcd115ec34b823ee60600f7c86109863"
+      },
+      {
+        "id": "tax_income::arrears",
+        "familyId": "tax_income",
+        "sha256": "6ef5c694c5b97d62ed2f253dcf174ebacff157fc63f28822c70f383f67afa6f7"
+      },
+      {
+        "id": "tax_income::period_start",
+        "familyId": "tax_income",
+        "sha256": "6a7a599eb9a3c31c4c9337c7d464f06123a7b0a10ebee26317426dc485939a29"
+      },
+      {
+        "id": "tax_income::period_end",
+        "familyId": "tax_income",
+        "sha256": "886393103d2689fc0b2c2ac819e64c5846ed5bc4307f8faf4ce9a1217ffc4a61"
+      },
+      {
+        "id": "tax_income::issue_date",
+        "familyId": "tax_income",
+        "sha256": "6c553280b85b8b60686df171fe66675d4f8e418050c5004264039e73309ea4c4"
+      },
+      {
+        "id": "business_registration::business_entity",
+        "familyId": "business_registration",
+        "sha256": "c772915ac46a0e31ede6af5ae5db8ea0b8b7c5a088137b363976e38c3343f7b1"
+      },
+      {
+        "id": "business_registration::representative",
+        "familyId": "business_registration",
+        "sha256": "80fe96bb751065a61a59f13240e5eeb7d724ac0aae152651d0de2cb7a2f0479e"
+      },
+      {
+        "id": "business_registration::business_id",
+        "familyId": "business_registration",
+        "sha256": "b43a46209fd71b77ab3dee1b26c0fb99003d35edc42a55c2ab685d0dd5706034"
+      },
+      {
+        "id": "business_registration::registration_date",
+        "familyId": "business_registration",
+        "sha256": "32277c93f07aec8b7d71ebf1a7f0b45885de03c023a1d2f75427a11ebd90461c"
+      },
+      {
+        "id": "business_registration::opening_date",
+        "familyId": "business_registration",
+        "sha256": "15ebf7004de10f15c509e0ece59badbbe43ddaad36eb158d71a1b17eab9b6606"
+      },
+      {
+        "id": "business_registration::business_type",
+        "familyId": "business_registration",
+        "sha256": "723cca995a19be1f327be1e600b0a4da5ad67e56b8aa3a23eec832a7a24010e9"
+      },
+      {
+        "id": "business_registration::business_items",
+        "familyId": "business_registration",
+        "sha256": "7c009af79b3d8e6bf1a8165747d043f24e620252ed6f30a913dc3a86d1f2564c"
+      },
+      {
+        "id": "business_registration::joint_operators",
+        "familyId": "business_registration",
+        "sha256": "e5f96adb9f2bda8e346a03692dc95bb3a810598e4b6f6931c6e8005884a536c4"
+      },
+      {
+        "id": "business_registration::issue_date",
+        "familyId": "business_registration",
+        "sha256": "4f5f1bd017367e62eb788f45de67800836af3c1e58b860560bf343dae36ce3c6"
+      },
+      {
+        "id": "business_registration::status",
+        "familyId": "business_registration",
+        "sha256": "93044df4d655edddb06b38f88c61217fbeaae8d21cb0062160e0e705505b8692"
+      },
+      {
+        "id": "business_assets_liabilities::business_entity",
+        "familyId": "business_assets_liabilities",
+        "sha256": "b89b7318bd79932e8bb4618d022d16b92ad23c7edd1b5d39ba301446f28f35c2"
+      },
+      {
+        "id": "business_assets_liabilities::asset_or_claim_id",
+        "familyId": "business_assets_liabilities",
+        "sha256": "376300ad51247e9b599614433af4adf7915742dcb0a2a13e4169eee15059682c"
+      },
+      {
+        "id": "business_assets_liabilities::item_kind",
+        "familyId": "business_assets_liabilities",
+        "sha256": "aeb80e3ff250a4a544638e121e4c0db3afece1e32746f0c7ea96d5833badd09a"
+      },
+      {
+        "id": "business_assets_liabilities::ownership_interest",
+        "familyId": "business_assets_liabilities",
+        "sha256": "7982299614b0c1623ea8620299291fb12103b0a43b9384f3bb20c18faee56134"
+      },
+      {
+        "id": "business_assets_liabilities::gross_value",
+        "familyId": "business_assets_liabilities",
+        "sha256": "15df983a726971f4d0860ca56ae45c346968de554af8529fb228e3904f37c3c3"
+      },
+      {
+        "id": "business_assets_liabilities::secured_payoff",
+        "familyId": "business_assets_liabilities",
+        "sha256": "94bdd29a09a25e813144634c8286eba7266dc60af06cd28d73d8b06d52e1b879"
+      },
+      {
+        "id": "business_assets_liabilities::receivable_amount",
+        "familyId": "business_assets_liabilities",
+        "sha256": "5e612fc8c43bc8dbe1308ac96238ee115ee5878fde4ec314c3a564dde06a4a78"
+      },
+      {
+        "id": "business_assets_liabilities::payable_amount",
+        "familyId": "business_assets_liabilities",
+        "sha256": "f601bf379701af2d9a53602d964d77271afdc8fbdc5e7686cbb07fe398f1da17"
+      },
+      {
+        "id": "business_assets_liabilities::as_of_date",
+        "familyId": "business_assets_liabilities",
+        "sha256": "57bd8e6d52a1448f962cd1adc54283825a106bcb484bde4961c698117af7ff3e"
+      },
+      {
+        "id": "business_assets_liabilities::period_start",
+        "familyId": "business_assets_liabilities",
+        "sha256": "f8836cd778effdddc64a11afa17a63f6b83e2bd29a8434e3bef039b10c32c4c5"
+      },
+      {
+        "id": "business_assets_liabilities::period_end",
+        "familyId": "business_assets_liabilities",
+        "sha256": "d9b449e447050f2c1e276361a17c4700eabf657ee1e7de0a26ebd0397974b7fc"
+      },
+      {
+        "id": "litigation_enforcement::case_id",
+        "familyId": "litigation_enforcement",
+        "sha256": "1ced4cd2715fb7ffe21ed0c3b3f61bb1dd864da34ab37b822f893d0a7dafffaa"
+      },
+      {
+        "id": "litigation_enforcement::court_or_authority",
+        "familyId": "litigation_enforcement",
+        "sha256": "0ef92f68905e3921f1e498147ee264485d26f99b0164311f000a3bea3592393e"
+      },
+      {
+        "id": "litigation_enforcement::parties",
+        "familyId": "litigation_enforcement",
+        "sha256": "265628eeaf15e83756f02dd66c9ab471f53501aef8b5d123ad3e1faf94150bff"
+      },
+      {
+        "id": "litigation_enforcement::claim_type",
+        "familyId": "litigation_enforcement",
+        "sha256": "fa16bd8f0e65fed6f8dbf8056ce58bde9b1de47b1da3a72ddf825edfc1b24fe6"
+      },
+      {
+        "id": "litigation_enforcement::claimed_amount",
+        "familyId": "litigation_enforcement",
+        "sha256": "4eb242099d7c93e6b9e005eda5b45eb3fd60f0b137c896b56a4c4b503a1f7e9e"
+      },
+      {
+        "id": "litigation_enforcement::judgment_amount",
+        "familyId": "litigation_enforcement",
+        "sha256": "53e141f2467aa4d4b0633b46fd952d03719286a64634e3fc0ad51a8ef65289b3"
+      },
+      {
+        "id": "litigation_enforcement::enforced_amount",
+        "familyId": "litigation_enforcement",
+        "sha256": "3eaa7e28c94809ecf9d1f9da3aa42519a7c30b068e88104ab9010617c60ee650"
+      },
+      {
+        "id": "litigation_enforcement::security_or_attachment",
+        "familyId": "litigation_enforcement",
+        "sha256": "c1c1678ad2953aa2cfea938c1ececdd9533c2a63ea49f5d1d58ce55598062f1f"
+      },
+      {
+        "id": "litigation_enforcement::event_date",
+        "familyId": "litigation_enforcement",
+        "sha256": "63a2f23ddd1d38c83951e8dbd99077b09caf5e8676970e55e4598dbb2b7036c6"
+      },
+      {
+        "id": "litigation_enforcement::status",
+        "familyId": "litigation_enforcement",
+        "sha256": "551ebf43f60236986d8c2b53aea7b72e323f840c636318881dfc131c3c208c2e"
+      },
+      {
+        "id": "litigation_enforcement::issue_date",
+        "familyId": "litigation_enforcement",
+        "sha256": "6fdabefada923331694ff2bc100ac883953c2be7368d7929b56a3f255637e60d"
+      },
+      {
+        "id": "asset_transfer_disposition::asset_id",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "8d31860515401cbab23527c208369e783404273ae117198dcf64f52ba55f3999"
+      },
+      {
+        "id": "asset_transfer_disposition::transferor",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "189865196c13356c7d9ce99a9f1e103c7a6ea7c822ad6f4b49d5e8f2c89e6e78"
+      },
+      {
+        "id": "asset_transfer_disposition::transferee",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "a382957c5efedb06628fb002c2bb213610e58cd1b06383d68597e1797cee3257"
+      },
+      {
+        "id": "asset_transfer_disposition::transaction_date",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "5f927bb5d2dbd51f5ea855863ad6a8a9ef0d92d4c4c96cd2bba96b416df651c5"
+      },
+      {
+        "id": "asset_transfer_disposition::consideration",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "d7f57b0905ac9d0763a952962917cb16b45e7528e17ccd71cdbddb9381482520"
+      },
+      {
+        "id": "asset_transfer_disposition::market_value",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "bf99889d664bbab55acb269e4c4b8bf7b1e0742f0b7a24c7ebd2e96e8701f54a"
+      },
+      {
+        "id": "asset_transfer_disposition::proceeds_received",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "9fb664fd674ae173013835b1908108ed01ba7e08c3d928d94188baa8cdafe1f4"
+      },
+      {
+        "id": "asset_transfer_disposition::use_of_proceeds",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "b5711c9b5f151f16d48aac474d354846c50f1701423362b946cb8ad6b353c179"
+      },
+      {
+        "id": "asset_transfer_disposition::relationship",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "d15200abf5bbe8b435737f97500c5303a71faeb863a3942af05ff299ec7e5202"
+      },
+      {
+        "id": "asset_transfer_disposition::registration_date",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "06388334c63fe58cf4bcdcbf877024d52c0c8b06cb694c479f90fb56ad38505f"
+      },
+      {
+        "id": "asset_transfer_disposition::review_status",
+        "familyId": "asset_transfer_disposition",
+        "sha256": "1d149a3596646bab4626b5188fd2fce655425677affa29f2de3cb7fc9d7ef2dc"
+      },
+      {
+        "id": "creditor_assignment_dispute::prior_creditor",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "4a78434959e9add59e76d583413b6c4ab46fe65d7034feaf79680022a552859d"
+      },
+      {
+        "id": "creditor_assignment_dispute::current_claimant",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "25b9022f5c830c0098983384618e0c85af6647988593ef039607d563c1c789f1"
+      },
+      {
+        "id": "creditor_assignment_dispute::assignment_date",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "9c6d983e76f7116cf13f29ac4798a3c05598ccc929eb896e7eb3b7b9b19a270f"
+      },
+      {
+        "id": "creditor_assignment_dispute::notice_date",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "973befa9fd496abf0723f90ce8df10ef8d76dd46fbab982a27e87427cc412a25"
+      },
+      {
+        "id": "creditor_assignment_dispute::claim_id",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "463071f7ecf3dcc5e0cd6bab8b25963684b7fa95dd6014efe328d06276811639"
+      },
+      {
+        "id": "creditor_assignment_dispute::dispute_basis",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "e9ec30bf4a134e2c72fe127119eca50153a98ac6e7359bab6310977f334292ba"
+      },
+      {
+        "id": "creditor_assignment_dispute::disputed_amount",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "121d22ca0a95b709f4d80aee1ae7fd5ff5868818c9ec95351019617f46999447"
+      },
+      {
+        "id": "creditor_assignment_dispute::claim_status",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "58d4c2f9470d4836eaaeeeb71951b602f9f9fa4910d96441fe4cb20c832b12cd"
+      },
+      {
+        "id": "creditor_assignment_dispute::supporting_record",
+        "familyId": "creditor_assignment_dispute",
+        "sha256": "ff0145af9041daeff9305dbd4c62669b9cb9a0a3482c28cda7b08fdc0814d455"
+      },
+      {
+        "id": "account_garnishment::account_holder",
+        "familyId": "account_garnishment",
+        "sha256": "0c221b7383dbad03756c6e3f265bfab2a57bfdfa74bf3e01766dd1bb73f8397c"
+      },
+      {
+        "id": "account_garnishment::creditor",
+        "familyId": "account_garnishment",
+        "sha256": "f0103406f9a57e2bfecffa2f642dbe9fea470efaf8bb228da8b7ce455c9a5318"
+      },
+      {
+        "id": "account_garnishment::court_or_authority",
+        "familyId": "account_garnishment",
+        "sha256": "249836d3aa45e9241b6efac1d6f311d9e6bb9f366d2a865067dbfe81dd3b4c12"
+      },
+      {
+        "id": "account_garnishment::account_id",
+        "familyId": "account_garnishment",
+        "sha256": "87fc36f6cb0730e01b90e42acd9706bb620030c7094bea697fd32c1abbf8bbc0"
+      },
+      {
+        "id": "account_garnishment::garnishment_amount",
+        "familyId": "account_garnishment",
+        "sha256": "e1e41c3fd47cb41db25537a15c74ba1713aec6e343c9c25de58a895819d21738"
+      },
+      {
+        "id": "account_garnishment::seized_amount",
+        "familyId": "account_garnishment",
+        "sha256": "5a7f7b0bfdce23974a5c60acfebbe1440370e096e4dcb66aa7e7358e9ccaabd0"
+      },
+      {
+        "id": "account_garnishment::released_amount",
+        "familyId": "account_garnishment",
+        "sha256": "95377cc85fcff085202761c5f7f1d1b59d8579cdc1292f05a820aa067655acf8"
+      },
+      {
+        "id": "account_garnishment::effective_date",
+        "familyId": "account_garnishment",
+        "sha256": "4f19843879b079218624629d83137deb99be417a1d82285c460752198bb95683"
+      },
+      {
+        "id": "account_garnishment::issue_date",
+        "familyId": "account_garnishment",
+        "sha256": "0cbd7fc0579663b9174938bc1e048efc3cd526ccf52d59592a843b7738f11946"
+      },
+      {
+        "id": "account_garnishment::status",
+        "familyId": "account_garnishment",
+        "sha256": "0547f2e814420cf8933050dd54fad2afd3f020cd6cb9b3d5ad0e1bb46d499051"
+      },
+      {
+        "id": "accounting_source::entity",
+        "familyId": "accounting_source",
+        "sha256": "d3bdf56d993bf0c90775b0a48a2f5f51ce8eff7777da1256fe30afed164c9ac6"
+      },
+      {
+        "id": "accounting_source::period_start",
+        "familyId": "accounting_source",
+        "sha256": "ee9af52c4fdcc4022c31112dc73a80b48997ba64e54eeb74b35138138eb768ae"
+      },
+      {
+        "id": "accounting_source::period_end",
+        "familyId": "accounting_source",
+        "sha256": "f0327a981781b5495a0a27ead767f3cb3f67449b3f4200a609a54737559674fe"
+      },
+      {
+        "id": "accounting_source::account_name",
+        "familyId": "accounting_source",
+        "sha256": "cf9223c28486f8b4621ba0dae6bcec85f1edba620a2c88ca91fb2a133ddfcc7a"
+      },
+      {
+        "id": "accounting_source::opening_balance",
+        "familyId": "accounting_source",
+        "sha256": "7c39f8d90cd3f0d98d855c4514d146caa38c2b85c1c556215cf8f521ab4c1d2f"
+      },
+      {
+        "id": "accounting_source::debits",
+        "familyId": "accounting_source",
+        "sha256": "84e43ded466ee3fb7eb855102b04e8ea7ae9ec081843ff3e59937a8ebafcabf4"
+      },
+      {
+        "id": "accounting_source::credits",
+        "familyId": "accounting_source",
+        "sha256": "907ff5461b455fa477989231a22f56873524ab67a778c29d997f1d8b1e6d0bdc"
+      },
+      {
+        "id": "accounting_source::closing_balance",
+        "familyId": "accounting_source",
+        "sha256": "e18e80c980eb752f4699a6811d9b3931c78fc0a21e83804cc88180ed7e8d78a6"
+      },
+      {
+        "id": "accounting_source::source_total",
+        "familyId": "accounting_source",
+        "sha256": "9d99aede0721bff1a62b6d104336544a2d9866bc8282e71dc368afa6bfed3c61"
+      },
+      {
+        "id": "accounting_source::issue_date",
+        "familyId": "accounting_source",
+        "sha256": "13164a0af6abe4ff93ec5cd688f0d77223c840e9ea69be8740dc181b402eae17"
+      },
+      {
+        "id": "identity_residence_record::identity.name",
+        "familyId": "identity_residence_record",
+        "sha256": "7542cb3ba4d0058abc7ba1aaf33735f236c9df2537083cd1df36a58f4fadf966"
+      },
+      {
+        "id": "identity_residence_record::identity.registration_id",
+        "familyId": "identity_residence_record",
+        "sha256": "f226912e71b601dbbd03aba3fed77683fbe7e2ea44476233d576f2ba2cc21dfe"
+      },
+      {
+        "id": "identity_residence_record::identity.address",
+        "familyId": "identity_residence_record",
+        "sha256": "2ba3a4fbc0b0db5045ec5fb93cd9bf12743fd0947ff489a0d5cb0f61cd7be7ce"
+      },
+      {
+        "id": "identity_residence_record::identity.issue_date",
+        "familyId": "identity_residence_record",
+        "sha256": "e4a00c58b7fff51d2031338a7ce9008d7136f9337cafaa7db6161d2d34f05655"
+      },
+      {
+        "id": "identity_residence_record::identity.relationship",
+        "familyId": "identity_residence_record",
+        "sha256": "2574e58f0e36fb26a414baff60c364a0d216894ed1c898cbce8723adaa3f9f02"
+      },
+      {
+        "id": "identity_residence_record::identity.household_members",
+        "familyId": "identity_residence_record",
+        "sha256": "c8d7e475904b426f6925a3e85f1d20987cd00c7deb9e586c7e173e178983a5a3"
+      },
+      {
+        "id": "identity_residence_record::identity.marital_status",
+        "familyId": "identity_residence_record",
+        "sha256": "28e68082901ac3819ef841646a968f875c274d41e0533582b3c11e61d94e33c2"
+      },
+      {
+        "id": "identity_residence_record::identity.record_number",
+        "familyId": "identity_residence_record",
+        "sha256": "980d02203ae0b09495787dda11b5c4f9b6004725b5256b947d2b4666d013521b"
+      },
+      {
+        "id": "employment_relationship::income.employment.employee",
+        "familyId": "employment_relationship",
+        "sha256": "b87609d976ae309cea6c04f4339ecf4690e24306f64cc5ef14136bfcfc773382"
+      },
+      {
+        "id": "employment_relationship::income.employment.employer",
+        "familyId": "employment_relationship",
+        "sha256": "024e15ccd59c72f74592ee9b0deede7680e13472df6a0d1bb282de9348b1ec53"
+      },
+      {
+        "id": "employment_relationship::income.employment.employment_type",
+        "familyId": "employment_relationship",
+        "sha256": "2e69932b171513df0700cf3d07d1b0c93ad9dede4ebfa12862b6a0e3de9df231"
+      },
+      {
+        "id": "employment_relationship::income.employment.start_date",
+        "familyId": "employment_relationship",
+        "sha256": "f3af43f0cdea1d3576774dbe39b030b0a0556631c4ed40fc8479519ced82a6e4"
+      },
+      {
+        "id": "employment_relationship::income.employment.end_date",
+        "familyId": "employment_relationship",
+        "sha256": "19e2a51044da5e2129cdc334934cfa120f756715dce38a9635209f45ae68e605"
+      },
+      {
+        "id": "employment_relationship::income.employment.contract_term",
+        "familyId": "employment_relationship",
+        "sha256": "9e29e25c91a312ddf00362ec1b9460f8a17bcbbd011246fabb3aedf506027c6c"
+      },
+      {
+        "id": "employment_relationship::income.employment.hours",
+        "familyId": "employment_relationship",
+        "sha256": "512562c9dcf48b8188830588d9c671778f8c04aaf25301be41db92754606e969"
+      },
+      {
+        "id": "employment_relationship::income.employment.base_wage",
+        "familyId": "employment_relationship",
+        "sha256": "36fc8093bfcdb7a10407c37c256b001906890fc61e5438fd6d89a3095b51c972"
+      },
+      {
+        "id": "employment_relationship::income.employment.allowance_terms",
+        "familyId": "employment_relationship",
+        "sha256": "2f8996f4524ee97877de62e0e48bdd952ae402bb4e4ab405c8aafaa9979db41d"
+      },
+      {
+        "id": "employment_relationship::income.employment.issue_date",
+        "familyId": "employment_relationship",
+        "sha256": "5eeaf113875080d4d5672bda8ff903169f4fceeb566187bd328a1f87f25ca77e"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.employee",
+        "familyId": "payroll_payslip",
+        "sha256": "ae542ec51e735f76185c8e54d1a230ad8e955ea14af94c1942503759259f0f5f"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.employer",
+        "familyId": "payroll_payslip",
+        "sha256": "e0ec84b52f298d7b36e1448ac2c1ffe7b081718bac741a840b7cd2233d08581d"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.pay_period_start",
+        "familyId": "payroll_payslip",
+        "sha256": "ee1b15741aa22a098a10cff98e8bcc1a30484636e9e6288342fcf57273c85884"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.pay_period_end",
+        "familyId": "payroll_payslip",
+        "sha256": "774ddbabb29db393d711ff214feb08b4eed37799b1ee434b0f2449d282ed429d"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.pay_date",
+        "familyId": "payroll_payslip",
+        "sha256": "b0a188bfb96905a3ecc9c22b0eb72d9d83d5d7ddbf0f3ae8358a3a05b3484bde"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.gross_base",
+        "familyId": "payroll_payslip",
+        "sha256": "3a0fb93200764cda93a4958cb408d83a7dc1bec45c11414a07ef95afe497c6bc"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.overtime",
+        "familyId": "payroll_payslip",
+        "sha256": "3380a2ac6ded05b58cabe98b121c0bd3aca135e87e95697175ac92788b47f5f6"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.bonus",
+        "familyId": "payroll_payslip",
+        "sha256": "72bea8b8870a8952bc88f65c1da0072903850a489cd5d4750759e73ae2567c5f"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.allowances",
+        "familyId": "payroll_payslip",
+        "sha256": "c0242d5a8ea353fbebf0dfc64eef97666f509e6de39b07de27100d1bc71315ca"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.tax_withheld",
+        "familyId": "payroll_payslip",
+        "sha256": "56fc42cdacb100695306ab79895fbde3293e2790caa182f6862770dd2822baf8"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.social_contributions",
+        "familyId": "payroll_payslip",
+        "sha256": "264ca43185c57d6d0f85541c1061ef914f98e8fe454976950d9ae34caed43cc3"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.other_deductions",
+        "familyId": "payroll_payslip",
+        "sha256": "6809bff06140343fb24571e3d77b950ec2644963abaffb14a91a89b34ed4f52d"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.net_pay",
+        "familyId": "payroll_payslip",
+        "sha256": "b7ad77cc2b16d84cff103eb572568d07040aeabc62412482e73cb96f9a7f254a"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.hours_days",
+        "familyId": "payroll_payslip",
+        "sha256": "0e85c786ec74051da7c04feab3bd49211108cfd247d37fa4b52d5f09fb14c85d"
+      },
+      {
+        "id": "payroll_payslip::income.payroll.issue_date",
+        "familyId": "payroll_payslip",
+        "sha256": "495422c8044281fe2736784c487e2d1859f80d449d050c6adf2138a2e8b762e5"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.taxpayer",
+        "familyId": "wage_withholding_tax",
+        "sha256": "5e0fbdf5ae5af70f03f40e1103b139c40dece39197afd9d2b97ab9d0a3e36af5"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.withholding_agent",
+        "familyId": "wage_withholding_tax",
+        "sha256": "da164a416677094ca651d4798a0e828b4b606cc199767d2500f8522c78fe92c3"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.tax_year",
+        "familyId": "wage_withholding_tax",
+        "sha256": "cc90ed14d8f6f51324e6cbaefe5663a50c925570d2391a2cdddfc51f5654b157"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.employment_start_end",
+        "familyId": "wage_withholding_tax",
+        "sha256": "95df7e610d09e781db4372c8d3a02940649f7d3198a4b32778c98e89564f9859"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.gross_wages",
+        "familyId": "wage_withholding_tax",
+        "sha256": "508ffd076e379381f6d6812d241ddfe3ee9701fd3576e24e9abc657fa89e567c"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.taxable_allowances",
+        "familyId": "wage_withholding_tax",
+        "sha256": "044f50ae9a6d58f0d4c2df30172f7070b77eed2469f3d72b6d2e03a1729076b1"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.tax_exempt_allowances",
+        "familyId": "wage_withholding_tax",
+        "sha256": "25b14f84d599687c9ea670c17acb84575ce79d2ffac04957e81700ecf5d96da9"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.withheld_income_tax",
+        "familyId": "wage_withholding_tax",
+        "sha256": "83fe2b287864f48c291672f395d4ec4b7ed1e1a4970b5803e2b1cc7d07b03e58"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.resident_tax",
+        "familyId": "wage_withholding_tax",
+        "sha256": "ebc772e947cf0322372d683f3c55d0312235b01e45d4b51c1c869b75db0e576d"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.year_end_adjustment",
+        "familyId": "wage_withholding_tax",
+        "sha256": "f2f776c09da0817f40ba63a26489f306854eba4a02636a45c377fdb534f1ec7c"
+      },
+      {
+        "id": "wage_withholding_tax::income.tax.issue_date",
+        "familyId": "wage_withholding_tax",
+        "sha256": "27f55a771f683abb31014de669272b6742cd61178483cd5303db6def6873b3b6"
+      },
+      {
+        "id": "current_nonwage_income::income.other.recipient",
+        "familyId": "current_nonwage_income",
+        "sha256": "2330833ade9c5be456df016b7756be31c5b557edf980f758356e7c09e746a21b"
+      },
+      {
+        "id": "current_nonwage_income::income.other.payer",
+        "familyId": "current_nonwage_income",
+        "sha256": "f187cf3e489cf9f3cd69cd5862fef51ae01e1536f93913f339c6c52e580d679a"
+      },
+      {
+        "id": "current_nonwage_income::income.other.income_kind",
+        "familyId": "current_nonwage_income",
+        "sha256": "dfcd95e81b41f2751542af6aa0c752f612ac7350c94258d3e97d90a5e1a5eae3"
+      },
+      {
+        "id": "current_nonwage_income::income.other.earning_period_start",
+        "familyId": "current_nonwage_income",
+        "sha256": "6521c663a769e710ad6ab12eb7ee999e388290becae3767e0263b137b3637ecb"
+      },
+      {
+        "id": "current_nonwage_income::income.other.earning_period_end",
+        "familyId": "current_nonwage_income",
+        "sha256": "6dda49626573aab5b502dbaca7e053ea8676606185df1bdec0991b87197fd860"
+      },
+      {
+        "id": "current_nonwage_income::income.other.payment_date",
+        "familyId": "current_nonwage_income",
+        "sha256": "8ea54bd00f0f8015c075902224a8fd9eebaeb67fecd8dd35a0a94470ff477692"
+      },
+      {
+        "id": "current_nonwage_income::income.other.gross_amount",
+        "familyId": "current_nonwage_income",
+        "sha256": "9474d6da168e023d68220587597eb6caf2c4a87ba94ac152be19c479bd74a8fd"
+      },
+      {
+        "id": "current_nonwage_income::income.other.deductions",
+        "familyId": "current_nonwage_income",
+        "sha256": "618b32e523a787925b229d43eb2c8f3b6b237ae647431dd0a4fc05fff6c96d27"
+      },
+      {
+        "id": "current_nonwage_income::income.other.net_received",
+        "familyId": "current_nonwage_income",
+        "sha256": "48457bf7d6d7045da47de2d5984c20044d1de80340d7ecd37a1269440a56921f"
+      },
+      {
+        "id": "current_nonwage_income::income.other.frequency",
+        "familyId": "current_nonwage_income",
+        "sha256": "a833a725026f21df803793ec7081ee398e59b00421b4377ae3c97bfc49eeb340"
+      },
+      {
+        "id": "current_nonwage_income::income.other.contract_end",
+        "familyId": "current_nonwage_income",
+        "sha256": "07cb0f5b508e63ffd0342859c6d0ec7ec2023635b46f12c5df896eed8ca97727"
+      },
+      {
+        "id": "business_sales_vat::income.sales.business_entity",
+        "familyId": "business_sales_vat",
+        "sha256": "94c3902f4600001852c2287ef4bc3ee664b4853de7181cc07483f92b58304451"
+      },
+      {
+        "id": "business_sales_vat::income.sales.reporting_period_start",
+        "familyId": "business_sales_vat",
+        "sha256": "7acb35621e48e9d61048e6819d7db718dc67766850d97941e4617fc9fafff445"
+      },
+      {
+        "id": "business_sales_vat::income.sales.reporting_period_end",
+        "familyId": "business_sales_vat",
+        "sha256": "5db8f186c290e09e8dd6574f38935d2c6777ce9e08edf54483355a244b2f4fac"
+      },
+      {
+        "id": "business_sales_vat::income.sales.gross_sales",
+        "familyId": "business_sales_vat",
+        "sha256": "184aa4a304d1b6042affa9dc4862b237e6386e058a08bf5c745fe9e32b89a409"
+      },
+      {
+        "id": "business_sales_vat::income.sales.taxable_sales",
+        "familyId": "business_sales_vat",
+        "sha256": "0624f40e0cca642e2c98b924d9bcce318fef31ede64de921a182852cfa0c027a"
+      },
+      {
+        "id": "business_sales_vat::income.sales.exempt_sales",
+        "familyId": "business_sales_vat",
+        "sha256": "374d3241ca360e106b1675696af8faa97d1d9be055adb6b22cb2300540af0a86"
+      },
+      {
+        "id": "business_sales_vat::income.sales.vat_collected",
+        "familyId": "business_sales_vat",
+        "sha256": "8a565a81637d51a3e623969ac928c7afe03e241f7744c22f1f8852d18b0bdc39"
+      },
+      {
+        "id": "business_sales_vat::income.sales.returns_refunds",
+        "familyId": "business_sales_vat",
+        "sha256": "ddf23aa86c5deecaa2b4c4d8952739cec2717536ab690dbd6c253b52ceaf45ed"
+      },
+      {
+        "id": "business_sales_vat::income.sales.sales_count",
+        "familyId": "business_sales_vat",
+        "sha256": "2d6d4f406ebd9656ad259755ffaa3c8e26ac1f6a4347ff84cc69d679f136319d"
+      },
+      {
+        "id": "business_sales_vat::income.sales.filing_date",
+        "familyId": "business_sales_vat",
+        "sha256": "d8531daae5294b762e80de46b21dd001926381cbe74c7b0f5b8bef220df649c8"
+      },
+      {
+        "id": "business_sales_vat::income.sales.issue_date",
+        "familyId": "business_sales_vat",
+        "sha256": "608d9db6dc8a8c9c3291522bb0c578f50ad6b63629fc950316c83e8d9588d2ef"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.business_entity",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "cc39aac3f033d35fdbe1d25b084bbf84f271996a2bd916e232380e67f27eca22"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.period_start",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "9fc1bba83d35df7bb7df5555313b52b4e7eb4caca4be400f88acdbdbedce4873"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.period_end",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "9a055a29d0f16d696d2bd90fb739d5bcb82b40b5dc60015166f503cdf0389acd"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.expense_category",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "a75186bb17d554c182a90ca84543a99be6d619295faca44270ea14f7d1037e14"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.supplier",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "bb657dc9fec32b8a7038cc08b533306e6d942bf1391e77ca97b6d16e054b0c8a"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.gross_amount",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "72067721db8b0a79cce4279f4ab9c05184c5630adb140dc5aa272c5e3774644e"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.tax_component",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "583b68441d7a01848db1ed45d8fb53199c4f59a83383496262139656f9f76d9a"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.payment_date",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "286bbd9eb5c5c792c51d61886e12f5a03ce92b4d722789200baeb18eec032b09"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.payment_status",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "afd85814d223869066b1759490a2514a4e853ff7b8b650051a40588c43d36fe5"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.business_continuity_flag",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "357397fe8ed6ab48a53dff00c3d6ec6c822e74b0b151f562fe69b4416068087c"
+      },
+      {
+        "id": "business_costs_and_ledgers::income.business_cost.accounting_basis",
+        "familyId": "business_costs_and_ledgers",
+        "sha256": "509e0592f51b1795cbda189ae4c09431512283ac48d6998e9c3c1977cef8e185"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.operator",
+        "familyId": "business_current_income_summary",
+        "sha256": "c58409fc4afbea39583e70b35d1d98059a3aa1db79c65c470d47b63c14e677d7"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.payer_customer",
+        "familyId": "business_current_income_summary",
+        "sha256": "7e2b8e8cb8b8b0619c677186184bd05f38928d59d0f1604cd15dd0aae46e3e99"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.contract_id",
+        "familyId": "business_current_income_summary",
+        "sha256": "21cb6093aecb9485b007578d97937bf01dc5ef8d948e5fbc77a39b94a54ace1b"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.service_period_start",
+        "familyId": "business_current_income_summary",
+        "sha256": "1241a5818ab1b1698c077511f2e724424b2e8ca6d9dea9e9fd2e1b2f4ec5c73c"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.service_period_end",
+        "familyId": "business_current_income_summary",
+        "sha256": "56948e4b56f1c72b439c89ab81edf029a67258f6a65d22b755d9ca2dbcfcd5a5"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.invoice_date",
+        "familyId": "business_current_income_summary",
+        "sha256": "106781d4215aadb56b538ed48e83d129c8cdb104156f023eced02eb11db3d40a"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.gross_receivable",
+        "familyId": "business_current_income_summary",
+        "sha256": "478a600a6a0268bcaa23a6a6751580a2a0ce5fcfbcc01a88d2f9b9f4ecbf926d"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.withheld_tax",
+        "familyId": "business_current_income_summary",
+        "sha256": "2f5941d41b9ed784b314509fb396cfc7e5784bf33519959f832b1f31bdd25824"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.net_receipt",
+        "familyId": "business_current_income_summary",
+        "sha256": "bf635e482c20a5fa43847426797e47ef25fc339c5248feb5f8d4f1045a7dbb69"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.business_costs",
+        "familyId": "business_current_income_summary",
+        "sha256": "ac4ff82516e4c1ddc6eef8e813bf34250587fce5caaacc844b7fbdfd8d11fe76"
+      },
+      {
+        "id": "business_current_income_summary::income.self_employment.contract_end",
+        "familyId": "business_current_income_summary",
+        "sha256": "a9b3a5298559b7a58f903f7b17ab24441008202b3ea1ea902bcdbe65ea249f04"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.beneficiary",
+        "familyId": "pension_benefit_income",
+        "sha256": "8bc23f8225c2e65f11fd5743af6ae9481216d83545b7d7359852f47815375f4b"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.provider",
+        "familyId": "pension_benefit_income",
+        "sha256": "2597acc8b91eed215b6db7d512d2df0e8f29271ae30ccfcfe13d375f04972aaa"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.benefit_type",
+        "familyId": "pension_benefit_income",
+        "sha256": "3e63d9252731ec1b64170f57dabb6d7825a8f7a902ed974282a7bdc156964016"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.decision_date",
+        "familyId": "pension_benefit_income",
+        "sha256": "5425d3586ab44b372032e2565bd7c05901d8ce15c07d55b4a573f1f2b7ee1df2"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.payment_start",
+        "familyId": "pension_benefit_income",
+        "sha256": "712daee4bc47c72ceab315c0dcdf96397c67c6295843b7f8a5301baebe9a2cb2"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.payment_end",
+        "familyId": "pension_benefit_income",
+        "sha256": "aaf5effccdbb412448d8c03505790594adb2f1ef80d5826f2bea84b7dc96faf1"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.monthly_gross",
+        "familyId": "pension_benefit_income",
+        "sha256": "23e647ee12bc340a92ee515e7c903d9de37d5057987205eb72c8e883e528fcf1"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.deductions",
+        "familyId": "pension_benefit_income",
+        "sha256": "9eb3e2401b44c59163997bd9a3db6d5c8cc4688617303120994f8d6f4ad875b6"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.net_payment",
+        "familyId": "pension_benefit_income",
+        "sha256": "075ab31d2183bc1f10082c89973484e88a648f86a4c2bb319ee0c361c405531b"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.payment_date",
+        "familyId": "pension_benefit_income",
+        "sha256": "d2bac523b2adfc6f00830873e6fecbd61e4ad30345ad3aca26abf26ed1203696"
+      },
+      {
+        "id": "pension_benefit_income::income.benefit.review_status",
+        "familyId": "pension_benefit_income",
+        "sha256": "2f5e9d0d78d4a64b28fd698747225cca13511bbeb75fe8d6fe45fda64b8ea4e3"
+      },
+      {
+        "id": "household_composition_support::household.support.member",
+        "familyId": "household_composition_support",
+        "sha256": "9e358b15fb72fa36f0be0e711467701d554ea69a53da6d39d86eeb9a4b29da7e"
+      },
+      {
+        "id": "household_composition_support::household.support.relationship",
+        "familyId": "household_composition_support",
+        "sha256": "344dccb2e4a5aa834c09e6e0f4fa81478ac0a4fdaae7000bc314a52b064508a6"
+      },
+      {
+        "id": "household_composition_support::household.support.residence_start",
+        "familyId": "household_composition_support",
+        "sha256": "6d34b3c32b726f7792173edacf5da65dd3b375ed309ea909ce1c805a91e0f4d4"
+      },
+      {
+        "id": "household_composition_support::household.support.residence_end",
+        "familyId": "household_composition_support",
+        "sha256": "953b6b2d6ab2d31796be0bbf79423365657412fa13e17e88f7a7a284dabd3aaa"
+      },
+      {
+        "id": "household_composition_support::household.support.support_provider",
+        "familyId": "household_composition_support",
+        "sha256": "ea762aa9147d9735d999c9ce1fa84319830221cfa08e6d9cda8f9614af341bab"
+      },
+      {
+        "id": "household_composition_support::household.support.support_recipient",
+        "familyId": "household_composition_support",
+        "sha256": "03cc7c7377b146cb00d5e079e639946b06e3f909a9789c28ca3b9f69d9e12b67"
+      },
+      {
+        "id": "household_composition_support::household.support.support_amount",
+        "familyId": "household_composition_support",
+        "sha256": "f6d7ead679ff25a9570a3d9eb130a6b3085bee74f72c6ee13d112efb49288ad6"
+      },
+      {
+        "id": "household_composition_support::household.support.support_frequency",
+        "familyId": "household_composition_support",
+        "sha256": "ca1be14ac386eca956e7e2f851a32893138846e19d3850ce268f0c4205f95c75"
+      },
+      {
+        "id": "household_composition_support::household.support.support_period_start",
+        "familyId": "household_composition_support",
+        "sha256": "efe13c90707c34c9e7c5290dac0e365e61ce853c8bdd0323f63ac1dfaade22bd"
+      },
+      {
+        "id": "household_composition_support::household.support.support_period_end",
+        "familyId": "household_composition_support",
+        "sha256": "eb71d21cb9a90432bbcc4bdb3b28546e8cb64730581c874b7a8c156161589de9"
+      },
+      {
+        "id": "household_composition_support::household.support.other_income",
+        "familyId": "household_composition_support",
+        "sha256": "78eee3b7b7a409c7bd16308459dbf679bb4665bf1a5674d256aefe07f081a266"
+      },
+      {
+        "id": "household_living_expense::household.expense.expense_kind",
+        "familyId": "household_living_expense",
+        "sha256": "4cd34fac0725bf1cfec7c57ce97d132a5c994081a6c030f28dfc6cb8cfc7e7e1"
+      },
+      {
+        "id": "household_living_expense::household.expense.provider",
+        "familyId": "household_living_expense",
+        "sha256": "d5467e60f4dc3165988a526bd6664c2cd992724b17150bdad53a094bcad16cf6"
+      },
+      {
+        "id": "household_living_expense::household.expense.payer",
+        "familyId": "household_living_expense",
+        "sha256": "378a284bd9ed744da5d0c8fa60b4fd2048dc3ec2b895934d2ef0b5515047203c"
+      },
+      {
+        "id": "household_living_expense::household.expense.beneficiary",
+        "familyId": "household_living_expense",
+        "sha256": "de35f495b3ce64f720a3a2d1b3860c3f9c746c883de456196c89091ef3f8e28f"
+      },
+      {
+        "id": "household_living_expense::household.expense.billing_period_start",
+        "familyId": "household_living_expense",
+        "sha256": "8e3be09cb3f7150d80477a9cdd78f70d2988bd2c52bb2a4f8824801b529b4c79"
+      },
+      {
+        "id": "household_living_expense::household.expense.billing_period_end",
+        "familyId": "household_living_expense",
+        "sha256": "fcc734babafb2d437846ec79311d08762d202d86537f7fa371df2b4e8f351b51"
+      },
+      {
+        "id": "household_living_expense::household.expense.billed_amount",
+        "familyId": "household_living_expense",
+        "sha256": "62953eb6be5c43e583b8b27872d9d67451076d867e64a93fd490795000eda8f4"
+      },
+      {
+        "id": "household_living_expense::household.expense.paid_amount",
+        "familyId": "household_living_expense",
+        "sha256": "45e376fe32c8b1d0f861b9abe80e0bda90ce0fa4a008438968f565af61821cc2"
+      },
+      {
+        "id": "household_living_expense::household.expense.arrears",
+        "familyId": "household_living_expense",
+        "sha256": "414626d42c19f507c7041829ffc3b0102d8a97fcc0c23bb65b43801fa7402499"
+      },
+      {
+        "id": "household_living_expense::household.expense.shared_allocation",
+        "familyId": "household_living_expense",
+        "sha256": "9512a1a8485e33246733c9ab24195234e13217715fce8705ccb77056d2b686eb"
+      },
+      {
+        "id": "household_living_expense::household.expense.issue_date",
+        "familyId": "household_living_expense",
+        "sha256": "287eabeea2cfce35abaa09327ab403dd2695bd649e3fb67328cb78dfec7d59d0"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.patient",
+        "familyId": "conditional_medical_expense",
+        "sha256": "0326cc134cc6f1ec6fd2b24d55753a172cacd1dc86b2e4ae6a3cc778fd131f52"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.applicant_relation",
+        "familyId": "conditional_medical_expense",
+        "sha256": "0adbcc909c570fc74fe05096f5d003971fc8bc9fe1905e8189e0c963ac0ee9f0"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.provider",
+        "familyId": "conditional_medical_expense",
+        "sha256": "1b5116905bad6640b1d418b11f6fe94ff857b6b20faab100b43bc8f076ab4cee"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.service_kind",
+        "familyId": "conditional_medical_expense",
+        "sha256": "b572ad26779d1975f9906d2ff236d06c63bb8aff2b90359827dc92b595a7fe44"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.service_date",
+        "familyId": "conditional_medical_expense",
+        "sha256": "2ed3b8c592309d7d140fd740dfa8d47ba85a29f4ec82c64fe06205f19a10f9d1"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.care_period_start",
+        "familyId": "conditional_medical_expense",
+        "sha256": "1a758a5349038efe754f69411728d2c5abc0cac19dddd1ec2f3ff28e2ce01b85"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.care_period_end",
+        "familyId": "conditional_medical_expense",
+        "sha256": "f78f98b0f782cebdb2c953f1b7b453500bd29b20f5b592a08e539063d149a80a"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.billed_cost",
+        "familyId": "conditional_medical_expense",
+        "sha256": "4859d534e0e418298f719d6bf77a32c4754acb019cbd418fa7dce2ff018a0fcd"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.paid_cost",
+        "familyId": "conditional_medical_expense",
+        "sha256": "204f8efb63e20b7956e15b48b869fa34d8aa4b4899ac61c9450c63a6f9ce3ce6"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.reimbursement",
+        "familyId": "conditional_medical_expense",
+        "sha256": "996e3e23b8c41a774d9f52176697ec309c900622fc5ccd9e114fde4379162c53"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.expected_recurring_cost",
+        "familyId": "conditional_medical_expense",
+        "sha256": "762ab717c4ba4cd2b7116d3f4335077bcf80fc24c385e3a3009ff68235334f09"
+      },
+      {
+        "id": "conditional_medical_expense::conditional.medical.medical_opinion_period",
+        "familyId": "conditional_medical_expense",
+        "sha256": "7b4b7d49add268e6bc061953aa2e854b3710a297f716064f1d2758f4311bb5b9"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.recipient",
+        "familyId": "conditional_education_childcare",
+        "sha256": "d6f3d35d52f756c58ae062b0f6917738d6f6dd0ef1f58e99d5cc5dba562c60a9"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.relation",
+        "familyId": "conditional_education_childcare",
+        "sha256": "8261b8b1a1d8f5b48233e548ea57fb6438a333d77e03f3ac9b184a88fe0711e5"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.provider",
+        "familyId": "conditional_education_childcare",
+        "sha256": "f533c7f5332e68f2f0ccb46ee5c4114b4ffd410118c0949e6a010ef17b9ff652"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.enrollment_start",
+        "familyId": "conditional_education_childcare",
+        "sha256": "9b11d4ca026ef22f031bfa56b63d8002cb54e471e30dcc5404bebc302fbd4273"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.enrollment_end",
+        "familyId": "conditional_education_childcare",
+        "sha256": "a386077966e4c144bc8d444e860687200e1ce6844dbe9405b01867367dde5945"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.fee_type",
+        "familyId": "conditional_education_childcare",
+        "sha256": "865b9b79ccffc7099275b7c0065c44a83bfc23a76cf9e0ff575d9c87553d6c33"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.billed_amount",
+        "familyId": "conditional_education_childcare",
+        "sha256": "e4e80753ef00623f712e2025d2d43c216908e01b3bf282e5238f613f3b4faa20"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.paid_amount",
+        "familyId": "conditional_education_childcare",
+        "sha256": "06febf5998348adae6fef8fe715d40331ee33331c02689e4136697e871b98e86"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.subsidy",
+        "familyId": "conditional_education_childcare",
+        "sha256": "9006b128550e09a295527d8bc197311e82c4461cc617b6b2be5f1fce1708f864"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.payer",
+        "familyId": "conditional_education_childcare",
+        "sha256": "0ed5ff7c2e6f0be3fb42932107ef209c73e71900b26c44a4dfe9fe7e83fd667b"
+      },
+      {
+        "id": "conditional_education_childcare::conditional.education.frequency",
+        "familyId": "conditional_education_childcare",
+        "sha256": "e8eaf34d0519c7946c75a73aa9410eb1348990f0792c263e603d3b5d11b00d49"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.author",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "94d505f3537844be895ebc3081c2840ebfeee22bd79fbcda9dedc3ff57f173df"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.signed_at",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "70481e2a574a8df29ebcf48cca001d1441f0e120253916ee6b41d6afdaa0ff59"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.statement_version",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "d056064e73508b131cd34463bd2e2531b32b746f9911d5c4453c64bf27a6fbef"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.topic",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "dea8ca3d85975da8fb6f78a3c0fc5a61b933f5c84d84f47600680f60db64d9db"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.narrative_text",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "2b2456c7447f4856b1bb66d6557d6fcdebaadd70e8a5874fc6cb341631c84848"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.event_start",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "333678c237a717dbf6ae5d077428e3472255e3b761552e5e7889af60449cf72c"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.event_end",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "58ef7f44573c4203dd723e9389c6324585c0b1bdb46f68b0964c3fbc26e9e469"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.source_references",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "2571c2efbd9a1c200a630c325d393516422bb1c076273862c26e6e7f054a09d7"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.admission_or_correction",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "9e27475deb30fce629026fca9505dcdcb1b57513130790f1c7c167639c519203"
+      },
+      {
+        "id": "applicant_narrative_statement::identity.statement.signature_status",
+        "familyId": "applicant_narrative_statement",
+        "sha256": "45a230d8156ae635f5b5a9a684705b98c66a58b6755e55671a33e0cfdd33fb67"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.debtor",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "94e3fddc8b30d749f374f0579b782bd12d2ddef9ffee476e657c2ed77744b86d"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.case_type",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "d2009f904c3c988e8e2c6a2f299a080ba3a01d11198b9d77d477b8429f5944f0"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.court_authority",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "db69f3f931da5e3f4d2d38dbf763e6e00b558714d88a8b58e7341f0a10f6bbc4"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.case_number",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "9dc51a4323823875f5bed04c6814b49ba142494fbc88958f3b7d471b3e059469"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.filing_date",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "6c9b94c279cabbdb090b69957a7c909eb947636300b88ae87ce56ef79eb26cad"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.order_kind",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "fa8bf017e5cb014b7c40ca2ed400f71f0174f67a3b40db29f27e4e4e5cc3dc9d"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.order_date",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "70d0d6adfb1c983827170f651290266af1a926de41b16a6ef77de8660d990a3e"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.finality_date",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "40549bb66d507a718054991b9d35376650fb3ad2f7d360a2606c5e4ac58ee809"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.discharge_date",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "9f636bf84add241affc6eab6f021174f82e63504aec3dc339a3acd28e779f919"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.private_adjustment_attempt",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "e492bfd7aff4a1272ffe6617bc3428f7e4dc7cca6643f9557c2b31d4460df3ec"
+      },
+      {
+        "id": "procedure_prior_insolvency::procedure.history.record_issue_date",
+        "familyId": "procedure_prior_insolvency",
+        "sha256": "88494a9131969d7f0607e156d8ece3db469ec35563e6bbb576ecc22b43ff07c5"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.court",
+        "familyId": "procedure_court_orders",
+        "sha256": "03bf76038864567f941ecc2226edadcae98159be0da7296090324dd7f7febc06"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.case_number",
+        "familyId": "procedure_court_orders",
+        "sha256": "fdb5cc5e4ee2943cf020347b2a3a5ebf62251b6b23a29908b81c8580534a0268"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.debtor",
+        "familyId": "procedure_court_orders",
+        "sha256": "aedaacdbf49d102761f4c833bdc94820c4c1a9a3b8aca288f285748dd96ffaa6"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.order_type",
+        "familyId": "procedure_court_orders",
+        "sha256": "f6f7bcdd233afad3eb8907514cb3649eebdd52adcb239f8fefb81bb7b0c28735"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.order_date",
+        "familyId": "procedure_court_orders",
+        "sha256": "3a4df295c0a877e1a808e9d5b7cd6006712ce1f605a24a6c29e5d0ee54aa2059"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.effective_date",
+        "familyId": "procedure_court_orders",
+        "sha256": "e9ce1dafd44258b926f866edf4fe7a10ca9fd3ba8ab1c327c3f6771a5c478e8f"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.service_date",
+        "familyId": "procedure_court_orders",
+        "sha256": "95a1938dc22228c720dda2371dbdd48b1fe63c8c2fa0639587804c4e15c797e9"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.operative_text",
+        "familyId": "procedure_court_orders",
+        "sha256": "1ab75e88ac50d39aa84b5404f52a9edb9a82783dc1c5e6c57318bfdcd1e3442a"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.scope",
+        "familyId": "procedure_court_orders",
+        "sha256": "963adecd458f2d7ed33a830e2226d7dbcd9351d15b01f5c60004b0b89140a37e"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.deadline",
+        "familyId": "procedure_court_orders",
+        "sha256": "8ee4b523143e6085a329a650123cbd7a61b79fe06102b16e4da84a886fc36bb3"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.status_change",
+        "familyId": "procedure_court_orders",
+        "sha256": "9b6afe95b8923f1cbea185b633eb78ad0de252c2b46c2ce2b6760f26e1351b5b"
+      },
+      {
+        "id": "procedure_court_orders::procedure.order.finality",
+        "familyId": "procedure_court_orders",
+        "sha256": "6be75e0ba79b69d4dbdf614ac9a3389f1dbb4ab57864b86c774f4ac4bf2eb487"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.authority",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "ec0233fff1bd2c88bc270dc0e9bd07b6e746245c13dd1006e747226a0d2225ba"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.case_number",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "44f03189701316733fa4a23e4d97dcf99eb21587b7b77a6aa11f7b281c8b0aaf"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.debtor",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "a8378ab08097009b55e6add879719a1ef21bf38cd1fff5247dc4f2d3dcda23e0"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.creditor",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "42034316ce67abbd02b0e787d4f83f822c4d9cce4598369b5f1827d528bb4f3f"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.asset_or_income",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "f9e8868f5ddfc061d19c5265fdb99afe78a81b156ed4f1bc2d8eb63b6edf3023"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.order_type",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "daaa97b9f3b5d4aafb0e6bf23b6ef510c338c920c1acc33e1184ea9e139d488b"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.order_date",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "51259c7dd8ca516b9d3a03ddd133d34d35711ce2eb79746654329dc6319ca648"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.effective_date",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "590b6feb7347efd076f8fa1fee2462cd55fcf6c21b0e7bcef42e11e95603b5ae"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.claimed_amount",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "78ae15b19091cde97bb1b501cf53fa7aa310f345696539e117a72f77e021f20c"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.attached_amount",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "928f52487a3aae64b8f5dc095c4b36932723da03f5acefe9d806b9bbfc623b94"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.released_amount",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "93d034413fb6157028a8ab6fc0eeee5168af23784d55bcc3683cc2c567d91f48"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.service_date",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "bdb381292bf49394e1adc4356b9d84e82e0c0dece4e89c5e7e3e96d72fb1ebb7"
+      },
+      {
+        "id": "procedure_enforcement_garnishment::procedure.enforcement.status",
+        "familyId": "procedure_enforcement_garnishment",
+        "sha256": "54b817f14184d7fd5fea109a56710d9f26eded3a440c982641b31aef1cbadb0f"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.creditor",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "b4e50cb4210da3d98e0b13f0c6f0d2c3c479ce15b2e7bf747203fe3825026ffd"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.debtor",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "d3cd23a0b02de8ac863a73cd09c769e56759c595663a69ae8aaa4b3d1f7e466b"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.claim_id",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "776f2a14dcdd4574638e27e4b814edde00208ed8a5ad8271409711ff39f6a37e"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.claim_origin_date",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "d01b239a3742970e8f40bfb9675ed81f2282a5b8d00581624d0b457ed692e77d"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.principal_original",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "a4f170e782cfd974d9fa7e0dae90589e5342b982a03590ad4c0adb7833f8093b"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.principal_balance",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "b30a9148921c6d2f0f0712f1e130bfa29f5cd60ad928abd799fc086e866ceba8"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.interest_balance",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "903591f9312bc7dd39af5f8d4f234efb4dd5126b89e993c6234c37021088812f"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.interest_rate",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "d87c80f4b1177d8bc4b7fd4186e56717f04ec13955903c8a3ed04b7761a2afc1"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.as_of_date",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "a3f04aeed9070085d578f9021109eaa7afc20a7d8293901ad78ac9b74567df26"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.request_date",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "fcb2efcf580bd8ea2ae89354a4ee3e9b1c4d4c4c29b857d8608af04a49a8e9cf"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.request_copy",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "bbe733e772ce7156c5f71531b96dd43050f8df0ca0428c0971eb65ad1823f84a"
+      },
+      {
+        "id": "procedure_private_creditor_request::procedure.creditor_info.response_date",
+        "familyId": "procedure_private_creditor_request",
+        "sha256": "4645e3924c07a7f239294f6463181e90031f9a337712a420c62b34d93441b094"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.applicant_name",
+        "familyId": "application_identity_venue",
+        "sha256": "8b047e0b4846ba78add412e4f0db96df68425743131efb05d5d3becf46c6dfda"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.resident_id",
+        "familyId": "application_identity_venue",
+        "sha256": "fbed1cd9543d81973436f1ae7597e35b095b5a53aa9a6cb4cefcac935153bf30"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.address",
+        "familyId": "application_identity_venue",
+        "sha256": "f06fbc8af330d18efac1b34fe2b7cf8291e78a6be1256c445aad690d5e595690"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.phone_home",
+        "familyId": "application_identity_venue",
+        "sha256": "5c7bbc31f3c95482ec7979e46a99ee6de03cec8f9bcb1f6239106aa1b76f9d0c"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.phone_work",
+        "familyId": "application_identity_venue",
+        "sha256": "5db6a31965bf7bff5ad7c4522703eb82d9aa19917b6c4e2a18b66001146e117c"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.phone_mobile",
+        "familyId": "application_identity_venue",
+        "sha256": "9846affcacfb3b7813599351563c2edd40351e1f539e23e3403af28ab64125c8"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.submitted_at",
+        "familyId": "application_identity_venue",
+        "sha256": "fd170ad85e1427dc4078467a8eb986416942eb6b502202278e27a4d0b841ccde"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.accepted_at",
+        "familyId": "application_identity_venue",
+        "sha256": "376e59ef5658207392184ef6d5016f08b9715e18cf0980389250a8303749c1e1"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.court",
+        "familyId": "application_identity_venue",
+        "sha256": "6b08a261bda113260c1d2ecdc396a91274255a4de3bd3413da1bd2c9844d45b7"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.case_number",
+        "familyId": "application_identity_venue",
+        "sha256": "e1b4feb90eebfb09e9007ea72d6a0b959ebc6dd1490d4a086640f6f307aacd4a"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.ordinary_venue_basis",
+        "familyId": "application_identity_venue",
+        "sha256": "a5fc8cd99e3bb64931f36c53042e2d4ad49e5fb353844e8f9503bb1a34f2aaa3"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.jurisdiction_exception",
+        "familyId": "application_identity_venue",
+        "sha256": "5eed5332edf9c2dfb2d1fa793beba922a104cebc4edc591dad83d3d7995f9bd2"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.ruleset_id",
+        "familyId": "application_identity_venue",
+        "sha256": "cb91d169fb3ea68b0ad62af61d15f3589e83b7cd55daefc83e3e9f4e6297109f"
+      },
+      {
+        "id": "application_identity_venue::procedure.application.transition_rule",
+        "familyId": "application_identity_venue",
+        "sha256": "e77517c2fae1f270019e095eba5b2c52955b4b451607e436738ef5a89284deeb"
+      },
+      {
+        "id": "application_identity_venue::procedure.application_date",
+        "familyId": "application_identity_venue",
+        "sha256": "e89050d54ef5439c85846e9a8b4dfe54a9575f6f75fd184fc5e30577303650b9"
+      },
+      {
+        "id": "application_identity_venue::procedure.venue",
+        "familyId": "application_identity_venue",
+        "sha256": "a6ea435966ff66db93a8f222bf5dde88ab06f74a45cc36825f6757fb605fc12a"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.court",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "fc69c1a9ed2531d370e72551866be07764c796a42ee46cbb35a227b7bea2ca47"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.case_number",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "dd2b06cb21635a671a79b6e15631717f23a20070d825dae275efae97c4fffade"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.request_type",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "b0bbd5bc6c69f9ac70831406a7af9894879e7a45d850ed3fb5a31f59408c5065"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.operative_text",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "19c0d328e8408383e6c066766891ac91a8907250862a3b8938a38c9013516795"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.legal_citation",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "cf06e7d6b4a9216d959ffc7d2ea57fd2f70f674374c0f73fd2f0f3753c1b5eda"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.service_date",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "804fb103b28d9666e5d5528984489afd9b550300e1d7550f9aa3d4b2a74e189f"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.response_deadline",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "dc718724ea016d4bc4eabdfe94852ee67d97660ba0e52b17f640cc2084e99eda"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.item_due",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "8dd558a80d24ee9090c84d74456c13801da3eb0b9d3047878b0e4ae64b50b768"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.response_filed_at",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "6b3702ab9833fe38ea5840bae326d7a9163dfb79c0912bafb8d2f8c41cc7df35"
+      },
+      {
+        "id": "conditional_case_specific_request::conditional.court_request.status_change",
+        "familyId": "conditional_case_specific_request",
+        "sha256": "0dbf6f63d432180fe9a5ab33a8e163faf53ac6d5ce0b70e73fcfca90e9bbf0c0"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.plan_source",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "61a8e0a4fcb97c37aa6eb6b10ee28a8170a36e1a309cef016e7581d85faa69ef"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.income_source_evidence_ids",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "8cfd4219abd4f44529d8a0ca4932fd9789b0659fe289e523f9081dfd80dcdc85"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.disposition_asset_ids",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "dceadb26594079561556fc8b8b784d914ac548c8806acd748b947a57efe2071f"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.disposition_proceeds",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "816048e3ab6a64c41ede1bac59f45fb3b43084e906321da051bdb72e09ca8c2e"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.disposition_date",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "11fe03004e8efb7f659b0e8998e75a44c50f798cfca2c7442d7ac5046c59f885"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.proceeds_to_plan",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "f8b9f721630567cf37657fb500eca16f355e246cf15141d4940921e2b495c0e8"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.selected_form_code",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "3c61a05175f32f352e4d28940b770c4d5cc35ca5c381bba0f17ab3ca5f6bec06"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.current_official_version",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "7acc908308215149d0127553828fa6011a12176ce5dd0b13e3b318b1892a5c8d"
+      },
+      {
+        "id": "conditional_plan_funding_source::applicability.form.review_status",
+        "familyId": "conditional_plan_funding_source",
+        "sha256": "87a6de634688dc205a46dbb7b3ee9355649aec85217f35a293a2175f46fc6bdd"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.affected_person",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "2c6c4a4d1a44b381cc9e46a5dc39a5851dd1efb13ec1d01efa114805385a095c"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.event_kind",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "2ea6ded9560d9e3857f07100a620dc12c3cd19148a6ee70b1beee04347718463"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.event_date",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "6da2f1053f96fe893aaff74cb6151d1a87af25b73f2827bd4f0428700a021b20"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.effective_date",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "c3136c9c0e735be6151a81202ae1d49dedfccccb24d6e032f65acf14f5656202"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.old_status",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "134c2a2ef861eed6a730b13bfebfba1724487e01abd9e6b121d17e5baffb1b4b"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.new_status",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "25ef6bb1e0ab37999da11db87df8d24ad434ed155e7225dc8e2be3366afe7747"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.duration_end",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "fa189b628e449f333b0a877a93918a28ee3ea742f879736dbd8e7e6d47338d09"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.income_delta",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "29f1a3e55ec536f729ad2e5fe53e59adb428c75f3d108022320ff53d66ce5e67"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.expense_delta",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "3f8c769763ae4057c921e9127d83fe828979d218cae1724ccb2f7314d1de0ebe"
+      },
+      {
+        "id": "conditional_nonstandard_income_or_household_event::conditional.change.issuer",
+        "familyId": "conditional_nonstandard_income_or_household_event",
+        "sha256": "020fcfc9c80db8f19df5f74a812bcf63715e61cabe6ca7dc002dbd6f2d5933e6"
+      }
+    ],
+    "intakeFeatures": [
+      {
+        "id": "case.multiple_income",
+        "sha256": "bcd3b3420ec7494d8ec9a1ce68ab3939423e4731b44e8d069d6389bcc96c44cf"
+      },
+      {
+        "id": "income.wage",
+        "sha256": "fa84b01f723fdbe9daa2aced3678f76c08491a8c6a301eb22b9901e44173f38f"
+      },
+      {
+        "id": "income.business",
+        "sha256": "f7514f7c7e89ff58f7f8892283f1abef07d42aa9d4df294f1d21d0441b44d6b4"
+      },
+      {
+        "id": "income.business_registered",
+        "sha256": "c6c837d8790dffd657812ee95097a84f430ba196fff1d39e9f169d10b1bcb7c7"
+      },
+      {
+        "id": "income.vat_taxable",
+        "sha256": "f368d8043c5b0a7280434dd18ee2a685c8002c4dc5fb92672505cb849b9de93b"
+      },
+      {
+        "id": "income.vat_exempt",
+        "sha256": "25e557aec1f830eefa81b908ca701747361505839f30382d5502b0ce4032c97c"
+      },
+      {
+        "id": "income.freelance",
+        "sha256": "bf5b9781e15263d653c37e370798e1a0e2b6db0fb6e47a8cc0967b35fd64d0c4"
+      },
+      {
+        "id": "income.rent",
+        "sha256": "dfe21a13b90efb2242b24670e225ed290d0a02be9d89b8dd73991ffcc00387c0"
+      },
+      {
+        "id": "income.interest",
+        "sha256": "94ed7cebbdc6065285c953c48efcd9d10efd3ce035369413dd84b658c6e87202"
+      },
+      {
+        "id": "income.dividend",
+        "sha256": "3f348da99635773483675a2d4ff701c4b6132defd6fa6bf9098d59f4000ea5a7"
+      },
+      {
+        "id": "income.pension",
+        "sha256": "30b9c2ee5d92fc36979fc1589f570c17de9537c552364b2ba4a54bf05fa7ea79"
+      },
+      {
+        "id": "income.employment_changed",
+        "sha256": "19c652e3f810301f073bdb6831c0aba0f7251b8daf20facaf073f4b4a687fd29"
+      },
+      {
+        "id": "debt.financial",
+        "sha256": "00fa2c3806bd55b34c6e3c49d7f95c270e4deb8b82c333481065b6cdd879de70"
+      },
+      {
+        "id": "debt.card",
+        "sha256": "1fc1965a9442962da659e8e2810a8cbfac7ec2a1f82faa105599d9a6d9f07cf0"
+      },
+      {
+        "id": "debt.private",
+        "sha256": "c974d5cd588fdac6927419efcf0f936975e1f4bdd096727fb15e4119c973d888"
+      },
+      {
+        "id": "debt.secured",
+        "sha256": "5b3d525f8e98197e0b3a60225f7a3629989a6b72502096d2c7958c8ea4b77654"
+      },
+      {
+        "id": "debt.guarantee",
+        "sha256": "9bec259d4ac6dd353998f48af5bf348b77d0d8fd0e3e52800a521dc1d65812ed"
+      },
+      {
+        "id": "debt.assigned",
+        "sha256": "78b04c1b6d4787bf3542ca94eaca66948d538af1b5c08ffc45613a4a4d5b96ca"
+      },
+      {
+        "id": "debt.tax",
+        "sha256": "25e618a6e46ca9164ac57e30b53543b7e59f2eef9ffa8f7db3bfd59322079fa3"
+      },
+      {
+        "id": "debt.social_insurance",
+        "sha256": "11e2dbdbdb6b702adae316ef30f7dc560247148ee8be982e23221559c9ab1305"
+      },
+      {
+        "id": "debt.disputed",
+        "sha256": "8d96c310cf091952cd4b7121ccefbcf4e58ad11a6863c80ccd336331e2dc1d68"
+      },
+      {
+        "id": "debt.recent",
+        "sha256": "7ee0707790b7a88737754a01b9ff103156c3fdd75d532694eeb07a6a846ce4f1"
+      },
+      {
+        "id": "asset.vehicle_owned",
+        "sha256": "06bd9d6d848e9743b9cc431075495fe7015519be75f744bb5956b8094846c9eb"
+      },
+      {
+        "id": "asset.vehicle_leased",
+        "sha256": "6363cfb7be760d068d3d8a15450ece3c1deb57cbba8b6922c98a50c708263937"
+      },
+      {
+        "id": "asset.vehicle_financed",
+        "sha256": "d3e31f6cdc243d8e208d7ee040f2fcbc219b23cad21522af211d2618c6955126"
+      },
+      {
+        "id": "asset.real_estate",
+        "sha256": "a7ab7198d83c9df8591c938db8cd9e84461fa86948ea1c16ada625f0cafe164e"
+      },
+      {
+        "id": "asset.lease_deposit",
+        "sha256": "d8ad3d3a73c28bd7103e5b9101032529539ec38a448f97faa24119bab8341a98"
+      },
+      {
+        "id": "asset.insurance",
+        "sha256": "3a93b5e9fbff7323ee8cb695fde2f6527eca020349844c5b07458b0eaf2fa1bb"
+      },
+      {
+        "id": "asset.insurance_loan",
+        "sha256": "f86c2733a986a30d185f490c8e851377292900c66a7447191b6bb31d61e582b0"
+      },
+      {
+        "id": "asset.deposit",
+        "sha256": "3624e71af853cb7c5008552885c3dd3e06dabdc9b2bd2a3c4dbff3c828ded141"
+      },
+      {
+        "id": "asset.securities",
+        "sha256": "aa04cdb0fb53e9af403d5c7094e689a164f051b20ed87c38093462cfa79760df"
+      },
+      {
+        "id": "asset.crypto",
+        "sha256": "26ad66d1ff2d3c5e379091c9cd17d5e94392d13fddda0223b2b9f6b2559e36cc"
+      },
+      {
+        "id": "asset.business",
+        "sha256": "63399ee5cb2eb1b5645e4d00505b55ea156be842ce3f503b792645248614ee60"
+      },
+      {
+        "id": "asset.retirement",
+        "sha256": "4571d4301d3c901dbb485af484fbc9eb6821f4ddd8a3c62191cc25345a58a0b9"
+      },
+      {
+        "id": "asset.receivable",
+        "sha256": "bb5b102bac69748ca52d56aa91aab099bb0a41683f2b96c3e0bd9393e02eeb09"
+      },
+      {
+        "id": "household.dependents",
+        "sha256": "85a85c926ea465b619816c7d2f5d001356e72314d029e625f8fa4c1a70f4aaad"
+      },
+      {
+        "id": "household.spouse_assets",
+        "sha256": "11eefa742e72a1e2ca3ce60fa4acf30343ae0e93eb8e58937c384cbef7258c7d"
+      },
+      {
+        "id": "household.free_residence",
+        "sha256": "b54c4bf21fb3d11e01f9957afa17d85d521fd3dda332d991ebe9b18d0b01b4c2"
+      },
+      {
+        "id": "expense.medical",
+        "sha256": "2c0d462cc35e3cba70982a02c8e5f1840158a2e5d3f6abb7f0c834acf16ef0d0"
+      },
+      {
+        "id": "expense.housing",
+        "sha256": "f45b653e517d3c30339cd4990f19037aa90c992fbf9eb7430b506ffac338a86e"
+      },
+      {
+        "id": "expense.education",
+        "sha256": "9b9b1c4ee32e20765aa71fd364a4342598c5f7951e4519f04b9bde2613a14967"
+      },
+      {
+        "id": "event.business_closed",
+        "sha256": "8644de221d8d1c94e6b7a2d44023e4b5220d65445acdc4d855465cdecab7d684"
+      },
+      {
+        "id": "event.asset_disposal",
+        "sha256": "d50c2dab6625e3f382526e15790c7d5c862aa4b1693b1f55314cc593d0b21fb0"
+      },
+      {
+        "id": "event.preferential_payment",
+        "sha256": "ebdb0eaee5b348e1ace48811c31123e673b504d6f4623e65c68d4259d98b454c"
+      },
+      {
+        "id": "event.inheritance",
+        "sha256": "c161a82d03672796a7879adadfc422ae91dbdcd6023a7950932e88293a58db70"
+      },
+      {
+        "id": "event.divorce",
+        "sha256": "f7ddc9e1b814acbded1d0f47fd5921896419ab4f7fedb060695d571c7958c6af"
+      },
+      {
+        "id": "procedure.previous",
+        "sha256": "792a437d568c2ee7670b1b97cb6fcd29c7b3629249c678f20a183aa412eaf2a5"
+      },
+      {
+        "id": "procedure.private_adjustment",
+        "sha256": "fe62dc375f408db364da977640ebf9c882d5d815b43855353dd5e8e9d203386f"
+      },
+      {
+        "id": "procedure.court_order",
+        "sha256": "c61b0d937c62a921dcf37039c512f8449ba69867f94de09c3a6977bb18087104"
+      }
+    ],
+    "intakeDocuments": [
+      {
+        "id": "resident_registration",
+        "sha256": "eccc1b43852ce0e7e2938c05d1b7d63133f312e8aa06e3f2247fb6fb42d6d328"
+      },
+      {
+        "id": "family_relation",
+        "sha256": "ee8f2e12512c34f529a22492ec69bcd27d745728f1887607d6e6b3d3bd00a08c"
+      },
+      {
+        "id": "income_source_inventory",
+        "sha256": "0c7942ce73d7ea7994a23df1741409c602d0d58ef7b4899b3c7dbdaa4bec9894"
+      },
+      {
+        "id": "employment_certificate",
+        "sha256": "c5bea85d81977d4f5d685307e1e65149724226160ba05696a54dd5f024b3c4e3"
+      },
+      {
+        "id": "employment_contract",
+        "sha256": "f98b9ad9ed2d5882853cf322024fe7df3719305293e3a45a270a8bda26d16001"
+      },
+      {
+        "id": "salary_withholding",
+        "sha256": "5fbbe5b7d2379798a2e2d4c219bcbfb2fb97ce7ccee309e981a04d6c0e318c7c"
+      },
+      {
+        "id": "salary_statement",
+        "sha256": "57a215d2551e5cc09699337b4dfee797923a1d09d1943ff09eb89d55a744f591"
+      },
+      {
+        "id": "salary_bank_statement",
+        "sha256": "db8b56d5e970d8aa920be73d35e5f3d535ce93ad1189044a252d37d68e12101a"
+      },
+      {
+        "id": "employment_history",
+        "sha256": "3daf3df6f2a00218657a97fea7a947c00dcd339ef96f59d33f2f16cf355aeac5"
+      },
+      {
+        "id": "business_status_evidence",
+        "sha256": "d156cd88b0cd6e6762877e14140a1cadaa35dd260c2024c58ee02ac9fcd82870"
+      },
+      {
+        "id": "business_registration",
+        "sha256": "4e15f6c6c0a5eef6f9ba4f382c3f94b79858bd3ea5c4cc490be2cf0d4f18769b"
+      },
+      {
+        "id": "business_contract",
+        "sha256": "25de75c62f1b45482f20786c36b91b100b9aeac924fe30b34abdcde1a620c157"
+      },
+      {
+        "id": "business_income_report",
+        "sha256": "a75f2ba55cae977755facc4ca75d928bcded10d35d9387f82daeab53500478a5"
+      },
+      {
+        "id": "financial_statement",
+        "sha256": "7f8f7ab3e4e74c2be7f94b6912d116f93c90665e0744a3376c4d20a691e82b5a"
+      },
+      {
+        "id": "income_amount_certificate",
+        "sha256": "14432324f6ca04f4cae49650412ee2d9a5c2d2b804b767004f0784c2ade4be87"
+      },
+      {
+        "id": "vat_certificate",
+        "sha256": "f890939574f551a2746a09d7d95f342a6c3e91decdf9788ddfda8d9dab39014c"
+      },
+      {
+        "id": "vat_exempt_certificate",
+        "sha256": "62ace8af6b6c6cdd917ad52e69952aad3b556139714f903000df2d1829644df1"
+      },
+      {
+        "id": "sales_purchase_summary",
+        "sha256": "2480c7d66c5cf46493e3c8e0e53d6a53a409928adf566936a07b6fdc16eec1b3"
+      },
+      {
+        "id": "operating_expenses",
+        "sha256": "cbaeb0457048bc4c2d9899d511f138085d8ec22510eaa99d08360d5852c01acb"
+      },
+      {
+        "id": "platform_settlement",
+        "sha256": "8780d690a5108aa6ad906fd51933e61df31d47f08be9dc13e7079f844bcac8bf"
+      },
+      {
+        "id": "income_bank_statement",
+        "sha256": "719f60cbf69e65decddf3205c88a20b4cac57e3b3ac519c63dc113372ceab527"
+      },
+      {
+        "id": "rental_income_contract",
+        "sha256": "d30ea0ca5d7b2231b7a401c8d87526fdbd4658c4c594b378e18942a39092ea0b"
+      },
+      {
+        "id": "interest_income_statement",
+        "sha256": "dcc206e41d270c4ae774aa0de1a30644c398f8e730153d48addffbb9256d43ae"
+      },
+      {
+        "id": "dividend_statement",
+        "sha256": "51376ecf2faed8f253b343c2f79d58201fa502b0461fdabe46a098433a7d93ab"
+      },
+      {
+        "id": "pension_certificate",
+        "sha256": "c3e1aa949e45c9820e1e9fb7a9749d51b3a5596c28f9ce7878e22e8e88e302b4"
+      },
+      {
+        "id": "debt_certificate",
+        "sha256": "9ffa7d137941288146aecbfc208f84a2753481ade2facf8876ceca54929be3e3"
+      },
+      {
+        "id": "creditor_request_copy",
+        "sha256": "e31aca18131f8f1b4eebee324a3fe69a52be89cbcaf1765118f9fbcdebcdb3f0"
+      },
+      {
+        "id": "loan_contract",
+        "sha256": "0892bfac7a62b3de48eba8182000d67b4d25c351386d9f83cef40a64c974df3b"
+      },
+      {
+        "id": "card_statement",
+        "sha256": "db5df566241108827bff48943d8d4e7a6dff4788817600f94e84c6f5a70f1ecb"
+      },
+      {
+        "id": "private_loan_transfer",
+        "sha256": "4e5b596e1f9420a8c2345321696a265d04204b8934a95828989a05b051295616"
+      },
+      {
+        "id": "security_register",
+        "sha256": "080a416d9c32a8ad3e6ecb0d979afa0d170394889c5955a74512ebe42d2be99b"
+      },
+      {
+        "id": "mortgage_balance",
+        "sha256": "9ff8751efaafe8d3dc44cfcb0736cc388f28c7ab602410e4bcdd6fff9b533c04"
+      },
+      {
+        "id": "guarantee_contract",
+        "sha256": "1109936cad22384ff9f28ef328888c1d621532876465fccb4b55efc624531f92"
+      },
+      {
+        "id": "assignment_notice",
+        "sha256": "3e90abd5154f829d946a64aa4123b18039462e51ef717b4a72a369455e075b5b"
+      },
+      {
+        "id": "tax_arrears",
+        "sha256": "2ddc37430dfc81cdd21d596ccfce4bdca411557d4da67fd66356be5ffb8e9ee9"
+      },
+      {
+        "id": "national_tax_arrears_fact",
+        "sha256": "4ea00b653ad19add97a588ff2e5e9b20f340fbf29d9ed41da0eb25e0bbf209b8"
+      },
+      {
+        "id": "social_insurance_arrears",
+        "sha256": "2e1144efff5271533119c5f4e59aa67c50e674179b2c37a95f307fa7ab1e044f"
+      },
+      {
+        "id": "litigation_record",
+        "sha256": "e465e48d06e7af7432a43fda614dfc772d56fab49cfbd25334989ed343fe1c49"
+      },
+      {
+        "id": "loan_use_of_funds",
+        "sha256": "35bddc9e95378cfdabfc1ef4f5f7093136f87c32a39886987efc749cd4854bd4"
+      },
+      {
+        "id": "vehicle_registration",
+        "sha256": "036468db49a575f540ebef0ce29a91cef52f19f90fa257de0f4fef36e03a3814"
+      },
+      {
+        "id": "vehicle_valuation",
+        "sha256": "4a21cb6be48d95891efe9802af1be0a26be129a028c36eb2f911003015882b11"
+      },
+      {
+        "id": "vehicle_lease_contract",
+        "sha256": "54cadc8220d7b72bde2fc318b4abe4a6f199d454df433c2c367e0e0436c30596"
+      },
+      {
+        "id": "real_estate_register",
+        "sha256": "f876f9e113bff1066c8b39b22ff2d3f300b77ba9f7e1c6e4f2d7fb561c1974db"
+      },
+      {
+        "id": "real_estate_valuation",
+        "sha256": "2593f09cd31bfe31ecb11138264aaddc44374ef4056b7f32c620fa47bb84f66f"
+      },
+      {
+        "id": "lease_contract",
+        "sha256": "87f9089fe57f75472262af421ffdc82982943703cba3121fb4f36348e9555a97"
+      },
+      {
+        "id": "deposit_rights",
+        "sha256": "ef4658e5b56fa3a2bfda9e4fea8d35c5531c8099f297dc07221fc04001d28a7b"
+      },
+      {
+        "id": "insurance_surrender_statement",
+        "sha256": "039ec50e4c97c843421bcd42b4017f02970fd569754f3e4bf566c8dfe7ed5a63"
+      },
+      {
+        "id": "insurance_loan_statement",
+        "sha256": "a4c9aa91273c65addce0b3a4715a82d9e56557e69b29ddb58e1e9fad655c6549"
+      },
+      {
+        "id": "bank_balance_certificate",
+        "sha256": "d83140f158915d1556c95ac904106c70821f60b531d729c9ee3b212bc99dabaf"
+      },
+      {
+        "id": "bank_statement",
+        "sha256": "1c16848340348de0ebfae752339f28eddccc0d62eabfc5bbb9565298876f3ade"
+      },
+      {
+        "id": "securities_balance",
+        "sha256": "9258bed583777dfc98cf66c50b5d80125340904db5187111eea61ec5da57b80d"
+      },
+      {
+        "id": "securities_transactions",
+        "sha256": "25eba17881fa76e0e927b846f9adb745aef063b838faf79207584a8f98cde008"
+      },
+      {
+        "id": "crypto_balance",
+        "sha256": "c618892b44b1b62b4b1f7a3a0eaa14b4f2da9bf67af1dc738073a9915027def3"
+      },
+      {
+        "id": "crypto_transactions",
+        "sha256": "bf03b614d172791f5fe942280b6fd859b6f721459e4a314d3375b3e2dbd0bb14"
+      },
+      {
+        "id": "business_asset_inventory",
+        "sha256": "e566600c81787246dbdb55dbe89b9b216091e1cba33ee20a902e23f6339e2853"
+      },
+      {
+        "id": "retirement_estimate",
+        "sha256": "c8da0c653528f3fc29564d451b5b8dd5b048d94d9a63c7440230c2b7861ac0a1"
+      },
+      {
+        "id": "receivable_statement",
+        "sha256": "4a5ed500da96d1d732ac2b06db46246c93be34f6e8d5a3e0f2a26c20b532b489"
+      },
+      {
+        "id": "receivable_collectability",
+        "sha256": "727f3daaf5936e89efc32afb2277ee60d32c0bc88859dd318dde1ddce9aab03c"
+      },
+      {
+        "id": "dependent_evidence",
+        "sha256": "2477b48e06fc453300f8ff0844880f4631ad9c81bba84848f2a3ceeb287321e9"
+      },
+      {
+        "id": "spouse_asset_evidence",
+        "sha256": "a58c183435c4c99356a5e5cba0c8e1ba95e6cc3ebdef5cbae232ac1a75b3ed5e"
+      },
+      {
+        "id": "free_residence_confirmation",
+        "sha256": "bf2d31d636811e5b4b602caf35563eb1142f73c41b60fbe759ef64477b3aac91"
+      },
+      {
+        "id": "medical_expense_evidence",
+        "sha256": "c0c48402aa2564e628812884acb867f208120eb6b41dcadcd079ebc54ffc06f6"
+      },
+      {
+        "id": "housing_expense_evidence",
+        "sha256": "0cf0afc13948647d5c00fc39b979ea5a72478e8137d7309e5160e50dd95bc2e8"
+      },
+      {
+        "id": "education_expense_evidence",
+        "sha256": "ba0080d55ccf8792b3bfa1cda673ec32ca43011770c211a3a7c64112f6d1e360"
+      },
+      {
+        "id": "closure_certificate",
+        "sha256": "904f761f3eb6dc3cf06457ad4f348892cf6d56c7f42abbbcdd3d19538d114441"
+      },
+      {
+        "id": "business_liquidation",
+        "sha256": "83efe2d3268e56ea8cc4965dff815911b1fbc086462c6d6e773185e601279967"
+      },
+      {
+        "id": "disposal_records",
+        "sha256": "6c0b9f075c54ca720262a2562549048a1ea1ad007c7aab01d9d780844f8db57a"
+      },
+      {
+        "id": "selective_payment_records",
+        "sha256": "8e5e8102d7286192471d0b12da53aaf5fbac557d88022754ebd8d3c5c9f9aaa3"
+      },
+      {
+        "id": "inheritance_records",
+        "sha256": "d40a1568464c0825e5523f062e94a0dddd9bd0fe607a1b09c32979c1e47eaa07"
+      },
+      {
+        "id": "divorce_records",
+        "sha256": "e9e98a13733b84783b5cf7786c187f22aa854498297e97f7ecbe83b3b894d4f0"
+      },
+      {
+        "id": "prior_case_records",
+        "sha256": "aedb6f7a8da810e0fef10bb921a116c2967f10c396208a284d961977fa6dfa7b"
+      },
+      {
+        "id": "prior_creditor_list",
+        "sha256": "fb226c0da84ed3c60175e1e7d8159379001cb9754fc4af5cb2f31114cc70c310"
+      },
+      {
+        "id": "private_adjustment_records",
+        "sha256": "0b6dd8853dc0fdb82c27e28f11e476d330b60bd438e042a5b8865a8f1b34337f"
+      },
+      {
+        "id": "court_correction_order",
+        "sha256": "390ed89f4d0f45e1febb67fbfbda224dbd04f537d3c5a03925afd6102f7b002b"
+      }
+    ],
+    "intakeRules": [
+      {
+        "id": "INTAKE-001",
+        "sha256": "6a5a318935f202dd2298982c6f35338111cc223b084003e468e49a8371f7725a"
+      },
+      {
+        "id": "INTAKE-002",
+        "sha256": "c629ec329b05061ea36d58813109269386e946c116de5d9bb6da3788356b31bb"
+      },
+      {
+        "id": "INTAKE-003",
+        "sha256": "0c77d6768be8adf4cf8af1c35798fdccb096bec5a02327022f6f60ae23733e98"
+      },
+      {
+        "id": "INTAKE-004",
+        "sha256": "02ffab8ffa4c296c30a9a49f13883cf2d729826e123243b40f95fdd1f32b12f7"
+      },
+      {
+        "id": "INTAKE-005",
+        "sha256": "87fc70105f510ce7870dfbc2e831d97e6a074cda9c0936fa639a5a158554496e"
+      },
+      {
+        "id": "INTAKE-006",
+        "sha256": "bae00a7456d7afd1a83cf6a3731b6cfdb6175c8c234d9cde817323dc1d022318"
+      },
+      {
+        "id": "INTAKE-007",
+        "sha256": "2422e5a293ec30c60c53f2c0568d82cae09a45903aeb89c19d4ed695dd880f25"
+      },
+      {
+        "id": "INTAKE-008",
+        "sha256": "e38b3fd48961969314c235045580e2c29316bb259536dc81539f62fde4e9af2c"
+      },
+      {
+        "id": "INTAKE-009",
+        "sha256": "e307ac9f835486296c1f5cbcd480d17f1d6a6aca0b665bb3ebb0229398ed489a"
+      },
+      {
+        "id": "INTAKE-010",
+        "sha256": "028b603e6e1eb83fea6cd4b4755f0919587aac7886e3df092237f682f81e6341"
+      },
+      {
+        "id": "INTAKE-011",
+        "sha256": "5a435eebdf22af502c7596cf979dbb14e0c2d71a8802aef699d3b306fdc876d1"
+      },
+      {
+        "id": "INTAKE-012",
+        "sha256": "8addf73bda464ec9a1dd2788e69f833df57a94bc938e7d5f86cc723c8f2a080e"
+      },
+      {
+        "id": "INTAKE-013",
+        "sha256": "6b770dca3f079e3e0337553e35ebe28170202ee56a43891f83ff6f670a0b63fc"
+      },
+      {
+        "id": "INTAKE-014",
+        "sha256": "bfc570b9a0df20c00e9b0b44eac2ebb4dbe4f2fcaa607e42b0c01b079ec48f76"
+      },
+      {
+        "id": "INTAKE-015",
+        "sha256": "077393303e1ec992a1574003491f04ae0f43f6f3c23d5f0302737dc1874b7680"
+      },
+      {
+        "id": "INTAKE-016",
+        "sha256": "11d245fbfb516948c80d9cfaa823d595d80e380f19b14557e594de7710ffa833"
+      },
+      {
+        "id": "INTAKE-017",
+        "sha256": "23439aabe284ae799cf5324ef4d18ae6be3ee4683f87eb17deacc9b71e4b92e8"
+      },
+      {
+        "id": "INTAKE-018",
+        "sha256": "e77d57583d2728b39287af1ae1afc709b8c0686d3c5a6e926c669957835cf267"
+      },
+      {
+        "id": "INTAKE-019",
+        "sha256": "41ea629544c8e98b8ec27da6319a2cac197f45deb0d5447d8ae2b89d1fccec4a"
+      },
+      {
+        "id": "INTAKE-020",
+        "sha256": "ade9d9aa84f5395fdea4eea2947c58fe5cfe44001d7e977a85615a4d28db35ce"
+      },
+      {
+        "id": "INTAKE-021",
+        "sha256": "84e0a433f3e4a6e0bb1a294856820406a2ce44f35add84b174e3327cc2003b75"
+      },
+      {
+        "id": "INTAKE-022",
+        "sha256": "643cdcb13e31b730ef2c30c290bf7f1433a4b041dbd80503c2edb3c034c00de5"
+      },
+      {
+        "id": "INTAKE-023",
+        "sha256": "7d86bcba1efc92f24991ca4b26c219dc0c41d8d6206d5b5153cba0e0dec1c711"
+      },
+      {
+        "id": "INTAKE-024",
+        "sha256": "8374156b87d154a577111fd07a492769471ad8900b2687f0e18e33c282064353"
+      },
+      {
+        "id": "INTAKE-025",
+        "sha256": "f834cba0d36d2cfd916f59e8576ceb4f625482f1427a407dfc650c65c89dd3f9"
+      },
+      {
+        "id": "INTAKE-026",
+        "sha256": "2d5ae07ee200bdc646dd8c920bbff1f780a7e3e68d537967db2325a1edcbb47c"
+      },
+      {
+        "id": "INTAKE-027",
+        "sha256": "7e36991a3f7a44aab012976f479123cb9ef4acadf4d6b0536753313c11acbcd3"
+      },
+      {
+        "id": "INTAKE-028",
+        "sha256": "e45ecf03fe34c64cc493c7b8e2f1dc28e147930fe195dbab638009d9852986a1"
+      },
+      {
+        "id": "INTAKE-029",
+        "sha256": "04d0ee88fc22065ce0a8251987b37f523bdc4067a2654d3add2d569d406546d5"
+      },
+      {
+        "id": "INTAKE-030",
+        "sha256": "c763a6cc987aafbb9f3f1f7e0c0a59a29562782d36cf1ea7c4ae2ace5d723558"
+      },
+      {
+        "id": "INTAKE-031",
+        "sha256": "84f531968eb3af4962c4b92cb9b5443cb3157a05015a34ce9268c28dd191f608"
+      },
+      {
+        "id": "INTAKE-032",
+        "sha256": "881f43dc693bf7722befca79368f7998f3e29ba9241ddb11e4dd3459be06e53b"
+      },
+      {
+        "id": "INTAKE-033",
+        "sha256": "b08bb7a5454b246846cb50e65b2ea869a5eae8d13ac8ae2c8e263e3c2e0d9e09"
+      },
+      {
+        "id": "INTAKE-034",
+        "sha256": "ba7dcc0341b6eccce45e00ada02f28fe08e08e94b572ddde4c71af0eb847d9ee"
+      },
+      {
+        "id": "INTAKE-035",
+        "sha256": "407921c94187917437430fc1ee161ac4c786ec8234d1f50713f17f3f786908fd"
+      },
+      {
+        "id": "INTAKE-036",
+        "sha256": "7cd5e66c49236d3caca1119c0679d58056ba2f53aaa533450cb28a1eeb85b872"
+      },
+      {
+        "id": "INTAKE-037",
+        "sha256": "490333f81eca13b871dc9a13bb95dc60fcca041c5ec9e756befbcde3d2154794"
+      },
+      {
+        "id": "INTAKE-038",
+        "sha256": "c221c5d606fa1003ccd2820adf1dab9374701ca4c5acf230d26dcfdbaa1f6607"
+      },
+      {
+        "id": "INTAKE-039",
+        "sha256": "dc2a232c5429dfd3c1478cf0f7e19cf94b071ccfbc9b8d19540bd180d29f22a4"
+      },
+      {
+        "id": "INTAKE-040",
+        "sha256": "295239ab279a0daad3c9fd1393e966b751089798b2a4851f00cc29d33223f6a0"
+      },
+      {
+        "id": "INTAKE-041",
+        "sha256": "e0e9c0d2cb00b174fdfef6ad11600d430797980950530696c49e6ea60ba69bcf"
+      },
+      {
+        "id": "INTAKE-042",
+        "sha256": "5ba01ae269a67931a480055765dd40edf7d842acaa10e8f3df45e55adf14214f"
+      },
+      {
+        "id": "INTAKE-043",
+        "sha256": "d0449e89f7042677aa23ccbd116ef0f3fe984d2bdcb0b28bd9b8ee3381c2b520"
+      },
+      {
+        "id": "INTAKE-044",
+        "sha256": "19b4509b399a8a483ed59ab8dcda9147946265acdcd20a5e725b0fcfb320658a"
+      },
+      {
+        "id": "INTAKE-045",
+        "sha256": "93e3db53a3d846abbe17f59fb8df295df07f16ab9ec67a62ba76b4eb569cddae"
+      },
+      {
+        "id": "INTAKE-046",
+        "sha256": "445edc57b34f6aa7fac4053145d6d88c1c13c5f17e0c10013a8191350a3d755b"
+      },
+      {
+        "id": "INTAKE-047",
+        "sha256": "ccfc0faefdbcf2a4e85cee83eb7074e5fe6a0b610ce407e5377d55697aa17593"
+      },
+      {
+        "id": "INTAKE-048",
+        "sha256": "d9d28c62d7a38b327eae1e6219f73227eed76e7f6351209bf06d411465d8e3dd"
+      },
+      {
+        "id": "INTAKE-049",
+        "sha256": "f3cdbddebfdb38e7fe54d442c73f47f7c818807ba61962cec72b8f9f99f150a0"
+      },
+      {
+        "id": "INTAKE-050",
+        "sha256": "cfe785af630499adace2e6fa4b9a055635ccad1c9b2878bf542ee47725e3aa9a"
+      },
+      {
+        "id": "INTAKE-051",
+        "sha256": "bec719585939653705aee93e8fad50f6a90373208df14a957070e9506fd418ee"
+      },
+      {
+        "id": "INTAKE-052",
+        "sha256": "54a50b7b27c64cf3ef095acd23ac63df3213093e1f619d15308a519ffd7deb09"
+      },
+      {
+        "id": "INTAKE-053",
+        "sha256": "fd42d18c6079de527c40ddb1b2b93e56f8596d910b0c2f436e14fe435a751fe1"
+      },
+      {
+        "id": "INTAKE-054",
+        "sha256": "766fb1d7f1b85c841e7431c7f764d7fd2182ec0f0d17abb0a2633c9f7c4791c8"
+      }
+    ],
+    "calculations": [
+      {
+        "id": "income_average",
+        "sha256": "886b9b3928b457e085d598727130c67ac25c0f00c5200a39ff26d0effde3ef82"
+      },
+      {
+        "id": "income_aggregation",
+        "sha256": "e05eeb5cc6f6a75509bbe396041aca4ad7aa9e3730258c3475911c7bda5e2460"
+      },
+      {
+        "id": "debt_total",
+        "sha256": "6abe87302ee0430948d8ba8bda9a5746768897fc24ea791920e67097866161e8"
+      },
+      {
+        "id": "debt_cap",
+        "sha256": "fc4d0edaa84338e98357cb9cf0965920e190df1eda23a3cb7c1809bbbca14e79"
+      },
+      {
+        "id": "asset_liquidation",
+        "sha256": "4f74788ce311736f89b723eb5a2db864d857f0a082b405c98e46021da0543460"
+      },
+      {
+        "id": "available_income",
+        "sha256": "e14440cb3c2ff49dcb0faf1b0a921d551d1775fa240c0126aa569bd644034a06"
+      },
+      {
+        "id": "ordinary_budget",
+        "sha256": "59f55bd3800c70837b823c7000526ca93f37559d24a82ca5cacdf1e6a9ef8136"
+      },
+      {
+        "id": "nominal_plan",
+        "sha256": "351fe2e0cdf6d9f73fd90776373b6d5e4736049a9e9e1c3e965373d8cb19e0bf"
+      },
+      {
+        "id": "allocation",
+        "sha256": "348e7852501bc26c46770e6099621a27cfc44c3512aa1528215fdc0ae9fb1130"
+      },
+      {
+        "id": "liquidation_comparison",
+        "sha256": "e1107334c0914e601c73b1730d6887537a9f871214a10e6116425188a136c5f5"
+      },
+      {
+        "id": "disposal_conservation",
+        "sha256": "38a8b071af904bd03d8eb1617bf273d32ff437496d0dbc7cb9341d2ce9445e93"
+      },
+      {
+        "id": "payment_schedule",
+        "sha256": "d20bd2536f2ef185e465688767bc26e7d9c9cba47121329646947ed799bedaad"
+      },
+      {
+        "id": "living_cost_proposal",
+        "sha256": "4b7a74d0cf6c985d028fa044c9b1a4f8036268aac1a40a691e567058ffef6f4a"
+      },
+      {
+        "id": "objection_minimum",
+        "sha256": "26793d9f3fc80d847b146afb9940568a0e2b6810935d01f4abfb601797d97436"
+      },
+      {
+        "id": "seoul_short_term",
+        "sha256": "0fb4530102cc23c3c615c68655313e56d757d9374256a8f205cb64b7fc27a967"
+      },
+      {
+        "id": "transaction_review",
+        "sha256": "e71e7dc6c2ec2f94e53076dd269fc8957a5885946748c33351c107254e892f5d"
+      },
+      {
+        "id": "form_projection",
+        "sha256": "186c3cc24f41b4a5ecea86ba7c73110edf73727282a12be072b8a4c024f52fa3"
+      },
+      {
+        "id": "installment_distribution",
+        "sha256": "6d2d6699063b78030215c21d398a0950725799c750ef01017d879432c997a1e2"
+      }
+    ],
+    "workflows": [
+      {
+        "id": "WF-01",
+        "sha256": "929370960d6f9945c58ddce26c7b59167e1a3aaad29a50835d0931d7d62a4b11"
+      },
+      {
+        "id": "WF-02",
+        "sha256": "8a9cd8f9dcd74aa8302c94539f6207a8d5d79b6c6de5e057acc7c6d3e6793879"
+      },
+      {
+        "id": "WF-03",
+        "sha256": "a6d3a443b0652e7787ce7926061f999cf00b215e8c5f6c0f4b1737cc57788beb"
+      },
+      {
+        "id": "WF-04",
+        "sha256": "e34ffcb4d56eabc7096c7d14a4d11f7abff434a6245f5d1e579696a9ea561ba3"
+      },
+      {
+        "id": "WF-05",
+        "sha256": "db4ef1000d9d2ffd481a187d2d4e95c045138a279ca412b9770323c81b9f43aa"
+      },
+      {
+        "id": "WF-06",
+        "sha256": "3e4e5e27b8ac955d9f4fbec556f94e6a9880bb45ea7f80f44523a2825516495c"
+      },
+      {
+        "id": "WF-07",
+        "sha256": "5e61ed339a6bc6263191c64a9904af8e151a55e471677364a8b37321b826f59d"
+      },
+      {
+        "id": "WF-08",
+        "sha256": "480e924fee0726037bbbfb88fdc23b60699a1512971b1996e344ed3a220af289"
+      },
+      {
+        "id": "WF-09",
+        "sha256": "245f1732168efc6771d03df2d247df2310ef0f0c4981c987890f2175e90606eb"
+      },
+      {
+        "id": "WF-10",
+        "sha256": "44d55bfacd00d5b23f00cda86ac74ecb3b3ff651c3315716a32dbbfc658d03c6"
+      },
+      {
+        "id": "WF-11",
+        "sha256": "585d3d459e42cc84ab5067da71ee5adb3e574b7bc392eae337a9556e7f6938e2"
+      },
+      {
+        "id": "WF-12",
+        "sha256": "0de403de8f52fe77002e4961ee06540c23a4a6cbc3592d9c427e1faf98d73dd5"
+      },
+      {
+        "id": "WF-13",
+        "sha256": "fa319929907e7388c6f8102fc438b4a3b796ffad06320bed06bf5d7f8bc55e4e"
+      },
+      {
+        "id": "WF-14",
+        "sha256": "1e289969dc02087facd53aeeb5bc266ce472b1f4973ff71b9ed040c103af61ce"
+      },
+      {
+        "id": "WF-15",
+        "sha256": "1bead1c1c0f944824fcee123d6c0cbf1ba2dfc2f2f51e79f25c5281656b0f2f0"
+      },
+      {
+        "id": "WF-16",
+        "sha256": "f4045eb4561206bdd4073d0e0b9dd27c1858a14ad5311872acbc66ac8015dc81"
+      },
+      {
+        "id": "WF-17",
+        "sha256": "f5a9bdeb34228ae134f6ce68cc7d4e93a0a6ce6f30e91477ca427b67f98e2703"
+      },
+      {
+        "id": "WF-18",
+        "sha256": "e685d157a4b38b6af41789072d4b9488a726a9b6d10734c9e45daa37ad07dbaa"
+      },
+      {
+        "id": "WF-19",
+        "sha256": "18bfd74047fc1bc78f0314f1f90b58b260037f40802a2cbe186ba9116babd7ad"
+      },
+      {
+        "id": "WF-20",
+        "sha256": "deff1528c1567caae562465b1fc6af9f4629e364f9a963a1be9d8c9465b59ec1"
+      },
+      {
+        "id": "WF-21",
+        "sha256": "23dde41996b9ebf4222d0013ba443f93a902baaa59e3a4b8c417ca3c3dca77f1"
+      },
+      {
+        "id": "WF-22",
+        "sha256": "e97824c79cdadccb342883babad6e3abc00a0b256f1af851a1d83b2357c0a210"
+      },
+      {
+        "id": "WF-23",
+        "sha256": "ef48a6b899eab9baf3f9ee27188cc1830e87da6e680ff6e1d874c9e1921731fe"
+      },
+      {
+        "id": "WF-24",
+        "sha256": "4f7caf3cd640da3c558ccccec07aa612116997c2c35d4ed7c9850874e4089661"
+      },
+      {
+        "id": "WF-25",
+        "sha256": "dff914de9cdc4206c028e3ae45bb23099f794905548238245e0b5da84306dee9"
+      },
+      {
+        "id": "WF-26",
+        "sha256": "b88e6e5cbeb7eff7ce106ac39bc0bdbb43f1989887b7afa66236a29f8b96e1a8"
+      },
+      {
+        "id": "WF-27",
+        "sha256": "e3d65a449f3b993d3d81d31283900508f4ec0f6d61805b87ae6716d21ff6b19c"
+      },
+      {
+        "id": "WF-28",
+        "sha256": "ef443f86e250e6e201d92d70aa9415f7afb4e7049910ca1b241bb9b5e52c3fac"
+      },
+      {
+        "id": "WF-29",
+        "sha256": "a241fd00ebe807a3259e21a58996b5bb4b4997ccdb13b7ccad653ed852b94768"
+      },
+      {
+        "id": "WF-30",
+        "sha256": "b032dfab9a62de5bdd883234d89ef08f09108a13b42f6565c7cf08ba8d437bbd"
+      },
+      {
+        "id": "WF-31",
+        "sha256": "7e4b5cd994e9ae426c8d23657f63a72157d0afff8fe9afabef91471d382aded8"
+      },
+      {
+        "id": "WF-32",
+        "sha256": "e2f632f388307ce374c298afad41157536fee2f4d471742666af72b078e738ac"
+      },
+      {
+        "id": "WF-33",
+        "sha256": "9fe39d747f60fe0c92804e711a80b861766052db20d731ccac9d2cb748a6c751"
+      },
+      {
+        "id": "WF-34",
+        "sha256": "6485d1e2ccdfc66c740efead8d0b4bce24f3960ef444863c1495efe54120e6e5"
+      },
+      {
+        "id": "WF-35",
+        "sha256": "65a1027933ff9a5d091282b33e78e0e6e8ede49488f80eb90bc99378d18846d5"
+      },
+      {
+        "id": "WF-36",
+        "sha256": "da3b5be481bc7c3a57e69f10f25f17ace1e4396801fb729b3c73fa7d975c2205"
+      },
+      {
+        "id": "WF-37",
+        "sha256": "a9889de784ed7c8c0046848c2f3a95f49352c96b83f66c604f96366b8c5c2840"
+      },
+      {
+        "id": "WF-38",
+        "sha256": "67a9d5663a95886b8c107a996b195fc1cce98c7a755c0f2c7db674e3b82d8ab4"
+      },
+      {
+        "id": "WF-39",
+        "sha256": "a7894bce5d286bb78305211273a1cfcbd94a0efed8d0036e8d1a6250fe05e8f2"
+      },
+      {
+        "id": "WF-40",
+        "sha256": "5e1803b47f7c6594e2807546d0194b60f444a723886254b9589441addcf920ac"
+      },
+      {
+        "id": "WF-41",
+        "sha256": "ecb422575e4b7a06966f2b834d223bf273e8b2e895183852b7e45c8b97b6caa4"
+      },
+      {
+        "id": "WF-42",
+        "sha256": "d2815661ea1cf034aa0ab5cd03945c74600c6310957c9719514d706929b67024"
+      },
+      {
+        "id": "WF-43",
+        "sha256": "9a595848d3dde9be1976ceca371b7613859764236875bb31ebe35cbbdcd8e7cd"
+      },
+      {
+        "id": "WF-44",
+        "sha256": "3cc735e009334f63732cb5d653d272c15391b10f64be3b76dc66af328fca464f"
+      },
+      {
+        "id": "WF-45",
+        "sha256": "b06cbf40cb46f63c08d33bd790c4ac4766dcf4dfafbd1b592583cdeeb2a387e1"
+      },
+      {
+        "id": "WF-46",
+        "sha256": "713b43210b6da911e9bc95d8a90d62b3dc5c937339bb85928f65868096ba761b"
+      }
+    ]
+  },
+  "outputAndGateEvidence": {
+    "status": "derived_from_existing_source_and_tests_not_execution_claim",
+    "tests": [
+      "tests/calculation-audit.test.ts",
+      "tests/document-contracts.test.ts",
+      "tests/document-filing-readiness.test.ts",
+      "tests/document-generation-metrics.test.ts",
+      "tests/document-routing.test.ts",
+      "tests/document-snapshot-isolation.test.ts",
+      "tests/document-writer.test.ts",
+      "tests/export-artifact-transaction.test.ts",
+      "tests/export-memory-regression.test.ts",
+      "tests/intake-workflow-domain.test.ts",
+      "tests/legal-finalization-gate.test.ts",
+      "tests/output-resolution.test.ts",
+      "tests/page-refresh-pipeline.test.ts",
+      "tests/pipeline-audit.test.ts",
+      "tests/pipeline-commit.test.ts"
+    ],
+    "gates": [
+      "document filing readiness",
+      "synthetic/final document write gate",
+      "legal finalization gate",
+      "case processing readiness",
+      "export review"
+    ]
+  },
+  "acceptanceScenarios": {
+    "count": 82,
+    "status": "planned_not_run",
+    "source": "uploaded strategy backlog acceptanceScenarios",
+    "scenarios": [
+      {
+        "id": "AT-01",
+        "area": "보존",
+        "packages": [
+          "RF-01",
+          "RF-02",
+          "RF-09"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-02",
+        "area": "명령",
+        "packages": [
+          "RF-03"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-03",
+        "area": "명령",
+        "packages": [
+          "RF-03"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-04",
+        "area": "동시성",
+        "packages": [
+          "RF-03"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-05",
+        "area": "동시성",
+        "packages": [
+          "RF-03",
+          "RF-05"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-06",
+        "area": "복구",
+        "packages": [
+          "RF-03",
+          "RF-24"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-07",
+        "area": "복구",
+        "packages": [
+          "RF-03"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-08",
+        "area": "재투영",
+        "packages": [
+          "RF-04",
+          "RF-05"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-09",
+        "area": "재투영",
+        "packages": [
+          "RF-04"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-10",
+        "area": "단위",
+        "packages": [
+          "RF-04"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-11",
+        "area": "삭제",
+        "packages": [
+          "RF-04",
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-12",
+        "area": "상담",
+        "packages": [
+          "RF-06"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-13",
+        "area": "상담",
+        "packages": [
+          "RF-06"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-14",
+        "area": "상담",
+        "packages": [
+          "RF-06"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-15",
+        "area": "수집",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-16",
+        "area": "수집",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-17",
+        "area": "수집",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-18",
+        "area": "수집",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-19",
+        "area": "수집",
+        "packages": [
+          "RF-07",
+          "RF-04"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-20",
+        "area": "업무",
+        "packages": [
+          "RF-08"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-21",
+        "area": "업무",
+        "packages": [
+          "RF-08"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-22",
+        "area": "업무",
+        "packages": [
+          "RF-08",
+          "RF-05"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-23",
+        "area": "계산",
+        "packages": [
+          "RF-09",
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-24",
+        "area": "계산",
+        "packages": [
+          "RF-09"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-25",
+        "area": "계산",
+        "packages": [
+          "RF-09"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-26",
+        "area": "계산",
+        "packages": [
+          "RF-09",
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-27",
+        "area": "일정",
+        "packages": [
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-28",
+        "area": "일정",
+        "packages": [
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-29",
+        "area": "일정",
+        "packages": [
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-30",
+        "area": "일정",
+        "packages": [
+          "RF-10",
+          "RF-11"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-31",
+        "area": "일정",
+        "packages": [
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-32",
+        "area": "일정",
+        "packages": [
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-33",
+        "area": "일정",
+        "packages": [
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-34",
+        "area": "일정",
+        "packages": [
+          "RF-09",
+          "RF-10"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-35",
+        "area": "현재가치",
+        "packages": [
+          "RF-05",
+          "RF-11"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-36",
+        "area": "서식",
+        "packages": [
+          "RF-12"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-37",
+        "area": "서식",
+        "packages": [
+          "RF-12"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-38",
+        "area": "서식",
+        "packages": [
+          "RF-12"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-39",
+        "area": "서식",
+        "packages": [
+          "RF-14"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-40",
+        "area": "서식",
+        "packages": [
+          "RF-14"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-41",
+        "area": "서식",
+        "packages": [
+          "RF-14"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-42",
+        "area": "문서 CRUD",
+        "packages": [
+          "RF-15"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-43",
+        "area": "문서 CRUD",
+        "packages": [
+          "RF-15"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-44",
+        "area": "문서 CRUD",
+        "packages": [
+          "RF-15",
+          "RF-11"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-45",
+        "area": "문서 CRUD",
+        "packages": [
+          "RF-15"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-46",
+        "area": "검토",
+        "packages": [
+          "RF-15",
+          "RF-05"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-47",
+        "area": "법률 검토",
+        "packages": [
+          "RF-13"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-48",
+        "area": "법률 검토",
+        "packages": [
+          "RF-13",
+          "RF-08"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-49",
+        "area": "기준",
+        "packages": [
+          "RF-16",
+          "RF-17"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-50",
+        "area": "기준",
+        "packages": [
+          "RF-16"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-51",
+        "area": "기준",
+        "packages": [
+          "RF-16",
+          "RF-19"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-52",
+        "area": "기준",
+        "packages": [
+          "RF-17"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-53",
+        "area": "권한",
+        "packages": [
+          "RF-05",
+          "RF-17"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-54",
+        "area": "권한",
+        "packages": [
+          "RF-17"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-55",
+        "area": "권한",
+        "packages": [
+          "RF-17"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-56",
+        "area": "모니터",
+        "packages": [
+          "RF-18"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-57",
+        "area": "모니터",
+        "packages": [
+          "RF-18"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-58",
+        "area": "모니터",
+        "packages": [
+          "RF-18"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-59",
+        "area": "영향 분석",
+        "packages": [
+          "RF-19"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-60",
+        "area": "이상탐지",
+        "packages": [
+          "RF-20"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-61",
+        "area": "이상탐지",
+        "packages": [
+          "RF-20"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-62",
+        "area": "이상탐지",
+        "packages": [
+          "RF-20"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-63",
+        "area": "전환",
+        "packages": [
+          "RF-22"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-64",
+        "area": "최종 gate",
+        "packages": [
+          "RF-14",
+          "RF-23"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-65",
+        "area": "출력",
+        "packages": [
+          "RF-21",
+          "RF-23"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-66",
+        "area": "포털",
+        "packages": [
+          "RF-21"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-67",
+        "area": "복원",
+        "packages": [
+          "RF-22",
+          "RF-24"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-68",
+        "area": "확장",
+        "packages": [
+          "RF-26"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-69",
+        "area": "상담 현재성",
+        "packages": [
+          "RF-06"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-70",
+        "area": "상담 현재성",
+        "packages": [
+          "RF-06"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-71",
+        "area": "서류 crosswalk",
+        "packages": [
+          "RF-02",
+          "RF-06",
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-72",
+        "area": "대상 연결",
+        "packages": [
+          "RF-06"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-73",
+        "area": "권한 bootstrap",
+        "packages": [
+          "RF-17"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-74",
+        "area": "데이터 범위",
+        "packages": [
+          "RF-01",
+          "RF-22"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-75",
+        "area": "단축 후보",
+        "packages": [
+          "RF-05",
+          "RF-09",
+          "RF-11"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-76",
+        "area": "단축 검토",
+        "packages": [
+          "RF-05",
+          "RF-11"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-77",
+        "area": "문서 연결",
+        "packages": [
+          "RF-06",
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-78",
+        "area": "충족 확인",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-79",
+        "area": "면제 복원",
+        "packages": [
+          "RF-06",
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-80",
+        "area": "다중 페이지",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-81",
+        "area": "판독 상태",
+        "packages": [
+          "RF-07"
+        ],
+        "status": "planned_not_run"
+      },
+      {
+        "id": "AT-82",
+        "area": "상태 계약",
+        "packages": [
+          "RF-07",
+          "RF-08"
+        ],
+        "status": "planned_not_run"
+      }
+    ],
+    "note": "This inventory records planned acceptance coverage only. No scenario is claimed passed without executing it."
+  },
+  "referenceConsumerAudit": {
+    "declaredConsumers": 110,
+    "declaredSymbolOccurrencesInFiles": 110,
+    "parameterIds": 60,
+    "parameterIdsWithLiteralTsOccurrences": 37,
+    "parameterIdsWithoutLiteralTsOccurrences": 23,
+    "interpretation": "Declaration/read parity is not established. Literal search is evidence only, and dynamic/indirect reads may be missed. No runtime coverage claim."
+  },
+  "priorTestEvidence": {
+    "path": "/workspace/scratch/2354cb59befd/baseline-tests.tap",
+    "sha256": "3139dac2a886b116e1c5f34550992ff86b1df537b8a982b794918a5d0113d0ea",
+    "reportedTotals": {
+      "tests": 799,
+      "pass": 799,
+      "fail": 0,
+      "skipped": 0
+    },
+    "scope": "Root ran the full test suite on clean HEAD 72b23f2c3faee5656caeeb1e6e6afce9a65de3cb before edits. The recorded TAP artifact reports 799 passed, 0 failed.",
+    "sourceCommit": "72b23f2c3faee5656caeeb1e6e6afce9a65de3cb",
+    "commitLinkage": "verified by root"
+  }
+}
