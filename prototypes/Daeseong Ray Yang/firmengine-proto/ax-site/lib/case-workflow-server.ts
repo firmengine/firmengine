@@ -3,6 +3,7 @@ import { getCase,caseStateFingerprint,db,actor,drainCaseRecomputeJobs,caseExtras
 import { caseWorkflow } from "./case-workflow-state.ts";
 import { currentFacts } from "./domain.ts";
 import { buildCaseWorkflowView } from "./case-workflow-view.ts";
+import { scanCaseSubstitutions } from "./case-substitution-watch.ts";
 import { taskSummary } from "./case-tasks.ts";
 import { rolesForActor } from "./app-roles";
 import { getConsultationView } from "./intake-store";
@@ -38,6 +39,18 @@ export async function caseWorkflowResponse(caseId:string){
     caseExtras(data),
     db().prepare("SELECT command_id AS commandId,command_type AS commandType,after_revision AS revision,created_at AS at FROM case_mutation_receipts WHERE case_id=? ORDER BY created_at DESC LIMIT 21").bind(caseId).all<HealthCommand>(),
   ]);
+  // Materialize current reversible visibility on case-view read as well as on
+  // external DB-agent polls. Missing migration cannot suppress a request.
+  let substitutionWatch:Record<string,unknown>={status:"no_reviewed_substitutions"};
+  if(workflow.requirements.some(req=>req.substitutionReview)){
+    try{
+      substitutionWatch=await scanCaseSubstitutions(db(),{
+        caseId,source:{getCase,getCatalogVersion:async()=>intake.catalogVersion}
+      });
+    }catch(error){
+      substitutionWatch={status:"unavailable",reason:error instanceof Error?error.message:"SUBSTITUTION_MONITOR_FAILED"};
+    }
+  }
   const execution=executeCaseNodes(data);
   const writerReceipt=data.exportManifest?.documentWriter;
   const currentArtifacts=(data.exportManifest?.files??[]).filter(file=>file.status==="current");
@@ -63,7 +76,7 @@ export async function caseWorkflowResponse(caseId:string){
   const legalRuns=projectLegalRunConflicts(rawLegalRuns).map(({id:_id,subjectFingerprint:_subject,dependencyFingerprint:_dependency,...run})=>run);
   const stateFingerprint=await caseStateFingerprint(data);
   const health=workflowHealth({data,stateFingerprint,jobs:recomputeJobs.results.slice(0,50),commands:commandRows.results.slice(0,20),jobsTruncated:recomputeJobs.results.length>50,commandsTruncated:commandRows.results.length>20,requiredUnresolved:view.requirementStates.filter(item=>!["satisfied","not_applicable_confirmed","waived_by_review","retired"].includes(item.requirementStatus)).length,reconciliationIssues:execution.planReconciliation.issues,now:new Date().toISOString()});
-  return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
+  return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
     health,
     artifacts,fieldBases,legalRuns,legalCoverageTruncated,
     documents:data.documents.filter(d=>d.status==="active").map(d=>({id:d.id,name:d.name,sha256:d.sha256,pages:d.pages,status:d.status})),
