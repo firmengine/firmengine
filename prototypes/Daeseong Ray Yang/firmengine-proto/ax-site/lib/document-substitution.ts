@@ -116,6 +116,14 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(!allowedPublishedPath(r,review,input.courtId))problems.push("PUBLISHED_SUBSTITUTION_POLICY_NOT_CONFIRMED");
   if(!input.subjectLink||input.subjectLink.status!=="confirmed"||!input.subjectLink.typedEntityId)problems.push("SUBJECT_NOT_CONFIRMED");
   if(fields.length!==review.proofs.length||uniq(review.proofs.map(p=>p.requiredField)).length!==fields.length||fields.some(f=>!review.proofs.some(p=>p.requiredField===f)))problems.push("PROOF_SLOTS_INCOMPLETE");
+  const proofIds=uniq(review.proofs.flatMap(item=>item.factIds));
+  const snapshots=review.proofFingerprints??[];
+  if(snapshots.length!==proofIds.length||uniq(snapshots.map(item=>item.factId)).length!==proofIds.length
+    ||proofIds.some(id=>!snapshots.some(item=>item.factId===id&&/^[a-f0-9]{64}$/.test(item.sha256))))problems.push("PROOF_SNAPSHOT_MISSING");
+  if(!problems.length)for(const snapshot of snapshots){
+    const current=input.facts.find(fact=>fact.id===snapshot.factId);
+    if(!current||await substitutionFactFingerprint(current)!==snapshot.sha256){problems.push("SOURCE_FACT_CHANGED");break;}
+  }
   if(problems.length)return base(r,problems,"restored");
   const accepted=input.matches.filter(m=>m.requirementId===r.requirementId&&m.state==="accepted"
     &&m.subjectLinkId===input.subjectLink?.linkId&&input.documents.some(d=>d.id===m.documentId&&d.status==="active"&&d.sha256===m.sourceDocumentHash));
