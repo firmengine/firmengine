@@ -22,6 +22,10 @@ export function approveDocumentSubstitution(input:{
  check(!requirement.selectedAlternativeId||ids.includes(requirement.selectedAlternativeId),"SELECTED_CANDIDATE_CHANGED");
  const activeDocIds=new Set(catalog.documents.map(d=>d.id));
  check(activeDocIds.has(requirement.intakeDocumentTypeId)&&ids.every(id=>activeDocIds.has(id)),"CATALOG_CHANGED");
+ const currentAllowed=new Set(catalog.rules.filter(rule=>rule.enabled&&requirement.matchedRuleIds.includes(rule.id))
+   .flatMap(rule=>rule.documents.filter(need=>need.documentTypeId===requirement.intakeDocumentTypeId).flatMap(need=>need.alternatives)));
+ check(ids.every(id=>currentAllowed.has(id)),"COURT_RULE_ALTERNATIVE_CHANGED");
+
  const fields=requirement.sourceEvidenceFields??[];
  check(fields.length>0&&unique(fields),"PRIMARY_FIELDS_UNAVAILABLE");
  check(Array.isArray(proposal.proofs)&&proposal.proofs.length===fields.length,"PROOF_FIELDS_INCOMPLETE");
