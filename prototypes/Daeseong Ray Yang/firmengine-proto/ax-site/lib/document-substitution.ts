@@ -127,6 +127,10 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(problems.length)return base(r,problems,"restored");
   const accepted=input.matches.filter(m=>m.requirementId===r.requirementId&&m.state==="accepted"
     &&m.subjectLinkId===input.subjectLink?.linkId&&input.documents.some(d=>d.id===m.documentId&&d.status==="active"&&d.sha256===m.sourceDocumentHash));
+  const approvedMatches=accepted.filter(match=>match.pageIds.some(pageId=>{
+    const prefix=match.documentId+":";
+    return pageId.startsWith(prefix)&&selected.includes(observedType(input,match.documentId,Number(pageId.slice(prefix.length)))??"");
+  }));
   const proofMatched=new Map<string,string[]>(),support=new Set<string>();
   for(const field of fields)proofMatched.set(field,[]);
   for(const proof of review.proofs){
@@ -142,14 +146,14 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
       });
       if(valid){
         proofMatched.get(proof.requiredField)?.push(factId);
-        for(const ref of fact.refs)if(accepted.some(m=>m.documentId===ref.documentId))support.add(ref.documentId);
+        for(const ref of fact.refs)if(approvedMatches.some(m=>m.documentId===ref.documentId&&m.pageIds.includes(ref.documentId+":"+ref.page)))support.add(ref.documentId);
       }
     }
   }
   const covered=fields.filter(f=>(proofMatched.get(f)?.length??0)>0),missing=fields.filter(f=>!covered.includes(f));
   if(!accepted.length)problems.push("NO_ACCEPTED_ALTERNATIVE_DOCUMENT");
   if(missing.length)problems.push("REQUIRED_PROOF_FIELDS_MISSING");
-  if(!periodCovered(review,accepted))problems.push("REQUIRED_PERIOD_NOT_COVERED");
+  if(!periodCovered(review,approvedMatches))problems.push("REQUIRED_PERIOD_NOT_COVERED");
   if(selected.some(docType=>!accepted.some(m=>m.pageIds.some(pageId=>{
     const prefix=m.documentId+":";if(!pageId.startsWith(prefix))return false;
     return observedType(input,m.documentId,Number(pageId.slice(prefix.length)))===docType;
