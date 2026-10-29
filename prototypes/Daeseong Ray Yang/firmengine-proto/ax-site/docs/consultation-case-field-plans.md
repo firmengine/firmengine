@@ -30,6 +30,6 @@
 
 ## 적용 및 검증
 
-새 코드에 필요한 SQL 파일은 `drizzle/0013_case_requirement_field_plans.sql` 및 `drizzle/0014_case_document_work_events.sql`입니다. **운영 DB에 먼저 적용하고** 앱을 배포해야 새 조회·저장 경로가 작동합니다.
+새 코드에 필요한 SQL 파일은 `drizzle/0013_case_requirement_field_plans.sql` 및 `drizzle/0015_case_document_work_events.sql`입니다. **운영 DB에 먼저 적용하고** 앱을 배포해야 새 조회·저장 경로가 작동합니다.
 
 추가한 테스트는 상담 저장 원자성·롤백, 등록된 85종 서류의 항목 계획 보존, 상태 이벤트의 계산 감시 분리를 확인하도록 작성했습니다. 테스트 실행 및 실제 운영 D1 점검 결과는 별도로 기록해야 합니다.
