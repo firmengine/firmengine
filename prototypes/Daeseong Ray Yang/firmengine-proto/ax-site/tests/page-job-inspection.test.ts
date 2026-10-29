@@ -13,7 +13,10 @@ function load(saved:any,action="inspectStoredPageJob",alreadyApplied=false,overr
   const row={...job,case_id:"case-1",image_key:job.imageKey,image_hash:job.imageHash,cache_key:job.cacheKey,lease_until:job.leaseUntil,document_sha256:String(overrides.document_sha256??"a".repeat(64)),ready:Number(overrides.ready??1),original_key:String(overrides.original_key??"cases/case-1/documents/doc-1/original/source.pdf"),active_processing_jobs:Number(overrides.active_processing_jobs??0)};
   const data={context:{id:"case-1"},documents:[{id:"doc-1",status:"active",sha256:"a".repeat(64),pages:[2]}],pages:[{documentId:"doc-1",page:2,role:"evidence"}]};
   const modules:Record<string,unknown>={
-    "./domain":{},"./extraction":{validatePageRead,isValidSourceBBox},"./sample-manifest":{samplePageRole:()=>({role:String(overrides.samplePageRole??"evidence")})},"./reprojection":{parseHistoricalReadProvenance,prepareStoredReadReprojection:()=>({provenance:{documentId:"doc-1",documentSha256:"a".repeat(64),page:2,mappingVersion:"income",promptVersion:"historical-prompt",model:"gpt-6-luna",ruleReleaseId:"rules",verificationPasses:0,storedReceiptCount:0}}),hasCurrentProjection:()=>alreadyApplied,hasBoundExtractionProvenance,requireReprojectionProvenance},
+    "./domain":{isSourceReadModel:(m:unknown)=>m==="gpt-6-luna"||m==="gpt-6.1-terra"},
+    "./field-observation":{pageFieldCoverage:()=>({documentId:"doc-1",page:2,sourceSha256:"a".repeat(64),completeReadClaim:true,observations:[]})},
+    "./coverage-review":{validateMissingFieldCues:()=>({cues:[],diagnostics:[]})},
+    "./ocr-triage":{summarizePageOcrTriage:()=>({version:"ocr-triage/1",counts:{source_omitted:0,misrecognized:0,not_applicable_source_claim:0},caseNotApplicableConfirmed:false})},"./extraction":{validatePageRead,isValidSourceBBox},"./sample-manifest":{samplePageRole:()=>({role:String(overrides.samplePageRole??"evidence")})},"./reprojection":{parseHistoricalReadProvenance,prepareStoredReadReprojection:()=>({provenance:{documentId:"doc-1",documentSha256:"a".repeat(64),page:2,mappingVersion:"income",promptVersion:"historical-prompt",model:"gpt-6-luna",ruleReleaseId:"rules",verificationPasses:0,storedReceiptCount:0}}),hasCurrentProjection:()=>alreadyApplied,hasBoundExtractionProvenance,requireReprojectionProvenance},
     "./server-store":{db:()=>({prepare:()=>({bind:()=>({first:async()=>row})})}),bucket:()=>({get:async()=>({arrayBuffer:async()=>new ArrayBuffer(1)})}),getCase:async()=>data,HttpError:class extends Error{},sha256:async()=>"a".repeat(64)},
   };
   const mod={exports:{} as Record<string,any>};new Function("require","module","exports",output)((name:string)=>modules[name],mod,mod.exports);return mod.exports[action]("case-1","job-1");
@@ -91,4 +94,16 @@ test("malformed bbox and unbound extraction provenance are unavailable to failed
   await assert.rejects(load({read:invalid,extractionPasses:[extractionPass]},"inspectPreservedFamilyRead",false,boundOverrides));
   await assert.rejects(load({read:inverted,extractionPasses:[extractionPass]},"inspectPreservedFamilyRead",false,boundOverrides));
   await assert.rejects(load({read:validRead,extractionPasses:[pass]},"inspectPreservedFamilyRead",false,boundOverrides));
+});
+
+
+test("stored page diagnostic never treats an unbound legacy read as verified OCR",async()=>{
+  const unbound=await load({read:{complete:true},verifierPasses:[]});
+  assert.equal(unbound.ocrTriage.status,"unavailable_or_untrusted_read");
+});
+test("provenance-bound OCR has a read-only triage field, never a case N/A approval",async()=>{
+  const pass={model:"gpt-6-luna",promptVersion:"p1",promptHash:"c".repeat(64),sourceHash:"a".repeat(64),baseImageHash:"b".repeat(64),verifiedAt:"2026-10-26T00:00:00.000Z"};
+  const bound=await load({read:{documentType:"debt_certificate",records:[],warnings:[],complete:true},extractionPasses:[pass]});
+  assert.equal(bound.ocrTriage.status,"derived");
+  assert.equal(bound.ocrTriage.summary.caseNotApplicableConfirmed,false);
 });

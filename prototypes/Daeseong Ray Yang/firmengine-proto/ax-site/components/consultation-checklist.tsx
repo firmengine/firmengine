@@ -6,7 +6,7 @@ import { ArrowLeft, ArrowUpRight, BookOpen, Check, ClipboardList, Copy, FileText
 import type { ConsultationNote, IntakeCatalog, IntakeChecklistView, IntakeRequirement, IntakeState } from "../lib/intake-types";
 import { INTAKE_NOTE_MAX_CHARS } from "../lib/intake-types";
 
-const stateLabel: Record<IntakeState, string> = { present: "해당", absent: "비해당", unknown: "미확정", conflict: "충돌", legal_review: "검토 필요" };
+const stateLabel: Record<IntakeState, string> = { present: "해당", absent: "비해당 진술(검토 전)", unknown: "미확정", conflict: "충돌", legal_review: "검토 필요" };
 const statusLabel: Record<IntakeRequirement["status"], string> = { requested: "준비 안내", qualification_needed: "조건 확인", conflict: "내용 대조", legal_review: "담당자 검토" };
 const requirementLabel = { required_when_applicable: "해당 시 필요", recommended: "권장 자료", court_ordered: "법원 명령 확인" };
 const temporalLabel = { current: "현재", past: "과거", uncertain: "시점 확인" };

@@ -1,4 +1,7 @@
-import type { CaseData } from "./domain";
+import { isSourceReadModel, type CaseData } from "./domain";
+import { pageFieldCoverage } from "./field-observation.ts";
+import { validateMissingFieldCues } from "./coverage-review.ts";
+import { summarizePageOcrTriage } from "./ocr-triage.ts";
 import { hasBoundExtractionProvenance, hasCurrentProjection, parseHistoricalReadProvenance, prepareStoredReadReprojection, requireReprojectionProvenance, type StoredPageJobForReprojection, type StoredReadResult } from "./reprojection";
 import { isValidSourceBBox, validatePageRead } from "./extraction";
 import { samplePageRole } from "./sample-manifest";
@@ -41,10 +44,25 @@ async function inspect(caseId: string, jobId: string, data?: CaseData) {
 export async function inspectStoredPageJob(caseId: string, jobId: string) {
   const { job, saved, provenance } = await inspect(caseId, jobId);
   const extractionPasses=Array.isArray(saved.extractionPasses)?saved.extractionPasses:[];
+  const hasBoundProvenance=hasBoundExtractionProvenance(saved,job,provenance);
+  let ocrTriage: unknown={status:"unavailable_or_untrusted_read",reason:"No current, source-bound extraction can be independently triaged."};
+  // Derived read-only information. Do not mutate a case or silently accept missing/N/A fields.
+  if(hasBoundProvenance&&isSourceReadModel(provenance.model)&&saved.read&&job.role==="evidence"){
+    try{
+      const read=validatePageRead(saved.read);
+      const verification=saved.review&&typeof saved.review==="object"&&!Array.isArray(saved.review)?saved.review as Record<string,unknown>:{};
+      const missing=validateMissingFieldCues(read,verification.missingFields??[]);
+      const coverage=pageFieldCoverage(read,{documentId:job.documentId,page:job.page,sourceSha256:provenance.documentSha256});
+      ocrTriage={status:"derived",summary:summarizePageOcrTriage({coverage,validatedMissingCues:missing.cues,omittedRows:verification.omittedRows===true}),cueDiagnostics:missing.diagnostics};
+    }catch{
+      ocrTriage={status:"unavailable_invalid_read",reason:"The stored read could not be safely classified; manual source inspection is required."};
+    }
+  }
   return {
     job: { id: job.id, documentId: job.documentId, page: job.page, role: job.role, status: job.status, stage: job.stage, cacheKey: job.cacheKey },
-    historicalProvenance: { ...provenance, extractionPassCount: extractionPasses.length, hasBoundExtractionProvenance: hasBoundExtractionProvenance(saved,job,provenance) },
+    historicalProvenance: { ...provenance, extractionPassCount: extractionPasses.length, hasBoundExtractionProvenance:hasBoundProvenance },
     stored: { read: saved.read, firstRead: saved.firstRead, extractionRead: saved.extractionRead, review: saved.review, verifierPasses: saved.verifierPasses, extractionPasses: saved.extractionPasses, reverification: saved.reverification, historicalReceiptCounter: provenance.storedReceiptCount, projection: saved.projection },
+    ocrTriage,
   };
 }
 
@@ -66,7 +84,7 @@ function hasBoundFailedExtractionTask(job: StoredPageJobForReprojection, saved: 
       && task.caseId === job.caseId && task.pageJobId === job.id && task.documentId === job.documentId && task.page === job.page
       && task.sourceSha256 === documentSha256 && pass.sourceHash === documentSha256
       && task.imageSha256 === job.imageHash && pass.baseImageHash === job.imageHash && sentImages.includes(job.imageHash)
-      && task.model === "gpt-6-luna" && pass.model === task.model
+      && isSourceReadModel(task.model) && pass.model === task.model
       && typeof task.promptVersion === "string" && !!task.promptVersion.trim() && pass.promptVersion === task.promptVersion
       && typeof pass.promptHash === "string" && /^[a-f0-9]{64}$/i.test(pass.promptHash)
       && typeof pass.verifiedAt === "string" && Number.isFinite(Date.parse(pass.verifiedAt));
