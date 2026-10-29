@@ -99,7 +99,7 @@ export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersi
     const derived=await deriveRequirementStatus({...fulfillmentInput,...(receipt?{staffDispositionReceipt:receipt}:{})});
     let engineFulfillment=derived.engineFulfillment,requirementStatus=derived.requirementStatus;
     if(requirement.intakeStatus==="conflict"){engineFulfillment="conflict";requirementStatus="conflict";}
-    const substitution=reconcileDocumentSubstitution({
+    const substitution=await reconcileDocumentSubstitution({
       requirement,matches:effectiveMatches,documents:data.documents,pages:data.pages,facts,subjectLink,
       courtId:String(data.context.courtId??""),asOf:String(data.context.asOf??""),
       catalogVersion:options.catalogVersion,pendingCourtPolicyChange:options.pendingCourtPolicyChange,
