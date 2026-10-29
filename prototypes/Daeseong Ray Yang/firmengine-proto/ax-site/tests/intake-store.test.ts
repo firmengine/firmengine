@@ -60,7 +60,10 @@ test("consultation completion stores typed document requirements under the real 
     await caseRequirements.persistCaseDocumentRequirements(f.database as unknown as D1Database,{caseId:f.id,runId:first.run.id,catalog:catalog.catalog,catalogSha256:catalog.sha256,result:first.run.result});
     assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n,before);
     await f.append("새 상담 원문입니다.");
-    assert.equal((await caseRequirements.listCaseDocumentRequirements(f.database as unknown as D1Database,f.id)).requirements.length,0);
+    const pending=await caseRequirements.listCaseDocumentRequirements(f.database as unknown as D1Database,f.id);
+    assert.equal(pending.requirements.length,0);
+    assert.equal(pending.pendingReanalysis,true);
+    assert.equal(pending.previousCompletedRunId,first.run.id);
     const next=await f.analyze(),current=await caseRequirements.listCaseDocumentRequirements(f.database as unknown as D1Database,f.id);
     assert.notEqual(next.run.id,first.run.id);assert.equal(current.activeRunId,next.run.id);
     assert.ok(current.requirements.every(row=>row.consultationRunId===next.run.id));
