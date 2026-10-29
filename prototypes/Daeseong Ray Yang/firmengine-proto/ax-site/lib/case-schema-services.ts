@@ -8,12 +8,13 @@ import { processCaseAgentUpdates } from "./case-agent-scheduler.ts";
 import { caseRequirementMonitor, listCaseDocumentWorkEvents } from "./case-requirement-monitor.ts";
 import { buildOcrChainMatrix } from "./ocr-chain-matrix.ts";
 import { getIntakeCatalog } from "./intake-store.ts";
+import { readCaseLegalAutomation } from "./case-legal-automation.ts";
 import { buildFeatureLineageAudit,evaluateCaseFieldLineage,auditLegalRiskContracts,auditCourtPracticeGaps } from "./feature-lineage-audit.ts";
 
 export const CASE_SCHEMA_CONTRACT={
   version:"case-feature-storage/1",databaseBinding:"DB",databaseEngine:"Cloudflare D1 / SQLite",
   identity:{caseId:"cases.id (internal UUID; court case number is separate)",documentTypeId:"shared_document_types.id",documentId:"documents.id (uploaded source file)",documentInstanceId:"document_instances.id (page-bound until logical boundary is reviewed)"},
-  tables:{catalog:"shared_document_types",catalogHistory:"shared_document_type_versions",requests:"case_document_requirements",requiredFieldPlans:"case_requirement_field_plans",documentWorkEvents:"case_document_work_events",substitutionWatchHeads:"case_substitution_watch_heads",substitutionRequestStates:"case_substitution_request_states",substitutionHistory:"case_substitution_transition_events",sourceInstances:"document_instances",sourceRuns:"extraction_runs",schemaVersions:"extraction_schema_versions",schemaFields:"extraction_schema_fields",records:"extraction_records",sourceFeatures:"extracted_features",sourceCoverage:"extraction_field_coverage",sourceHeads:"case_extraction_heads",changeEvents:"case_data_change_events",changeVersions:"case_data_change_state",calculationRuns:"case_calculation_runs",calculationFeatures:"case_calculation_features",calculationHeads:"case_calculation_heads",legalRuns:"case_legal_review_runs",legalConditions:"case_legal_conditions",documentFields:"case_document_field_values",legalHeads:"case_legal_review_heads",automaticDocuments:"case_automatic_document_runs"},
+  tables:{catalog:"shared_document_types",catalogHistory:"shared_document_type_versions",requests:"case_document_requirements",requiredFieldPlans:"case_requirement_field_plans",documentWorkEvents:"case_document_work_events",substitutionWatchHeads:"case_substitution_watch_heads",substitutionRequestStates:"case_substitution_request_states",substitutionHistory:"case_substitution_transition_events",sourceInstances:"document_instances",sourceRuns:"extraction_runs",schemaVersions:"extraction_schema_versions",schemaFields:"extraction_schema_fields",records:"extraction_records",sourceFeatures:"extracted_features",sourceCoverage:"extraction_field_coverage",sourceHeads:"case_extraction_heads",changeEvents:"case_data_change_events",changeVersions:"case_data_change_state",calculationRuns:"case_calculation_runs",calculationFeatures:"case_calculation_features",calculationHeads:"case_calculation_heads",legalRuns:"case_legal_review_runs",legalConditions:"case_legal_conditions",documentFields:"case_document_field_values",legalHeads:"case_legal_review_heads",automaticDocuments:"case_automatic_document_runs",legalAutomationJobs:"case_legal_automation_jobs",legalAutomationEvents:"case_legal_automation_events"},
   repeatability:"Each transaction / event / month / creditor-item is a separate extraction_records row. Its source cells are separate extracted_features rows. Preserve row order and source identities.",
   absence:"null, zero, blank, masked, illegible, explicit_none, not_seen, conflicting and unbound are distinct; no default-zero imputation.",
   scheduling:{sourceQuietMs:600000,order:["legal_calculation","lawgraph_review","automatic_draft"],derivedWritesResetQuietPeriod:false,manualGenerationRetained:true},
@@ -59,6 +60,7 @@ export async function readCaseSchemaData(caseId:string,input:{view?:string;docum
   if(view==="court_gap_audit")return auditCourtPracticeGaps();
   if(view==="calculations")return services.caseCalculations({caseId,limit:input.limit,offset:input.offset});
   if(view==="legal")return listCaseLawgraphReview(db(),{caseId,limit:input.limit,offset:input.offset});
+  if(view==="automation")return readCaseLegalAutomation(db(),caseId);
   if(view==="updates")return services.caseUpdates({caseId,afterEventId:input.afterEventId,limit:input.limit});
   throw Object.assign(new Error("INVALID_CASE_SCHEMA_VIEW"),{code:"INVALID_CASE_SCHEMA_VIEW"});
 }

@@ -153,6 +153,12 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
  if(!job||job.leaseToken!==lease)throw new Error("LEGAL_AUTOMATION_CLAIM_LOST");
  try{
   await assertCurrent(database,job);
+  const source=await services.loadCase(job.caseId);
+  if((source.referenceTest||source.structuredTest)&&!source.evaluationClone){
+    const report={state:"skipped_fixture",reason:"Protected synthetic/reference case: unattended AI work disabled",courtApprovalInferred:false};
+    await transition(database,job,lease,"skipped_fixture",{outcome:report});
+    return {caseId:job.caseId,status:"skipped_fixture"};
+  }
   if(job.legalReviewRunId&&["draft_pending","retry_wait","running"].includes(candidate.jobStatus??""))return await processDraft(database,job,lease,services);
   const response=await services.reviewLegal(job.caseId);
   await assertCurrent(database,job);

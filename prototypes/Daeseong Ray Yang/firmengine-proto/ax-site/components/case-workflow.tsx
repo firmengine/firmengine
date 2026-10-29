@@ -21,6 +21,10 @@ type WorkflowResponse = {
   artifacts:ReviewArtifact[];fieldBases:ReviewFieldBase[];legalRuns:CurrentLegalRun[];
   diagnostics: Record<string, unknown>;
   health?:WorkflowHealth;
+  legalAutomation?:{
+    status:string;completedChecks?:number;expectedChecks?:number;lastError?:string|null;updatedAt?:string|null;
+    outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;};
+  };
 };
 type CommandDraft = Omit<CaseCommand, "commandId" | "payloadVersion" | "expectedRevision" | "expectedStateFingerprint">;
 type Notice = { kind: "error" | "success" | "info"; text: string };
@@ -185,6 +189,19 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
         {data.tasks.count === 0 ? <p className="workflow-muted">열린 작업이 없습니다.</p> : <div className="workflow-list">{data.tasks.items.map(task => <article className="workflow-card" key={task.id}><div className="workflow-card-head"><div><strong>{task.title}</strong><p>{task.blockedBy.length ? `선행 항목 ${task.blockedBy.length}개` : "선행 항목 없음"}</p></div><span className="badge badge-neutral">{label(task.status)}</span></div><form className="workflow-form" onSubmit={submit(form => command("task.update", { taskId: task.id }, { status: String(form.get("status")), ownerId: String(form.get("ownerId") ?? "") || null, dueAt: String(form.get("dueAt") ?? "") || null, waitingOn: String(form.get("waitingOn") ?? "") || null }, reason(form)))}><div className="form-grid"><FormField label="진행 상태">{select("status", [["open", "열림"], ["in_progress", "진행 중"], ["waiting", "대기"], ["resolved", "완료"], ["dismissed", "취소"]])}</FormField><FormField label="담당자" hint="담당자를 지정하려면 확인된 담당자 식별자를 입력하세요.">{input("ownerId", "text", false, task.ownerId ?? "", "담당자 식별자")}</FormField><FormField label="기한">{input("dueAt", "date", false, task.dueAt ?? "")}</FormField><FormField label="대기 사유">{input("waitingOn", "text", false, task.waitingOn ?? "", "필요한 응답이나 자료")}</FormField></div><ReasonField /><Submit busy={busy}>작업 상태 저장</Submit></form></article>)}</div>}
       </Panel>
       <CaseReviewActions revision={data.revision} stateFingerprint={data.stateFingerprint} artifacts={data.artifacts??[]} fieldBases={data.fieldBases??[]} legalRuns={data.legalRuns??[]} roles={data.roles} onCommand={send} onError={setError} busy={busy} />
+       {data.legalAutomation&&<Panel title="DB 변경 후 자동 법률 재판단" icon={ShieldCheck}>
+         <p className="workflow-muted">마지막 변경 후 10분 안정화 → 계산 → 법률 AI 재검토 → 오류 분석 → 검토용 초안. 법원 제출·승인은 자동 처리하지 않습니다.</p>
+         <div className="workflow-state-row"><span>처리 상태: {label(data.legalAutomation.status)}</span><span>검토 진행: {data.legalAutomation.completedChecks??0}/{data.legalAutomation.expectedChecks??95}</span><span>최종 검토: 사람 확인 필수</span></div>
+         {data.legalAutomation.lastError&&<p className="workflow-caution">실행 오류: {data.legalAutomation.lastError}</p>}
+         {data.legalAutomation.outcome?.summary&&<p>{data.legalAutomation.outcome.summary}</p>}
+         {Boolean(data.legalAutomation.outcome?.blockers?.length)&&<div className="workflow-caution"><strong>자동작성을 보류한 이유</strong>
+           {data.legalAutomation.outcome!.blockers!.slice(0,12).map(reason=><p key={reason}>{reason}</p>)}</div>}
+         {Boolean(data.legalAutomation.outcome?.findings?.length)&&<details className="workflow-details"><summary>법률 검토·보완 사항 ({data.legalAutomation.outcome!.findings!.length}건)</summary>
+           <div className="workflow-list">{data.legalAutomation.outcome!.findings!.slice(0,20).map(item=><article className="workflow-card" key={item.id}><strong>{item.id} · {label(item.status)}</strong><p>{item.reason}</p>
+           {item.missingDocuments.length>0&&<p>필요 자료: {item.missingDocuments.join(" · ")}</p>}<p>다음 조치: {item.nextAction}</p></article>)}</div></details>}
+         {Boolean(data.legalAutomation.outcome?.drafts?.length)&&<div className="workflow-list"><strong>자동 생성된 검토용 서류</strong>
+           {data.legalAutomation.outcome!.drafts!.map(item=><p key={item.id}><a href={"/api/cases/"+encodeURIComponent(caseId)+"/artifacts/"+encodeURIComponent(item.id)}>{item.name}</a> · 제출 전 검토 필요</p>)}</div>}
+       </Panel>
       <Panel title="법률·서류 확인 기록" icon={ShieldCheck}>
         <p className="workflow-muted">이 영역은 사람이 남긴 검토 이력과 문서 변경 기록을 보여 줍니다. 자동 승인 기능은 없습니다.</p>
         <div className="workflow-audit-grid"><div><h3>검토 기록</h3>{data.workflow.legalDispositions.length ? data.workflow.legalDispositions.map((item, index) => <p key={`${item.checkId}:${index}`}>{item.checkId} · {label(item.status)} · {item.reason}</p>) : <p className="workflow-muted">기록된 검토가 없습니다.</p>}</div><div><h3>서류 수정 기록</h3>{data.workflow.documentEdits.length ? data.workflow.documentEdits.map(item => <p key={item.id}>{item.fieldId} · {item.kind === "prose" ? "문안" : "배치"} 수정 · {item.reason}</p>) : <p className="workflow-muted">기록된 수정이 없습니다.</p>}</div></div>

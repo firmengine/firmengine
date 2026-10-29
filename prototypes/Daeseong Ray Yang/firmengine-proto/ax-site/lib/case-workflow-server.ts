@@ -17,6 +17,7 @@ import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
 import { workflowHealth,type HealthJob,type HealthCommand } from "./workflow-health.ts";
 import { commandHash } from "./case-command-contract.ts";
+import { readCaseLegalAutomation } from "./case-legal-automation.ts";
 export async function caseWorkflowResponse(caseId:string){
   await drainCaseRecomputeJobs(caseId,1);
   const data=await getCase(caseId),workflow=caseWorkflow(data.workflowState);
@@ -77,7 +78,11 @@ export async function caseWorkflowResponse(caseId:string){
   const legalRuns=projectLegalRunConflicts(rawLegalRuns).map(({id:_id,subjectFingerprint:_subject,dependencyFingerprint:_dependency,...run})=>run);
   const stateFingerprint=await caseStateFingerprint(data);
   const health=workflowHealth({data,stateFingerprint,jobs:recomputeJobs.results.slice(0,50),commands:commandRows.results.slice(0,20),jobsTruncated:recomputeJobs.results.length>50,commandsTruncated:commandRows.results.length>20,requiredUnresolved:view.requirementStates.filter(item=>!["satisfied","not_applicable_confirmed","waived_by_review","retired"].includes(item.requirementStatus)).length,reconciliationIssues:execution.planReconciliation.issues,now:new Date().toISOString()});
-  return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
+  const legalAutomation=await readCaseLegalAutomation(db(),caseId).catch(()=>({
+    status:"unavailable" as const,reason:"LEGAL_AUTOMATION_STORAGE_NOT_READY",
+    autoSubmission:false,automaticCourtApproval:false,humanFinalReviewRequired:true
+  }));
+  return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,legalAutomation,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
     health,
     artifacts,fieldBases,legalRuns,legalCoverageTruncated,
     documents:data.documents.filter(d=>d.status==="active").map(d=>({id:d.id,name:d.name,sha256:d.sha256,pages:d.pages,status:d.status})),
