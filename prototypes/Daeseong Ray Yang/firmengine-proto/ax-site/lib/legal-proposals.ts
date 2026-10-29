@@ -1,7 +1,8 @@
+import { REFERENCE_PARAMETER_ROWS, referenceMoney, referenceParameter, referencePositiveInteger } from "./reference-parameters.ts";
 import { currentFacts, factSourceLineageIssues, moneyValue, type CaseData, type Fact } from "./domain.ts";
 import { proposeLivingCost } from "./living-cost-proposal.ts";
 import { evaluateSeoul424, type EvidenceValue, type Tri, type WageHistoryEvidence } from "./seoul424-candidate.ts";
-import { evaluateObjectionMinimum, OBJECTION_MINIMUM_RULE_VERSION, type ObjectionPresence, type ReviewedWonEvidence } from "./objection-minimum.ts";
+import { evaluateObjectionMinimum, currentObjectionMinimumRuleVersion, currentObjectionMinimumEffectiveFrom, type ObjectionPresence, type ReviewedWonEvidence } from "./objection-minimum.ts";
 import { CURRENT_RULESET } from "./legal-rules.ts";
 
 function sourceChecked(data: CaseData, fact: Fact): boolean {
@@ -64,30 +65,29 @@ export function deriveNoRecentDebt(value: unknown): boolean | null {
   return null;
 }
 function wageHistory(data: CaseData): EvidenceValue<WageHistoryEvidence> | null {
-  const f = single(data, "vulnerable.wageHistory"), version = single(data, "vulnerable.minimumWageVersion");
+  const contract = referenceParameter<{ key: string; minimumWageVersionKey: string }>("param.seoul.shortened_term.wage_history_fact_contract");
+  const f = single(data, contract.key), version = single(data, contract.minimumWageVersionKey);
   if (!f || !version || !sourceChecked(data, f) || !sourceChecked(data, version) || typeof f.value !== "object" || f.value === null || Array.isArray(f.value) || typeof version.value !== "string") return null;
   const raw = f.value as Record<string, unknown>;
-  if (typeof raw.wholeTwoYearBelowMinimum !== "boolean") return null;
-  return { value: { wholeTwoYearBelowMinimum: raw.wholeTwoYearBelowMinimum, coverageStart: typeof raw.coverageStart === "string" ? raw.coverageStart : undefined, coverageEnd: typeof raw.coverageEnd === "string" ? raw.coverageEnd : undefined, minimumWageVersion: version.value }, factIds: [f.id, version.id], sourceValidated: true, legallyRecognized: true };
+  const explicitPeriod = typeof raw.reviewedPeriodYears === "number" && Number.isSafeInteger(raw.reviewedPeriodYears) && raw.reviewedPeriodYears > 0 && typeof raw.wholePeriodBelowMinimum === "boolean";
+  if (typeof raw.wholeTwoYearBelowMinimum !== "boolean" && !explicitPeriod) return null;
+  return { value: { wholeTwoYearBelowMinimum: raw.wholeTwoYearBelowMinimum === true, ...(explicitPeriod ? { reviewedPeriodYears: raw.reviewedPeriodYears as number, wholePeriodBelowMinimum: raw.wholePeriodBelowMinimum as boolean } : {}), coverageStart: typeof raw.coverageStart === "string" ? raw.coverageStart : undefined, coverageEnd: typeof raw.coverageEnd === "string" ? raw.coverageEnd : undefined, minimumWageVersion: version.value }, factIds: [f.id, version.id], sourceValidated: true, legallyRecognized: true };
 }
 
-const CATEGORY_PREDICATES = [
-  { id: "statutory_severe_disability", key: "legal.seoul424.statutory_severe_disability", article: "§424 제2조 제2항 제2호", requiredProof: "장애인복지법 제2조상 장애인 및 장애 정도가 심한 장애인에 대한 공식 증명 + 법률검토" },
-  { id: "raising_two_or_more_minor_children", key: "legal.seoul424.raising_two_or_more_minor_children", article: "§424 제2조 제2항 제4호", requiredProof: "신청인이 2명 이상의 미성년 자녀를 실제 양육한다는 증명 + 법률검토" },
-  { id: "statutory_single_parent", key: "legal.seoul424.statutory_single_parent", article: "§424 제2조 제2항 제5호", requiredProof: "한부모가족지원법상 한부모가족의 부 또는 모에 해당한다는 공식 증명 + 법률검토" },
-  { id: "qualifying_article14_rental_fraud_causing_insolvency", key: "legal.seoul424.qualifying_article14_rental_fraud_causing_insolvency", article: "§424 제2조 제2항 제6호", requiredProof: "특별법 제14조에 따라 제2조 제4호 피해자등으로 결정된 사실과 전세사기로 인한 지급불능 또는 그 염려의 인과관계에 대한 증명 + 법률검토" },
-] as const;
+type CategoryPredicate = { id: string; key: string; article: string; requiredProof: string };
+const categoryPredicates = () => referenceParameter<readonly CategoryPredicate[]>("param.seoul.shortened_term.category_predicates");
 function categoryRoutes(data: CaseData) {
   const applicantIdentityResolved = Boolean(data.context.applicant?.name?.trim() || data.context.applicant?.residentIdMasked?.trim());
   const appDate = data.context.applicationDate;
   const ageFact = single(data, "applicant.age");
   const ageKnown = applicantIdentityResolved && ageFact?.subjectId === "applicant" && ageFact.asOf === appDate && sourceVerified(data, ageFact) ? nonnegativeInteger(ageFact) : null;
+  const seniorAge = referencePositiveInteger("param.seoul.shortened_term.senior_age_min"), youthAge = referencePositiveInteger("param.seoul.shortened_term.youth_age_exclusive_max");
   const ageSourceIds = ageKnown === null ? ageFact ? [ageFact.id] : [] : [ageFact!.id];
   const routes = [
-    { id: "age_65_or_more", status: ageKnown === null ? "unknown" as const : ageKnown >= 65 ? "yes" as const : "no" as const, factIds: ageSourceIds, article: "§424 제2조 제2항 제1호", requiredProof: "신청인과 연결되고 신청일 기준으로 확인된 만 65세 이상 연령" },
-    { id: "age_under_30", status: ageKnown === null ? "unknown" as const : ageKnown < 30 ? "yes" as const : "no" as const, factIds: ageSourceIds, article: "§424 제2조 제2항 제3호", requiredProof: "신청인과 연결되고 신청일 기준으로 확인된 30세 미만 연령" },
+    { id: "age_65_or_more", status: ageKnown === null ? "unknown" as const : ageKnown >= seniorAge ? "yes" as const : "no" as const, factIds: ageSourceIds, article: "§424 제2조 제2항 제1호", requiredProof: `신청인과 연결되고 신청일 기준으로 확인된 만 ${seniorAge}세 이상 연령` },
+    { id: "age_under_30", status: ageKnown === null ? "unknown" as const : ageKnown < youthAge ? "yes" as const : "no" as const, factIds: ageSourceIds, article: "§424 제2조 제2항 제3호", requiredProof: `신청인과 연결되고 신청일 기준으로 확인된 ${youthAge}세 미만 연령` },
   ];
-  for (const rule of CATEGORY_PREDICATES) {
+  for (const rule of categoryPredicates()) {
     const matches = factsFor(data, rule.key);
     const fact = matches.length === 1 ? matches[0] : null;
     let status: Tri = "unknown";
@@ -111,20 +111,23 @@ export function buildLegalProposals(data: CaseData) {
 
   const categoryFacts = ["applicant.age", "applicant.severeDisability", "household.minorChildren", "household.singleParent", "rentalFraud.officialDecision"].map((k) => ({ k, f: single(data, k) }));
   const routes = categoryRoutes(data);
-  const totalDebt = evidence(data, "debts.total", (f) => { const n = nonnegativeInteger(f); return n === null ? null : n <= 50_000_000; });
+  const totalDebtThresholdWon = referenceMoney("param.seoul.shortened_term.total_debt_max_won");
+  const totalDebt = evidence(data, "debts.total", (f) => { const n = nonnegativeInteger(f); return n === null ? null : BigInt(n) <= BigInt(totalDebtThresholdWon); });
   const noPrivate = data.context.inventoryComplete.debt === "yes"
     ? evidence(data, "debts.privateCreditors", (f) => deriveNoPrivateCreditors(f.value))
     : null;
-  const noRecentDebt = evidence(data, "debts.lastYearDebt", (f) => deriveNoRecentDebt(f.value));
-  const term = evaluateSeoul424({ courtId: data.context.courtId || null, firstFilingDate: appDate || null, categoryRoutes: routes, wageHistory: wageHistory(data), totalDebtAtMost50MillionWon: totalDebt, noIndividualCreditors: noPrivate, noRecentYearDebtExceptGoodsPurchaseCard: noRecentDebt });
+  const recentDebtPeriodYears = referencePositiveInteger("param.seoul.shortened_term.recent_debt_years");
+  const recentContract = referenceParameter<{ key: string; periodYears: number }>("param.seoul.shortened_term.recent_debt_fact_contract");
+  const noRecentDebt = recentContract.periodYears === recentDebtPeriodYears ? evidence(data, recentContract.key, (f) => deriveNoRecentDebt(f.value)) : null;
+  const term = evaluateSeoul424({ courtId: data.context.courtId || null, firstFilingDate: appDate || null, categoryRoutes: routes, wageHistory: wageHistory(data), totalDebtAtMost50MillionWon: totalDebt, noIndividualCreditors: noPrivate, noRecentYearDebtExceptGoodsPurchaseCard: noRecentDebt, totalDebtThresholdWon, recentDebtPeriodYears });
   const approvalDateFact = single(data, "context.planApprovalDate");
   const approvalDate = approvalDateFact && sourceChecked(data, approvalDateFact) && typeof approvalDateFact.value === "string" ? approvalDateFact.value : null;
   const objection = objectionStatus(data);
-  const statuteVersionCurrent = CURRENT_RULESET.status === "source_verified" && CURRENT_RULESET.effectiveFrom === "2026-10-02" && data.context.ruleReleaseId === CURRENT_RULESET.id && data.context.ruleApplicationReviewed;
+  const statuteVersionCurrent = CURRENT_RULESET.status === "source_verified" && CURRENT_RULESET.effectiveFrom === currentObjectionMinimumEffectiveFrom() && data.context.ruleReleaseId === CURRENT_RULESET.id && data.context.ruleApplicationReviewed;
   const proposedPlanPV = exactReviewedWon(data, "plan.repaymentPresentValue");
   const contextPlanPV = moneyValue(data.context.approvedPresentValue);
   const planPVConsistent = proposedPlanPV && contextPlanPV !== null && proposedPlanPV.amountWon === contextPlanPV.toString() && data.context.presentValueReviewed === true && !!data.context.presentValueBasis?.trim();
-  const objectionMinimum = evaluateObjectionMinimum({ asOf: approvalDate, ruleVersion: statuteVersionCurrent ? OBJECTION_MINIMUM_RULE_VERSION : null, courtObjection: objection.value, conditionFactIds: [...(approvalDateFact && approvalDate ? [approvalDateFact.id] : []), ...objection.factIds], claimTotalPresentValue: exactReviewedWon(data, "claims.presentValue"), planPresentValue: planPVConsistent ? proposedPlanPV : null });
+  const objectionMinimum = evaluateObjectionMinimum({ asOf: approvalDate, ruleVersion: statuteVersionCurrent ? currentObjectionMinimumRuleVersion() : null, courtObjection: objection.value, conditionFactIds: [...(approvalDateFact && approvalDate ? [approvalDateFact.id] : []), ...objection.factIds], claimTotalPresentValue: exactReviewedWon(data, "claims.presentValue"), planPresentValue: planPVConsistent ? proposedPlanPV : null });
   return { livingCost, termCandidate: term, objection, objectionMinimum, currentPlanMonths: Number.isInteger(data.context.planMonths) ? data.context.planMonths : null, categoryEvidence: categoryFacts.map(({ k, f }) => ({ key: k, factId: f?.id ?? null, status: k === "applicant.age" && f && f.asOf !== appDate ? "stale_or_unbound_age" as const : f && sourceChecked(data, f) ? "source_and_recognition_checked_but_legal_specificity_unverified" as const : "unknown_or_unreviewed" as const })), courtApprovalInferred: false as const };
 }
 
@@ -133,7 +136,10 @@ export function buildLegalProposals(data: CaseData) {
  * a §424 candidate route. This is a deterministic change detector, not a signature.
  */
 export function shortenedTermBasisFingerprint(data: CaseData): string {
+  const wageContract = referenceParameter<{ key: string; minimumWageVersionKey: string }>("param.seoul.shortened_term.wage_history_fact_contract");
+  const recentContract = referenceParameter<{ key: string }>("param.seoul.shortened_term.recent_debt_fact_contract");
   const relevantFactKeys = new Set([
+    ...categoryPredicates().map(rule => rule.key), wageContract.key, wageContract.minimumWageVersionKey, recentContract.key,
     "applicant.age", "legal.seoul424.statutory_severe_disability",
     "legal.seoul424.raising_two_or_more_minor_children", "legal.seoul424.statutory_single_parent",
     "legal.seoul424.qualifying_article14_rental_fraud_causing_insolvency",
@@ -146,6 +152,7 @@ export function shortenedTermBasisFingerprint(data: CaseData): string {
     refs: fact.refs.map((ref) => [ref.documentId, ref.page]).sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
   })).sort((a, b) => a.key.localeCompare(b.key) || a.id.localeCompare(b.id));
   const basis = {
+    referenceParameters: Object.fromEntries(REFERENCE_PARAMETER_ROWS.filter(row => row.id.startsWith("param.seoul.shortened_term.") || row.id.startsWith("param.national.term.")).map(row => [row.id, referenceParameter(row.id)])),
     courtId: data.context.courtId,
     applicationDate: data.context.applicationDate,
     planMonths: data.context.planMonths,

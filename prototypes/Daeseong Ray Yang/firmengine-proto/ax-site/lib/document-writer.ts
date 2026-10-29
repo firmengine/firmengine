@@ -1,3 +1,4 @@
+import { referenceIdentity } from "./reference-runtime.ts";
 import type { CaseData } from "./domain.ts";
 import type { DerivedEvaluationEnvelope, ExecutionSnapshot } from "./reactive-evaluation.ts";
 
@@ -8,6 +9,7 @@ export interface DocumentWriterReceipt {
   inputSha256:string;
   requiredKinds:string[];
   bindingsSha256:string;
+  referenceRelease?:{id:string;revision:number;sha256:string};
   mode:"draft"|"final";
   status:"ready"|"review_required";
   generatedAt:string;
@@ -24,6 +26,8 @@ export async function prepareDocumentWrite(input:{data:CaseData;evaluation:Deriv
   const {data,evaluation,mode}=input;
   if(!evaluation||evaluation.status!=="complete"||!evaluation.execution)throw new Error("DOCUMENT_EVALUATION_PENDING");
   const execution=evaluation.execution;
+  const referenceRelease=referenceIdentity();
+  if(referenceRelease&&evaluation.referenceSha256!==referenceRelease.sha256)throw new Error("DOCUMENT_REFERENCE_RELEASE_STALE");
   if(evaluation.revision!==data.context.revision||execution.caseRevision!==data.context.revision||execution.caseId!==data.context.id)throw new Error("DOCUMENT_EVALUATION_STALE");
   const inputSha256=await digest(data);
   if(evaluation.inputSha256!==inputSha256)throw new Error("DOCUMENT_EVALUATION_INPUT_MISMATCH");
@@ -34,5 +38,5 @@ export async function prepareDocumentWrite(input:{data:CaseData;evaluation:Deriv
   if(!execution.assessment.generationGate.canGenerateDraft)throw new Error("DOCUMENT_DRAFT_GATE_BLOCKED");
   if(mode==="final"&&(!input.processingComplete||!execution.assessment.generationGate.canFinalize))throw new Error("DOCUMENT_FINAL_REVIEW_REQUIRED");
   const bindingsSha256=await digest({formBindings:execution.formBindings,documentPayloads:execution.documentPayloads});
-  return {execution,receipt:{schemaVersion:"document-writer-receipt/1",caseId:data.context.id,caseRevision:data.context.revision,inputSha256,requiredKinds:[...input.requiredKinds],bindingsSha256,mode,status:mode==="final"?"ready":"review_required",generatedAt:input.now??new Date().toISOString(),courtApprovalInferred:false}};
+  return {execution,receipt:{schemaVersion:"document-writer-receipt/1",caseId:data.context.id,caseRevision:data.context.revision,inputSha256,requiredKinds:[...input.requiredKinds],bindingsSha256,referenceRelease,mode,status:mode==="final"?"ready":"review_required",generatedAt:input.now??new Date().toISOString(),courtApprovalInferred:false}};
 }

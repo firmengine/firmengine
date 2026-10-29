@@ -1,0 +1,19 @@
+{
+  "pages": [
+    {
+      "document_id": "synthetic-document",
+      "page": 6
+    }
+  ],
+  "allowed_key_labels": {
+    "client_name": "신청인 성명",
+    "annual_business_income": "신고 사업소득",
+    "approved_monthly_income": "검토 인정 월 영업소득"
+  },
+  "review_only_keys": [
+    "approved_monthly_income"
+  ],
+  "document_type": "business_tax_return",
+  "reference_context": [],
+  "extraction_pass": "initial"
+}

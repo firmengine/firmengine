@@ -10,7 +10,7 @@ ROUTE = Path(__file__).resolve().parents[1] / "app/api/cases/[id]/export/route.t
 
 class ReceiptProjectionTests(unittest.TestCase):
     def test_sql_projection_matches_previous_shape_check(self):
-        source = ROUTE.read_text()
+        source = ROUTE.read_text(encoding="utf-8")
         match = re.search(r"CASE WHEN json_valid\(result\) THEN CASE WHEN .*? END ELSE 0 END AS has_stored_read", source)
         self.assertIsNotNone(match)
         query = "SELECT " + match.group(0) + " FROM (SELECT ? AS result)"

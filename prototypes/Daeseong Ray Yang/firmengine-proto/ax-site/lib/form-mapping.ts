@@ -1,3 +1,5 @@
+import { shareBasisPoints } from "./reference-parameters.ts";
+import documentPolicy from "./reference-document-policy.json" with { type: "json" };
 /** Public blank-form mapping. No filled sample, evaluator answer, or model output is embedded. */
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
@@ -11,10 +13,7 @@ import { PUBLIC_FORM_BASE64, PUBLIC_FORM_METADATA } from "./form-template-data.t
 
 export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.2";
 export const MISSING_FORM_VALUE = "[확인 필요]";
-export const BASIC_FORM_CODES: Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>> = {
-  application: "D5100", creditors: "D5106", assets: "D5101", income_expense: "D5103",
-  statement: "D5105", repayment_plan: "D5110", evidence_index: "EVIDENCE_INDEX",
-};
+export const BASIC_FORM_CODES = documentPolicy.basicFormCodes as Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>>;
 export interface FormBindings {
   scalars: Record<string, string>;
   rows: Record<string, Record<string, string>[]>;
@@ -142,13 +141,13 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   const ownGross = (id: string): bigint | null => {
     const asset = assetResolution.rows.find((a) => a.id === id)!;
     const gross = moneyValue(asset.grossValue);
-    if (conflictedAssets.has(asset.id) || !sourceValid(data, asset.factIds,index) || gross === null || gross < 0n || !Number.isSafeInteger(asset.ownershipBps) || asset.ownershipBps! < 0 || asset.ownershipBps! > 10000) return null;
-    return (gross * BigInt(asset.ownershipBps!) + 9999n) / 10000n;
+    if (conflictedAssets.has(asset.id) || !sourceValid(data, asset.factIds,index) || gross === null || gross < 0n || !Number.isSafeInteger(asset.ownershipBps) || asset.ownershipBps! < 0 || asset.ownershipBps! > shareBasisPoints()) return null;
+    return (gross * BigInt(asset.ownershipBps!) + BigInt(shareBasisPoints() - 1)) / BigInt(shareBasisPoints());
   };
   rows.asset = assetResolution.rows.map((asset) => {
     const valid = sourceValid(data, asset.factIds,index), own = ownGross(asset.id);
     const gross = moneyValue(asset.grossValue);
-    const base: Record<string, string> = { entity: present(asset.label), kind: present(assetLabels[asset.kind]), period: present(asset.asOf), value: valid && !conflictedAssets.has(asset.id) && gross !== null && gross >= 0n ? amount(gross.toString()) : MISSING_FORM_VALUE, ownership_share: asset.ownershipBps === null || asset.ownershipBps === undefined ? MISSING_FORM_VALUE : `${asset.ownershipBps}/10000`, secured_payoff_scope: objectFact("asset", "secured_payoff_scope", asset.id), valuation_basis: valid ? present(asset.valuationBasis) : MISSING_FORM_VALUE, applicant_share_value: own === null ? MISSING_FORM_VALUE : amount(own.toString()), attribution_status: own === null ? "신청인 귀속분 미확정 · 원문 총액만 표시" : "입력 지분을 적용한 계산값 · 인정 여부 별도 검토" };
+    const base: Record<string, string> = { entity: present(asset.label), kind: present(assetLabels[asset.kind]), period: present(asset.asOf), value: valid && !conflictedAssets.has(asset.id) && gross !== null && gross >= 0n ? amount(gross.toString()) : MISSING_FORM_VALUE, ownership_share: asset.ownershipBps === null || asset.ownershipBps === undefined ? MISSING_FORM_VALUE : `${asset.ownershipBps}/${shareBasisPoints()}`, secured_payoff_scope: objectFact("asset", "secured_payoff_scope", asset.id), valuation_basis: valid ? present(asset.valuationBasis) : MISSING_FORM_VALUE, applicant_share_value: own === null ? MISSING_FORM_VALUE : amount(own.toString()), attribution_status: own === null ? "신청인 귀속분 미확정 · 원문 총액만 표시" : "입력 지분을 적용한 계산값 · 인정 여부 별도 검토" };
     for (const key of ["account_number", "acquisition_date", "address", "collateral", "description", "institution", "return_amount", "seizure"]) base[key] = valid ? objectFact("asset", key, asset.id) : MISSING_FORM_VALUE;
     if (valid && asset.kind === "insurance" && base.account_number === MISSING_FORM_VALUE) base.account_number = objectFact("asset", "policy_number", asset.id);
     return base;

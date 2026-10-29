@@ -1,0 +1,262 @@
+{
+  "source_commit": "2ee7f4d50a324173462c2b39d112ddb55517aba1",
+  "scope": "allowlisted working-tree source snapshot; source_commit is the base HEAD, not a claim that copied bytes are committed; not a live n8n export",
+  "files": [
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/workflows/calculations.json",
+      "copy": "workflows/calculations.json",
+      "sha256": "453f91d5a2b779421c6fb5b8dd27a0526929b92dab5e5103c076ec676329fb6b"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/workflows/law-watch.json",
+      "copy": "workflows/law-watch.json",
+      "sha256": "15f5f41758687d44476505d7b700d95b73eb9e912acd1b96db5a52cd12a78145"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/workflows/build_workflows.py",
+      "copy": "workflows/build_workflows.py.txt",
+      "sha256": "bfbb204f18bbe674f1bd9f8cffe262b94925c8b313cc07be0df4a26f8ae80222"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/workflows/calculators.js",
+      "copy": "workflows/calculators.js.txt",
+      "sha256": "c335adfe35165924554482fe0ca4e0e27c6e81d13407b4899f70bdc0b89832f9"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/workflows/README.md",
+      "copy": "workflows/README.md.txt",
+      "sha256": "305d48a78770869fe63385e89c649b9c3285dfa2f82a4d7e0a0d5899dd3a56db"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/classify/body.md",
+      "copy": "prompts/classify/body.md",
+      "sha256": "8b133a352955d046a1836907532a444192ff514a2586660821f5c20be77ee9e5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/classify/config.json",
+      "copy": "prompts/classify/config.json",
+      "sha256": "763b2b42367385ad068220f0a582e0e6d51a47cff55d0ce9b59de62190e4f425"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/classify/example.json",
+      "copy": "prompts/classify/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/classify/input.schema.json",
+      "copy": "prompts/classify/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/classify/output.schema.json",
+      "copy": "prompts/classify/output.schema.json",
+      "sha256": "17fd102dfddc673522ebc92483f7b2177d2e3aab063fa5f7d6cfb3ee2b1047be"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/classify/system.md",
+      "copy": "prompts/classify/system.md",
+      "sha256": "eba9ad0d4595344ac80bcc30a6c65013917fc13bccdaa26a0fd0e3238597a3f1"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/extract/body.md",
+      "copy": "prompts/extract/body.md",
+      "sha256": "75f05e1069d4fe13c541b4a0b2128699f3aeb45310697521625f21f33f892378"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/extract/config.json",
+      "copy": "prompts/extract/config.json",
+      "sha256": "6367c1739674b556b749272109f3e617c856e6006b16d1cc8607143489bea08a"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/extract/example.json",
+      "copy": "prompts/extract/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/extract/input.schema.json",
+      "copy": "prompts/extract/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/extract/output.schema.json",
+      "copy": "prompts/extract/output.schema.json",
+      "sha256": "17141dfec9fe4c55ca68651151a40b170bc9f071824f8a41c357c7f2aaba83e2"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/extract/system.md",
+      "copy": "prompts/extract/system.md",
+      "sha256": "da6eca33adfda871130a846f39a0b930b5bc48bf6f90975515de7ff1fdfd5c20"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/validate/body.md",
+      "copy": "prompts/validate/body.md",
+      "sha256": "0f98edd013f28755f985bd5b1c50d3763d2e6a0112150766813412a6ed46436e"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/validate/config.json",
+      "copy": "prompts/validate/config.json",
+      "sha256": "3b3ffc0c7c7b26ccf34feaa2628998660f2bc0aef65410550545ce97cb5430e3"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/validate/example.json",
+      "copy": "prompts/validate/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/validate/input.schema.json",
+      "copy": "prompts/validate/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/validate/output.schema.json",
+      "copy": "prompts/validate/output.schema.json",
+      "sha256": "1feb359499c4c48ddee5ff1fa44a0aead1c261344b91296415ffe73b5c8f6b83"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/validate/system.md",
+      "copy": "prompts/validate/system.md",
+      "sha256": "e4103a398746ad67c920a1e508407268293620908226ab099e3bd5828c31f909"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/judge/body.md",
+      "copy": "prompts/judge/body.md",
+      "sha256": "16adb6bbc326b914d779cf7edcee2d432152159419f2decfe4d32719a7496445"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/judge/config.json",
+      "copy": "prompts/judge/config.json",
+      "sha256": "3b3ffc0c7c7b26ccf34feaa2628998660f2bc0aef65410550545ce97cb5430e3"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/judge/example.json",
+      "copy": "prompts/judge/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/judge/input.schema.json",
+      "copy": "prompts/judge/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/judge/output.schema.json",
+      "copy": "prompts/judge/output.schema.json",
+      "sha256": "1feb359499c4c48ddee5ff1fa44a0aead1c261344b91296415ffe73b5c8f6b83"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/judge/system.md",
+      "copy": "prompts/judge/system.md",
+      "sha256": "94778bd9223191c503fd18e58689f698e152aeb175fc2babdab6b3457aa7c598"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/draft/body.md",
+      "copy": "prompts/draft/body.md",
+      "sha256": "3281d4a7dc83c99059a6441ca8dd865097a53960bfe9530353f662fa11d9fba5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/draft/config.json",
+      "copy": "prompts/draft/config.json",
+      "sha256": "3b3ffc0c7c7b26ccf34feaa2628998660f2bc0aef65410550545ce97cb5430e3"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/draft/example.json",
+      "copy": "prompts/draft/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/draft/input.schema.json",
+      "copy": "prompts/draft/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/draft/output.schema.json",
+      "copy": "prompts/draft/output.schema.json",
+      "sha256": "1feb359499c4c48ddee5ff1fa44a0aead1c261344b91296415ffe73b5c8f6b83"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/draft/system.md",
+      "copy": "prompts/draft/system.md",
+      "sha256": "e379171459fdad2a943f8856fc3744fae40782505dc90e70b4be9b09f94c1600"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/law_update/body.md",
+      "copy": "prompts/law_update/body.md",
+      "sha256": "0267396a570e7016b45779b5d1f6683336dbc4706192823029529db63af30c8a"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/law_update/config.json",
+      "copy": "prompts/law_update/config.json",
+      "sha256": "3b3ffc0c7c7b26ccf34feaa2628998660f2bc0aef65410550545ce97cb5430e3"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/law_update/example.json",
+      "copy": "prompts/law_update/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/law_update/input.schema.json",
+      "copy": "prompts/law_update/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/law_update/output.schema.json",
+      "copy": "prompts/law_update/output.schema.json",
+      "sha256": "1feb359499c4c48ddee5ff1fa44a0aead1c261344b91296415ffe73b5c8f6b83"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/law_update/system.md",
+      "copy": "prompts/law_update/system.md",
+      "sha256": "ffae7fe7c69e5693387d76e20aea1145e797b348bd90a88356bbc230611877aa"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/evaluate/body.md",
+      "copy": "prompts/evaluate/body.md",
+      "sha256": "cfa06ac83fd3cd996e08ae84ddb405affc1cd4293a4cc0d9a461bf87775b0550"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/evaluate/config.json",
+      "copy": "prompts/evaluate/config.json",
+      "sha256": "3b3ffc0c7c7b26ccf34feaa2628998660f2bc0aef65410550545ce97cb5430e3"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/evaluate/example.json",
+      "copy": "prompts/evaluate/example.json",
+      "sha256": "800b27adc6cf53b98aa43bb6cba9880275b46ec235777f4bca41d6a46cb961a5"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/evaluate/input.schema.json",
+      "copy": "prompts/evaluate/input.schema.json",
+      "sha256": "2e52998d98f8305297cb44d4963cc4eecf3255d953bf484cf373f3eac00bcd2f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/evaluate/output.schema.json",
+      "copy": "prompts/evaluate/output.schema.json",
+      "sha256": "1feb359499c4c48ddee5ff1fa44a0aead1c261344b91296415ffe73b5c8f6b83"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/promptbook/evaluate/system.md",
+      "copy": "prompts/evaluate/system.md",
+      "sha256": "c2f3fe214ff2499b4de8266067abab8d086385e69fc3dc7c1834117a7bcc450c"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/scripts/run_local.py",
+      "copy": "settings/scripts/run_local.py.txt",
+      "sha256": "0cae7e929bd81e7e209d0fa85f142f88fb0a27fe46fd48fe2aa0980620c599e6"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/scripts/run_n8n.py",
+      "copy": "settings/scripts/run_n8n.py.txt",
+      "sha256": "8e22c59e128be4afd7568c0943e441a768bfe8b082085a96790a5c28e72f4a41"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/package.json",
+      "copy": "settings/package.json.txt",
+      "sha256": "e8e161e09918a3ae91d0fd1c04472502655c9731b2c06b9e33fcf8441eb1fd19"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto-retry/requirements.txt",
+      "copy": "settings/requirements.txt.txt",
+      "sha256": "45209855323f88e279262c8ee2e0133491969ba96a787285e1f8a3e08ed184a8"
+    }
+  ],
+  "excerpts": []
+}

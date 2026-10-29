@@ -1,0 +1,14 @@
+{
+  "scope": "synthetic deterministic workflow; not OCR accuracy or total end-to-end runtime",
+  "generatedAt": "2026-10-27T06:38:02.418Z",
+  "facts": 650,
+  "typedObjects": 70,
+  "workflowItems": 813,
+  "resultBytes": 5070210,
+  "resultsExactlyEquivalent": true,
+  "runsPerVariant": 3,
+  "baselineMedianMs": 2650.19,
+  "optimizedMedianMs": 289.57,
+  "speedup": 9.15,
+  "additionalModelCalls": 0
+}

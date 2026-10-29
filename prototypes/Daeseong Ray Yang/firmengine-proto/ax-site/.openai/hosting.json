@@ -1,4 +1,7 @@
 {
   "d1": "DB",
-  "r2": "BUCKET"
+  "r2": "BUCKET",
+  "capabilities": [
+    "mcp"
+  ]
 }

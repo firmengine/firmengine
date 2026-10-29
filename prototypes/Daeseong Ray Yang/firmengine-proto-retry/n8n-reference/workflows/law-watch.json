@@ -1,0 +1,63 @@
+{
+  "id": "FirmEngineRetryLaw001",
+  "name": "Firm Engine Retry · official source change watch (09:00 Seoul)",
+  "active": false,
+  "nodes": [
+    {
+      "id": "law-schedule",
+      "name": "09:00 Asia Seoul",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        200,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "law-refresh",
+      "name": "Collect official source hashes",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        300
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8091/api/knowledge/refresh",
+        "options": {
+          "timeout": 120000
+        }
+      }
+    }
+  ],
+  "connections": {
+    "09:00 Asia Seoul": {
+      "main": [
+        [
+          {
+            "node": "Collect official source hashes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Seoul",
+    "saveDataSuccessExecution": "none",
+    "saveDataErrorExecution": "none"
+  }
+}

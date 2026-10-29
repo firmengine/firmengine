@@ -1,0 +1,48 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "application_date": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Application Date"
+    },
+    "questions": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Questions",
+      "type": "array"
+    },
+    "facts": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Facts",
+      "type": "array"
+    },
+    "references": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "References",
+      "type": "array"
+    }
+  },
+  "required": [
+    "application_date",
+    "questions",
+    "facts",
+    "references"
+  ],
+  "title": "GuidanceInput",
+  "type": "object"
+}

@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "model": "gpt-6-luna",
+  "reasoning_effort": "low",
+  "max_output_tokens": 2400,
+  "image_long_edge": 1600,
+  "max_input_tokens": 7000,
+  "global_concurrency": 3,
+  "agent_concurrency": 2,
+  "http_retries": 2
+}

@@ -15,13 +15,16 @@ import * as scanQuality from "../lib/scan-quality.ts";
 import * as executionCatalog from "../lib/execution-catalog.ts";
 import * as reactiveEvaluation from "../lib/reactive-evaluation.ts";
 import * as calculatorTools from "../lib/calculator-tools.ts";
+import * as referenceRuntime from "../lib/reference-runtime.ts";
+import referenceRelease from "../lib/reference-release.json" with { type: "json" };
 import type { CaseData, ExportManifest } from "../lib/domain.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const load=<T>(path:string,mocks:Record<string,unknown>):T=>{
+  const dependencies:Record<string,unknown>={"./reference-runtime.ts":referenceRuntime,"./reference-release.json":{default:referenceRelease},"../../../../lib/reference-runtime.ts":referenceRuntime,...mocks};
   const output=ts.transpileModule(readFileSync(root+path,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const module={exports:{}};
-  new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(mocks,name))return mocks[name];throw new Error(`Unexpected dependency: ${name}`);},module,module.exports);
+  new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(dependencies,name))return dependencies[name];throw new Error(`Unexpected dependency: ${name}`);},module,module.exports);
   return module.exports as T;
 };
 type Store={getCase(id:string):Promise<CaseData>;saveCase(data:CaseData,revision:number,previous:CaseData):Promise<void>;[key:string]:unknown};
@@ -143,14 +146,16 @@ test("persisted derived snapshot keeps calculator and court-form values synchron
   h.sqlite.close();
 });
 
-test("legal advisory analysis is current only when its calculator receipt matches the canonical case snapshot",async()=>{
+test("legal advisory analysis is current only when its calculator receipt matches the canonical case and reference snapshots",async()=>{
   const h=setup(),data=await h.store.getCase(h.data.context.id),currentHash=await calculatorTools.snapshotSha256(data);
   const insert=h.sqlite.prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)");
-  insert.run("advisory-stale",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:"0".repeat(64)}}),"2026-10-29T00:00:02Z");
-  insert.run("advisory-current",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash}}),"2026-10-29T00:00:03Z");
+  insert.run("advisory-stale",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:"0".repeat(64),referenceRelease:{sha256:referenceRelease.sha256}}}),"2026-10-29T00:00:02Z");
+  insert.run("advisory-current",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:referenceRelease.sha256}}}),"2026-10-29T00:00:03Z");
   insert.run("advisory-legacy",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[]}),"2026-10-29T00:00:04Z");
+  insert.run("advisory-reference-stale",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:"0".repeat(64)}}}),"2026-10-29T00:00:05Z");
   const extras=await (h.store as any).caseExtras(data);
   assert.deepEqual(extras.analyses.filter((row:any)=>row.type==="legal_advisory").map((row:any)=>row.id),["advisory-current"]);
+  assert.equal(extras.analyses.some((row:any)=>row.id==="advisory-reference-stale"),false,"a matching case input cannot reuse an advisory from a different reference release");
   h.sqlite.close();
 });
 
@@ -185,7 +190,8 @@ test("같은 내용의 반복 출력과 다른 사건 출력은 독립된 파일
   h.sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at,storage_token) VALUES (?,?,?,?,?,?,?,?)").run(second.context.id,second.context.caseName,"synthetic-owner",second.context.revision,JSON.stringify(second),"synthetic","synthetic",crypto.randomUUID());
   const route=load<{POST(request:Request,context:{params:Promise<{id:string}>}):Promise<Response>}>("app/api/cases/[id]/export/route.ts",{
     "../../../../../lib/domain":domain,
-    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required"}})},
+    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required",referenceRelease:{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256}}})},
+    "../../../../../lib/reference-context.ts":{loadReferenceSnapshot:async()=>({id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256,values:{}})},
     "../../../../../lib/exports":{newExportManifest:(revision:number,files:ExportManifest["files"])=>({...manifest(revision,"test"),files})},
     "../../../../../lib/office-writer":{writeOfficePackage:async()=>[{id:"application-identical-content",kind:"application",name:"synthetic.docx",mime:"application/octet-stream",hash:"same-content-hash",bytes:new TextEncoder().encode("Identical synthetic content")}]},
     "../../../../../lib/legal-rules":{CURRENT_RULESET:{}},

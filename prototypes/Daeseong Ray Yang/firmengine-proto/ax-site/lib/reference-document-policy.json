@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "reference-document-policy/1",
+  "requiredKinds": [
+    "application",
+    "creditors",
+    "assets",
+    "income_expense",
+    "repayment_plan",
+    "statement",
+    "evidence_index"
+  ],
+  "alwaysAdditionalKinds": [
+    "repayment_schedule"
+  ],
+  "conditionalKinds": [
+    {
+      "kind": "bank_accounts",
+      "sourcePattern": "bank.?account|계좌|예금|bank_account",
+      "assetKinds": [
+        "deposit"
+      ],
+      "incomeKinds": [],
+      "transactionAccount": true
+    },
+    {
+      "kind": "leases",
+      "sourcePattern": "lease|임대차|임대계약",
+      "assetKinds": [
+        "lease_deposit"
+      ],
+      "incomeKinds": [
+        "rent"
+      ],
+      "transactionAccount": false
+    }
+  ],
+  "basicFormCodes": {
+    "application": "D5100",
+    "creditors": "D5106",
+    "assets": "D5101",
+    "income_expense": "D5103",
+    "statement": "D5105",
+    "repayment_plan": "D5110",
+    "evidence_index": "EVIDENCE_INDEX"
+  },
+  "conditionalFormRoutes": [
+    {
+      "code": "D5108",
+      "keys": [
+        "asset.protected_asset_type",
+        "asset.exemption_basis",
+        "asset.exemption_application"
+      ],
+      "reason": "비재단 재산의 구체 범위·법적 근거 및 제출 필요성 검토"
+    },
+    {
+      "code": "D5109",
+      "keys": [
+        "asset.exemption_application",
+        "asset.exemption_request"
+      ],
+      "reason": "면제재산 신청 의사·대상·법정 요건 검토"
+    },
+    {
+      "code": "D5111",
+      "keys": [
+        "disposal.",
+        "disposals.",
+        "asset.disposal_plan",
+        "plan.asset_disposal"
+      ],
+      "reason": "재산처분 변제안 선택과 처분·대금·일정 검토"
+    },
+    {
+      "code": "D5113",
+      "keys": [
+        "stay_request",
+        "enforcement."
+      ],
+      "reason": "중지명령 신청 의사·집행사건·필요성 검토"
+    },
+    {
+      "code": "D5114",
+      "keys": [
+        "prohibition_request",
+        "enforcement."
+      ],
+      "reason": "금지명령 신청 의사·집행사건·필요성 검토"
+    }
+  ],
+  "conditionalRoutingEffect": "candidate_only_human_selection_required",
+  "reviewStatus": "inherited"
+}

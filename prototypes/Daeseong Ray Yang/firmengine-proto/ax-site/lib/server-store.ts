@@ -1,3 +1,5 @@
+import { currentReferenceSnapshot, referenceIdentity } from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with { type: "json" };
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
 import { AI_MODEL, type CaseData } from "./domain";
@@ -120,7 +122,7 @@ async function readDerivedEvaluation(data:CaseData,identity:{id:string;revision:
     return readDerivedEvaluation(data,identity,inputSha256,false);
   }
   let envelope:unknown;try{envelope=JSON.parse(rows[0].payload);}catch{return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
-  if(!isDerivedEvaluation(envelope)||envelope.storageToken!==identity.token||envelope.inputSha256!==inputSha256||envelope.revision!==identity.revision||envelope.engineVersion!==EXECUTION_CONTRACT_VERSION)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+  if(!isDerivedEvaluation(envelope)||envelope.storageToken!==identity.token||envelope.inputSha256!==inputSha256||envelope.revision!==identity.revision||envelope.engineVersion!==EXECUTION_CONTRACT_VERSION||envelope.referenceSha256!==(referenceIdentity()?.sha256??referenceRelease.sha256))return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
   if(envelope.status==="pending"){
     if(!retryPending)return {status:"pending" as const,revision:identity.revision,inputSha256,storageToken:identity.token};
     await finishDerivedEvaluation(data,rows[0].id,envelope);
@@ -173,8 +175,8 @@ export async function caseExtras(data:CaseData){
     readDerivedEvaluation(data,identity,inputSha256),
   ]);
   const execution:CaseData["execution"]=usage&&usage.attempts>0?{model:AI_MODEL,attempts:usage.attempts,inputTokens:usage.inputTokens,outputTokens:usage.outputTokens,...(usage.startedAt?{startedAt:usage.startedAt}:{}),...(usage.completedAt?{completedAt:usage.completedAt}:{})}:data.execution;
-  const analyses=e.results.flatMap(x=>{try{const payload=JSON.parse(x.payload);if(x.type==="legal_advisory"&&payload?.calculatorExecution?.inputSha256!==calculatorInputSha256)return [];return [{...x,payload}];}catch{return [];}});
-  return {jobs:j,processingReadiness,execution,derivedEvaluation,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
+  const analyses=e.results.flatMap(x=>{try{const payload=JSON.parse(x.payload);if(x.type==="legal_advisory"&&(payload?.calculatorExecution?.inputSha256!==calculatorInputSha256||payload?.calculatorExecution?.referenceRelease?.sha256!==(referenceIdentity()?.sha256??referenceRelease.sha256)))return [];return [{...x,payload}];}catch{return [];}});
+  return {referenceSnapshot:currentReferenceSnapshot(),jobs:j,processingReadiness,execution,derivedEvaluation,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
 }
 export function errorResponse(error:unknown){
   const status=error instanceof HttpError?error.status:500;

@@ -1,0 +1,45 @@
+{
+  "type": "object",
+  "properties": {
+    "document_type": {
+      "type": "string",
+      "enum": [
+        "identity",
+        "family",
+        "business_registration",
+        "tax",
+        "bank_statement",
+        "debt_certificate",
+        "property",
+        "vehicle",
+        "salary",
+        "business_income",
+        "other_income",
+        "statement",
+        "unknown"
+      ]
+    },
+    "role": {
+      "type": "string",
+      "enum": [
+        "evidence",
+        "evaluation",
+        "administrative",
+        "unknown"
+      ]
+    },
+    "reason": {
+      "type": "string"
+    },
+    "readable": {
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "document_type",
+    "role",
+    "reason",
+    "readable"
+  ],
+  "additionalProperties": false
+}

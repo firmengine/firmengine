@@ -1,0 +1,1875 @@
+{
+  "schemaVersion": "legal-reference-parameters/1",
+  "parameters": [
+    {
+      "id": "param.national.ruleset.id",
+      "title": "전국 법률 적용 판본 식별자",
+      "category": "application_policy",
+      "value": "kr-personal-rehabilitation-national-2026-10-02",
+      "unit": "version",
+      "description": "사건별 적용 검토와 구판 경과규정 검토는 별도로 필요합니다.",
+      "sourceIds": [
+        "law-579",
+        "law-611"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+        "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276221"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.ruleset.effective_from",
+      "title": "전국 법률 판본 시행일",
+      "category": "statute",
+      "value": "2026-10-02",
+      "unit": "ISO-8601-date",
+      "description": "기존 판본의 시행일 메타정보를 이관했으며 개별 조문의 최근 개정일을 뜻하지 않습니다.",
+      "sourceIds": [
+        "law-579",
+        "law-611"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+        "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276221"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.debt_caps.secured_won",
+      "title": "담보부 채무 한도",
+      "category": "statute",
+      "value": "1500000000",
+      "unit": "KRW",
+      "description": "신청 기준일의 조사 완료·분류 검토를 거친 채무 합계와 비교합니다.",
+      "sourceIds": [
+        "law-579"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.debt_caps.unsecured_won",
+      "title": "그 밖의 채무 한도",
+      "category": "statute",
+      "value": "1000000000",
+      "unit": "KRW",
+      "description": "신청 기준일의 조사 완료·분류 검토를 거친 채무 합계와 비교합니다.",
+      "sourceIds": [
+        "law-579"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.debt_caps.comparison",
+      "title": "채무 한도 비교 연산자",
+      "category": "statute",
+      "value": "lte",
+      "unit": "comparison",
+      "description": "이하 비교이며 미만 비교와 구별합니다.",
+      "sourceIds": [
+        "law-579"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.term.ordinary_months",
+      "title": "원칙 변제기간 상한",
+      "category": "statute",
+      "value": 36,
+      "unit": "months",
+      "description": "원칙 상한입니다. 반드시 36개월을 채워야 한다는 의미가 아니며 단축은 해당 후보와 사건 검토를 따릅니다.",
+      "sourceIds": [
+        "law-611",
+        "directive-2026"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276221",
+        "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "symbol": "CONTEXT_PATCH_SCHEMA"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "symbol": "expandPaymentSchedule"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "symbol": "repaymentScheduleAnnex"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "symbol": "proposedInstallmentAnnex"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.term.exceptional_max_months",
+      "title": "특별사정 검토 시 변제기간 상한",
+      "category": "statute",
+      "value": 60,
+      "unit": "months",
+      "description": "연장 요건·특별사정 검토가 별도로 필요합니다. 일정·컨텍스트 검증도 같은 값을 읽습니다.",
+      "sourceIds": [
+        "law-611",
+        "directive-2026"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276221",
+        "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "CURRENT_RULESET"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "symbol": "CONTEXT_PATCH_SCHEMA"
+        },
+        {
+          "path": "lib/payment-schedule.ts",
+          "symbol": "expandPaymentSchedule"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "symbol": "repaymentScheduleAnnex"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "symbol": "proposedInstallmentAnnex"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.rule_version",
+      "title": "이의 최소변제 산식 판본",
+      "category": "statute",
+      "value": "law-21490-effective-2026-10-02",
+      "unit": "version",
+      "description": "기존 제614조 제2항 제3호 구현의 판본·출처를 이관했습니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.effective_from",
+      "title": "이의 최소변제 산식 지원 판본 시행일",
+      "category": "statute",
+      "value": "2026-10-02",
+      "unit": "ISO-8601-date",
+      "description": "기존 제614조 제2항 제3호 구현의 판본·출처를 이관했습니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.source_url",
+      "title": "이의 최소변제 원문 링크",
+      "category": "statute",
+      "value": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0614&lsiSeq=290631&urlMode=lsScJoRltInfoR",
+      "unit": "URL",
+      "description": "기존 제614조 제2항 제3호 구현의 판본·출처를 이관했습니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.clause",
+      "title": "이의 최소변제 조문",
+      "category": "statute",
+      "value": "채무자 회생 및 파산에 관한 법률 제614조 제2항 제3호",
+      "unit": "citation",
+      "description": "기존 제614조 제2항 제3호 구현의 판본·출처를 이관했습니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.source_text",
+      "title": "이의 최소변제 인용 원문",
+      "category": "statute",
+      "value": "3. 변제계획의 인가결정일을 기준일로 하여 평가한 개인회생채권에 대한 총변제액이 3천만원을 초과하지 아니하는 범위 안에서 다음 각목의 금액보다 적지 아니할 것. 가. 변제계획의 인가결정일을 기준일로 하여 평가한 개인회생채권의 총금액이 5천만원 미만인 경우에는 위 총금액에 100분의 5를 곱한 금액. 나. 변제계획의 인가결정일을 기준일로 하여 평가한 개인회생채권의 총금액이 5천만원 이상인 경우에는 위 총금액에 100분의 3을 곱한 금액에 1백만원을 더한 금액.",
+      "unit": "source_text",
+      "description": "기존 제614조 제2항 제3호 구현의 판본·출처를 이관했습니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.branch_threshold_won",
+      "title": "이의 최소변제 분기 채권 현재가치",
+      "category": "statute",
+      "value": "50000000",
+      "unit": "KRW",
+      "description": "min(상한, C<분기금액 ? C×낮은비율 : C×높은비율+가산액). 채권 PV와 계획 PV를 각각 검토하며 상한은 총변제액의 상한이 아닙니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.low_rate",
+      "title": "분기 기준 미만의 최소변제 비율",
+      "category": "statute",
+      "value": {
+        "numerator": 5,
+        "denominator": 100
+      },
+      "unit": "rational",
+      "description": "min(상한, C<분기금액 ? C×낮은비율 : C×높은비율+가산액). 채권 PV와 계획 PV를 각각 검토하며 상한은 총변제액의 상한이 아닙니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.high_rate",
+      "title": "분기 기준 이상 최소변제 비율",
+      "category": "statute",
+      "value": {
+        "numerator": 3,
+        "denominator": 100
+      },
+      "unit": "rational",
+      "description": "min(상한, C<분기금액 ? C×낮은비율 : C×높은비율+가산액). 채권 PV와 계획 PV를 각각 검토하며 상한은 총변제액의 상한이 아닙니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.high_add_won",
+      "title": "분기 기준 이상 최소변제 가산액",
+      "category": "statute",
+      "value": "1000000",
+      "unit": "KRW",
+      "description": "min(상한, C<분기금액 ? C×낮은비율 : C×높은비율+가산액). 채권 PV와 계획 PV를 각각 검토하며 상한은 총변제액의 상한이 아닙니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.national.objection_minimum.minimum_cap_won",
+      "title": "계산한 최소변제액 상한",
+      "category": "statute",
+      "value": "30000000",
+      "unit": "KRW",
+      "description": "min(상한, C<분기금액 ? C×낮은비율 : C×높은비율+가산액). 채권 PV와 계획 PV를 각각 검토하며 상한은 총변제액의 상한이 아닙니다.",
+      "sourceIds": [
+        "law-614"
+      ],
+      "sourceUrls": [
+        "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1032273771"
+      ],
+      "effectiveFrom": "2026-10-02",
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.court_id",
+      "title": "단축기간 준칙 적용 법원",
+      "category": "court_practice",
+      "value": "seoul",
+      "unit": "court_id",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.effective_from",
+      "title": "단축기간 지원 준칙의 최초 신청일 기준",
+      "category": "court_practice",
+      "value": "2026-10-01",
+      "unit": "ISO-8601-date",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.senior_age_min",
+      "title": "고령 후보 연령 하한",
+      "category": "court_practice",
+      "value": 65,
+      "unit": "years",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.youth_age_exclusive_max",
+      "title": "청년 후보 연령 미만 기준",
+      "category": "court_practice",
+      "value": 30,
+      "unit": "years",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.total_debt_max_won",
+      "title": "취약채무자 경로 채무총액 상한",
+      "category": "court_practice",
+      "value": "50000000",
+      "unit": "KRW",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.wage_history_years",
+      "title": "최저임금 미만 급여의 검토기간",
+      "category": "court_practice",
+      "value": 2,
+      "unit": "years",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.recent_debt_years",
+      "title": "최근 채무 부재 검토기간",
+      "category": "court_practice",
+      "value": 1,
+      "unit": "years",
+      "description": "서울 준칙 제424호의 검토 후보에 사용합니다. 법원의 단축 승인이나 자동 24개월 결론을 만들지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.category_predicates",
+      "title": "단축 후보의 법률특정 사실·필수 증명",
+      "category": "court_practice",
+      "value": [
+        {
+          "id": "statutory_severe_disability",
+          "key": "legal.seoul424.statutory_severe_disability",
+          "article": "§424 제2조 제2항 제2호",
+          "requiredProof": "장애인복지법 제2조상 장애인 및 장애 정도가 심한 장애인에 대한 공식 증명 + 법률검토"
+        },
+        {
+          "id": "raising_two_or_more_minor_children",
+          "key": "legal.seoul424.raising_two_or_more_minor_children",
+          "article": "§424 제2조 제2항 제4호",
+          "requiredProof": "신청인이 2명 이상의 미성년 자녀를 실제 양육한다는 증명 + 법률검토"
+        },
+        {
+          "id": "statutory_single_parent",
+          "key": "legal.seoul424.statutory_single_parent",
+          "article": "§424 제2조 제2항 제5호",
+          "requiredProof": "한부모가족지원법상 한부모가족의 부 또는 모에 해당한다는 공식 증명 + 법률검토"
+        },
+        {
+          "id": "qualifying_article14_rental_fraud_causing_insolvency",
+          "key": "legal.seoul424.qualifying_article14_rental_fraud_causing_insolvency",
+          "article": "§424 제2조 제2항 제6호",
+          "requiredProof": "특별법 제14조에 따라 제2조 제4호 피해자등으로 결정된 사실과 전세사기로 인한 지급불능 또는 그 염려의 인과관계에 대한 증명 + 법률검토"
+        }
+      ],
+      "unit": "reviewed_predicates",
+      "description": "각 항목은 source-verified·legally-accepted 신청인 사실의 명시적 참/거짓을 읽습니다. 일반 장애·자녀수 등 간접자료를 자동 법적 해당으로 승격하지 않습니다. 기존 두 자녀 이상 의미는 필드 키에도 포함돼 있으므로 기준 변경 시 피처 계약도 함께 개정해야 합니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "categoryRoutes"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.source_url",
+      "title": "단축기간 준칙 원문",
+      "category": "court_practice",
+      "value": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2",
+      "unit": "URL",
+      "description": "",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.living.court_id",
+      "title": "생계비 후보의 지원 법원",
+      "category": "court_practice",
+      "value": "seoul",
+      "unit": "court_id",
+      "description": "현재 구현된 법원 범위이며 다른 관할의 적용을 추정하지 않습니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/living-cost-proposal.ts",
+          "symbol": "proposeLivingCost"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.living.baseline_ratio",
+      "title": "중위소득 대비 기본생계비 후보 비율",
+      "category": "court_practice",
+      "value": {
+        "numerator": 3,
+        "denominator": 5
+      },
+      "unit": "rational",
+      "description": "정확분수를 보존하는 계산 후보입니다. 가구·추가비용·법원의 인정과 구분합니다.",
+      "sourceIds": [
+        "seoul-practice-2026",
+        "directive-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2",
+        "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651"
+      ],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/living-cost-proposal.ts",
+          "symbol": "proposeLivingCost"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.living.median_income_tables",
+      "title": "연도·가구별 기준중위소득 표",
+      "category": "court_practice",
+      "value": {
+        "2024": [
+          "2228445",
+          "3682609",
+          "4714657",
+          "5729913",
+          "6695735",
+          "7618369",
+          "8514994"
+        ],
+        "2025": [
+          "2392013",
+          "3932658",
+          "5025353",
+          "6097773",
+          "7108192",
+          "8064805",
+          "8988428"
+        ],
+        "2026": [
+          "2564238",
+          "4199292",
+          "5359036",
+          "6494738",
+          "7556719",
+          "8555952",
+          "9515150"
+        ],
+        "2027": [
+          "2736042",
+          "4480645",
+          "5718091",
+          "6929885",
+          "8063019",
+          "9129201",
+          "10152665"
+        ]
+      },
+      "unit": "KRW/month",
+      "description": "기존 구현의 2024–2027년 1–7인 표를 그대로 이관. legal-catalog의 baseline_living_table 미검증 메타정보와 충돌이 있어 새 공식 원문 재검증 전 unverified로 유지합니다. 배열 인덱스+1이 가구원 수입니다.",
+      "sourceIds": [
+        "mohw-median-income"
+      ],
+      "sourceUrls": [
+        "https://www.mohw.go.kr/menu.es?mid=a10708010900"
+      ],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "unverified",
+      "consumers": [
+        {
+          "path": "lib/living-cost-proposal.ts",
+          "symbol": "proposeLivingCost"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.living.median_income_source_url",
+      "title": "기준중위소득 공식 출처 링크",
+      "category": "court_practice",
+      "value": "https://www.mohw.go.kr/menu.es?mid=a10708010900",
+      "unit": "URL",
+      "description": "",
+      "sourceIds": [
+        "mohw-median-income"
+      ],
+      "sourceUrls": [
+        "https://www.mohw.go.kr/menu.es?mid=a10708010900"
+      ],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/living-cost-proposal.ts",
+          "symbol": "proposeLivingCost"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.living.practice_source_url",
+      "title": "기본생계비 준칙 출처 링크",
+      "category": "court_practice",
+      "value": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2",
+      "unit": "URL",
+      "description": "",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/living-cost-proposal.ts",
+          "symbol": "proposeLivingCost"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.living.supplementary",
+      "title": "서울 추가생계비·부양 검토표",
+      "category": "court_practice",
+      "value": {
+        "source_id": "seoul-living-2026",
+        "effective_from": "2026-01-01",
+        "court": "서울회생법원",
+        "currency": "KRW",
+        "values_are": "source_verified_numbers_not_automatically_recognized_expenses",
+        "baseline_living_table": null,
+        "baseline_table_note": "완전한 2026 중위소득 표를 법령·법원 출처에서 확보하지 못했으므로 runtime livingCostTable 미제공.",
+        "embedded_housing": {
+          "1": "273861",
+          "2": "448484",
+          "3": "572345",
+          "4": "693638"
+        },
+        "additional_housing_cap": {
+          "seoul": {
+            "1": "589208",
+            "2": "982013",
+            "3": "1253955",
+            "4": "1510789"
+          },
+          "overconcentration_ex_seoul_sejong_yongin_hwaseong": {
+            "1": "430122",
+            "2": "716869",
+            "3": "915387",
+            "4": "1102876"
+          },
+          "metro_ex_overconcentration_and_county_ansan_gimpo_gwangju_paju": {
+            "1": "229791",
+            "2": "382985",
+            "3": "489042",
+            "4": "589208"
+          },
+          "other": {
+            "1": "176762",
+            "2": "294604",
+            "3": "376186",
+            "4": "453237"
+          }
+        },
+        "region_mapping_requires_review": true,
+        "embedded_medical": {
+          "1": "64619",
+          "2": "105822",
+          "3": "135048",
+          "4": "163667"
+        },
+        "education": {
+          "embeddedPerChildWon": "89627",
+          "ordinaryAdditionalCapPerChildWon": "200000",
+          "specialAdditionalCapPerChildWon": "500000",
+          "specialExceptionAboveCapPossible": true
+        },
+        "household_sizes_above_4": "not_verified_no_extrapolation",
+        "dependents": {
+          "priorYearIncomeWon": "1000000",
+          "wageOnlyPriorYearGrossWon": "5000000",
+          "adultChildAgeExclusiveUpperBound": 21
+        },
+        "other_living": {
+          "incomeMedianRatioExclusiveFloor": "1.5",
+          "candidateMedianRatioCap": "1.0",
+          "repaymentRatioReviewBelow": "0.4",
+          "last6MonthDebtRatioReviewAbove": "0.5"
+        }
+      },
+      "unit": "structured_table",
+      "description": "기존 출처검증 표의 수치·지역·가구수 범위와 미검증 메타정보를 보존합니다. 비용의 사건별 인정은 별도입니다.",
+      "sourceIds": [
+        "seoul-living-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=41&pageIndex=1&searchWord=&seqnum=19158"
+      ],
+      "effectiveFrom": "2026-01-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-rules.ts",
+          "symbol": "SEOUL_LIVING_PARAMETERS"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.policy.transaction.outflow_threshold_won",
+      "title": "출금·이체 사용처 업무 검토 기준금액",
+      "category": "application_policy",
+      "value": "500000",
+      "unit": "KRW",
+      "description": "법정 한도·부인권·불성실·개시 기각 기준이 아닙니다. threshold 이상 출금이면 사용처 증명 및 검토를 요구합니다.",
+      "sourceIds": [
+        "POLICY-OUTFLOW-500K"
+      ],
+      "sourceUrls": [
+        "https://github.com/firmengine/firmengine"
+      ],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/transaction-review.ts",
+          "symbol": "scanTransactions"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.policy.arithmetic.maximum_period_months",
+      "title": "산술 입력의 최대 개월수",
+      "category": "arithmetic_policy",
+      "value": 1200,
+      "unit": "months",
+      "description": "법정 변제기간이 아니라 비정상 계산 입력을 차단하는 구현상 안전범위입니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "monthlyIncome"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.policy.arithmetic.share_basis_points",
+      "title": "소유지분 표시 분모",
+      "category": "arithmetic_policy",
+      "value": 10000,
+      "unit": "basis_points",
+      "description": "지분 산술 표현단위입니다. 법률상 보호비율·면제비율이 아닙니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "liquidationContribution"
+        },
+        {
+          "path": "lib/workflow-rules.ts",
+          "symbol": "fieldResult"
+        },
+        {
+          "path": "lib/form-mapping.ts",
+          "symbol": "buildFormBindings"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.income_monthly",
+      "title": "월평균 소득",
+      "category": "arithmetic_policy",
+      "value": "기간 순소득 ÷ 명시적 개월수 (1원 미만 내림)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "monthlyIncome"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.income_gross_less_expenses",
+      "title": "총수입·비용으로 월평균 환산",
+      "category": "arithmetic_policy",
+      "value": "(기간 총수입 − 같은 기간 필요경비) ÷ 명시적 개월수 (1원 미만 내림)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "monthlyIncome"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.income_calendar_months",
+      "title": "완전한 달력월로 기간 환산",
+      "category": "arithmetic_policy",
+      "value": "기간 합계 ÷ 완전한 달력월 수 자동유도 (1원 미만 내림)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "monthlyIncome"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.income_aggregation",
+      "title": "동일 소득원 비중복 기간 통합",
+      "category": "arithmetic_policy",
+      "value": "동일 payer·소득유형의 비중복 관측기간 금액을 기간가중 평균 (독립 소득원은 분리 합산)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.debt_total",
+      "title": "원문 행의 원금·이자 합계",
+      "category": "arithmetic_policy",
+      "value": "원금 + 이자; 별도 비용·출처 합계는 같은 원문 행에서 대조하고 비용을 원금·이자에 자동 합산하지 않음",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.asset_liquidation",
+      "title": "재산별 청산기여액",
+      "category": "arithmetic_policy",
+      "value": "max(0, 평가액 × 소유지분 − 신청인 지분 귀속 담보상환액 − 처분비용 − 검토 면제액)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.ordinary_budget",
+      "title": "일반채권 월 변제예산",
+      "category": "arithmetic_policy",
+      "value": "가용소득 − 회생위원 보수 − 별도 우선채권 변제액 − 재단채권 변제액",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.disposable_income",
+      "title": "월 가용소득",
+      "category": "arithmetic_policy",
+      "value": "세금·사회보험·필요 사업비용 차감 후 월평균 순소득 − 인정 생계비 (공제 중복 금지)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.formula.liquidation_comparison",
+      "title": "현재가치와 청산가치 비교",
+      "category": "arithmetic_policy",
+      "value": "검토된 변제액 현재가치 ≥ 청산가치 (명목 총변제액과 구별)",
+      "unit": "compiled_formula_description",
+      "description": "실행 산술은 코드 함수이며 이 행은 산식 설명과 연결 메타정보입니다. 설명 문자열을 바꾸어 임의 코드를 실행하지 않습니다. 산술 알고리즘 변경은 코드·회귀검토를 함께 수행해야 합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.income_identity",
+      "title": "소득원 식별·중복·기간 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "source-backed payer identity; same fact versions or exact source row only for dedup; names/masked IDs are not identity; reviewed independent/component/duplicate treatment; partial window or overlapping unreviewed data stays unresolved",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/income-resolution.ts",
+          "symbol": "resolveIncomeRows"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "aggregateIncomeObservations"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.debt_identity",
+      "title": "채무 식별·총액·비용 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "complete issuer+contract or exact current fact versions for dedup; principal+interest; same-row total conflict or nonzero separate costs blocks aggregate; missing interest != 0",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/debt-resolution.ts",
+          "symbol": "resolveDebtRows"
+        },
+        {
+          "path": "lib/debt-source-integrity.ts",
+          "symbol": "createDebtSourceIntegrityResolver"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.asset_identity",
+      "title": "재산 동일성·귀속 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "issuer+policy+owner or VIN/registration+owner or bank+account+owner; exact observations only; historical ownership, conflicting owners or weak labels block final liquidation",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/asset-resolution.ts",
+          "symbol": "resolveAssetRows"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "liquidationContribution"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.debt_cap",
+      "title": "채무한도 산입 조건",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "complete debt inventory AND application-date balance AND reviewed secured/classification/guarantee scope; accepted exclusion requires reason; underlying+guarantee overlap unresolved => unknown",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.asset_liquidation",
+      "title": "청산기여액 입력·산술 조건",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "ceil(gross*ownership/shareDenominator)-applicant-interest payoff-disposal costs-protected amount; floor zero; shared collateral requires source-backed scope; valuation date/basis required",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "liquidationContribution"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.ordinary_budget",
+      "title": "가용소득·일반채권 예산 구분",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "disposable=netIncome-recognizedLiving; ordinary=disposable-trustee-priority-estate; explicit invalid payment never replaced by computed fallback; ordinary<=0 precheck failure",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.allocation",
+      "title": "원금·이자 배분 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "reviewed ordinary unsecured ordinary-priority debts; principal pro rata then interest or principal only; largest remainder with ID tie break; cap at claims; conserve plan total",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "allocateProRata"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.present_value",
+      "title": "현재가치 별도 검토 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "explicit reviewed PV with valuation basis; nominal total never substitutes PV; incomparable asset date => unknown; reviewed PV>=liquidation",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.objection",
+      "title": "이의 사건의 별도 요건",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "source-backed creditor and commissioner objection; separate reviewed claim PV and plan PV; committed disposable income for whole term; individual objector bankruptcy distribution currently unknown",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        },
+        {
+          "path": "lib/objection-minimum.ts",
+          "symbol": "evaluateObjectionMinimum"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.shortened_term",
+      "title": "단축기간 사건 검토 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "scope and date gate; category 1..6 OR all category7 evidence; unknown never false; accepted exact applicant facts and current age; reviewed months+release+basis fingerprint; no automatic 24 months",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "evaluateSeoul424"
+        },
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        },
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.schedule",
+      "title": "변제일정 정합 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "explicit contiguous installments from1; no duplicate creditors; allocation<=phase budget; current exceptional-month maximum; explicit valid dates and monthly contiguous phases; totals conserved",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/payment-schedule.ts",
+          "symbol": "expandPaymentSchedule"
+        },
+        {
+          "path": "lib/context-validation.ts",
+          "symbol": "parseContextPatch"
+        },
+        {
+          "path": "lib/document-annexes.ts",
+          "symbol": "repaymentScheduleAnnex"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.disposal",
+      "title": "처분대금 보존 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "net=sale-payoff-costs; successorCash=max(net,0); shortfall=max(-net,0); sale+shortfall=payoff+costs+cash; not disposal authorization",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "calculateDisposal"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.finalization",
+      "title": "미확정·합성·최종작성 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "unknown and conflict preserved; every trace finalized; reviewed sources and legal acceptance distinct; synthetic data draft only; no judicial outcome prediction",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/assessment.ts",
+          "symbol": "assessCase"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.compiled_policy.transaction_review",
+      "title": "거래 검토·이체·합계 규약",
+      "category": "application_policy",
+      "value": {
+        "language": "reviewable_pseudocode_v1",
+        "expression": "outflow>=configured business threshold => purpose evidence; same date+amount between distinct confirmed own accounts only transfer candidate; ambiguous candidates conflict; no automatic income/expense classification or transfer exclusion",
+        "execution": "compiled_code",
+        "evaluationStatus": "inherited_implementation_not_new_legal_verification",
+        "metadataOnly": true
+      },
+      "unit": "compiled_condition",
+      "description": "실제 실행 함수에 연결한 조건 기록입니다. 데이터 설명만 편집해 실행 의미를 바꾸지 않으며, 조건 알고리즘 개정은 코드 검토·테스트를 요구합니다.",
+      "sourceIds": [],
+      "sourceUrls": [],
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "courtIds": [],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/transaction-review.ts",
+          "symbol": "scanTransactions"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.wage_history_fact_contract",
+      "title": "급여기간 증거 필드의 의미 계약",
+      "category": "court_practice",
+      "value": {
+        "key": "vulnerable.wageHistory",
+        "minimumWageVersionKey": "vulnerable.minimumWageVersion",
+        "periodYears": 2,
+        "wholePeriodField": "wholeTwoYearBelowMinimum"
+      },
+      "unit": "evidence_contract",
+      "description": "기준기간을 변경할 때 기존 1년/2년 의미의 사실을 새 기간의 증거로 재사용하지 않습니다. 기간 및 실제 원문 사실 키의 계약도 함께 검토해야 합니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        },
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "wageCriterion"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    },
+    {
+      "id": "param.seoul.shortened_term.recent_debt_fact_contract",
+      "title": "최근 채무 증거 필드의 기간 계약",
+      "category": "court_practice",
+      "value": {
+        "key": "debts.lastYearDebt",
+        "periodYears": 1
+      },
+      "unit": "evidence_contract",
+      "description": "기준기간을 변경할 때 기존 1년/2년 의미의 사실을 새 기간의 증거로 재사용하지 않습니다. 기간 및 실제 원문 사실 키의 계약도 함께 검토해야 합니다.",
+      "sourceIds": [
+        "seoul-practice-2026"
+      ],
+      "sourceUrls": [
+        "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=2"
+      ],
+      "effectiveFrom": "2026-10-01",
+      "effectiveTo": null,
+      "courtIds": [
+        "seoul"
+      ],
+      "verification": "inherited",
+      "consumers": [
+        {
+          "path": "lib/legal-proposals.ts",
+          "symbol": "buildLegalProposals"
+        },
+        {
+          "path": "lib/seoul424-candidate.ts",
+          "symbol": "wageCriterion"
+        }
+      ],
+      "changePolicy": "human_review_required"
+    }
+  ]
+}

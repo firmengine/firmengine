@@ -23,7 +23,12 @@ class SourceExportTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory); destination = root / "export"; destination.mkdir()
             external = root / "external"; external.write_text("untouched")
-            (destination / "SOURCE_MANIFEST.json").symlink_to(external)
+            try:
+                (destination / "SOURCE_MANIFEST.json").symlink_to(external)
+            except OSError as error:
+                if getattr(error, "winerror", None) == 1314:
+                    self.skipTest("Windows symlink privilege is unavailable")
+                raise
             with self.assertRaises(SystemExit): exporter.validate_manifest(destination / "SOURCE_MANIFEST.json", destination)
             (destination / "lib").symlink_to(root, target_is_directory=True)
             with self.assertRaises(SystemExit): exporter.contained_target(destination, "lib/external")

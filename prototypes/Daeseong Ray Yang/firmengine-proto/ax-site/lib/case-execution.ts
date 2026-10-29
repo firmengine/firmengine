@@ -1,3 +1,4 @@
+import { renderPromptPolicy } from "./reference-prompts.ts";
 import { assessCase, type Assessment } from "./assessment.ts";
 import { currentFacts, requiredKindsForCase, type CaseData, type ArtifactKind } from "./domain.ts";
 import { evaluateWorkflow, WORKFLOW_RULES } from "./workflow-rules.ts";
@@ -95,6 +96,6 @@ export function agentExecutionContext(result:ReturnType<typeof executeCaseNodes>
     calculations:result.plan.calculationTasks.map(c=>({id:c.id,executor:c.executor,inputs:c.inputs,outputs:c.outputs,decisionBoundary:c.decisionBoundary})),
     values:Object.fromEntries(Object.entries(result.assessment.calculation).filter(([,value])=>value===null||typeof value!=="object")),
     traceCoverage:{total:result.assessment.calculation.traces.length,provided:0,readTool:"calculate_case"},
-    instruction:"수치는 계산 도구 결과를 재사용한다. 모델이 수치를 재계산하거나 빈값을 보충하거나 법적 인정을 생성하지 않는다.",
+    instruction:renderPromptPolicy("prompt.case_execution.agent_execution_context.instruction.instruction"),
     complete:false,courtApprovalInferred:false};
 }

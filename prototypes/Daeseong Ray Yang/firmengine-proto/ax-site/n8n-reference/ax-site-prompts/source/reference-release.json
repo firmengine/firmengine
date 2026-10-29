@@ -1,0 +1,38 @@
+{
+  "id": "firmengine-reference-2026-10-29.1",
+  "revision": 1,
+  "sha256": "f9d6506bad0d31bda5d6bd0416767bd4da99d499265c004f60ff58a2ca1e8c06",
+  "baselineCommit": "df0ccfc011854d05117b335ce8474f065e8545f5",
+  "additionalBaselineCommits": [
+    "f56935395bd2a07e7f453e076b838bfa515e9f35",
+    "683981f9449a7b6f427ea1e2d7672b4f8516927d"
+  ],
+  "recordCount": 12795,
+  "byKind": {
+    "agent_contract": 10,
+    "application_policy": 5,
+    "calculation": 18,
+    "catalog_metadata": 39,
+    "code_criterion": 10657,
+    "document_family": 96,
+    "document_rule": 34,
+    "exception": 46,
+    "field_contract": 1048,
+    "form": 18,
+    "intake_document": 74,
+    "intake_feature": 49,
+    "intake_rule": 54,
+    "intake_source": 11,
+    "legacy_vocabulary": 150,
+    "legal_rule": 50,
+    "monitor_source": 70,
+    "parameter": 60,
+    "prompt": 87,
+    "risk": 95,
+    "source": 32,
+    "workflow": 46,
+    "workflow_calculation": 46
+  },
+  "sourceFileCount": 427,
+  "scope": "All tracked application source/catalog/prompt/criteria; private oracle, heldout, credentials and dependencies are not legal sources. AST criteria are indexed compiled guards, not editable legal parameters."
+}

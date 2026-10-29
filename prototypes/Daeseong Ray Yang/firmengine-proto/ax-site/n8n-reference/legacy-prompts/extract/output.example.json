@@ -1,0 +1,25 @@
+{
+  "facts": [
+    {
+      "key": "annual_business_income",
+      "entity": "합성상점",
+      "value": "12345000",
+      "unit": "KRW",
+      "period": "2025",
+      "document_id": "synthetic-document",
+      "page": 6,
+      "quote": "합성상점 2025년 사업소득금액 12,345,000원",
+      "confidence": "high"
+    }
+  ],
+  "warnings": [],
+  "pages": [
+    {
+      "document_id": "synthetic-document",
+      "page": 6,
+      "title": "합성 소득금액증명",
+      "kind": "tax_certificate",
+      "transcript": "합성 소득금액증명\n상호: 합성상점\n귀속연도: 2025년\n합성상점 2025년 사업소득금액 12,345,000원"
+    }
+  ]
+}

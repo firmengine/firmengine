@@ -62,3 +62,6 @@ __pycache__/
 *.zip
 !public/templates/*.docx
 /public/pdf.worker.min.mjs
+
+# Local evaluator tied to private source fixtures.
+/scripts/run-sample-evaluation.py

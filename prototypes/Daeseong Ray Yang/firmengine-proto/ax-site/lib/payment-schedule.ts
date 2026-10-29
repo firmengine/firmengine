@@ -1,3 +1,4 @@
+import { maximumPlanMonths } from "./reference-parameters.ts";
 /** Explicit reviewer-managed phase/creditor allocation schedule. No dates/counts inferred. */
 export type CreditorPhaseAllocation={creditorId:string;principalWon:string;interestWon:string};
 export type Phase={id:string;firstInstallment:number;lastInstallment:number;firstPaymentDate?:string;monthlyAvailableWon:string;allocations:CreditorPhaseAllocation[]};
@@ -17,7 +18,7 @@ export function expandPaymentSchedule(phases:Phase[],expectedInstallments?:numbe
   if(!nat(p.monthlyAvailableWon)){issues.push("INVALID_PHASE_BUDGET");break;}
   if(p.allocations.some(a=>!a.creditorId||!nat(a.principalWon)||!nat(a.interestWon))){issues.push("INVALID_PHASE_CREDITOR_AMOUNT");break;}
   const monthlyAllocated=p.allocations.reduce((n,a)=>n+BigInt(a.principalWon)+BigInt(a.interestWon),0n);if(monthlyAllocated>BigInt(p.monthlyAvailableWon)){issues.push("PHASE_ALLOCATION_EXCEEDS_MONTHLY_BUDGET");break;}
-  if(p.lastInstallment>60){issues.push("INSTALLMENT_LIMIT_EXCEEDED");break;}
+  if(p.lastInstallment>maximumPlanMonths()){issues.push("INSTALLMENT_LIMIT_EXCEEDED");break;}
   if(!p.firstPaymentDate){issues.push("FIRST_PAYMENT_DATE_UNKNOWN");break;}if(!dateParts(p.firstPaymentDate)){issues.push("INVALID_FIRST_PAYMENT_DATE");break;}
   if(phaseIndex>0){const previous=ordered[phaseIndex-1];if(previous.firstPaymentDate){const expected=addMonths(previous.firstPaymentDate,previous.lastInstallment-previous.firstInstallment+1);if(expected&&expected!==p.firstPaymentDate){issues.push("PHASE_PAYMENT_DATES_NOT_CONTIGUOUS");break;}}}
   const principal=p.allocations.reduce((n,a)=>n+BigInt(a.principalWon),0n),interest=p.allocations.reduce((n,a)=>n+BigInt(a.interestWon),0n),count=p.lastInstallment-p.firstInstallment+1;

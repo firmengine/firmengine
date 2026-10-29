@@ -1,3 +1,4 @@
+import { maximumPlanMonths } from "./reference-parameters.ts";
 /** Source-backed annex rows; facts remain separate from reviewed legal aggregates. */
 import { createCaseReadIndex, currentFacts, factSourceLineageIssues, moneyValue, validSourceRef, DRAFT_RULESET } from "./domain.ts";
 import type { CaseData, CaseReadIndex, Fact } from "./domain.ts";
@@ -39,7 +40,7 @@ export function repaymentScheduleAnnex(phases:Phase[],expectedInstallments?:numb
   const ordered=[...phases].sort((a,b)=>a.firstInstallment-b.firstInstallment);
   let next=1;
   const fallbackSafe=dateOnlyIssue&&ordered.length>0&&new Set(ordered.map(p=>p.id)).size===ordered.length&&ordered.every(p=>{
-    if(!Number.isInteger(p.firstInstallment)||!Number.isInteger(p.lastInstallment)||p.firstInstallment!==next||p.lastInstallment<p.firstInstallment||p.lastInstallment>60||!/^\d+$/.test(p.monthlyAvailableWon)||!p.allocations.length||new Set(p.allocations.map(a=>a.creditorId)).size!==p.allocations.length||p.allocations.some(a=>!a.creditorId||!/^\d+$/.test(a.principalWon)||!/^\d+$/.test(a.interestWon)))return false;
+    if(!Number.isInteger(p.firstInstallment)||!Number.isInteger(p.lastInstallment)||p.firstInstallment!==next||p.lastInstallment<p.firstInstallment||p.lastInstallment>maximumPlanMonths()||!/^\d+$/.test(p.monthlyAvailableWon)||!p.allocations.length||new Set(p.allocations.map(a=>a.creditorId)).size!==p.allocations.length||p.allocations.some(a=>!a.creditorId||!/^\d+$/.test(a.principalWon)||!/^\d+$/.test(a.interestWon)))return false;
     const allocated=p.allocations.reduce((sum,a)=>sum+BigInt(a.principalWon)+BigInt(a.interestWon),0n);
     if(allocated>BigInt(p.monthlyAvailableWon))return false;
     next=p.lastInstallment+1;return true;
@@ -64,14 +65,14 @@ export function proposedInstallmentAnnex(data:CaseData,calculation:CalculationRe
   const currentCalculation=calculateCase(data,DRAFT_RULESET,index);
   const allocationFingerprint=(rows:CalculationResult["allocations"])=>JSON.stringify(rows.map(row=>[row.debtId,row.creditor,row.allocatedPrincipalWon,row.allocatedInterestWon,[...row.factIds].sort(),row.basis,row.status]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))));
   if(calculation.computedBy!=="deterministic-bigint"||calculation.planTotalWon!==currentCalculation.planTotalWon||calculation.monthlyPaymentWon!==currentCalculation.monthlyPaymentWon||allocationFingerprint(calculation.allocations)!==allocationFingerprint(currentCalculation.allocations))reasons.push("CALCULATION_INPUTS_NOT_CURRENT");
-  if(!Number.isSafeInteger(months)||months!<1||months!>60)reasons.push("EXPLICIT_PLAN_TERM_REQUIRED");
+  if(!Number.isSafeInteger(months)||months!<1||months!>maximumPlanMonths())reasons.push("EXPLICIT_PLAN_TERM_REQUIRED");
   if(payment===null||payment<=0n)reasons.push("EXPLICIT_POSITIVE_MONTHLY_PAYMENT_REQUIRED");
   if(!["principal_then_interest_pro_rata","principal_only_pro_rata"].includes(context.allocationBasis??""))reasons.push("EXPLICIT_ALLOCATION_BASIS_REQUIRED");
   if(context.inventoryComplete.debt!=="yes")reasons.push("COMPLETE_DEBT_INVENTORY_REQUIRED");
   if(data.debts.some(debt=>debt.classification!=="ordinary"||debt.secured!=="no"||debt.priority!=="ordinary"||debt.excludedByReview))reasons.push("SEPARATE_CLAIM_ALLOCATION_REQUIRED");
   const manual=context.paymentSchedule?.phases?.length;
   if(manual)reasons.push("MANUAL_SCHEDULE_PRESERVED");
-  const n=Number.isSafeInteger(months)&&months!>0&&months!<=60?months!:0;
+  const n=Number.isSafeInteger(months)&&months!>0&&months!<=maximumPlanMonths()?months!:0;
   const planned=payment!==null&&payment>=0n&&n?payment*BigInt(n):null;
   if(planned===null||calculation.planTotalWon===null||calculation.planTotalWon!==planned.toString())reasons.push("EXPLICIT_PLAN_TOTAL_RECONCILIATION_REQUIRED");
   const resolvedDebts=resolveDebtRows(data,index).rows;

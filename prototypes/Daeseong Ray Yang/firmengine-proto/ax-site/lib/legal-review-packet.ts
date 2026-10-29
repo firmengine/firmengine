@@ -1,9 +1,10 @@
+import { readPromptPolicyInteger } from "./reference-prompts.ts";
 import type { CaseData, Fact, RuleSet } from "./domain.ts";
 import type { Finding } from "./assessment.ts";
 
-export const LEGAL_REVIEW_BATCH_SIZE=6;
-export const LEGAL_REVIEW_PACKET_CHAR_BUDGET=80_000;
-const MAX_FACTS=160,MAX_FACTS_PER_FEATURE=5,MAX_FACTS_PER_CHECK=28,MAX_FINDINGS=24;
+export const LEGAL_REVIEW_BATCH_SIZE=readPromptPolicyInteger("prompt.legal_review_packet.legal_review_batch_size");
+export const LEGAL_REVIEW_PACKET_CHAR_BUDGET=readPromptPolicyInteger("prompt.legal_review_packet.legal_review_packet_char_budget");
+const MAX_FACTS=readPromptPolicyInteger("prompt.legal_review_packet.max_facts"),MAX_FACTS_PER_FEATURE=readPromptPolicyInteger("prompt.legal_review_packet.max_facts_per_feature"),MAX_FACTS_PER_CHECK=readPromptPolicyInteger("prompt.legal_review_packet.max_facts_per_check"),MAX_FINDINGS=readPromptPolicyInteger("prompt.legal_review_packet.max_findings");
 export interface LegalReviewRisk {id:string;title:string;conditions:string;features:string[];request:string;legalRuleIds:string[];manual:boolean}
 export interface LegalReviewPacketInput {data:CaseData;facts:Fact[];checks:LegalReviewRisk[];rules:any[];guidance:any[];findings:Finding[];transactionReview:any;executionContext?:unknown}
 export interface LegalReviewPacket {payload:Record<string,any>;text:string;providedFactIds:string[];coverage:Record<string,any>}

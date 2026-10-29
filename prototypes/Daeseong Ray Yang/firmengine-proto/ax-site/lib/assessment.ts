@@ -1,3 +1,5 @@
+import { maximumCalculationMonths, referenceFormula, referenceParameter, shareBasisPoints } from "./reference-parameters.ts";
+import { referenceIdentity } from "./reference-runtime.ts";
 import { resolveDebtRows } from "./debt-resolution.ts";
 import { resolveIncomeRows } from "./income-resolution.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
@@ -8,7 +10,6 @@ import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-prop
 
 const ZERO = BigInt(0);
 const ONE = BigInt(1);
-const BPS = BigInt(10000);
 
 export interface CalculationTrace {
   id: string;
@@ -123,9 +124,9 @@ export function monthlyIncome(source: IncomeSource): { value: bigint | null; rea
   const reasons: string[] = [];
   const gross = moneyValue(source.gross), expenses = nonnegative(source.expenses), net = moneyValue(source.net);
   let amount = net;
-  let formula = "기간 순소득 ÷ 명시적 개월수 (1원 미만 내림)";
+  let formula = referenceFormula("income_monthly");
   if (net === null) {
-    if (gross !== null && expenses !== null) { amount = gross - expenses; formula = "(기간 총수입 − 같은 기간 필요경비) ÷ 명시적 개월수 (1원 미만 내림)"; }
+    if (gross !== null && expenses !== null) { amount = gross - expenses; formula = referenceFormula("income_gross_less_expenses"); }
     else reasons.push("INCOME_AMOUNT_OR_EXPENSES_MISSING");
   } else if (gross !== null && expenses !== null && gross - expenses !== net) {
     reasons.push("INCOME_NET_GROSS_EXPENSE_CONFLICT"); amount = null;
@@ -137,18 +138,19 @@ export function monthlyIncome(source: IncomeSource): { value: bigint | null; rea
   const inferredMonths = span?.completeMonths ? span.months : null;
   const months = source.amountBasis === "monthly" ? 1 : source.amountBasis === "period_total" ? source.periodMonths ?? inferredMonths : null;
   if (source.amountBasis === "period_total" && source.periodMonths !== null && source.periodMonths !== undefined && inferredMonths !== null && source.periodMonths !== inferredMonths) reasons.push("INCOME_PERIOD_DENOMINATOR_CONFLICT");
-  if (months === null || months === undefined || !Number.isSafeInteger(months) || months <= 0 || months > 1200) reasons.push("INCOME_PERIOD_DENOMINATOR_MISSING");
+  if (months === null || months === undefined || !Number.isSafeInteger(months) || months <= 0 || months > maximumCalculationMonths()) reasons.push("INCOME_PERIOD_DENOMINATOR_MISSING");
   if (source.amountBasis === "monthly" && source.periodMonths && source.periodMonths > 1 && net === null && (gross !== null || expenses !== null)) reasons.push("INCOME_PERIOD_BASIS_CONFLICT");
-  return { value: amount === null || reasons.length ? null : floorDivide(amount, BigInt(months!)), reasons, formula: source.amountBasis === "period_total" && source.periodMonths == null && inferredMonths !== null ? "기간 합계 ÷ 완전한 달력월 수 자동유도 (1원 미만 내림)" : formula };
+  return { value: amount === null || reasons.length ? null : floorDivide(amount, BigInt(months!)), reasons, formula: source.amountBasis === "period_total" && source.periodMonths == null && inferredMonths !== null ? referenceFormula("income_calendar_months") : formula };
 }
 
 // Contract identities are scoped by source-backed creditor identity.
 export function liquidationContribution(asset: Asset, payoffScopeSourceLinked=false, payoffScopeReviewed=false): { value: bigint | null; reasons: string[] } {
+  const shareDenominator = shareBasisPoints();
   const reasons: string[] = [];
   const gross = nonnegative(asset.grossValue), payoff = nonnegative(asset.securedPayoff), costs = nonnegative(asset.disposalCosts), protectedValue = nonnegative(asset.protectedValue);
   if ([gross, payoff, costs, protectedValue].some((v) => v === null)) reasons.push("ASSET_COMPONENTS_MISSING");
-  if (!Number.isSafeInteger(asset.ownershipBps) || asset.ownershipBps! < 0 || asset.ownershipBps! > 10000) reasons.push("ASSET_OWNERSHIP_MISSING");
-  if(Number.isSafeInteger(asset.ownershipBps)&&asset.ownershipBps!>0&&asset.ownershipBps!<10000&&payoff!==null&&payoff>ZERO){
+  if (!Number.isSafeInteger(asset.ownershipBps) || asset.ownershipBps! < 0 || asset.ownershipBps! > shareDenominator) reasons.push("ASSET_OWNERSHIP_MISSING");
+  if(Number.isSafeInteger(asset.ownershipBps)&&asset.ownershipBps!>0&&asset.ownershipBps!<shareDenominator&&payoff!==null&&payoff>ZERO){
     if(asset.securedPayoffScope!=="applicant_interest")reasons.push("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_UNRESOLVED");
     else if(!payoffScopeSourceLinked)reasons.push("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_SOURCE_REQUIRED");
   }
@@ -156,10 +158,10 @@ export function liquidationContribution(asset: Asset, payoffScopeSourceLinked=fa
   else if (monthIndex(asset.asOf) === null) reasons.push("ASSET_VALUATION_DATE_INVALID");
   if (!asset.valuationBasis?.trim()) reasons.push("ASSET_VALUATION_BASIS_MISSING");
   if (reasons.length) return { value: null, reasons };
-  const owned = ceilDivide(gross! * BigInt(asset.ownershipBps!), BPS);
+  const owned = ceilDivide(gross! * BigInt(asset.ownershipBps!), BigInt(shareDenominator));
   const residual = owned - payoff! - costs! - protectedValue!;
   if (payoff! > owned) reasons.push("COLLATERAL_SHORTFALL_REQUIRES_CLASSIFICATION");
-  if(Number.isSafeInteger(asset.ownershipBps)&&asset.ownershipBps!>0&&asset.ownershipBps!<10000&&payoff!>ZERO&&asset.securedPayoffScope==="applicant_interest"&&payoffScopeSourceLinked&&!payoffScopeReviewed)reasons.push("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED");
+  if(Number.isSafeInteger(asset.ownershipBps)&&asset.ownershipBps!>0&&asset.ownershipBps!<shareDenominator&&payoff!>ZERO&&asset.securedPayoffScope==="applicant_interest"&&payoffScopeSourceLinked&&!payoffScopeReviewed)reasons.push("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED");
   return { value: residual > ZERO ? residual : ZERO, reasons };
 }
 
@@ -310,7 +312,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   if (!hasFilingPeriod) issues.push("INCOME_REPRESENTATIVE_PERIOD_NOT_SELECTED");
   else if (!periodReviewed) issues.push("INCOME_REPRESENTATIVE_PERIOD_REVIEW_REQUIRED");
   if (coverageIncomplete) issues.push("INCOME_PERIOD_COVERAGE_INCOMPLETE");
-  for (const group of incomeGroups) traces.push({ id: "income_group:" + group.id, title: group.label + " 관측기간 월평균", formula: "동일 payer·소득유형의 비중복 관측기간 금액을 기간가중 평균 (독립 소득원은 분리 합산)", inputs: group.sourceIds.map((id) => ({ label: id + " 월평균", value: incomeRows.find((row) => row.id === id)?.monthlyWon ?? null, factIds: data.incomes.find((source) => source.id === id)?.factIds ?? [] })), resultWon: group.monthlyObservedAverageWon, status: group.monthlyObservedAverageWon === null ? "blocked" : !hasFilingPeriod || !filingPeriodValid || !periodReviewed || group.reasons.length || coverageIncomplete ? "provisional" : "calculated", reasons: [...group.reasons, ...(!hasFilingPeriod ? ["대표기간 미선택 · 관측 평균만 표시"] : []), ...(hasFilingPeriod && !filingPeriodValid ? ["선택 기간이 완전한 달력월이 아닙니다."] : []), ...(hasFilingPeriod && !periodReviewed ? ["선택한 대표기간 검토 전"] : []), ...(coverageIncomplete ? ["선택기간에 비해 관측 개월이 부족합니다."] : [])] });
+  for (const group of incomeGroups) traces.push({ id: "income_group:" + group.id, title: group.label + " 관측기간 월평균", formula: referenceFormula("income_aggregation"), inputs: group.sourceIds.map((id) => ({ label: id + " 월평균", value: incomeRows.find((row) => row.id === id)?.monthlyWon ?? null, factIds: data.incomes.find((source) => source.id === id)?.factIds ?? [] })), resultWon: group.monthlyObservedAverageWon, status: group.monthlyObservedAverageWon === null ? "blocked" : !hasFilingPeriod || !filingPeriodValid || !periodReviewed || group.reasons.length || coverageIncomplete ? "provisional" : "calculated", reasons: [...group.reasons, ...(!hasFilingPeriod ? ["대표기간 미선택 · 관측 평균만 표시"] : []), ...(hasFilingPeriod && !filingPeriodValid ? ["선택 기간이 완전한 달력월이 아닙니다."] : []), ...(hasFilingPeriod && !periodReviewed ? ["선택한 대표기간 검토 전"] : []), ...(coverageIncomplete ? ["선택기간에 비해 관측 개월이 부족합니다."] : [])] });
   if (data.context.inventoryComplete.income !== "yes") issues.push("INCOME_INVENTORY_INCOMPLETE");
   const deduped = resolveDebtRows(data,index); issues.push(...deduped.issues); duplicateIds.push(...deduped.duplicates);
   const resolveDebtIntegrity=createDebtSourceIntegrityResolver(data,index);
@@ -342,7 +344,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     else if (debt.asOf !== data.context.asOf) reasons.push("DEBT_AS_OF_RECONCILIATION_REQUIRED");
     issues.push(...reasons.map((r) => r + ":" + debt.id));
     const integrityFacts=integrity.factIds;
-    traces.push({ id: "debt:" + debt.id, title: debt.creditor + " 채무", formula: "원금 + 이자; 별도 비용·출처 합계는 같은 원문 행에서 대조하고 비용을 원금·이자에 자동 합산하지 않음", inputs: [{ label: "원금", value: asMoney(principal), factIds: debt.factIds }, { label: "이자", value: asMoney(interest), factIds: debt.factIds }, { label: "원문 채권 총액 관측", value: asMoney(integrity.sourceTotalWon), factIds:integrity.totalFactIds }, { label: "별도 비용 관측 (원금·이자에 합산하지 않음)", value: integrity.costObservation, factIds:integrity.costFactIds }], resultWon: asMoney(total), status: total === null ? "blocked" : factSourceLineageIssues(data, [...debt.factIds,...integrityFacts],index).length ? "provisional" : "calculated", reasons });
+    traces.push({ id: "debt:" + debt.id, title: debt.creditor + " 채무", formula: referenceFormula("debt_total"), inputs: [{ label: "원금", value: asMoney(principal), factIds: debt.factIds }, { label: "이자", value: asMoney(interest), factIds: debt.factIds }, { label: "원문 채권 총액 관측", value: asMoney(integrity.sourceTotalWon), factIds:integrity.totalFactIds }, { label: "별도 비용 관측 (원금·이자에 합산하지 않음)", value: integrity.costObservation, factIds:integrity.costFactIds }], resultWon: asMoney(total), status: total === null ? "blocked" : factSourceLineageIssues(data, [...debt.factIds,...integrityFacts],index).length ? "provisional" : "calculated", reasons });
     return { id: debt.id, creditor: debt.creditor, principalWon: asMoney(principal), interestWon: asMoney(interest), totalWon: asMoney(total), classification: debt.classification };
   });
   const debtComplete = data.context.inventoryComplete.debt === "yes" && !deduped.issues.length;
@@ -384,7 +386,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     const reasons = [...contribution.reasons, ...(monthIndex(asset.asOf) !== null && asset.asOf !== data.context.asOf ? ["ASSET_AS_OF_RECONCILIATION_REQUIRED"] : []), ...lineage, ...(asset.recognition === "rejected" ? ["ASSET_RECOGNITION_REJECTED"] : []), ...(conflictedAssets.has(asset.id) ? ["ASSET_IDENTITY_CONFLICT_REQUIRES_REVIEW"] : [])];
     issues.push(...reasons.map((r) => r + ":" + asset.id));
     const scopeReview=reasons.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED")||reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED");
-    traces.push({ id: "asset:" + asset.id, title: asset.label + " 청산가치 검토", formula: "max(0, 평가액 × 소유지분 − 신청인 지분 귀속 담보상환액 − 처분비용 − 검토 면제액)", inputs: [{ label: "평가액", value: asset.grossValue?.amountWon ?? null, factIds: asset.factIds }, { label: "소유지분 (1/10,000)", value: asset.ownershipBps?.toString() ?? null, factIds: asset.factIds }, { label: "담보상환액의 귀속 범위", value: asset.securedPayoffScope ?? null, factIds: scopeFact?[scopeFact.id]:[] }, { label: "담보상환액", value: asset.securedPayoff?.amountWon ?? null, factIds: asset.factIds }, { label: "처분비용", value: asset.disposalCosts?.amountWon ?? null, factIds: asset.factIds }, { label: "검토 면제액", value: asset.protectedValue?.amountWon ?? null, factIds: asset.factIds }], resultWon: asMoney(value), status: value === null ? "blocked" : scopeReview || reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED") || asset.recognition !== "accepted" || factSourceLineageIssues(data, asset.factIds,index).length ? "provisional" : "calculated", reasons });
+    traces.push({ id: "asset:" + asset.id, title: asset.label + " 청산가치 검토", formula: referenceFormula("asset_liquidation"), inputs: [{ label: "평가액", value: asset.grossValue?.amountWon ?? null, factIds: asset.factIds }, { label: `소유지분 (1/${shareBasisPoints().toLocaleString("en-US")})`, value: asset.ownershipBps?.toString() ?? null, factIds: asset.factIds }, { label: "담보상환액의 귀속 범위", value: asset.securedPayoffScope ?? null, factIds: scopeFact?[scopeFact.id]:[] }, { label: "담보상환액", value: asset.securedPayoff?.amountWon ?? null, factIds: asset.factIds }, { label: "처분비용", value: asset.disposalCosts?.amountWon ?? null, factIds: asset.factIds }, { label: "검토 면제액", value: asset.protectedValue?.amountWon ?? null, factIds: asset.factIds }], resultWon: asMoney(value), status: value === null ? "blocked" : scopeReview || reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED") || asset.recognition !== "accepted" || factSourceLineageIssues(data, asset.factIds,index).length ? "provisional" : "calculated", reasons });
     return { id: asset.id, label: asset.label, liquidationWon: asMoney(value), reasons };
   });
   const liquidation = sumKnown(assetRows.map((a) => a.liquidationWon === null ? null : BigInt(a.liquidationWon)), data.context.inventoryComplete.asset === "yes");
@@ -399,22 +401,22 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   const ordinaryBudget = disposable === null || trustee === null || priority === null || estate === null ? null : disposable - trustee - priority - estate;
   if (living === null) issues.push("RECOGNIZED_LIVING_COST_MISSING");
   if (trustee === null || priority === null || estate === null) issues.push("PLAN_COST_OR_PRIORITY_PAYMENT_MISSING");
-  traces.push({ id: "ordinary_budget", title: "일반채권 월 변제예산", formula: "가용소득 − 회생위원 보수 − 별도 우선채권 변제액 − 재단채권 변제액", inputs: [{ label: "월평균 순소득", value: asMoney(income), factIds: data.incomes.flatMap((x) => x.factIds) }, { label: "인정 생계비", value: asMoney(living), factIds: data.household.factIds }, { label: "회생위원 보수", value: asMoney(trustee), factIds: [] }, { label: "우선채권 월 변제", value: asMoney(priority), factIds: [] }, { label: "재단채권 월 변제", value: asMoney(estate), factIds: [] }], resultWon: asMoney(ordinaryBudget), status: ordinaryBudget === null ? "blocked" : data.context.ruleApplicationReviewed === true && data.household.recognition === "accepted" && traces.filter((t) => t.id.startsWith("income:")).every((t) => t.status === "calculated") ? "calculated" : "provisional", reasons: ordinaryBudget === null ? ["필수 입력 중 일부가 확인되지 않았습니다."] : [] });
-  traces.push({ id: "disposable", title: "월 가용소득", formula: "세금·사회보험·필요 사업비용 차감 후 월평균 순소득 − 인정 생계비 (공제 중복 금지)", inputs: [{label:"월평균 순소득",value:asMoney(income),factIds:data.incomes.flatMap(x=>x.factIds)},{label:"인정 생계비",value:asMoney(living),factIds:data.household.factIds}], resultWon:asMoney(disposable),status:disposable===null?"blocked":data.household.recognition==="accepted"&&traces.filter(t=>t.id.startsWith("income:")).every(t=>t.status==="calculated")?"calculated":"provisional",reasons:disposable===null?["소득 또는 생계비 입력 확인 필요"]:[] });
+  traces.push({ id: "ordinary_budget", title: "일반채권 월 변제예산", formula: referenceFormula("ordinary_budget"), inputs: [{ label: "월평균 순소득", value: asMoney(income), factIds: data.incomes.flatMap((x) => x.factIds) }, { label: "인정 생계비", value: asMoney(living), factIds: data.household.factIds }, { label: "회생위원 보수", value: asMoney(trustee), factIds: [] }, { label: "우선채권 월 변제", value: asMoney(priority), factIds: [] }, { label: "재단채권 월 변제", value: asMoney(estate), factIds: [] }], resultWon: asMoney(ordinaryBudget), status: ordinaryBudget === null ? "blocked" : data.context.ruleApplicationReviewed === true && data.household.recognition === "accepted" && traces.filter((t) => t.id.startsWith("income:")).every((t) => t.status === "calculated") ? "calculated" : "provisional", reasons: ordinaryBudget === null ? ["필수 입력 중 일부가 확인되지 않았습니다."] : [] });
+  traces.push({ id: "disposable", title: "월 가용소득", formula: referenceFormula("disposable_income"), inputs: [{label:"월평균 순소득",value:asMoney(income),factIds:data.incomes.flatMap(x=>x.factIds)},{label:"인정 생계비",value:asMoney(living),factIds:data.household.factIds}], resultWon:asMoney(disposable),status:disposable===null?"blocked":data.household.recognition==="accepted"&&traces.filter(t=>t.id.startsWith("income:")).every(t=>t.status==="calculated")?"calculated":"provisional",reasons:disposable===null?["소득 또는 생계비 입력 확인 필요"]:[] });
   const approvedPayment = nonnegative(data.context.approvedMonthlyPayment);
   const hasApprovedPayment = data.context.approvedMonthlyPayment !== undefined && data.context.approvedMonthlyPayment !== null;
   const payment = hasApprovedPayment ? approvedPayment : (ordinaryBudget !== null && ordinaryBudget > ZERO ? ordinaryBudget : null);
   if (hasApprovedPayment && approvedPayment === null) issues.push("APPROVED_PAYMENT_INVALID");
   if (approvedPayment !== null && ordinaryBudget !== null && approvedPayment > ordinaryBudget) issues.push("PAYMENT_EXCEEDS_DISPOSABLE_INCOME");
   const months = data.context.planMonths;
-  const termValid = Number.isSafeInteger(months) && months! > 0 && months! <= 1200;
+  const termValid = Number.isSafeInteger(months) && months! > 0 && months! <= maximumCalculationMonths();
   if (!termValid) issues.push("PLAN_TERM_MISSING");
   const planTotal = payment === null || !termValid ? null : payment * BigInt(months!);
   // Present value is never replaced by the undiscounted sum of installments.
   const presentValue = data.context.presentValueBasis?.trim() ? nonnegative(data.context.approvedPresentValue) : null;
   const assetDateReconciliation=issues.filter(issue=>issue.startsWith("ASSET_AS_OF_RECONCILIATION_REQUIRED:"));
   const liquidationComparison = liquidation === null || presentValue === null || assetDateReconciliation.length > 0 ? "unknown" : presentValue >= liquidation ? "met" : "not_met";
-  traces.push({ id: "liquidation_comparison", title: "청산가치 보장 비교", formula: "검토된 변제액 현재가치 ≥ 청산가치 (명목 총변제액과 구별)", inputs: [{ label: "현재가치", value: asMoney(presentValue), factIds: [] }, { label: "청산가치", value: asMoney(liquidation), factIds: data.assets.flatMap((a) => a.factIds) }], resultWon: presentValue === null || liquidation === null ? null : (presentValue - liquidation).toString(), status: presentValue === null || liquidation === null ? "blocked" : data.context.assetValuationBasisReviewed === true && data.context.presentValueReviewed === true && assetDateReconciliation.length === 0 ? "calculated" : "provisional", reasons: [...assetDateReconciliation, ...(presentValue === null ? ["PRESENT_VALUE_BASIS_MISSING"] : data.context.presentValueReviewed !== true ? ["PRESENT_VALUE_REVIEW_REQUIRED"] : [])] });
+  traces.push({ id: "liquidation_comparison", title: "청산가치 보장 비교", formula: referenceFormula("liquidation_comparison"), inputs: [{ label: "현재가치", value: asMoney(presentValue), factIds: [] }, { label: "청산가치", value: asMoney(liquidation), factIds: data.assets.flatMap((a) => a.factIds) }], resultWon: presentValue === null || liquidation === null ? null : (presentValue - liquidation).toString(), status: presentValue === null || liquidation === null ? "blocked" : data.context.assetValuationBasisReviewed === true && data.context.presentValueReviewed === true && assetDateReconciliation.length === 0 ? "calculated" : "provisional", reasons: [...assetDateReconciliation, ...(presentValue === null ? ["PRESENT_VALUE_BASIS_MISSING"] : data.context.presentValueReviewed !== true ? ["PRESENT_VALUE_REVIEW_REQUIRED"] : [])] });
   const allocations: Allocation[] = [];
   const ordinary = deduped.rows.filter((d) => d.classification === "ordinary" && d.secured === "no" && d.priority === "ordinary" && !excludedAfterReview(d) && (!d.guaranteeDetails || d.guaranteeDetails.capTreatment === "include" && d.guaranteeDetails.capTreatmentReviewed === true && !!d.guaranteeDetails.reviewReason?.trim() && !(d.guaranteeDetails.underlyingDebtId && deduped.rows.some((candidate) => (candidate.id === d.guaranteeDetails!.underlyingDebtId || candidate.contractId === d.guaranteeDetails!.underlyingDebtId) && !excludedAfterReview(candidate)))));
   if (planTotal !== null && includedDebtTotalComplete && ["principal_then_interest_pro_rata", "principal_only_pro_rata"].includes(data.context.allocationBasis ?? "") && ordinary.every((d) => nonnegative(d.principal) !== null && nonnegative(d.interest) !== null && !invalidLineage(data, d.factIds,index).length)) {
@@ -449,6 +451,9 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
     findings.push({ id, category, title, detail, outcome, severity: outcome === "pass" ? "info" : category === "eligibility" && outcome === "fail" ? "blocking" : "warning", nextAction, objectId, factIds, ruleSourceIds: sources });
   }
   const rulesCurrent = rules.status !== "draft" && data.context.ruleReleaseId === rules.id && (!rules.effectiveFrom || data.context.applicationDate >= rules.effectiveFrom) && (!rules.effectiveTo || data.context.applicationDate <= rules.effectiveTo) && (!rules.courtIds || rules.courtIds.includes(data.context.courtId));
+  const referenceRelease = referenceIdentity();
+  const reviewedReferenceSha = (data.context as CaseData["context"] & { referenceReviewSha256?: string }).referenceReviewSha256;
+  if (referenceRelease && referenceRelease.revision > 1 && reviewedReferenceSha !== referenceRelease.sha256) add("reference_release_review", "legal_review", "변경된 기준정보의 사건별 적용 검토", `기준정보 ${referenceRelease.id}의 ${referenceRelease.revision}판이 현재 사건의 검토 기록과 연결되지 않았습니다. 이전 규칙 적용 검토를 새 기준정보의 승인으로 이어받지 않습니다.`, "review_required", "변경된 기준·시행일·관할과 사건 영향을 확인하고 현재 기준정보 해시에 연결된 적용 검토를 기록하세요.");
   if (!rulesCurrent) add("rule_release", "legal_review", "적용 규칙 확인", "공식 출처·시행일·관할 또는 사건에 지정된 규칙 판본이 확인되지 않았습니다.", "review_required", "현재 신청일과 관할에 맞는 규칙을 확인하세요.");
   if (data.context.ruleApplicationReviewed !== true) add("rule_application", "legal_review", "사건별 규칙 적용 검토", "공식 원문 확인과 이 사건에 대한 적용 검토는 별개입니다.", "review_required", "예외·경과규정과 사건 적용을 검토하세요.");
   for (const [key, label] of [["income", "소득원"], ["debt", "채무"], ["asset", "재산"]] as const) if (data.context.inventoryComplete[key] !== "yes") add("inventory_" + key, "evidence", label + " 목록 완전성", "누락이 없는지 확인되지 않아 전체 합계를 확정하지 않았습니다.", "unknown", label + " 목록과 조회·진술·증빙을 대조하세요.");
@@ -491,7 +496,7 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
     const months = data.context.planMonths;
     const allowed = months <= rules.term.ordinaryMonths || (data.context.exceptionalTermReviewed === true && !!rules.term.exceptionalMaxMonths && months <= rules.term.exceptionalMaxMonths);
     add("plan_term", "eligibility", "변제기간 검토", `${months}개월 / 원칙 범위 ${rules.term.ordinaryMonths}개월, 특별사정 검토 시 ${rules.term.exceptionalMaxMonths ?? "미확인"}개월`, allowed ? "pass" : data.context.exceptionalTermReviewed === true ? "fail" : "review_required", allowed ? undefined : "연장 요건·특별사정·법원 판단이 필요한지 확인하세요.");
-    if (data.context.courtId === "seoul" && data.context.applicationDate >= "2026-10-01" && months < rules.term.ordinaryMonths) {
+    if (data.context.courtId === referenceParameter<string>("param.seoul.shortened_term.court_id") && data.context.applicationDate >= referenceParameter<string>("param.seoul.shortened_term.effective_from") && months < rules.term.ordinaryMonths) {
       const candidate = legalProposals.termCandidate;
       const review = data.context.shortenedTermReview;
       const fingerprint = shortenedTermBasisFingerprint(data);

@@ -1,0 +1,18 @@
+{
+  "pages": [
+    {
+      "document_id": "synthetic-document",
+      "page": 6,
+      "role": "evidence",
+      "title": "소득금액증명",
+      "document_type": "business_tax_return"
+    },
+    {
+      "document_id": "synthetic-document",
+      "page": 7,
+      "role": "filed_form",
+      "title": "개인회생 신청서",
+      "document_type": "filed_form"
+    }
+  ]
+}

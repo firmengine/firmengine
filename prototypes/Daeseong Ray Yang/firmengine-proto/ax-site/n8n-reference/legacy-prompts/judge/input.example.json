@@ -1,0 +1,12 @@
+{
+  "application_date": "2026-10-26",
+  "questions": [
+    {
+      "id": "synthetic-gap",
+      "code": "VALUATION_MISSING",
+      "message": "?? ?? ??"
+    }
+  ],
+  "facts": [],
+  "references": []
+}

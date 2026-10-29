@@ -1,3 +1,5 @@
+import documentPolicy from "./reference-document-policy.json" with { type: "json" };
+import { readReferenceValue } from "./reference-runtime.ts";
 import { createCaseReadIndex, currentFacts, describeStructuredSourceRefs, factHasValidStructuredRefs, factSourceLineageIssues, formatWon, moneyValue, requiredKindsForCase, validSourceRef } from "./domain.ts";
 import type { ArtifactKind, CaseData, CaseReadIndex, ExportManifest, Fact, RuleSet } from "./domain.ts";
 import { assessCase } from "./assessment.ts";
@@ -51,13 +53,7 @@ function refs(data: CaseData, factIds: string[],index?:CaseReadIndex): string {
   return facts.flatMap((f) => f.refs.map((r) => `${index?.documentsById.get(r.documentId)?.name ?? data.documents.find((d) => d.id === r.documentId)?.name ?? r.documentId} ${r.page}쪽`).concat(describeStructuredSourceRefs(data,f))).filter((r, i, all) => all.indexOf(r) === i).join("; ") || "[현재 원문 근거 연결 필요]";
 }
 function conditionalFormRoutes(data:CaseData,index?:CaseReadIndex):ExportTable {
-  const routes=[
-    {code:"D5108",keys:["asset.protected_asset_type","asset.exemption_basis","asset.exemption_application"],reason:"비재단 재산의 구체 범위·법적 근거 및 제출 필요성 검토"},
-    {code:"D5109",keys:["asset.exemption_application","asset.exemption_request"],reason:"면제재산 신청 의사·대상·법정 요건 검토"},
-    {code:"D5111",keys:["disposal.","disposals.","asset.disposal_plan","plan.asset_disposal"],reason:"재산처분 변제안 선택과 처분·대금·일정 검토"},
-    {code:"D5113",keys:["stay_request","enforcement."],reason:"중지명령 신청 의사·집행사건·필요성 검토"},
-    {code:"D5114",keys:["prohibition_request","enforcement."],reason:"금지명령 신청 의사·집행사건·필요성 검토"},
-  ];
+  const routes=readReferenceValue("document.conditional_form_routes", documentPolicy.conditionalFormRoutes);
   const active=currentFacts(data,index);
   return {title:"조건부 공식 서식 라우팅 단서 (자동 선택 전)",headers:["공식 서식","원문 단서","라우팅 상태","남은 판단","근거"],rows:routes.map(route=>{
     const matched=active.filter(f=>route.keys.some(key=>key.endsWith(".")?f.key.startsWith(key):f.key===key)&&f.state!=="disputed"&&f.recognition!=="rejected"&&(f.structuredRefs!==undefined?factHasValidStructuredRefs(data,f):f.refs.length>0&&f.refs.every(ref=>validSourceRef(data,ref,index)))&&!f.validation.some(v=>v.severity==="error"||["UNCERTAIN_READING","NORMALIZATION_REVIEW"].includes(v.code)));

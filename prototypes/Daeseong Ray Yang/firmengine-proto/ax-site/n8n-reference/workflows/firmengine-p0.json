@@ -1,0 +1,263 @@
+{
+  "id": "firmengineLocalP0",
+  "name": "Firm Engine · persistent case engine",
+  "active": false,
+  "nodes": [
+    {
+      "id": "intake",
+      "name": "Case update",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "firmengine-p0",
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "firmengine-p0",
+        "responseMode": "onReceived",
+        "options": {
+          "responseCode": 202
+        }
+      }
+    },
+    {
+      "id": "classify",
+      "name": "1. Document roles and types",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        280,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/classify",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.body.session_id, run_id: $json.body.run_id, run_token: $json.body.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "extract",
+      "name": "2. Parallel scoped extraction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/extract",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_id: $json.run_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "prepare",
+      "name": "3. Versioned calculation inputs",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        840,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/prepare",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_id: $json.run_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "code",
+      "name": "4. Exact legal arithmetic",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "/* Exact, dependency-free n8n Code module. JSON monetary values remain strings.\n * Source: copied blueprint reference; partial numeric checks, never a legal decision.\n * This file executes unchanged in n8n and in the synthetic Node regression suite.\n */\n'use strict';\nconst CALCULATOR_RELEASE = 'seoul-blueprint-arithmetic-v1';\nconst MEDIAN_2026 = ['2564238','4199292','5359036','6494738','7556719','8555952','9515150'];\n\nfunction decimal(value) {\n  if (typeof value !== 'string' && typeof value !== 'bigint') return null;\n  const text = String(value);\n  if (!/^-?\\d+(?:\\.\\d+)?$/.test(text) || text.replace(/\\D/g,'').length > 64) return null;\n  const [whole, fraction=''] = text.split('.');\n  return {n: BigInt(whole + fraction), s: fraction.length};\n}\nfunction power(n) { return 10n ** BigInt(n); }\nfunction align(a,b) { const s=Math.max(a.s,b.s); return [a.n*power(s-a.s),b.n*power(s-b.s),s]; }\nfunction add(a,b) { const [x,y,s]=align(a,b); return {n:x+y,s}; }\nfunction subtract(a,b) { const [x,y,s]=align(a,b); return {n:x-y,s}; }\nfunction multiply(a,b) { return {n:a.n*b.n,s:a.s+b.s}; }\nfunction compare(a,b) { const [x,y]=align(a,b); return x<y?-1:x>y?1:0; }\nfunction text(a) {\n  const sign=a.n<0n?'-':''; let digits=String(a.n<0n?-a.n:a.n).padStart(a.s+1,'0');\n  if (a.s) digits=(digits.slice(0,-a.s)+'.'+digits.slice(-a.s)).replace(/0+$/,'').replace(/\\.$/,'');\n  return sign+digits;\n}\nconst ZERO={n:0n,s:0};\nfunction currentAssertions(snapshot) {\n  const all=Array.isArray(snapshot.assertions)?snapshot.assertions:[];\n  const replaced=new Set(all.map(a=>a.supersedes).filter(Boolean));\n  return all.filter(a=>a.state!=='RETRACTED'&&!replaced.has(a.id||a.assertion_id));\n}\nfunction findAssertion(rows,key,objectId) {\n  const found=rows.filter(a=>a.feature_key===key&&(objectId===undefined||a.object_id===objectId));\n  if (found.some(a=>a.state==='DISPUTED')) return null;\n  const verified=found.filter(a=>a.state==='VERIFIED'&&a.value!==null&&a.value!==undefined&&a.value!=='');\n  if (!verified.length) return null;\n  const signatures=new Set(verified.map(a=>JSON.stringify([a.value,a.valid_at,a.period_start,a.period_end,a.source_period,a.measurement_period,a.currency,a.unit])));\n  return signatures.size===1?verified[0]:null;\n}\nfunction money(a) {\n  if (!a || (a.currency && a.currency!=='KRW')) return null;\n  const value=decimal(a.value);\n  return value&&value.n>=0n?value:null;\n}\nfunction truth(a) {\n  if (!a) return 'UNKNOWN';\n  if (a.value===true||['TRUE','YES','있음'].includes(String(a.value).toUpperCase())) return 'TRUE';\n  if (a.value===false||['FALSE','NO','없음'].includes(String(a.value).toUpperCase())) return 'FALSE';\n  return 'UNKNOWN';\n}\nfunction period(a) { return JSON.stringify([a?.period_start||null,a?.period_end||null,a?.valid_at||null,a?.source_period||null]); }\nfunction monthly(a) { return !!a && (a.measurement_period==='MONTHLY'||['won/month','KRW/month','원/월'].includes(a.unit)); }\nfunction complete(a) { return !!a&&['COMPLETE','VERIFIED_COMPLETE'].includes(String(a.value).toUpperCase()); }\nfunction isoDate(value) { return typeof value==='string'&&/^\\d{4}-\\d{2}-\\d{2}$/.test(value)&&!Number.isNaN(Date.parse(value))&&new Date(value).toISOString().slice(0,10)===value; }\nfunction scoped(a) { return !!a&&(isoDate(a.valid_at)||!!a.source_period||(isoDate(a.period_start)&&isoDate(a.period_end)&&a.period_start<=a.period_end)); }\nfunction calculateCase(snapshot) {\n  const rows=currentAssertions(snapshot), results=[];\n  const release=snapshot.rule_release_id||snapshot.rule_release?.id||CALCULATOR_RELEASE;\n  const get=(key,oid)=>findAssertion(rows,key,oid);\n  function result(id,outcome,reason,values={},inputs=[],missing=[],notes=[]) {\n    const row={rule_id:id,rule_version:CALCULATOR_RELEASE,rule_release_id:release,outcome,reason_code:reason,\n      values:Object.fromEntries(Object.entries(values).map(([key,value])=>[key,text(value)])),\n      input_assertion_ids:[...new Set(inputs.filter(Boolean).map(a=>a.id||a.assertion_id))],\n      missing_features:missing,notes,not_court_decision:true}; results.push(row); return row;\n  }\n  const unknown=(id,reason,features,inputs=[])=>result(id,'UNKNOWN',reason,{},inputs,features);\n  const selectedRelease=snapshot.rule_release||{};\n  const compatibleRelease=release===CALCULATOR_RELEASE||selectedRelease.id===release&&selectedRelease.calculator_release_id===CALCULATOR_RELEASE\n    &&['ACTIVE','VERIFIED','APPROVED'].includes(String(selectedRelease.status||'').toUpperCase());\n  const application=snapshot.application_date;\n  const temporalOk=isoDate(application)&&(!selectedRelease.effective_from||application>=selectedRelease.effective_from)\n    &&(!selectedRelease.effective_to||application<=selectedRelease.effective_to);\n  if(!compatibleRelease||!temporalOk){\n    for(const key of ['KR.579.DEBT_LIMITS','SEOUL.405.BASIC_LIVING_2026','KR.614.MINIMUM_REPAYMENT','KR.614.LIQUIDATION_COMPARISON','SEOUL.405.ADDITIONAL_HOUSING','INCOME.MONTHLY_NET','PLAN.NOMINAL_PAYMENTS'])\n      unknown(key,!compatibleRelease?'RULE_RELEASE_UNSUPPORTED':'APPLICATION_DATE_OR_RULE_PERIOD_UNKNOWN',['case.application_date','rule_release_id']);\n    return {rule_release_id:release,calculator_version:CALCULATOR_RELEASE,case_revision:snapshot.revision,computed_by:'n8n-code',scope:'partial_numeric_rules',results};\n  }\n\n  // §579: classifications and collection completeness are prerequisites, not guesses.\n  const capBinding=selectedRelease.parameters?.['KR.579.DEBT_LIMITS'];\n  let securedLimit=decimal('1500000000'),otherLimit=decimal('1000000000'),capBindingValid=true;\n  if(capBinding!==undefined){\n    const sec=decimal(capBinding?.params?.secured_cap),uns=decimal(capBinding?.params?.unsecured_cap);\n    capBindingValid=capBinding?.rule_id==='KR.579.DEBT_LIMITS'&&capBinding?.validator_version==='debt-limits-v1'\n      &&capBinding?.source_id==='K01'&&typeof capBinding.version_id==='string'&&!!capBinding.version_id\n      &&/^[0-9a-f]{64}$/.test(capBinding.content_hash||'')&&isoDate(capBinding.effective_from)&&capBinding.effective_from<=application\n      &&capBinding.validation?.boundary_cases_passed>=5&&capBinding.validation?.semantic_template==='unchanged_or_reviewed_initial_caps'\n      &&!!sec&&!!uns&&sec.s===0&&uns.s===0&&sec.n>0n&&uns.n>0n;\n    if(capBindingValid){securedLimit=sec;otherLimit=uns;}\n  }\n  const debtIds=[...new Set([...(snapshot.objects||[]).filter(o=>['debt','creditor'].includes(o.type)).map(o=>o.id),\n    ...rows.filter(a=>a.feature_key.startsWith('debts[]')).map(a=>a.object_id)].filter(Boolean))];\n  const debtCoverage=get('coverage.debt_inventory');\n  let debtInputs=[debtCoverage], secured=ZERO, other=ZERO, debtMissing=[];\n  if (!complete(debtCoverage)||!debtIds.length) debtMissing.push('coverage.debt_inventory');\n  for (const oid of debtIds) {\n    const p=get('debts[].principal',oid),i=get('debts[].interest',oid),kind=get('debts[].security_status',oid),asof=get('debts[].amount_as_of',oid);\n    debtInputs.push(p,i,kind,asof); const pv=money(p),iv=money(i);\n    const classification=String(kind?.value||'').toUpperCase();\n    if (!pv||!iv||!isoDate(asof?.value)||!['SECURED','UNSECURED','담보','무담보'].includes(classification)\n      ||period(p)!==period(i)||(p.valid_at&&p.valid_at!==asof.value)||(i.valid_at&&i.valid_at!==asof.value)) {\n      debtMissing.push('debts[].principal','debts[].interest','debts[].security_status','debts[].amount_as_of'); continue;\n    }\n    if (['SECURED','담보'].includes(classification)) secured=add(secured,add(pv,iv)); else other=add(other,add(pv,iv));\n  }\n  if(!capBindingValid)unknown('KR.579.DEBT_LIMITS','BOUND_PARAMETER_VERSION_UNVERIFIED',['rule_release.parameters.KR.579.DEBT_LIMITS'],debtInputs);\n  else if (debtMissing.length) unknown('KR.579.DEBT_LIMITS','DEBT_SCOPE_OR_CLASSIFICATION_UNVERIFIED',[...new Set(debtMissing)],debtInputs);\n  else result('KR.579.DEBT_LIMITS',compare(secured,securedLimit)<=0&&compare(other,otherLimit)<=0?'PASS':'FAIL',\n    'TWO_SEPARATE_AMOUNT_CAPS',{secured,other,secured_limit:securedLimit,other_limit:otherLimit},debtInputs,[],['검증된 두 채무한도만 비교하며 전체 신청자격을 판정하지 않음']);\n  if(capBindingValid&&capBinding){Object.assign(results[results.length-1],{parameter_version_id:capBinding.version_id,\n    parameter_content_hash:capBinding.content_hash,parameter_effective_from:capBinding.effective_from,parameter_source_id:capBinding.source_id});}\n\n  const household=get('household.recognized_count'),count=decimal(household?.value),year=String(snapshot.application_date||'').slice(0,4);\n  if(year!=='2026'||!count||count.s!==0||count.n<1n||count.n>7n) unknown('SEOUL.405.BASIC_LIVING_2026','YEAR_OR_HOUSEHOLD_UNVERIFIED',['case.application_date','household.recognized_count'],[household]);\n  else {const median=decimal(MEDIAN_2026[Number(count.n)-1]);result('SEOUL.405.BASIC_LIVING_2026','CALCULATED','SIXTY_PERCENT_ARITHMETIC_ONLY',\n    {median_income:median,basic_living_expense:multiply(median,decimal('0.60'))},[household],[],['부양가구 결정·인정 생계비·원단위 반올림은 별도 검토']);}\n\n  function pvPair(leftKey,rightKey) {\n    const left=get(leftKey),right=get(rightKey),lv=money(left),rv=money(right);\n    const compatible=left?.normalized===true&&right?.normalized===true&&isoDate(left.valuation_date)&&left.valuation_date===right.valuation_date&&left.basis_id&&left.basis_id===right.basis_id;\n    return {left,right,lv,rv,ok:!!(lv&&rv&&compatible)};\n  }\n  const objection=get('court.objection_status'),objectionState=truth(objection);\n  if(objectionState==='FALSE')result('KR.614.MINIMUM_REPAYMENT','NOT_APPLICABLE','NO_OBJECTION_FOR_THIS_CONDITION',{},[objection],[],['이 조건의 비적용이며 0원 변제 허용이 아님']);\n  else if(objectionState!=='TRUE')unknown('KR.614.MINIMUM_REPAYMENT','OBJECTION_UNKNOWN',['court.objection_status'],[objection]);\n  else {\n    const p=pvPair('claims.total_present_value','plan.total_present_value');\n    if(!p.ok)unknown('KR.614.MINIMUM_REPAYMENT','PV_NORMALIZATION_OR_BASIS_MISMATCH',['claims.total_present_value','plan.total_present_value'],[objection,p.left,p.right]);\n    else {let floor=compare(p.lv,decimal('50000000'))<0?multiply(p.lv,decimal('0.05')):add(multiply(p.lv,decimal('0.03')),decimal('1000000'));\n      if(compare(floor,decimal('30000000'))>0)floor=decimal('30000000');const margin=subtract(p.rv,floor);\n      result('KR.614.MINIMUM_REPAYMENT',margin.n>=0n?'PASS':'FAIL','PARTIAL_MINIMUM_REPAYMENT_CHECK',\n        {minimum_repayment_pv:floor,margin_pv:margin},[objection,p.left,p.right],[],['3천만원은 최저변제액 산식의 상한이며 계획총액 상한이 아님']);}\n  }\n  const pv=pvPair('plan.total_present_value','plan.liquidation_floor');\n  if(!pv.ok)unknown('KR.614.LIQUIDATION_COMPARISON','PV_NORMALIZATION_OR_BASIS_MISMATCH',['plan.total_present_value','plan.liquidation_floor'],[pv.left,pv.right]);\n  else {const margin=subtract(pv.lv,pv.rv);result('KR.614.LIQUIDATION_COMPARISON',margin.n>=0n?'PASS':'FAIL','SAME_BASIS_PV_COMPARISON',\n    {plan_total_pv:pv.lv,liquidation_value_pv:pv.rv,margin_pv:margin},[pv.left,pv.right],[],['청산가치 자체의 법적 산정·동의 예외는 구현하지 않음']);}\n\n  const housingKeys=['living.housing_actual','living.housing_included','living.housing_cap'],housing=housingKeys.map(key=>get(key)),hm=housing.map(money);\n  const housingRequested=get('living.additional_housing_requested');\n  if(truth(housingRequested)==='FALSE')result('SEOUL.405.ADDITIONAL_HOUSING','NOT_APPLICABLE','NO_ADDITIONAL_HOUSING_REQUEST',{},[housingRequested]);\n  else if(hm.some(value=>value===null)||new Set(housing.map(period)).size!==1)unknown('SEOUL.405.ADDITIONAL_HOUSING','HOUSING_INPUT_SCOPE_UNVERIFIED',housingKeys,housing);\n  else {let amount=subtract(hm[0],hm[1]);if(amount.n<0n)amount=ZERO;if(compare(amount,hm[2])>0)amount=hm[2];\n    result('SEOUL.405.ADDITIONAL_HOUSING','CALCULATED','REVIEW_AMOUNT_NOT_RECOGNITION',{additional_housing_review:amount},housing,[],['적용표·실제 지출·추가 인정 여부는 별도 검토']);}\n\n  // Each employment, business and passive source has its own object and period.\n  const sourceIds=[...new Set([...(snapshot.objects||[]).filter(o=>o.type==='income_source').map(o=>o.id),\n    ...rows.filter(a=>a.feature_key.startsWith('income_source.')).map(a=>a.object_id)].filter(Boolean))];\n  let incomeValue=null,incomeInputs=[],incomeMissing=[];\n  function sourceNet(oid) {\n    const kind=get('income_source.kind',oid);incomeInputs.push(kind);\n    const value=String(kind?.value||'').toLowerCase();\n    if(['loan','own_transfer','between_owned_accounts'].includes(value))return {excluded:true};\n    if(!['wage','salary','business','rent','interest','dividend','pension','benefit','benefits','other'].includes(value))return null;\n    const net=get('income_source.net',oid);if(money(net)&&monthly(net)&&scoped(net)){incomeInputs.push(net);return {amount:money(net),period:period(net)};}\n    const gross=get(value==='business'?'income_source.revenue':'income_source.gross',oid);\n    const cost=get(value==='business'?'income_source.necessary_cost':'income_source.tax_social_insurance',oid);\n    incomeInputs.push(gross,cost);const g=money(gross),c=money(cost);\n    if(!g||!c||!monthly(gross)||!monthly(cost)||!scoped(gross)||!scoped(cost)||period(gross)!==period(cost))return null;\n    return {amount:subtract(g,c),period:period(gross)};\n  }\n  if(sourceIds.length) {\n    const coverage=get('coverage.income_sources');incomeInputs.push(coverage);\n    if(!complete(coverage))incomeMissing.push('coverage.income_sources');\n    let aggregate=ZERO,used=0;const sourcePeriods=new Set();\n    for(const oid of sourceIds){const net=sourceNet(oid);if(!net)incomeMissing.push('income_source.kind','income_source.net');else if(!net.excluded){aggregate=add(aggregate,net.amount);sourcePeriods.add(net.period);used++;}}\n    if(sourcePeriods.size>1)incomeMissing.push('income_source.period');\n    if(!incomeMissing.length&&used)incomeValue=aggregate;\n  } else {\n    const net=get('income.monthly_net');\n    if(money(net)&&monthly(net)&&scoped(net)){incomeValue=money(net);incomeInputs.push(net);}\n    else {\n      const business=snapshot.income_type==='business';\n      const gross=get(business?'income.business_revenue':'income.monthly_gross'),cost=get(business?'income.necessary_cost':'income.tax_social_insurance');\n      incomeInputs.push(gross,cost);const g=money(gross),c=money(cost);\n      if(g&&c&&monthly(gross)&&monthly(cost)&&scoped(gross)&&scoped(cost)&&period(gross)===period(cost))incomeValue=subtract(g,c);\n      else incomeMissing.push(business?'income.business_revenue':'income.monthly_gross',business?'income.necessary_cost':'income.tax_social_insurance');\n    }\n  }\n  if(incomeValue===null)unknown('INCOME.MONTHLY_NET','INCOME_SOURCE_PERIOD_OR_COVERAGE_UNVERIFIED',[...new Set(incomeMissing.length?incomeMissing:['income_source.net'])],incomeInputs);\n  else result('INCOME.MONTHLY_NET','CALCULATED','VERIFIED_MONTHLY_SOURCE_ARITHMETIC',{monthly_net:incomeValue},incomeInputs,[],['계좌 입금합계를 소득으로 간주하지 않음; 연간액을 자동으로 12로 나누지 않음']);\n\n  const recognized=get('income.recognized_monthly_net'),living=get('living.recognized_total'),fee=get('plan.monthly_trustee_fee'),term=get('plan.term_months');\n  const amount=money(recognized)||incomeValue,lv=money(living),fv=money(fee),months=decimal(term?.value);\n  const planInputs=[recognized,living,fee,term,...incomeInputs];\n  if(amount===null||!lv||!fv||!months||months.s!==0||months.n<=0n)unknown('PLAN.NOMINAL_PAYMENTS','PLAN_INPUTS_UNVERIFIED',\n    ['income.recognized_monthly_net','living.recognized_total','plan.monthly_trustee_fee','plan.term_months'],planInputs);\n  else {\n    const disposable=subtract(amount,lv),payment=subtract(disposable,fv),total=multiply(payment,months);\n    result('PLAN.NOMINAL_PAYMENTS',payment.n<0n?'FAIL':'CALCULATED',payment.n<0n?'NEGATIVE_DISPOSABLE_INCOME':'NOMINAL_PAYMENT_ARITHMETIC',\n      {monthly_income:amount,monthly_disposable_income:disposable,monthly_payment:payment,repayment_months:months,total_nominal_repayment:total},planInputs,[],\n      ['명목총액이며 현재가치가 아님; 기간의 법적 허용·채권별 배분·수행가능성은 별도 검토']);\n  }\n  return {rule_release_id:release,calculator_version:CALCULATOR_RELEASE,case_revision:snapshot.revision,computed_by:'n8n-code',scope:'partial_numeric_rules',results};\n}\nif(typeof module!=='undefined'&&module.exports)module.exports={calculateCase};\n\nreturn $input.all().map(item => ({json: {...item.json, calculation_results: calculateCase(item.json.snapshot || item.json)}}));\n"
+      }
+    },
+    {
+      "id": "validate",
+      "name": "5. Requirements risks and generation gate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1400,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/validate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_id: $json.run_id, run_token: $json.run_token, calculation_results: $json.calculation_results}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "generate",
+      "name": "6. Generate or inform",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/generate",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_id: $json.run_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "complete",
+      "name": "7. Finish durable job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1960,
+        0
+      ],
+      "parameters": {
+        "method": "POST",
+        "url": "http://127.0.0.1:8010/internal/stages/complete",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({session_id: $json.session_id, run_id: $json.run_id, run_token: $json.run_token}) }}",
+        "options": {
+          "timeout": 1800000
+        }
+      }
+    },
+    {
+      "id": "note",
+      "name": "Case engine architecture",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        0,
+        -300
+      ],
+      "parameters": {
+        "width": 1100,
+        "height": 240,
+        "content": "## Firm Engine persistent cases\nUploads, edits, valuations and legal updates enqueue revision-bound jobs.\nDocument extraction is bounded and cached. The actual Code node performs exact arithmetic.\nThe API blocks court document generation when mandatory evidence or rules are unresolved.\nWarnings accompany permitted drafts. Final artifacts require caseworker and lawyer HITL.\nNo court submission node. OCR/keys stay in the local API; only calculation inputs enter Code.\nSuccessful/error/manual execution contents are not saved by n8n."
+      }
+    }
+  ],
+  "connections": {
+    "Case update": {
+      "main": [
+        [
+          {
+            "node": "1. Document roles and types",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "1. Document roles and types": {
+      "main": [
+        [
+          {
+            "node": "2. Parallel scoped extraction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "2. Parallel scoped extraction": {
+      "main": [
+        [
+          {
+            "node": "3. Versioned calculation inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "3. Versioned calculation inputs": {
+      "main": [
+        [
+          {
+            "node": "4. Exact legal arithmetic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "4. Exact legal arithmetic": {
+      "main": [
+        [
+          {
+            "node": "5. Requirements risks and generation gate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "5. Requirements risks and generation gate": {
+      "main": [
+        [
+          {
+            "node": "6. Generate or inform",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "6. Generate or inform": {
+      "main": [
+        [
+          {
+            "node": "7. Finish durable job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none",
+    "saveManualExecutions": false,
+    "saveExecutionProgress": false,
+    "executionTimeout": 3600
+  },
+  "pinData": {}
+}

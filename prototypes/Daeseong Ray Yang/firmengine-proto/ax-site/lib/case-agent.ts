@@ -9,6 +9,7 @@ export interface CalculatorExecutionReceipt {
   contractVersion:string; tool:"calculate_case"; transport:"in_process_mcp_dispatch";
   caseId:string; revision:number; inputSha256:string; ruleReleaseId:string;
   nodes:string[]; modelPerformedArithmetic:false;
+  referenceRelease:{id:string;revision:number;sha256:string};
 }
 
 /** The agent node invokes the exact readonly tool dispatcher used by both MCP transports.
@@ -24,7 +25,7 @@ export async function runCaseCalculatorNode(data:CaseData) {
   const receipt:CalculatorExecutionReceipt={
     contractVersion:EXECUTION_CONTRACT_VERSION,tool:"calculate_case",transport:"in_process_mcp_dispatch",
     caseId:data.context.id,revision:data.context.revision,inputSha256:response.inputSha256,
-    ruleReleaseId:CURRENT_RULESET.id,nodes:["case_planner","source_reconciler","calculator"],modelPerformedArithmetic:false,
+    ruleReleaseId:CURRENT_RULESET.id,referenceRelease:response.referenceRelease,nodes:["case_planner","source_reconciler","calculator"],modelPerformedArithmetic:false,
   };
   return {execution,receipt,context:{...agentExecutionContext(execution),calculatorExecution:receipt}};
 }

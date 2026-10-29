@@ -10,11 +10,14 @@ import * as readiness from "../lib/processing-readiness.ts";
 import * as reactiveEvaluation from "../lib/reactive-evaluation.ts";
 import { EXECUTION_CONTRACT_VERSION } from "../lib/execution-catalog.ts";
 import { snapshotSha256 } from "../lib/calculator-tools.ts";
+import * as referenceRuntime from "../lib/reference-runtime.ts";
+import referenceRelease from "../lib/reference-release.json" with { type: "json" };
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 function load<T>(path:string,mocks:Record<string,unknown>):T{
+  const dependencies:Record<string,unknown>={"./reference-runtime.ts":referenceRuntime,"./reference-release.json":{default:referenceRelease},...mocks};
   const output=ts.transpileModule(readFileSync(root+path,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText,module={exports:{}};
-  new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(mocks,name))return mocks[name];throw new Error(`Unexpected dependency: ${name}`);},module,module.exports);
+  new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(dependencies,name))return dependencies[name];throw new Error(`Unexpected dependency: ${name}`);},module,module.exports);
   return module.exports as T;
 }
 function setup(){

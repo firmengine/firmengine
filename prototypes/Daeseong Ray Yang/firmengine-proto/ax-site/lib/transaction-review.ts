@@ -1,3 +1,4 @@
+import { referenceMoney } from "./reference-parameters.ts";
 import type { CaseData, Fact, Json, Transaction } from "./domain.ts";
 import { currentFacts, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
 
@@ -41,11 +42,13 @@ interface Row {
   description: string;
 }
 
-const POLICY = {
+function currentTransactionPolicy() {
+ const thresholdWon = referenceMoney("param.policy.transaction.outflow_threshold_won");
+ return {
   id: "POLICY-OUTFLOW-500K",
-  title: "50만원 이상 출금·이체 사용처 검토",
+  title: `${BigInt(thresholdWon).toLocaleString("ko-KR")}원 이상 출금·이체 사용처 검토`,
   kind: "firm_review_policy",
-  thresholdWon: "500000",
+  thresholdWon,
   comparison: "gte",
   currency: "KRW",
   legalThreshold: false,
@@ -53,6 +56,7 @@ const POLICY = {
   note: "원본 업무 검토 정책입니다. 법정 한도·부인권 성립·불성실·개시 기각 기준이 아닙니다.",
   origin: { repository: "https://github.com/firmengine/firmengine", commit: "615f6d21e8a2bae978164142223ac9e86bc418f6", path: "prototypes/Daeseong Ray Yang/firmengine-proto/knowledge/bootstrap/correction_catalog.json" },
 } as const;
+}
 const AMOUNT_KEYS = new Set(["transaction.amount", "transactions.amount", "transactions[].amount", "transaction_amount"]);
 
 function scalar(fact: Fact): Json | null {
@@ -96,6 +100,7 @@ function ownAccount(data: CaseData, facts: Fact[]): boolean | null {
 
 /** Pure scan of every supplied row. Candidate matching never moves money or rewrites evidence. */
 export function scanTransactions(data: CaseData) {
+  const policy = currentTransactionPolicy();
   const items: TransactionReviewItem[] = [];
   const facts = currentFacts(data);
   const activeById = new Map(facts.map(f => [f.id, f]));
@@ -146,10 +151,10 @@ export function scanTransactions(data: CaseData) {
     const row: Row = { tx, facts: related, amount, date, ready, ownAccount: ownAccount(data, related), balance: numericFact(data, related, ["transaction.balance", "transaction.balance_after"]), openingBalance: numericFact(data, related, ["transaction.balance_before", "transaction.opening_balance"]), sequence: /^\d+$/.test(String(sequenceValue)) && Number.isSafeInteger(Number(sequenceValue)) ? Number(sequenceValue) : null, time: validTime, bankReference: typeof referenceValue === "string" ? referenceValue : null, description };
     const closingFacts = matching(related, ["transaction.balance", "transaction.balance_after"]);
     if (closingFacts.length && row.balance === null) add(`balance-evidence:${tx.id}:${index}`, "거래 후 잔액의 단위·상충 확인", "missing", [tx], closingFacts, "잔액 값은 있으나 같은 기준의 검증된 정수 원화 값으로 확정되지 않았습니다.", "잔액 열·통화·복수 값과 원문을 대조한 후 잔액 검산을 실행하세요.");
-    if (tx.direction === "out" && amount !== null && amount >= BigInt(POLICY.thresholdWon)) {
+    if (tx.direction === "out" && amount !== null && amount >= BigInt(policy.thresholdWon)) {
       const purpose = oneValue(data, related, ["transaction.use_of_funds", "transaction.purpose_evidence"]);
       const purposeReviewed = bool(oneValue(data, related, ["transaction.purpose_reviewed", "transaction.use_of_funds_reviewed"])) === true;
-      add(`policy-outflow:${tx.id}:${index}`, "50만원 이상 출금·이체 사용처", ready && purpose !== null && purposeReviewed ? "pass" : "missing", [tx], related, ready && purpose !== null && purposeReviewed ? "업무 정책상 사용처 근거와 검토가 기록되었습니다. 법적 성질의 판단과는 별개입니다." : "업무 정책 금액에 해당하는 출금 후보입니다. 적요만으로 사용처를 확정하지 않습니다.", "상대방·계약·영수증·상환대상과 실제 사용처를 연결하고 검토 결과를 기록하세요.");
+      add(`policy-outflow:${tx.id}:${index}`, policy.title, ready && purpose !== null && purposeReviewed ? "pass" : "missing", [tx], related, ready && purpose !== null && purposeReviewed ? "업무 정책상 사용처 근거와 검토가 기록되었습니다. 법적 성질의 판단과는 별개입니다." : "업무 정책 금액에 해당하는 출금 후보입니다. 적요만으로 사용처를 확정하지 않습니다.", "상대방·계약·영수증·상환대상과 실제 사용처를 연결하고 검토 결과를 기록하세요.");
     }
     const clues: { id: string; pattern: RegExp; title: string; action: string }[] = [
       { id: "loan", pattern: /대출|차입|카드론|현금서비스|loan/i, title: "대출·차입 관련 적요 단서", action: "대출계약·채권목록·대환과 자금 사용처를 대조하세요." },
@@ -232,7 +237,7 @@ export function scanTransactions(data: CaseData) {
   }
   const dates = rows.flatMap(r => r.date ? [r.date] : []).sort();
   return {
-    policy: { ...POLICY },
+    policy: { ...policy },
     coverage: { state: coverageState, transactionCount: rows.length, inspectedCount: rows.length, usableAmountAndSourceCount: rows.filter(r => r.ready).length, unresolvedRowCount: rows.filter(r => !r.ready).length, accountIds: [...accounts.keys()], firstObservedDate: dates[0] ?? null, lastObservedDate: dates.at(-1) ?? null, completePeriodProven: coverageState === "complete", note: "행 검사 완료와 계좌·기간 전체 수집 완료는 별개입니다." },
     items,
     totals: { scope: "supplied_rows_only", inputComplete: allRowsUsable, inflowWon: inflow?.toString() ?? null, outflowWon: outflow?.toString() ?? null, netFlowWon: inflow !== null && outflow !== null ? (inflow - outflow).toString() : null, transfersExcluded: false, note: allRowsUsable ? "제공된 검증 가능 행의 입출금 합계입니다. 수입·비용·가용소득으로 분류한 금액이 아닙니다." : "누락·미확인·상충·철회가 있어 합계를 보류했습니다. 0원으로 대체하지 않았습니다." },

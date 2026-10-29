@@ -1,3 +1,5 @@
+import documentPolicy from "./reference-document-policy.json" with { type: "json" };
+import { readReferenceValue } from "./reference-runtime.ts";
 import { observeField, type FieldObservation, type PageFieldCoverage } from "./field-observation.ts";
 import { requiresRecordCategoryStatus } from "./category-contract.ts";
 import { isSourceMoney,insuranceReviewFieldKey,debtComponentSlotKey } from "./source-quantity.ts";
@@ -201,6 +203,7 @@ export interface CaseContext {
   evidence_cutoff?: string;
   ruleReleaseId: string;
   ruleApplicationReviewed: boolean;
+  referenceReviewSha256?: string;
   inventoryComplete: { income: TriState; debt: TriState; asset: TriState };
   planMonths?: number | null;
   exceptionalTermReviewed?: boolean;
@@ -303,12 +306,13 @@ export interface RuleSet {
   livingCostTable?: Record<string, Money>;
 }
 
-export const REQUIRED_ARTIFACT_KINDS: ArtifactKind[] = ["application", "creditors", "assets", "income_expense", "repayment_plan", "statement", "evidence_index"];
+export const REQUIRED_ARTIFACT_KINDS = documentPolicy.requiredKinds as ArtifactKind[];
 export function requiredKindsForCase(data: Pick<CaseData, "documents" | "pages" | "facts"> & Partial<Pick<CaseData,"assets"|"incomes"|"transactions">>): ArtifactKind[] {
-  const kinds: ArtifactKind[] = [...REQUIRED_ARTIFACT_KINDS, "repayment_schedule"];
+  const kinds: ArtifactKind[] = [...readReferenceValue("document.required_kinds", REQUIRED_ARTIFACT_KINDS), ...documentPolicy.alwaysAdditionalKinds as ArtifactKind[]];
   const source = JSON.stringify([data.documents.filter(d => d.status === "active").map(d => d.type ?? ""),data.pages.filter(p=>p.role==="evidence").map(p=>p.documentType??""),currentFacts(data).map(f => f.key)]).toLowerCase();
-  if (/bank.?account|계좌|예금|bank_account/.test(source) || data.assets?.some(a=>a.kind==="deposit") || data.transactions?.some(t=>!!t.accountId)) kinds.push("bank_accounts");
-  if (/lease|임대차|임대계약/.test(source) || data.assets?.some(a=>a.kind==="lease_deposit") || data.incomes?.some(i=>i.kind==="rent")) kinds.push("leases");
+  for (const rule of readReferenceValue("document.conditional_kinds", documentPolicy.conditionalKinds)) {
+    if (new RegExp(rule.sourcePattern).test(source) || data.assets?.some(a => rule.assetKinds.includes(a.kind)) || data.incomes?.some(i => rule.incomeKinds.includes(i.kind)) || rule.transactionAccount && data.transactions?.some(t => !!t.accountId)) kinds.push(rule.kind as ArtifactKind);
+  }
   return [...new Set(kinds)];
 }
 export const AI_MODEL = "gpt-6-luna" as const;

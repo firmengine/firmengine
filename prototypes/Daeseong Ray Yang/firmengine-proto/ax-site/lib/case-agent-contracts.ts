@@ -7,3 +7,9 @@ export const AGENT_NODE_CONTRACTS = [
   {id:"document_binding",kind:"deterministic_tool",responsibility:"같은 사건 스냅샷의 계산 결과를 서식 토큰에 결합",tool:"build_document_payload"},
   {id:"document_review",kind:"review",responsibility:"출처·수치·작성 항목의 완전성 검토 및 기존 제출 게이트 적용",tool:"existing_export_gate"},
 ] as const;
+
+/** Reference-monitor agents run outside the case approval DAG. */
+export const REFERENCE_MONITOR_AGENTS = [
+  {id:"legislation_monitor",kind:"agent",responsibility:"법령·대법원규칙·재판예규와 법률안 변경을 하루 1회 공식 출처 검색·대조",tool:"run_legal_monitors",scope:"legislation",caseMutation:false,ruleActivation:false},
+  {id:"court_document_monitor",kind:"agent",responsibility:"법원 실무준칙·공고·서식 및 상담 안내문서 종류·필수요건 변경 대조",tool:"run_legal_monitors",scope:"court_documents",caseMutation:false,ruleActivation:false},
+] as const;

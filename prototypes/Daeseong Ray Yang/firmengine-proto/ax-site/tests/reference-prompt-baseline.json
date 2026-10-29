@@ -1,0 +1,657 @@
+{
+  "schemaVersion": "prompt-refactor-byte-baseline/1",
+  "originCommit": "df0ccfc011854d05117b335ce8474f065e8545f5",
+  "scope": "Production prompt text and synthetic render-only branches; no case data, private oracle, or model output.",
+  "sourceFiles": {
+    "lib/case-execution.ts": "85c39376818df21c163875d4d5844b090d1c02151e4136bef235d35a251fcec9",
+    "lib/category-contract.ts": "4885ec28018e5a08ae67e157cdadc6d01a0fabcd2c3c83ef4349d61e9192de43",
+    "lib/classification-recovery.ts": "b5a90de9a5667a9076d934cae87c286121d75f1ba85b55dd3ce8483f2a429754",
+    "lib/coverage-review.ts": "c0a6a697bf7b8547cec92b4a867a31a190a15bbbda76e5226786b0874f0b2fe3",
+    "lib/extraction.ts": "735f7511c1bd0913abe17c5a182c67bb01cd2a85eea90af52acda7b9ea575002",
+    "lib/field-observation.ts": "c57e0539942389615f7345f4580682aa94de337a969fa718290de41d4459c922",
+    "lib/legal-review-packet.ts": "04ef5d4ba7740d08fcdd0e97100f6b19d940cc736692c68ab217755288055595",
+    "lib/pipeline.ts": "7b6f28c94a84714532f3bf9400f62dcb76d9aa99dadbd58a9c21320b49f76f7f",
+    "lib/source-nature-context.ts": "fcdb881489e98442b7ea3df74c49ba7b24e40f93615d31451eaa2b06bc25547c"
+  },
+  "renderedConstants": {
+    "DOC_FIELDS": "e8f1e8386e3662458635b6d17d86e2d4d84a152a9e034e73dd3dcd4fbe8334b7",
+    "EXTRACT_INSTRUCTIONS": "c0e81bdb000bbc3a4adb5d4b2cab7f93f65e66893f7f5a05f5ca9ab974c7e989",
+    "PAGE_COMPLETENESS_INSTRUCTIONS": "eea3912115cbe2385cf1f3aff439b487410477ea8398a2c550958c5f818e3633",
+    "STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS": "3166abbe81314a6ccbee04273f93613d23a0535b08df2604bc344b1c8b8814ba",
+    "SOURCE_NATURE_INSTRUCTIONS": "61f0e3cb2e96e125bdffb0a88852983a06bd95ab801a25b7c3a6e15c2d755d11",
+    "CLASSIFICATION_INSTRUCTIONS": "e23f91152660c053cc9cb7f7dc357bec76ee0f2a5b72f2f5cb6abe569e7383f0",
+    "CLASSIFICATION_RECOVERY_INSTRUCTIONS": "422bc7894224562d53cb68b27b7f1e5c50638d9aed2935e345052c1536dcec36",
+    "SOURCE_BBOX_INSTRUCTIONS": "e7125de83c6a85b66feb37bd28838d8552038657484da541d0e8efdc2c9f3af7",
+    "FIELD_OBSERVATION_INSTRUCTIONS": "30b2abcee5dc49f13722ae791f146f835a961e4293af44bca4c3f9f0694688f6",
+    "MISSING_FIELD_REVIEW_INSTRUCTIONS": "64af6b72cd8db8812a3a702104426a50cb8b0ec768778f872df98f957c205f76",
+    "SOURCE_NATURE_HANDOFF_INSTRUCTIONS": "47ff2492d14de5766a3dae5ba0b1940575a412f9fba5c787790318f8993969d8",
+    "RECORD_CATEGORY_POLICY": "416fa226c11d2e4ef2b85f4f24d40055336b9788deebf90c694a734574339ec1",
+    "RECORD_CATEGORY_POLICY_INSTRUCTIONS": "82353c0b3124e9f98de34e1e2de918c05b3b5d511f36bc0a40f5cd207969ff97"
+  },
+  "dynamicBranches": [
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": false,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "db53fdd9bdb7e0641d881bb5c0e95f60dc1084ee019cd6efe744cecc5e1cd843",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": false,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "db53fdd9bdb7e0641d881bb5c0e95f60dc1084ee019cd6efe744cecc5e1cd843",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": false,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2b4edba1cc1af963ef5a6ea2bb10597d5300256696a9514ba84f6053672d87b7",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": false,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2b4edba1cc1af963ef5a6ea2bb10597d5300256696a9514ba84f6053672d87b7",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": true,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "47dd6cec4dc47803253d6d0f61a936b7ebd5fd426ae2f27e86a2962b272d9139",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": true,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "47dd6cec4dc47803253d6d0f61a936b7ebd5fd426ae2f27e86a2962b272d9139",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": true,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "d0c284da97e44f8dac9666bcd565e80a6468d640b2a7e2f277d5f26c5633751c",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": false,
+      "region": true,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "d0c284da97e44f8dac9666bcd565e80a6468d640b2a7e2f277d5f26c5633751c",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "f2bd8d7b5de164c66e942bac4fa557ecd0cbd0e54ad4168cd32d2aac071af9b8"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": false,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "42224ee14e8be6775eaff6129e63fcedd114a1f23a63edb7f6022a04d8345d52",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": false,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "42224ee14e8be6775eaff6129e63fcedd114a1f23a63edb7f6022a04d8345d52",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": false,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "1a60ca055a2e39bd910151df6f97c6e73c6ab2318f7b42ba3983f74d72cd29b3",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": false,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "1a60ca055a2e39bd910151df6f97c6e73c6ab2318f7b42ba3983f74d72cd29b3",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": true,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2bfb33ee366ebea8ab5c8717abffa8f46b5879cd55d8f81660d13a607d2c4a23",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": true,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2bfb33ee366ebea8ab5c8717abffa8f46b5879cd55d8f81660d13a607d2c4a23",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": true,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "102b0ff5e1f1d01e00c0668b2763c49bb9ab14e7486b69db8b56876816bcee20",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "verify",
+      "rescue": true,
+      "region": true,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "102b0ff5e1f1d01e00c0668b2763c49bb9ab14e7486b69db8b56876816bcee20",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "bdf116a15ffb9bb916a6bca646aa9ce86b23e45ab7eaf11de94c807d7d55e7cb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": false,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "db53fdd9bdb7e0641d881bb5c0e95f60dc1084ee019cd6efe744cecc5e1cd843",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": false,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "db53fdd9bdb7e0641d881bb5c0e95f60dc1084ee019cd6efe744cecc5e1cd843",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": false,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2b4edba1cc1af963ef5a6ea2bb10597d5300256696a9514ba84f6053672d87b7",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": false,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2b4edba1cc1af963ef5a6ea2bb10597d5300256696a9514ba84f6053672d87b7",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": true,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "47dd6cec4dc47803253d6d0f61a936b7ebd5fd426ae2f27e86a2962b272d9139",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": true,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "47dd6cec4dc47803253d6d0f61a936b7ebd5fd426ae2f27e86a2962b272d9139",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": true,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "d0c284da97e44f8dac9666bcd565e80a6468d640b2a7e2f277d5f26c5633751c",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": false,
+      "region": true,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "d0c284da97e44f8dac9666bcd565e80a6468d640b2a7e2f277d5f26c5633751c",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "86bee61a4c24e8675a545aeebda82f37e899d3268b75275b911c6e71299d09eb"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": false,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "42224ee14e8be6775eaff6129e63fcedd114a1f23a63edb7f6022a04d8345d52",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": false,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "42224ee14e8be6775eaff6129e63fcedd114a1f23a63edb7f6022a04d8345d52",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": false,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "1a60ca055a2e39bd910151df6f97c6e73c6ab2318f7b42ba3983f74d72cd29b3",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": false,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "1a60ca055a2e39bd910151df6f97c6e73c6ab2318f7b42ba3983f74d72cd29b3",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": true,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2bfb33ee366ebea8ab5c8717abffa8f46b5879cd55d8f81660d13a607d2c4a23",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": true,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2bfb33ee366ebea8ab5c8717abffa8f46b5879cd55d8f81660d13a607d2c4a23",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": true,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "102b0ff5e1f1d01e00c0668b2763c49bb9ab14e7486b69db8b56876816bcee20",
+        "verifierInstructions": "8dcd89653c8c4b0f2ab318f828a1e3773016aaeb1b9369133a76ac0b8f611e8a",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "repair",
+      "rescue": true,
+      "region": true,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "102b0ff5e1f1d01e00c0668b2763c49bb9ab14e7486b69db8b56876816bcee20",
+        "verifierInstructions": "d521cd6b10240eae60699850011b3057a7e281d6dd410d7c54ea8674adfbfb01",
+        "verifierPromptText": "c05f2067fc0f7a19a735cdedd7ee9488cd56067d0058c895c90280990ea68d7c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": false,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "db53fdd9bdb7e0641d881bb5c0e95f60dc1084ee019cd6efe744cecc5e1cd843",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": false,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "db53fdd9bdb7e0641d881bb5c0e95f60dc1084ee019cd6efe744cecc5e1cd843",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": false,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2b4edba1cc1af963ef5a6ea2bb10597d5300256696a9514ba84f6053672d87b7",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": false,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2b4edba1cc1af963ef5a6ea2bb10597d5300256696a9514ba84f6053672d87b7",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": true,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "47dd6cec4dc47803253d6d0f61a936b7ebd5fd426ae2f27e86a2962b272d9139",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": true,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "47dd6cec4dc47803253d6d0f61a936b7ebd5fd426ae2f27e86a2962b272d9139",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": true,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "d0c284da97e44f8dac9666bcd565e80a6468d640b2a7e2f277d5f26c5633751c",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": false,
+      "region": true,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "d0c284da97e44f8dac9666bcd565e80a6468d640b2a7e2f277d5f26c5633751c",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "e2f564c7ae5eef6256c07a58e9290645d9ba7e4c438fb1c8fe9a5070962c9b4c"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": false,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "42224ee14e8be6775eaff6129e63fcedd114a1f23a63edb7f6022a04d8345d52",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": false,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "42224ee14e8be6775eaff6129e63fcedd114a1f23a63edb7f6022a04d8345d52",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": false,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "1a60ca055a2e39bd910151df6f97c6e73c6ab2318f7b42ba3983f74d72cd29b3",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": false,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "1a60ca055a2e39bd910151df6f97c6e73c6ab2318f7b42ba3983f74d72cd29b3",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": true,
+      "omitted": false,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2bfb33ee366ebea8ab5c8717abffa8f46b5879cd55d8f81660d13a607d2c4a23",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": true,
+      "omitted": false,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "2bfb33ee366ebea8ab5c8717abffa8f46b5879cd55d8f81660d13a607d2c4a23",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": true,
+      "omitted": true,
+      "family": false,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "102b0ff5e1f1d01e00c0668b2763c49bb9ab14e7486b69db8b56876816bcee20",
+        "verifierInstructions": "b34f56c358b44c54d62b9a8a8be6676343e7c926e7e161de0d27e4b0f79e3479",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    },
+    {
+      "stage": "region_verify",
+      "rescue": true,
+      "region": true,
+      "omitted": true,
+      "family": true,
+      "hashes": {
+        "extractInstructions": "2eac381f5cd5264d7f50fae4be639fd36bcd557668fec807ed6c0d1205aef53e",
+        "extractInputText": "102b0ff5e1f1d01e00c0668b2763c49bb9ab14e7486b69db8b56876816bcee20",
+        "verifierInstructions": "dff77fa8cbea5e17731cb9e5fd6b89b09d0c32bccb0b997206b20e71dcbd0431",
+        "verifierPromptText": "18bcb9b44faf38537843a7806603b30e120f31bc4fc82d8baed6cd4f92000441"
+      }
+    }
+  ]
+}

@@ -1,0 +1,81 @@
+{
+  "$defs": {
+    "InputPage": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "document_id",
+        "page"
+      ],
+      "title": "InputPage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/InputPage"
+      },
+      "minItems": 1,
+      "title": "Pages",
+      "type": "array"
+    },
+    "allowed_key_labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Allowed Key Labels",
+      "type": "object"
+    },
+    "review_only_keys": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Review Only Keys",
+      "type": "array"
+    },
+    "document_type": {
+      "default": "unknown",
+      "title": "Document Type",
+      "type": "string"
+    },
+    "reference_context": {
+      "items": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "title": "Reference Context",
+      "type": "array"
+    },
+    "extraction_pass": {
+      "default": "initial",
+      "enum": [
+        "initial",
+        "missing_features"
+      ],
+      "title": "Extraction Pass",
+      "type": "string"
+    }
+  },
+  "required": [
+    "pages",
+    "allowed_key_labels",
+    "review_only_keys"
+  ],
+  "title": "ExtractionInput",
+  "type": "object"
+}

@@ -6,6 +6,7 @@ import { bucket,db,errorResponse,event,getCase,HttpError,jsonBody,now,requireSam
 import { caseResponse } from "../../../../../lib/case-response";
 import { jsonResponse } from "../../../../../lib/json-response";
 import { prepareDocumentWrite } from "../../../../../lib/document-writer";
+import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),data=await getCase(id),extras=await caseExtras(data);
   const mode=body.mode==="final"?"final":"draft";
@@ -20,6 +21,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const receiptRows=await db().prepare("SELECT document_id,page,role,status,stage,CASE WHEN json_valid(result) THEN CASE WHEN json_type(result,'$.read.records')='array' AND json_type(result,'$.read.documentType')='text' THEN 1 ELSE 0 END ELSE 0 END AS has_stored_read FROM page_jobs WHERE case_id = ?").bind(id).all<{document_id:string;page:number;role:string;status:string;stage:string;has_stored_read:number}>();
   const pageReceipts=receiptRows.results.map(row=>({documentId:row.document_id,page:row.page,role:row.role,status:row.status,stage:row.stage,hasStoredRead:row.has_stored_read===1}));
   const generated=(await writeOfficePackage({data,rules:CURRENT_RULESET,mode,pageReceipts,preparedExecution:prepared.execution})).map(file=>({...file,id:crypto.randomUUID()}));
+  if((await loadReferenceSnapshot(db())).sha256!==prepared.receipt.referenceRelease?.sha256)throw new HttpError(409,"문서 작성 중 적용 기준이 변경되었습니다. 최신 계산과 검토 상태를 확인하세요.");
   const records=[];
   for(const f of generated){
     const key=`cases/${id}/artifacts/${f.id}`;await bucket().put(key,f.bytes,{httpMetadata:{contentType:f.mime}});

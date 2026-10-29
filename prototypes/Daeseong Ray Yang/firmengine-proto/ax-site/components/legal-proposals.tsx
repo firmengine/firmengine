@@ -1,9 +1,12 @@
 import type { CaseData } from "../lib/domain.ts";
 import { buildLegalProposals } from "../lib/legal-proposals.ts";
+import { maximumPlanMonths, ordinaryPlanMonths, referenceMoney, referenceRatio } from "../lib/reference-parameters.ts";
 
 /** Standalone read-only panel; parent route may mount it after review. */
 export function LegalProposals({ data }: { data: CaseData }) {
   const result = buildLegalProposals(data);
+  const livingRatio = referenceRatio("param.seoul.living.baseline_ratio");
+  const livingPercent = (livingRatio.numerator * 100 / livingRatio.denominator).toLocaleString("ko-KR", { maximumFractionDigits: 6 });
   const money = (s: string) => {
     const [whole, fraction] = s.split(".");
     const grouped = BigInt(whole).toLocaleString("ko-KR");
@@ -16,7 +19,7 @@ export function LegalProposals({ data }: { data: CaseData }) {
       <article className="rounded-lg bg-muted/40 p-3">
         <h3 className="font-medium">월 생계비 기초 제안</h3>
         {result.livingCost.status === "proposal" ? <>
-          <p>{result.livingCost.year}년 {result.livingCost.claimedHouseholdSize}인가구: 기준중위소득 {money(String(result.livingCost.medianIncomeWon))}의 60% = {money(result.livingCost.base60Percent.exactDecimalWon)}/월</p>
+          <p>{result.livingCost.year}년 {result.livingCost.claimedHouseholdSize}인가구: 기준중위소득 {money(String(result.livingCost.medianIncomeWon))}의 {livingPercent}% = {money(result.livingCost.base60Percent.exactDecimalWon)}/월</p>
           <p className="text-sm">가구원 수의 법적 인정 및 추가생계비는 별도 검토가 필요합니다. 추가생계비 원문 입력: {result.livingCost.additionalExpenseWon ? money(result.livingCost.additionalExpenseWon) : "확인되지 않음"}</p>
         </> : <p>제안 차단: {result.livingCost.reason}</p>}
         <ul className="mt-2 list-disc pl-5 text-sm">{result.livingCost.sources.map((s) => <li key={s.url}><a className="underline" href={s.url} target="_blank" rel="noreferrer">{s.title}</a></li>)}</ul>
@@ -34,14 +37,14 @@ export function LegalProposals({ data }: { data: CaseData }) {
         <p>상태: {result.objectionMinimum.status}{result.objectionMinimum.status === "comparison" ? ` · 비교: ${result.objectionMinimum.comparison === "meets_minimum" ? "산술 기준 이상" : "산술 기준 미만"}` : ` · ${result.objectionMinimum.reason}`}</p>
         {result.objectionMinimum.status === "comparison" && <>
           <p className="text-sm">인가결정일 기준 채권 총액 현재가치 {money(result.objectionMinimum.claimTotalPresentValueWon)}과 계획 총변제 현재가치 {money(result.objectionMinimum.planPresentValueWon)}을 별도로 비교했습니다.</p>
-          <p className="text-sm">기준액 = {result.objectionMinimum.minimumExact.numeratorWon}/{result.objectionMinimum.minimumExact.denominator}원; 원 단위 참고 ceiling {money(result.objectionMinimum.minimumExact.ceilingWholeWon)}원{result.objectionMinimum.minimumExact.capApplied ? " (3천만원 상한 적용)" : ""}.</p>
+          <p className="text-sm">기준액 = {result.objectionMinimum.minimumExact.numeratorWon}/{result.objectionMinimum.minimumExact.denominator}원; 원 단위 올림 참고값 {money(result.objectionMinimum.minimumExact.ceilingWholeWon)}{result.objectionMinimum.minimumExact.capApplied ? ` (${money(referenceMoney("param.national.objection_minimum.minimum_cap_won"))} 상한 적용)` : ""}.</p>
           <p className="text-sm">{result.objectionMinimum.minimumExact.calculationNote} 적용 사실 ID: {result.objectionMinimum.sourceFactIds.join(", ")} · 규칙판본: {result.objectionMinimum.ruleVersion}</p>
         </>}
         <p className="mt-1 text-xs text-muted-foreground">이의 사건의 추가 산술 비교일 뿐 인가 판단이 아닙니다. 이의가 없으면 이 기준을 적용하지 않습니다.</p>
         <details className="mt-2 text-sm"><summary className="cursor-pointer">공식 문언</summary><p className="mt-1">{result.objectionMinimum.sourceText}</p></details>
         <a className="mt-2 inline-block text-sm underline" href={result.objectionMinimum.sourceUrl} target="_blank" rel="noreferrer">{result.objectionMinimum.clause} — 공식 원문</a>
       </article>
-      <p className="text-xs text-muted-foreground">현재 계획기간 입력: {result.currentPlanMonths ?? "미입력"}개월. 통상 36/60개월 산정 및 예외 인가는 이 제안 패널에서 자동 결정하지 않습니다.</p>
+      <p className="text-xs text-muted-foreground">현재 계획기간 입력: {result.currentPlanMonths ?? "미입력"}개월. 기본 {ordinaryPlanMonths()}개월·예외 상한 {maximumPlanMonths()}개월의 적용 및 인가는 이 제안 패널에서 자동 결정하지 않습니다.</p>
     </div>
   </section>;
 }

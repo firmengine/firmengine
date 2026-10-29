@@ -1,0 +1,8 @@
+{
+  "version": "retry-prompt-1.0.0",
+  "max_output_tokens": 1800,
+  "connected": true,
+  "model_source": "runtime environment, default gpt-6-luna",
+  "scope": "one page / one task",
+  "retries": 1
+}

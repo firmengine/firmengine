@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, index } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, index, primaryKey } from "drizzle-orm/sqlite-core";
 
 export const cases = sqliteTable("cases", {
   id: text("id").primaryKey(), name: text("name").notNull(),
@@ -37,6 +37,86 @@ export const analyses = sqliteTable("analyses", {
   id: text("id").primaryKey(), caseId: text("case_id").notNull(), revision: integer("revision").notNull(),
   type: text("type").notNull(), payload: text("payload").notNull(), at: text("at").notNull(),
 }, t => [index("analyses_case_idx").on(t.caseId)]);
+
+export const legalReferenceReleases = sqliteTable("legal_reference_releases", {
+  id: text("id").primaryKey().notNull(),
+  revision: integer("revision").notNull(),
+  seedSha256: text("seed_sha256").notNull(),
+  sha256: text("sha256").notNull(),
+  status: text("status").notNull(),
+  payload: text("payload").notNull(),
+  createdAt: text("created_at").notNull(),
+  actor: text("actor").notNull(),
+  reason: text("reason").notNull(),
+});
+
+export const legalReferenceItems = sqliteTable("legal_reference_items", {
+  releaseId: text("release_id").notNull(),
+  id: text("id").notNull(),
+  kind: text("kind").notNull(),
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  sha256: text("sha256").notNull(),
+  payload: text("payload").notNull(),
+},t=>[primaryKey({columns:[t.releaseId,t.id]}),index("legal_reference_items_kind_idx").on(t.releaseId,t.kind)]);
+
+export const legalReferenceChanges = sqliteTable("legal_reference_changes", {
+  id: text("id").primaryKey().notNull(),
+  referenceId: text("reference_id").notNull(),
+  status: text("status").notNull(),
+  baseSha256: text("base_sha256").notNull(),
+  payload: text("payload").notNull(),
+  createdAt: text("created_at").notNull(),
+  actor: text("actor").notNull(),
+  reviewedAt: text("reviewed_at"),
+  reviewedBy: text("reviewed_by"),
+});
+
+export const legalMonitorObservations = sqliteTable("legal_monitor_observations", {
+  sourceId: text("source_id").primaryKey().notNull(),
+  sha256: text("sha256").notNull(),
+  payload: text("payload").notNull(),
+  fetchedAt: text("fetched_at").notNull(),
+});
+
+export const legalMonitorObservationHistory = sqliteTable("legal_monitor_observation_history", {
+  sourceId: text("source_id").notNull(),
+  sha256: text("sha256").notNull(),
+  payload: text("payload").notNull(),
+  fetchedAt: text("fetched_at").notNull(),
+},t=>[primaryKey({columns:[t.sourceId,t.sha256]})]);
+
+export const legalMonitorRuns = sqliteTable("legal_monitor_runs", {
+  id: text("id").primaryKey().notNull(),
+  agent: text("agent").notNull(),
+  status: text("status").notNull(),
+  startedAt: text("started_at").notNull(),
+  completedAt: text("completed_at"),
+  payload: text("payload").notNull(),
+});
+
+export const legalMonitorAlerts = sqliteTable("legal_monitor_alerts", {
+  id: text("id").primaryKey().notNull(),
+  agent: text("agent").notNull(),
+  sourceId: text("source_id").notNull(),
+  status: text("status").notNull(),
+  payload: text("payload").notNull(),
+  createdAt: text("created_at").notNull(),
+  acknowledgedAt: text("acknowledged_at"),
+  acknowledgedBy: text("acknowledged_by"),
+},t=>[index("legal_monitor_alerts_created_idx").on(t.createdAt)]);
+
+export const legalMonitorState = sqliteTable("legal_monitor_state", {
+  id: text("id").primaryKey().notNull(),
+  payload: text("payload").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+export const legalMonitorLocks = sqliteTable("legal_monitor_locks", {
+  id: text("id").primaryKey().notNull(),
+  token: text("token").notNull(),
+  expiresAt: text("expires_at").notNull(),
+});
 
 // A separate, versioned reference schema for consultation intake. The payload
 // contains typed feature, document, rule and source collections; case facts and

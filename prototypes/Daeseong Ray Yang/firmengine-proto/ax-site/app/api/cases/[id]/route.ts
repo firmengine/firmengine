@@ -1,3 +1,4 @@
+import { referenceIdentity } from "../../../../lib/reference-runtime.ts";
 import { archiveExport,currentFacts,retractDocument,reviewExport,reviewFact,touchCase,type FactState,type Recognition } from "../../../../lib/domain";
 import { assessCase } from "../../../../lib/assessment";
 import { CURRENT_RULESET } from "../../../../lib/legal-rules";
@@ -62,6 +63,11 @@ export async function PATCH(request:Request,{params}:Context){try{
     next=touchCase(previous);
     try{const parsedContext=parseContextPatch(body.context,previous.context);Object.assign(next.context,parsedContext);if(parsedContext.shortenedTermReview===null)delete next.context.shortenedTermReview;if(body.household)next.household={...next.household,...parseHouseholdPatch(body.household,previous)};}catch(e){throw new HttpError(400,e instanceof Error?e.message:"입력 형식을 확인하세요.");}
     next.context.ruleReleaseId=CURRENT_RULESET.id;
+    if(body.context?.ruleApplicationReviewed===true){
+      await requireHumanActor();
+      if(previous.referenceTest||previous.structuredTest)throw new HttpError(409,"합성 사건의 법적 검토 승인은 허용하지 않습니다.");
+      next.context.referenceReviewSha256=referenceIdentity()?.sha256;
+    } else if(body.context?.ruleApplicationReviewed===false) delete next.context.referenceReviewSha256;
   }else if(body.action==="upsert_object"){
     await requireUploadedSource(previous,body.source);
     next=upsertObject(previous,body.collection,body.item,body.source,String(body.reason||""),await actor());

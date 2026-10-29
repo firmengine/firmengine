@@ -1,8 +1,9 @@
+import { renderPromptPolicy } from "./reference-prompts.ts";
 import { documentFieldContract } from "./document-agent-registry.ts";
 import { isValidSourceBBox } from "./source-verification-identity.ts";
 
 export const MAX_MISSING_FIELD_CUES = 32;
-export const MISSING_FIELD_REVIEW_INSTRUCTIONS = "missingFields는 현재 페이지 이미지에서 실제로 보이는 필드·행·셀 중 read에 빠진 occurrence만 recovery cue로 기록한다. 현재 document family 계약에 정확히 있는 canonicalFieldId를 사용하고, 원문에 직접 대응하는 quote와 그 위치의 bbox를 함께 제시한다. sourceState는 보이는 값이 있으면 present, 빈칸이면 blank, 마스킹이면 masked, 읽을 수 없으면 illegible, 원문이 명시적으로 없다고 하면 explicit_none이다. 카탈로그에 필드가 있다는 이유, 빈칸·0·누락·다른 페이지·문서 전체 건수만으로 값을 만들거나 missingFields를 추가하지 않는다. 이 목록은 재추출 위치 후보이며 사실·값·비적용 결정·검증 증명이 아니다. 기존 read에 같은 canonicalFieldId와 겹치는 bbox occurrence가 있으면 중복 cue로 반환하지 않는다. 동일 필드가 여러 행에 실제로 보이면 각 행의 독립 bbox로 각각 기록한다.";
+export const MISSING_FIELD_REVIEW_INSTRUCTIONS = renderPromptPolicy("prompt.coverage_review.missing_field_review_instructions");
 
 export type MissingFieldSourceState = "present" | "blank" | "masked" | "illegible" | "explicit_none";
 export interface MissingFieldCue {

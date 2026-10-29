@@ -1,0 +1,48 @@
+{
+  "$defs": {
+    "InputPage": {
+      "additionalProperties": false,
+      "properties": {
+        "document_id": {
+          "minLength": 1,
+          "title": "Document Id",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "document_id",
+        "page"
+      ],
+      "title": "InputPage",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "pages": {
+      "items": {
+        "$ref": "#/$defs/InputPage"
+      },
+      "minItems": 1,
+      "title": "Pages",
+      "type": "array"
+    },
+    "document_types": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Document Types",
+      "type": "object"
+    }
+  },
+  "required": [
+    "pages"
+  ],
+  "title": "ClassificationInput",
+  "type": "object"
+}

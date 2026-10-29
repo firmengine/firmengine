@@ -1,3 +1,5 @@
+import { referenceIdentity } from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with { type: "json" };
 import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { executeCaseNodes } from "./case-execution.ts";
 import type { CaseData } from "./domain.ts";
@@ -12,6 +14,7 @@ export interface DerivedEvaluationEnvelope {
   storageToken: string;
   inputSha256: string;
   engineVersion: string;
+  referenceSha256?: string;
   generatedAt: string;
   evaluationSha256?: string;
   execution?: ExecutionSnapshot;
@@ -25,7 +28,7 @@ export function buildDerivedExecution(data: CaseData): ExecutionSnapshot {
 export function pendingDerivedEvaluation(input: {
   revision: number; storageToken: string; inputSha256: string; generatedAt: string;
 }): DerivedEvaluationEnvelope {
-  return {schemaVersion:DERIVED_EVALUATION_SCHEMA,status:"pending",...input,engineVersion:EXECUTION_CONTRACT_VERSION};
+  return {schemaVersion:DERIVED_EVALUATION_SCHEMA,status:"pending",...input,engineVersion:EXECUTION_CONTRACT_VERSION,referenceSha256:referenceIdentity()?.sha256??referenceRelease.sha256};
 }
 
 export function completeDerivedEvaluation(pending: DerivedEvaluationEnvelope, execution: ExecutionSnapshot, evaluationSha256: string): DerivedEvaluationEnvelope {

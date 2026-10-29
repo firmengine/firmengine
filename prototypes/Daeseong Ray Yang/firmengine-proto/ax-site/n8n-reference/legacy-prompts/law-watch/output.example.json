@@ -1,0 +1,12 @@
+{
+  "summary": "Synthetic heading changed.",
+  "semantic_change": false,
+  "effective_date": null,
+  "application_date": null,
+  "date_evidence": "",
+  "affected_features": [],
+  "exception_notes": [
+    "No explicit effective date."
+  ],
+  "recommendation": "review_required"
+}

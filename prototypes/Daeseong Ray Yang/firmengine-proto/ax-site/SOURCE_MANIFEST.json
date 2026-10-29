@@ -2147,5 +2147,8 @@
       "bytes": 2673,
       "mode": "100644"
     }
-  ]
+  ],
+  "status": "historical_pre_v35_public_source_export",
+  "superseded_by": "docs/ax-v35-merge-manifest.json",
+  "note": "This ledger records the earlier sanitized public export. Current local v35 merge files are recorded separately; this historical ledger does not describe the current application tree."
 }

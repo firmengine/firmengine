@@ -1,3 +1,6 @@
+import { maximumCalculationMonths, shareBasisPoints } from "./reference-parameters.ts";
+import { referenceIdentity } from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with { type: "json" };
 import * as z from "zod-mcp";
 import { calculateDisposal } from "./assessment.ts";
 import { executeCaseNodes } from "./case-execution.ts";
@@ -11,13 +14,13 @@ const optionalMoney=money.nullable().optional();
 const ids=z.array(id).max(50000), recognition=z.enum(["unreviewed","accepted","rejected"]);
 const row=z.object({id,factIds:ids}).passthrough();
 const inputSnapshot=z.object({
-  context:z.object({id,caseName:text,revision:z.number().int().positive(),applicationDate:text,asOf:text,courtId:text,ruleReleaseId:id,ruleApplicationReviewed:z.boolean(),inventoryComplete:z.object({income:tri,debt:tri,asset:tri}),planMonths:z.number().int().min(1).max(1200).nullable().optional(),monthlyTrusteeFee:optionalMoney,monthlyPriorityPayment:optionalMoney,monthlyEstatePayment:optionalMoney,approvedMonthlyPayment:optionalMoney,approvedPresentValue:optionalMoney}).passthrough(),
+  context:z.object({id,caseName:text,revision:z.number().int().positive(),applicationDate:text,asOf:text,courtId:text,ruleReleaseId:id,ruleApplicationReviewed:z.boolean(),inventoryComplete:z.object({income:tri,debt:tri,asset:tri}),planMonths:z.number().int().min(1).max(maximumCalculationMonths()).nullable().optional(),monthlyTrusteeFee:optionalMoney,monthlyPriorityPayment:optionalMoney,monthlyEstatePayment:optionalMoney,approvedMonthlyPayment:optionalMoney,approvedPresentValue:optionalMoney}).passthrough(),
   documents:z.array(z.object({id,sha256:text,name:text,status:z.enum(["active","deleted"]),pages:z.array(z.number().int().positive())}).passthrough()).max(10000),
   pages:z.array(z.object({documentId:id,page:z.number().int().positive(),role:z.enum(["evidence","filed_form","administrative","unknown"])}).passthrough()).max(50000),
   facts:z.array(z.object({id,logicalId:id,version:z.number().int().positive(),subjectId:id,key:id,value:z.unknown(),state:z.enum(["reported","extracted","verified","disputed","retracted"]),recognition,refs:z.array(z.object({documentId:id,page:z.number().int().positive(),quote:text,bbox:z.tuple([z.number(),z.number(),z.number(),z.number()]).optional(),sourceHash:text.optional()})),validation:z.array(z.object({code:text,message:text,severity:z.enum(["info","warning","error"])})),numeric:money.optional()}).passthrough()).max(50000),
-  incomes:z.array(row.extend({kind:z.enum(["wage","business","rent","interest","dividend","pension","benefit","other"]),label:text,gross:optionalMoney,expenses:optionalMoney,net:optionalMoney,amountBasis:z.enum(["monthly","period_total","unknown"]).optional(),recurring:tri.optional(),periodMonths:z.number().int().min(1).max(1200).nullable().optional()})).max(10000),
+  incomes:z.array(row.extend({kind:z.enum(["wage","business","rent","interest","dividend","pension","benefit","other"]),label:text,gross:optionalMoney,expenses:optionalMoney,net:optionalMoney,amountBasis:z.enum(["monthly","period_total","unknown"]).optional(),recurring:tri.optional(),periodMonths:z.number().int().min(1).max(maximumCalculationMonths()).nullable().optional()})).max(10000),
   debts:z.array(row.extend({creditor:text,principal:optionalMoney,interest:optionalMoney,secured:tri,classification:z.enum(["ordinary","secured","tax","estate","non_dischargeable","disputed","unknown"])})).max(10000),
-  assets:z.array(row.extend({kind:z.enum(["cash","deposit","insurance","vehicle","real_estate","lease_deposit","business","receivable","retirement","other"]),label:text,grossValue:optionalMoney,securedPayoff:optionalMoney,disposalCosts:optionalMoney,protectedValue:optionalMoney,ownershipBps:z.number().int().min(0).max(10000).nullable().optional()})).max(10000),
+  assets:z.array(row.extend({kind:z.enum(["cash","deposit","insurance","vehicle","real_estate","lease_deposit","business","receivable","retirement","other"]),label:text,grossValue:optionalMoney,securedPayoff:optionalMoney,disposalCosts:optionalMoney,protectedValue:optionalMoney,ownershipBps:z.number().int().min(0).max(shareBasisPoints()).nullable().optional()})).max(10000),
   household:z.object({factIds:ids,recognizedLivingCost:optionalMoney,additionalLivingCost:optionalMoney,livingCostIncludesAdditional:z.boolean().optional()}).passthrough(),
   transactions:z.array(row.extend({date:text,kind:z.enum(["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"]),direction:z.enum(["in","out","unknown"]),amount:money})).max(30000),
 }).passthrough();
@@ -75,12 +78,12 @@ export async function callCalculatorTool(name:CalculatorToolName,input:unknown) 
     assertInputSize(input);
     if(!Object.hasOwn(TOOL_INPUT_SCHEMAS,name))throw new Error("UNKNOWN_TOOL");
     const parsed=TOOL_INPUT_SCHEMAS[name].safeParse(input);
-    if(!parsed.success)return {ok:false as const,version:EXECUTION_CONTRACT_VERSION,error:{code:"INVALID_INPUT",fields:parsed.error.issues.slice(0,20).map(issue=>({path:issue.path.join("."),code:issue.code}))}};
+    if(!parsed.success)return {ok:false as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},error:{code:"INVALID_INPUT",fields:parsed.error.issues.slice(0,20).map(issue=>({path:issue.path.join("."),code:issue.code}))}};
     if(name==="get_execution_catalog"){
       const args=parsed.data as z.infer<typeof TOOL_INPUT_SCHEMAS.get_execution_catalog>,catalog=executionCatalog(),rows=catalog[args.section];
-      return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,ruleReleaseId:CURRENT_RULESET.id,result:{section:args.section,total:rows.length,offset:args.offset,items:rows.slice(args.offset,args.offset+args.limit),nextOffset:args.offset+args.limit<rows.length?args.offset+args.limit:null}};
+      return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},ruleReleaseId:CURRENT_RULESET.id,result:{section:args.section,total:rows.length,offset:args.offset,items:rows.slice(args.offset,args.offset+args.limit),nextOffset:args.offset+args.limit<rows.length?args.offset+args.limit:null}};
     }
-    if(name==="calculate_disposal")return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,inputSha256:await snapshotSha256(parsed.data),courtApprovalInferred:false,result:calculateDisposal(parsed.data as {saleAmount:NumericInput;securedPayoff:NumericInput;costs:NumericInput})};
+    if(name==="calculate_disposal")return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},inputSha256:await snapshotSha256(parsed.data),courtApprovalInferred:false,result:calculateDisposal(parsed.data as {saleAmount:NumericInput;securedPayoff:NumericInput;costs:NumericInput})};
     const args=parsed.data as unknown as {caseData:CaseData;expectedRevision:number;ruleReleaseId:string};
     assertSnapshot(args.caseData,args.expectedRevision,args.ruleReleaseId,name==="plan_case");
     const execution=executeCaseNodes(args.caseData,{includeDocumentBindings:name==="build_document_payload"});
@@ -89,9 +92,9 @@ export async function callCalculatorTool(name:CalculatorToolName,input:unknown) 
     const finalization={canGenerateDraft:execution.assessment.generationGate.canGenerateDraft,canFinalize:false,reasons:[...execution.assessment.generationGate.reasons,"CALLER_SNAPSHOT_REQUIRES_TRUSTED_REVIEW"]};
     execution.assessment.generationGate=finalization;execution.plan.generationGate=finalization;
     const result=name==="plan_case"?execution.plan:execution;
-    return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,caseId:args.caseData.context.id,caseRevision:args.expectedRevision,ruleReleaseId:CURRENT_RULESET.id,inputSha256:await snapshotSha256(args.caseData),trust:"caller_supplied_snapshot" as const,courtApprovalInferred:false as const,result};
+    return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},caseId:args.caseData.context.id,caseRevision:args.expectedRevision,ruleReleaseId:CURRENT_RULESET.id,inputSha256:await snapshotSha256(args.caseData),trust:"caller_supplied_snapshot" as const,courtApprovalInferred:false as const,result};
   } catch(error) {
     const code=error instanceof Error&&/^[A-Z_]+$/.test(error.message)?error.message:"CALCULATION_INPUT_REJECTED";
-    return {ok:false as const,version:EXECUTION_CONTRACT_VERSION,error:{code}};
+    return {ok:false as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},error:{code}};
   }
 }
