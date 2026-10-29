@@ -35,7 +35,7 @@ function bindField(field:ReadField,contract:Contract|null,category:string){
   const issues=resolved.issues.map(issue=>issue==="canonical_id_key_conflict"?"CANONICAL_ID_KEY_CONFLICT":issue==="canonical_id_outside_family"?"CANONICAL_FIELD_NOT_IN_SCHEMA":issue==="canonical_id_ambiguous"?"AMBIGUOUS_SOURCE_FIELD_KEY":"SOURCE_FIELD_KEY_UNBOUND");
   if(selected&&field.sourceState==="present"&&field.value!==null){
     if(["money","money_or_itemized"].includes(selected.datatype)&&!field.unit?.trim())issues.push("SOURCE_MONETARY_UNIT_MISSING");
-    if(selected.datatype==="integer"&&!/^[+-]?\\d+$/.test(field.value.replace(/,/g,"").trim()))issues.push("SOURCE_INTEGER_FORMAT_REVIEW");
+    if(selected.datatype==="integer"&&!/^[+-]?\d+$/.test(field.value.replace(/,/g,"").trim()))issues.push("SOURCE_INTEGER_FORMAT_REVIEW");
   }
   if(field.confidence!=="clear")issues.push("SOURCE_READ_UNCERTAIN");
   if(field.sourceState!==undefined&&field.sourceState!=="present"&&field.sourceState!=="explicit_none")issues.push("SOURCE_STATE_REQUIRES_REVIEW");

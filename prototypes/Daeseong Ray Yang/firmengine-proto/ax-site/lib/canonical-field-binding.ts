@@ -39,8 +39,9 @@ export function bindCanonicalSourceField(field:CanonicalSourceInput,contract:Can
  * != payoff, and historical credit inquiry != current debt.
  */
 const projections:Readonly<Record<string,Readonly<Record<string,Readonly<Record<string,string>>>>>>={
+  identity_residence_record:{person:{"identity.name":"name","identity.address":"address","identity.registration_id":"resident_id_masked"}},
   payroll_payslip:{income:{
-    "income.payroll.employer":"employer","income.payroll.net_pay":"net",
+    "income.payroll.employer":"employer","income.payroll.net_pay":"net","gross_total":"gross",
     "income.payroll.pay_period_start":"period_start","income.payroll.pay_period_end":"period_end"
   }},
   current_nonwage_income:{income:{
@@ -50,7 +51,7 @@ const projections:Readonly<Record<string,Readonly<Record<string,Readonly<Record<
   }},
   debt_certificate:{debt:{
     "creditor":"creditor","contract_id":"contract_id","principal_balance":"principal_balance",
-    "interest_balance":"interest","as_of_date":"as_of"
+    "interest_balance":"interest","as_of_date":"as_of","creditor_address":"address","claim_cause":"cause"
   }},
   bank_transactions:{transaction:{
     "account_id":"account_id","transaction_datetime":"date","direction":"direction",
