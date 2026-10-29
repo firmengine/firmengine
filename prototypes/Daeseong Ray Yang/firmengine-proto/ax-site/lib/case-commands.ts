@@ -6,6 +6,7 @@ import { applyFactProjection,invalidateFactSupport } from "./fact-object-project
 import { caseWorkflow } from "./case-workflow-state.ts";
 import { assertKeys,commandHash,CommandError,type CaseCommand } from "./case-command-contract.ts";
 import { applyRequirementOverride } from "./case-requirements.ts";
+import { approveDocumentSubstitution } from "./approve-document-substitution.ts";
 import { adoptIntakeRun,buildIntakeCrosswalk } from "./intake-case-bridge.ts";
 import { confirmSubjectLink,rejectSubjectLink } from "./party-identity.ts";
 import { transitionDocumentMatch } from "./document-fulfillment.ts";
@@ -150,14 +151,24 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
    const ids=[data.context.id,...data.incomes.map(v=>v.id),...data.debts.map(v=>v.id),...data.assets.map(v=>v.id)];if(operation==="confirm"&&!ids.includes(String(patch.typedEntityId)))fail("같은 사건의 실제 대상을 지정하세요.");
    work.subjectLinks[index]=operation==="confirm"?confirmSubjectLink(work.subjectLinks[index]!,{typedEntityId:String(patch.typedEntityId),reviewer:auth.actor,expectedVersion:expectedVersion as number,evidenceRefs:basis}):rejectSubjectLink(work.subjectLinks[index]!,expectedVersion as number,auth.actor);
  }else if(kind==="requirement.override"){
-   assertKeys(target,["requirementId"],["requirementId"]);assertKeys(patch,["operation","period","subjectLinkId","alternativeId","basisRefs","mappingReview"],["operation"]);const operation=enumValue(patch.operation,["automatic","add_manual","change_period","change_subject","select_alternative","review_mapping","waive_with_reason","declare_not_applicable","reopen","retire"],"요구서류 변경 작업");const index=work.requirements.findIndex(v=>v.requirementId===target.requirementId);if(index<0)fail("요구서류를 찾지 못했습니다.",404);
-   if(["review_mapping","waive_with_reason","declare_not_applicable"].includes(operation)){review(auth);if(isSynthetic(data))fail("합성 사건의 요구서류 검토·면제 승인은 금지되어 있습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");}
+   assertKeys(target,["requirementId"],["requirementId"]);assertKeys(patch,["operation","period","subjectLinkId","alternativeId","basisRefs","mappingReview","substitutionReview"],["operation"]);const operation=enumValue(patch.operation,["automatic","add_manual","change_period","change_subject","select_alternative","review_mapping","review_substitution","waive_with_reason","declare_not_applicable","reopen","retire"],"요구서류 변경 작업");const index=work.requirements.findIndex(v=>v.requirementId===target.requirementId);if(index<0)fail("요구서류를 찾지 못했습니다.",404);
+   if(["review_substitution","select_alternative","review_mapping","waive_with_reason","declare_not_applicable"].includes(operation)){review(auth);if(isSynthetic(data))fail("합성 사건의 요구서류 검토·면제 승인은 금지되어 있습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");}
    const basis=patch.basisRefs?strings(patch.basisRefs):[];if(basis.some(id=>!BASIS_REF(data).has(id)))fail("현재 사건의 원문 또는 사실 근거를 지정하세요.");
    if(["waive_with_reason","declare_not_applicable"].includes(operation)&&!basis.length)fail("검토 처분에 현재 원문 또는 사실 근거가 필요합니다.");
    if(operation==="change_period"&&(typeof patch.period!=="string"||!patch.period.trim()||patch.period.length>200))fail("요구서류 적용기간을 확인하세요.");
    if(operation==="change_subject"&&patch.subjectLinkId!==null&&(!work.subjectLinks.some(link=>link.linkId===patch.subjectLinkId)))fail("현재 사건의 주체 연결을 선택하세요.");
    if(operation==="select_alternative"&&(typeof patch.alternativeId!=="string"||!patch.alternativeId.trim()))fail("대체 서류 선택을 확인하세요.");
-   if(operation==="review_mapping"){
+   if(operation==="review_substitution"){
+     if(!auth.intakeCatalog)fail("최신 카탈로그 검토가 필요합니다.",409,"CATALOG_REVIEW_REQUIRED");
+     const prior=work.requirements[index]!;
+     let approved;
+     try{approved=approveDocumentSubstitution({requirement:prior,proposal:patch.substitutionReview,catalog:auth.intakeCatalog,
+       facts:currentFacts(previous),courtId:String(previous.context.courtId??""),actor:auth.actor,at:auth.at,reason:command.reason,basisRefs:basis});}
+     catch(error){fail(error instanceof Error?error.message:"갈음 검토 항목을 확인하세요.",422,"SUBSTITUTION_REVIEW_INVALID");}
+     work.requirements[index]={...prior,substitutionReview:approved,overrideReason:command.reason,overrideReviewer:auth.actor,overrideBasisRefs:basis};
+     work.reviewHistory.push({at:auth.at,actor:auth.actor,reason:command.reason,
+       before:{requirementId:prior.requirementId,priorReview:prior.substitutionReview??null}});
+   }else if(operation==="review_mapping"){
     const raw=patch.mappingReview;if(!raw||typeof raw!=="object"||Array.isArray(raw))fail("요구서류 유형 매핑을 확인하세요.");const mapping=raw as Record<string,unknown>;
     assertKeys(mapping,["expectedCrosswalkId","expectedCrosswalkVersion","requiredFieldGroups","optionalFieldIds","typedTargets","noRequiredFields","subjectScope","periodPolicy"],["expectedCrosswalkId","expectedCrosswalkVersion","requiredFieldGroups","optionalFieldIds","typedTargets","noRequiredFields","subjectScope","periodPolicy"]);
     const requiredFieldGroups=Array.isArray(mapping.requiredFieldGroups)?mapping.requiredFieldGroups.map(group=>strings(group)):fail("필수 필드 그룹을 확인하세요."),optionalFieldIds=strings(mapping.optionalFieldIds),typedTargets=Array.isArray(mapping.typedTargets)?mapping.typedTargets.map(item=>{if(!item||typeof item!=="object"||Array.isArray(item))fail("유형 필드 연결을 확인하세요.");const field=item as Record<string,unknown>;assertKeys(field,["fieldId","targetPath"],["fieldId","targetPath"]);return {fieldId:text(field.fieldId,"필드"),targetPath:text(field.targetPath,"대상 필드")};}):fail("유형 필드 연결을 확인하세요.");
