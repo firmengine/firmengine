@@ -36,6 +36,8 @@ test("a consultation request resolves the locked policy while keeping untrusted 
   assert.equal(packet.sourceSpans.map((span: { text: string }) => span.text).join(""), text);
   assert.ok(packet.sourceSpans.every((span: { noteId: string; start: number; end: number; id: string }) => span.noteId === "synthetic-note" && span.end > span.start && span.id.startsWith("span:1:")));
   assert.equal(packet.promptVersion, "intake-classifier-5.3");
+  assert.deepEqual(packet.documents.map((document:{id:string;name:string})=>({id:document.id,name:document.name})),INTAKE_CATALOG_SEED.documents.map(document=>({id:document.id,name:document.name})));
+  assert.deepEqual(packet.documents[0].fields,INTAKE_CATALOG_SEED.documents[0].fields);
   assert.equal(request.instructions.includes(text), false);
   const schema = JSON.parse(JSON.stringify(request.schema));
   const vehicleBranch = schema.properties.subjects.items.anyOf.find((branch: { properties: { subjectId: { pattern?: string }; claims: { items: { properties: { featureId: { $ref: string } } } } } }) => branch.properties.subjectId.pattern?.startsWith("^asset:"));

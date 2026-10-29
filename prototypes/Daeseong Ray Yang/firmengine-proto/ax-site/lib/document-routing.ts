@@ -1,3 +1,4 @@
+import { parseDocumentRoute } from "./shared-document-catalog.ts";
 /** Document identity is a routing hint, never a source of monetary or legal facts. */
 export const DOCUMENT_FAMILY_ALIASES: Record<string, readonly string[]> = {
   payroll: ["payslip", "pay_slip", "payroll_statement", "salary_statement", "employer_signed_salary_statement", "급여명세서", "임금명세서", "급료명세서", "급여지급명세서"],
@@ -52,6 +53,8 @@ for (const [family, aliases] of Object.entries(DOCUMENT_FAMILY_ALIASES)) {
 
 /** Accept explicit titles with normal qualifiers; broad words like 보험 or 세금 never suffice. */
 export function documentFamily(label: string): string {
+  const shared = parseDocumentRoute(label);
+  if (shared) return documentFamily(documentTypeForCatalogFamily(shared.familyId));
   const catalogFamily = Object.keys(CATALOG_FAMILY_DOCUMENT_TYPES).find(id => normalizedKey(id) === normalizedKey(label));
   if (catalogFamily) return documentFamily(CATALOG_FAMILY_DOCUMENT_TYPES[catalogFamily]);
   const direct = byAlias.get(normalized(label));

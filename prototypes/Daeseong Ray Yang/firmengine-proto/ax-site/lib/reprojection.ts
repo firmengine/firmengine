@@ -1,4 +1,4 @@
-import { applyExtraction, currentFacts, factSourceLineageIssues, moneyValue, normalizeMoney, type CaseData, type ExtractionPayload, type Fact } from "./domain.ts";
+import { isEvidenceModel,applyExtraction, currentFacts, factSourceLineageIssues, moneyValue, normalizeMoney, type CaseData, type ExtractionPayload, type Fact } from "./domain.ts";
 import { projectPage, validatePageRead, type PageRead } from "./extraction.ts";
 import { samplePageRole } from "./sample-manifest.ts";
 import { sourceVerificationFieldLocation, sourceVerificationReceiptMatches, type SourceVerificationReceipt } from "./source-verification.ts";
@@ -68,7 +68,7 @@ export function hasBoundExtractionProvenance(saved: StoredReadResult, job: Store
   return passes.length > 0 && passes.every(value => {
     if (!value || typeof value !== "object" || Array.isArray(value)) return false;
     const pass = value as Record<string, unknown>;
-    return pass.model === provenance.model && pass.model === "gpt-6-luna" && typeof pass.promptVersion === "string" && !!pass.promptVersion.trim() && typeof pass.promptHash === "string" && /^[a-f0-9]{64}$/i.test(pass.promptHash) && pass.sourceHash === provenance.documentSha256 && pass.baseImageHash === job.imageHash && typeof pass.verifiedAt === "string" && Number.isFinite(Date.parse(pass.verifiedAt));
+    return pass.model === provenance.model && isEvidenceModel(pass.model) && typeof pass.promptVersion === "string" && !!pass.promptVersion.trim() && typeof pass.promptHash === "string" && /^[a-f0-9]{64}$/i.test(pass.promptHash) && pass.sourceHash === provenance.documentSha256 && pass.baseImageHash === job.imageHash && typeof pass.verifiedAt === "string" && Number.isFinite(Date.parse(pass.verifiedAt));
   });
 }
 

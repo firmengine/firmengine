@@ -1,6 +1,6 @@
 # Scan and template recovery
 
-Normal evidence pages retain the existing single-page Luna classifier, extractor, and verifier flow. Recovery is triggered only by unreadable or disagreeing fields, omitted rows, or a timed-out/incomplete source read or verification. The model is always `gpt-6-luna`; recovery does not upgrade the model or mark evidence correct from image quality alone.
+Normal evidence pages retain the existing single-page Terra classifier, extractor, and verifier flow. Recovery is triggered only by unreadable or disagreeing fields, omitted rows, or a timed-out/incomplete source read or verification. The OCR model is `gpt-6.1-terra`; recovery does not upgrade the model or mark evidence correct from image quality alone.
 
 ## Durable recovery contract
 

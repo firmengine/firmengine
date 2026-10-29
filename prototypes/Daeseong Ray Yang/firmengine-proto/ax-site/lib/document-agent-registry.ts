@@ -2,6 +2,7 @@ import { catalogFamilyForDocumentType, documentFamily } from "./document-routing
 import fieldContracts from "./document-agent-field-contracts.json" with { type: "json" };
 import applicabilityContracts from "./field-applicability-contracts.json" with { type: "json" };
 import { RECORD_CATEGORIES, RECORD_CATEGORY_POLICY, RECORD_CATEGORY_POLICY_INSTRUCTIONS } from "./category-contract.ts";
+import { parseDocumentRoute, sharedDocumentFieldContract } from "./shared-document-catalog.ts";
 
 export const DOCUMENT_AGENT_REGISTRY_VERSION = "document-agent-registry-1.0.0";
 export const FIELD_CATALOG_RELEASE = "document-field-catalog-v2.2.0";
@@ -90,11 +91,14 @@ export function documentFamilyContract(familyId: string | null | undefined): Fam
 export function compactFamilyFieldContract(contract: FamilyFieldContract | null) {
   if (!contract) return null;
   const conditions=applicabilityContracts.families[contract.family_id as keyof typeof applicabilityContracts.families];
-  return { familyId: contract.family_id, canonicalType: contract.canonical_type, recordCategoryPolicy:{categories:RECORD_CATEGORIES.map(category=>({category,meaning:RECORD_CATEGORY_POLICY[category]})),instructions:RECORD_CATEGORY_POLICY_INSTRUCTIONS}, caseCondition:conditions?.caseCondition??null, sourceAvailability:conditions?.sourceAvailability??null, applicabilityDecision:"source_claim_only_case_unreviewed", fields: contract.fields.map(field => ({ id: field.global_field_id, localKey: field.local_id, label: field.label, definition: field.semantic_definition, datatype: field.datatype, subjectRole: field.subject_entity_role, partyRole: field.party_value_role, temporalRole: field.temporal_role, amountOwnerRole: field.amount_owner_role, unit: field.canonical_unit, sourceCondition:conditions?.fields.find(condition=>condition.id===field.global_field_id)?.sourceCondition??null })) };
+  const shared=contract as FamilyFieldContract & {shared_document_type_id?:string;record_policy?:Record<string,unknown>};
+  return { familyId: contract.family_id, canonicalType: contract.canonical_type, ...(shared.shared_document_type_id?{documentTypeId:shared.shared_document_type_id,recordPolicy:shared.record_policy}:{}), recordCategoryPolicy:{categories:RECORD_CATEGORIES.map(category=>({category,meaning:RECORD_CATEGORY_POLICY[category]})),instructions:RECORD_CATEGORY_POLICY_INSTRUCTIONS}, caseCondition:conditions?.caseCondition??null, sourceAvailability:conditions?.sourceAvailability??null, applicabilityDecision:"source_claim_only_case_unreviewed", fields: contract.fields.map(field => ({ id: field.global_field_id, localKey: field.local_id, label: field.label, definition: field.semantic_definition, datatype: field.datatype, subjectRole: field.subject_entity_role, partyRole: field.party_value_role, temporalRole: field.temporal_role, amountOwnerRole: field.amount_owner_role, unit: field.canonical_unit, sourceCondition:conditions?.fields.find(condition=>condition.id===field.global_field_id)?.sourceCondition??null })) };
 }
 
 export function documentFieldContract(type: string | null | undefined): FamilyFieldContract | null {
   if (!type) return null;
+  const shared = parseDocumentRoute(type);
+  if (shared) return sharedDocumentFieldContract(shared.documentTypeId,shared.familyId);
   const direct = contractByAlias.get(normalize(type));
   if (direct !== undefined) return direct;
   const catalogFamily = catalogFamilyForDocumentType(type);

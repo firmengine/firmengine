@@ -15,6 +15,17 @@ function sourceInput(read:PageRead,passes:ReviewPass[],sourceHash=hash,errors?:{
 function fixture():CaseData{const d=createCase("합성", "c", "2026-10-27");d.documents=[{id:docId,name:"synthetic",sha256:hash,status:"active",pages:[pageNum]}];d.pages=[{documentId:docId,page:pageNum,role:"evidence"}];return d;}
 function rawFact(value:string,quote:string):Partial<Fact>{return{id:"model-id",logicalId:"debt-source",subjectId:"loan",key:"debt.principal",value,rawValue:value,numeric:normalizeMoney(value,"만원"),state:"verified",recognition:"accepted",sourceVerification:{fake:true} as never,refs:[{documentId:docId,page:pageNum,quote,sourceHash:hash,bbox:[.1,.2,.4,.25]}],validation:[]};}
 
+test("historical Luna receipts preserve their model and cannot be relabeled as Terra",()=>{
+  const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};
+  const oldPass={...pass("verify",[check(0,0,"agrees","500","만원","원금 500만원")]),model:"gpt-6-luna" as const};
+  const [receipt]=createSourceVerificationReceipts(sourceInput(read,[oldPass]));
+  assert.equal(receipt.model,"gpt-6-luna");
+  assert.equal(sourceVerificationReceiptMatches(receipt,{documentId:docId,page:pageNum,sourceHash:hash,read}),true);
+  assert.equal(sourceVerificationReceiptMatches({...receipt,model:AI_MODEL},{documentId:docId,page:pageNum,sourceHash:hash,read}),false);
+  const mixed=[oldPass,{...oldPass,kind:"repair" as const,model:AI_MODEL}];
+  assert.deepEqual(createSourceVerificationReceipts(sourceInput(read,mixed)),[]);
+});
+
 test("verified agreement receipt is bound to current source and exact fact version but stays legally unreviewed",()=>{
   const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};
   const receipts=createSourceVerificationReceipts(sourceInput(read,[pass("verify",[check(0,0,"agrees","500","만원","원금 500만원")])]));

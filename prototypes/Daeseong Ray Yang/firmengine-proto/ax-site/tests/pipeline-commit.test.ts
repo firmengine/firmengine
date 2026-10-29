@@ -18,6 +18,8 @@ import * as coverageReview from "../lib/coverage-review.ts";
 import * as regionalSource from "../lib/regional-source.ts";
 import * as sourceNatureContext from "../lib/source-nature-context.ts";
 import * as referencePrompts from "../lib/reference-prompts.ts";
+import * as sharedDocumentCatalog from "../lib/shared-document-catalog.ts";
+import { INTAKE_CATALOG_SEED } from "../lib/intake-catalog.ts";
 import { EXECUTION_CONTRACT_VERSION } from "../lib/execution-catalog.ts";
 import { EXTRACT_INSTRUCTIONS, SOURCE_BBOX_INSTRUCTIONS } from "../lib/extraction.ts";
 import fieldContractData from "../lib/document-agent-field-contracts.json" with { type: "json" };
@@ -26,13 +28,16 @@ const root=fileURLToPath(new URL("../",import.meta.url));
 const pipelineOutput=ts.transpileModule(readFileSync(root+"lib/pipeline.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
 class TestHttpError extends Error {status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 const hash=(bytes:Uint8Array)=>createHash("sha256").update(bytes).digest("hex");
-function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtractor?:boolean;timeoutVerifier?:boolean;classifications?:any[];initialRole?:string;readDocumentType?:string;missingFields?:any[];classification?:any;classificationRecovery?:any}={}){
+function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtractor?:boolean;timeoutVerifier?:boolean;classifications?:any[];initialRole?:string;readDocumentType?:string;returnedSharedReadType?:string;missingFields?:any[];classification?:any;classificationRecovery?:any}={}){
   const caseId="case-synthetic",documentId="doc-synthetic",page=1,sourceBytes=new TextEncoder().encode("synthetic original PDF bytes"),sourceHash=hash(sourceBytes),bytes=new TextEncoder().encode("synthetic page bytes"),imageHash=hash(bytes),imageKey=`cases/${caseId}/documents/${documentId}/pages/${page}/${imageHash}`;
   const read={documentType:options.readDocumentType??"debt_certificate",records:[{category:"debt",label:"hint",fields:[{key:"creditor",label:"creditor",value:"Synthetic Bank",unit:null,quote:"creditor Synthetic Bank",confidence:"clear",bbox:null}]}],warnings:[],complete:true};
   const checks=[{recordIndex:0,fieldIndex:0,categoryStatus:"supported",meaningStatus:"supported",status:"agrees",value:"Synthetic Bank",unit:null,quote:"creditor Synthetic Bank",reason:"match"}];
   const classificationState={...(options.classification?{classification:options.classification}:{}),...(options.classificationRecovery?{classificationRecovery:{read:options.classificationRecovery,sourceHash,baseImageHash:imageHash,imageHashes:[]}}:{})};
   const job:any={id:`${documentId}:${page}`,case_id:caseId,document_id:documentId,page,role:options.initialRole??"evidence",document_type:options.initialRole==="unknown"?null:"debt_certificate",image_key:imageKey,image_hash:imageHash,original_key:`cases/${caseId}/documents/${documentId}/original/source.pdf`,source_sha256:sourceHash,stage:options.initialStage??"verify",attempts:1,result:JSON.stringify({read,firstRead:read,extractionRead:read,...classificationState}),cache_key:options.initialStage==="waiting"?null:"synthetic-cache",ready:1,status:"pending",lease_until:null,error:null};
   const caseData:any={context:{id:caseId,revision:1},documents:[{id:documentId,sha256:sourceHash,name:"synthetic.pdf",status:"active",pages:[page]}],pages:[{documentId,page,role:options.initialRole??"evidence"}],facts:[],incomes:[],debts:[],assets:[],transactions:[],household:{}};
+  const sharedCatalog=sharedDocumentCatalog.buildSharedDocumentCatalog(INTAKE_CATALOG_SEED,"c".repeat(64));
+  const classifierValue=(value:any)=>({documentTypeId:value.familyId?sharedCatalog.documents.find(document=>document.allowedFamilyIds.includes(value.familyId))?.documentTypeId??null:null,documentCatalogVersion:sharedCatalog.catalogVersion,documentCatalogSha256:sharedCatalog.catalogSha256,...value});
+  const rowStoreCalls:any[]=[];let rowStoreFailure:Error|null=null,rowRevisionConflicts=0;
   let apiKeyConfigured=true,lunaCalls=0,extractorCalls=0,verifierCalls=0,lastVerifierCall:any=null,lastExtractorCall:any=null,saveCalls=0,saveFails=true,savedCase:any=null,imageBytes=bytes,omitted=false,forceTargets=false,timeoutExtractor=!!options.timeoutExtractor,allowRepeatedVerifier=false,allowRegionalReceipts=false,extractionValue="New synthetic reading",checkStatus="agrees";const events:any[]=[],derivativeRows:any[]=[],modelCalls:any[]=[];
   const db={prepare(sql:string){return {bind(...params:any[]){return {
     async first(){if(sql.includes("SELECT p.*"))return job.status==="pending"||job.status==="processing"&&job.lease_until<params[1]?{...job}:null;if(sql.includes("SELECT id FROM page_jobs"))return job.status==="processing"&&job.lease_until===params[1]?{id:job.id}:null;if(sql.includes("COUNT(*) AS n"))return {n:job.status==="pending"||job.status==="processing"?1:0};return null;},
@@ -41,6 +46,9 @@ function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtra
   };}};}};
   const modules:Record<string,any>={
     "./reference-prompts.ts":referencePrompts,
+    "./shared-document-catalog.ts":sharedDocumentCatalog,
+    "./intake-store.ts":{getIntakeCatalog:async()=>({catalog:INTAKE_CATALOG_SEED,sha256:"c".repeat(64)})},
+    "./extraction-row-store.ts":{persistPageExtractionRows:async(_database:unknown,input:any)=>{rowStoreCalls.push(structuredClone(input));if(rowStoreFailure)throw rowStoreFailure;if(rowRevisionConflicts>0){rowRevisionConflicts--;throw new Error("CASE_REVISION_MISMATCH");}return {runId:"synthetic-row-run",schemaId:"synthetic-row-schema",documentInstanceId:"synthetic-row-document",records:input.read.records.length,features:input.read.records.reduce((n:number,record:any)=>n+record.fields.length,0),headPromoted:input.stage==="committed",sourceOnly:true,legalRecognition:"not_provided"};}},
     "./case-agent":{runCaseCalculatorNode:()=>{throw new Error("legal review not used by extraction fixture");}},
     "./legal-review-identity.ts":legalReviewIdentity,
     "./calculator-tools":{snapshotSha256:()=>{throw new Error("legal review not used by extraction fixture");}},
@@ -48,14 +56,14 @@ function fixture(options:{staleSource?:boolean;initialStage?:string;timeoutExtra
     "./regional-source":regionalSource,"./coverage-review":coverageReview,"./classification-recovery":classificationRecovery,"./source-nature-context":sourceNatureContext,"./document-routing":documentRouting,"./document-agent-registry":documentAgentRegistry,"./document-agent-field-contracts.json":fieldContractData,"./applicant-identity":applicantIdentity,"./page-refresh":pageRefresh,"./verification-bindings":verificationBindings,"./statement-paragraphs":{sourceStatementText:()=>undefined},
     "./legal-review-packet":{LEGAL_REVIEW_BATCH_SIZE:6,buildLegalReviewPacket:()=>({text:"{}",payload:{},providedFactIds:[],coverage:{}}),gateLegalReviewChecks:()=>[]},"./execution-catalog.ts":{EXECUTION_CONTRACT_VERSION},"./process-job-scope":processJobScope,
     "./domain":{AI_MODEL:"gpt-6-luna",applyExtraction:(c:any)=>c,currentFacts:(c:any)=>c.facts??[],extractionCacheKey:()=>"synthetic-cache",touchCase:(c:any)=>c,validSourceRef:()=>true},
-    "./luna":{callLuna:async(args:any)=>{const {agent}=args;lunaCalls++;modelCalls.push(args);if(agent.startsWith("document_classifier")){return {value:options.classifications?.shift()??{role:"unknown",familyId:null,catalogRelease:"catalog-release-v2.2.0",boundaryObservation:"mixed_or_unknown",boundaryQuote:null,confidence:"low",reason:"synthetic ambiguous",titleQuote:null,issuerQuote:null,structureQuote:null},usage:{inputTokens:1,outputTokens:1}};}if(agent==="evidence_extractor"){extractorCalls++;lastExtractorCall=args;if(timeoutExtractor)throw new DOMException("synthetic timeout","TimeoutError");return {value:{...read,records:[{...read.records[0],fields:[{...read.records[0].fields[0],value:extractionValue,bbox:extractionValue==="Synthetic Bank"?[0,0,1,1]:null}]}]},usage:{inputTokens:1,outputTokens:1}};}lastVerifierCall=args;verifierCalls++;if(options.timeoutVerifier)throw new DOMException("synthetic verification timeout","TimeoutError");if(verifierCalls>1&&!allowRepeatedVerifier)throw new Error("commit retry must not invoke a second verifier");return {value:{checks:checks.map(check=>({...check,status:checkStatus})),omittedRows:omitted,missingFields:options.missingFields??[],warnings:[]},usage:{inputTokens:1,outputTokens:1}};},imageContent:(content:any)=>content},
+    "./luna":{callLuna:async(args:any)=>{const {agent}=args;lunaCalls++;modelCalls.push(args);if(agent.startsWith("document_classifier")){return {value:classifierValue(options.classifications?.shift()??{role:"unknown",familyId:null,catalogRelease:"catalog-release-v2.2.0",boundaryObservation:"mixed_or_unknown",boundaryQuote:null,confidence:"low",reason:"synthetic ambiguous",titleQuote:null,issuerQuote:null,structureQuote:null}),usage:{inputTokens:1,outputTokens:1}};}if(agent==="evidence_extractor"){extractorCalls++;lastExtractorCall=args;if(timeoutExtractor)throw new DOMException("synthetic timeout","TimeoutError");return {value:{...read,...(job.document_type?.startsWith("shared-document:")?{documentType:options.returnedSharedReadType??job.document_type}:{}),records:[{...read.records[0],fields:[{...read.records[0].fields[0],value:extractionValue,bbox:extractionValue==="Synthetic Bank"?[0,0,1,1]:null}]}]},usage:{inputTokens:1,outputTokens:1}};}lastVerifierCall=args;verifierCalls++;if(options.timeoutVerifier)throw new DOMException("synthetic verification timeout","TimeoutError");if(verifierCalls>1&&!allowRepeatedVerifier)throw new Error("commit retry must not invoke a second verifier");return {value:{checks:checks.map(check=>({...check,status:checkStatus})),omittedRows:omitted,missingFields:options.missingFields??[],warnings:[]},usage:{inputTokens:1,outputTokens:1}};},imageContent:(content:any)=>content},
     "./extraction":{applyFirstVerification:(r:any,c:any)=>{const next=structuredClone(r);next.records.forEach((record:any,ri:number)=>record.fields.forEach((field:any,fi:number)=>{const found=c?.filter((x:any)=>x.recordIndex===ri&&x.fieldIndex===fi)??[];field.confidence=found.length===1&&found[0].meaningStatus==="supported"&&found[0].status==="agrees"&&found[0].value===field.value&&found[0].unit===field.unit?"clear":"uncertain";}));return {read:next,targets:forceTargets?[{recordIndex:0,fieldIndex:0,meaningStatus:"unclear",status:"ambiguous",value:null,unit:null,quote:null,reason:"synthetic",missingFirstCheck:true}]:[]};},applyTargetedRepair:()=>({}),CLASSIFY_SCHEMA:{},DOC_FIELDS:{debt_certificate:""},EXTRACT_INSTRUCTIONS,SOURCE_BBOX_INSTRUCTIONS,PAGE_COMPLETENESS_INSTRUCTIONS:"",getRepairTargets:()=>[],PAGE_SCHEMA:{},PROMPT_VERSION:"luna-evidence-3.20.0",preserveAgreedFieldsAfterOmission:()=>read,projectPage:()=>({facts:[],pages:[]}),sourceInstructions:()=>"",validatePageRead:(x:any)=>x,VERIFY_SCHEMA:{}},
     "./server-store":{bucket:()=>({head:async(key:string)=>key.includes("/original/")?{key}:null,get:async()=>({arrayBuffer:async()=>imageBytes.buffer.slice(imageBytes.byteOffset,imageBytes.byteOffset+imageBytes.byteLength),httpMetadata:{contentType:"image/jpeg"}})}),connection:()=>({apiKeyConfigured}),db:()=>db,event:async(_id:string,type:string,payload:any)=>{events.push({type,payload});},getCase:async()=>structuredClone(options.staleSource?{...caseData,documents:[{...caseData.documents[0],sha256:"b".repeat(64)}]}:caseData),HttpError:TestHttpError,now:()=>"2026-10-27T00:00:00.000Z",saveCase:async(data:any)=>{savedCase=structuredClone(data);saveCalls++;if(saveFails&&saveCalls<=3)throw new TestHttpError(409,"revision conflict");if(options.initialRole)Object.assign(caseData,structuredClone(data));}},
     "./legal-rules":{CURRENT_RULESET:{id:"synthetic-rules"},LEGAL_CATALOG:[],RISK_CATALOG:[]},"./assessment":{assessCase:()=>({findings:[]})},"./workflow-rules":{WORKFLOW_RULES:[],LEGACY_DOCUMENT_TYPES:[]},"./transaction-review":{scanTransactions:()=>[]},"./income-resolution":{resolveIncomeRows:()=>({rows:[],issues:[],duplicates:[]})},"./sample-manifest":{samplePageRole:()=>({role:"evidence"})},"./retry-page-policy":{canRetryEvidencePage:()=>true},"./reprojection":{PAGE_PROJECTION_VERSION:"synthetic-projection-v1"},"./scan-quality":scanQuality,"./legal-exceptions.json":{default:{scenarios:[]}},"./category-contract.ts":{RECORD_CATEGORY_POLICY_INSTRUCTIONS:"synthetic",RECORD_CATEGORIES:["other"],RECORD_CATEGORY_POLICY:{other:"synthetic"}},"./source-verification-identity":sourceVerificationIdentity,"./source-verification":{createPreservedOmissionReceipts:()=>[],createSourceVerificationReceipts:(input:any)=>{if(!allowRegionalReceipts||input.passes.length!==1)return [];const pass=input.passes[0],out:any[]=[];input.read.records.forEach((record:any,ri:number)=>record.fields.forEach((field:any,fi:number)=>{const proof=pass.checks.find((check:any)=>check.recordIndex===ri&&check.fieldIndex===fi&&check.status==="agrees"&&check.value===field.value&&check.unit===field.unit&&check.quote);if(proof&&field.confidence==="clear")out.push({field:{recordCategory:record.category,key:field.key,value:field.value,unit:field.unit,quote:field.quote},fieldFingerprint:`${ri}:${fi}:${pass.promptHash}`,proofReadIndexes:[{pass:pass.kind,recordIndex:ri,fieldIndex:fi}],source:{documentId:"doc-synthetic",page:1,sha256:"a".repeat(64)},verifiedAt:pass.verifiedAt,promptVersion:pass.promptVersion,extractionReading:{value:field.value,unit:field.unit,quote:field.quote},verificationQuotes:[proof.quote]});}));return out;},sourceVerificationFieldLocation:(receipt:any)=>({recordIndex:receipt.proofReadIndexes[0].recordIndex,fieldIndex:receipt.proofReadIndexes[0].fieldIndex}),sourceVerificationReceiptMatches:()=>true},
   };
   const module={exports:{} as Record<string,any>};
   new Function("require","module","exports",pipelineOutput)((name:string)=>{if(Object.hasOwn(modules,name))return modules[name];throw new Error(`Unexpected dependency ${name}`);},module,module.exports);
-  return {processNext:module.exports.processNext,reconcileCase:module.exports.reconcileCase,mergeRegionalResults:module.exports.mergeRegionalResults,job,caseData,setSaveSuccess:()=>{saveFails=false;},get savedCase(){return savedCase;},setApiKey:(v:boolean)=>{apiKeyConfigured=v;},setImageBytes:(v:Uint8Array<ArrayBuffer>)=>{imageBytes=v;},setOmitted:(v:boolean)=>{omitted=v;},setForceTargets:(v:boolean)=>{forceTargets=v;},setTimeoutExtractor:(v:boolean)=>{timeoutExtractor=v;},setTimeoutVerifier:(v:boolean)=>{options.timeoutVerifier=true;},allowRepeatedVerifier:()=>{allowRepeatedVerifier=true;},allowRegionalReceipts:()=>{allowRegionalReceipts=true;},setExtractionValue:(v:string)=>{extractionValue=v;},setCheckStatus:(v:string)=>{checkStatus=v;},setClassificationDerivatives:(count=2)=>{derivativeRows.splice(0,derivativeRows.length,...[1,2].slice(0,count).map(i=>({variant_hash:hash(bytes),variant:`rescue-classification_unknown-${i}`,object_key:`variant-${i}`,bbox:JSON.stringify(i===1?[0,0,1,.45]:[0,0,1,1]),transform:"{}"})));},setDerivatives:(planId:string)=>{derivativeRows.splice(0,derivativeRows.length,...[1,2,3,4].map(i=>({variant_hash:hash(bytes),variant:`rescue-incomplete_extraction-${i}`,object_key:`variant-${i}`,bbox:JSON.stringify([0,(i-1)*.25,1,Math.min(1,i*.25+.025)]),transform:"{}"})));},get lunaCalls(){return lunaCalls;},get extractorCalls(){return extractorCalls;},get verifierCalls(){return verifierCalls;},get lastVerifierCall(){return lastVerifierCall;},get lastExtractorCall(){return lastExtractorCall;},get modelCalls(){return modelCalls;},get saveCalls(){return saveCalls;},events,sourceHash};
+  return {rowStoreCalls,setRowStoreFailure:(error:Error|null)=>{rowStoreFailure=error;},setRowRevisionConflicts:(count:number)=>{rowRevisionConflicts=count;},processNext:module.exports.processNext,reconcileCase:module.exports.reconcileCase,mergeRegionalResults:module.exports.mergeRegionalResults,job,caseData,setSaveSuccess:()=>{saveFails=false;},get savedCase(){return savedCase;},setApiKey:(v:boolean)=>{apiKeyConfigured=v;},setImageBytes:(v:Uint8Array<ArrayBuffer>)=>{imageBytes=v;},setOmitted:(v:boolean)=>{omitted=v;},setForceTargets:(v:boolean)=>{forceTargets=v;},setTimeoutExtractor:(v:boolean)=>{timeoutExtractor=v;},setTimeoutVerifier:(v:boolean)=>{options.timeoutVerifier=true;},allowRepeatedVerifier:()=>{allowRepeatedVerifier=true;},allowRegionalReceipts:()=>{allowRegionalReceipts=true;},setExtractionValue:(v:string)=>{extractionValue=v;},setCheckStatus:(v:string)=>{checkStatus=v;},setClassificationDerivatives:(count=2)=>{derivativeRows.splice(0,derivativeRows.length,...[1,2].slice(0,count).map(i=>({variant_hash:hash(bytes),variant:`rescue-classification_unknown-${i}`,object_key:`variant-${i}`,bbox:JSON.stringify(i===1?[0,0,1,.45]:[0,0,1,1]),transform:"{}"})));},setDerivatives:(planId:string)=>{derivativeRows.splice(0,derivativeRows.length,...[1,2,3,4].map(i=>({variant_hash:hash(bytes),variant:`rescue-incomplete_extraction-${i}`,object_key:`variant-${i}`,bbox:JSON.stringify([0,(i-1)*.25,1,Math.min(1,i*.25+.025)]),transform:"{}"})));},get lunaCalls(){return lunaCalls;},get extractorCalls(){return extractorCalls;},get verifierCalls(){return verifierCalls;},get lastVerifierCall(){return lastVerifierCall;},get lastExtractorCall(){return lastExtractorCall;},get modelCalls(){return modelCalls;},get saveCalls(){return saveCalls;},events,sourceHash};
 }
 
 test("검증 후 CAS 충돌은 읽기·검증 checkpoint를 보존하고 다음 요청은 Luna 없이 완료한다",async()=>{
@@ -69,6 +77,33 @@ test("검증 후 CAS 충돌은 읽기·검증 checkpoint를 보존하고 다음 
   assert.ok(f.events.some(e=>e.type==="page.commit_retry"&&e.payload.commitRetryCount===1));
   const result=await f.processNext("case-synthetic");
   assert.equal(f.lunaCalls,1);assert.equal(result.stage,"verified");assert.equal(f.job.status,"completed");
+});
+
+test("commit stores normalized records and features before completing the page ledger",async()=>{
+  const f=fixture();f.setSaveSuccess();
+  await f.processNext("case-synthetic");assert.equal(f.job.stage,"commit");assert.equal(f.rowStoreCalls.length,0);
+  const completed=await f.processNext("case-synthetic");assert.equal(completed.stage,"verified");
+  assert.equal(f.rowStoreCalls.length,1);const stored=f.rowStoreCalls[0];
+  assert.equal(stored.stage,"committed");assert.equal(stored.caseId,"case-synthetic");assert.equal(stored.pageJobId,f.job.id);assert.equal(stored.sourceHash,f.sourceHash);assert.equal(stored.imageHash,f.job.image_hash);
+  assert.deepEqual(stored.read,JSON.parse(f.job.result).read);
+  assert.equal(JSON.parse(f.job.result).normalizedExtractionRows.features,1);
+  assert.equal(f.lunaCalls,1,"normalizing committed source rows must not call another model");
+});
+
+test("a normalized-store failure preserves the commit checkpoint and cannot report a completed page",async()=>{
+  const f=fixture();f.setSaveSuccess();await f.processNext("case-synthetic");
+  const before=JSON.parse(f.job.result).commit;f.setRowStoreFailure(new Error("synthetic row storage unavailable"));
+  await assert.rejects(f.processNext("case-synthetic"),/synthetic row storage unavailable/);
+  assert.equal(f.job.status,"error");assert.equal(f.job.stage,"commit");assert.deepEqual(JSON.parse(f.job.result).commit,before);
+  assert.equal(f.events.some(event=>event.type==="page.completed"),false);
+  f.setRowStoreFailure(null);f.job.status="pending";f.setApiKey(false);
+  const completed=await f.processNext("case-synthetic");assert.equal(completed.stage,"verified");assert.equal(f.lunaCalls,1);
+});
+
+test("normalized head revision races retry only the database binding and keep the paid read",async()=>{
+  const f=fixture();f.setSaveSuccess();await f.processNext("case-synthetic");f.setRowRevisionConflicts(3);
+  const retry=await f.processNext("case-synthetic");assert.equal(retry.stage,"commit_retry");assert.equal(f.rowStoreCalls.length,3);assert.equal(f.job.stage,"commit");assert.equal(f.lunaCalls,1);
+  f.setApiKey(false);const completed=await f.processNext("case-synthetic");assert.equal(completed.stage,"verified");assert.equal(f.rowStoreCalls.length,4);assert.equal(f.lunaCalls,1);
 });
 
 test("reconcileCase는 OCR 인물행을 applicant CRUD context로 승격하지 않고 수동 입력은 보존한다",async()=>{
@@ -322,6 +357,34 @@ test("unknown classification resumes via bounded crops then extracts without app
   const routed=JSON.parse(f.job.result);assert.equal(routed.classificationAttempts,2);assert.equal(routed.rescuePlan,undefined);assert.equal(routed.classificationRecovery.imageHashes.length,2);
   assert.equal(f.caseData.facts.length,0,"routing must not mint source facts or verification receipts");
   const extracted=await f.processNext("case-synthetic");assert.equal(extracted.stage,"extracted");assert.equal(f.lunaCalls,3);assert.equal(JSON.parse(f.job.result).classificationAttempts,2);
+});
+
+test("runtime classifier receives the active shared public list and persists its exact document identity",async()=>{
+  const f=fixture({initialStage:"waiting",initialRole:"unknown",classifications:[{role:"evidence",familyId:"payroll_payslip",catalogRelease:classificationRecovery.CLASSIFICATION_CATALOG_RELEASE,boundaryObservation:"single_page",boundaryQuote:null,confidence:"high",reason:"Visible payroll",titleQuote:"임금명세서",structureQuote:"지급 공제 실수령",evidenceRowsQuote:"실수령 1,000,000원",administrativeStructureQuote:null,legibility:"clear"}]});f.setSaveSuccess();
+  const result=await f.processNext("case-synthetic");assert.equal(result.stage,"classified");assert.equal(f.job.role,"evidence");
+  const active=sharedDocumentCatalog.buildSharedDocumentCatalog(INTAKE_CATALOG_SEED,"c".repeat(64));
+  assert.deepEqual(f.modelCalls[0].schema.properties.documentTypeId.enum,[...active.documents.map(document=>document.documentTypeId),null]);
+  const sent=f.modelCalls[0].input[0].content[0].text;
+  for(const document of active.documents)assert.ok(sent.includes(JSON.stringify(document.name)),`shared name missing from classifier input: ${document.documentTypeId}`);
+  const saved=JSON.parse(f.job.result),selected=active.documents.find(document=>document.documentTypeId===saved.classification.documentTypeId)!;
+  assert.equal(saved.classification.documentTypeName,selected.name);
+  assert.equal(saved.classification.documentCatalogVersion,active.catalogVersion);
+  assert.equal(saved.classification.documentCatalogSha256,active.catalogSha256);
+  assert.equal(f.job.document_type,sharedDocumentCatalog.encodeDocumentRoute(selected.documentTypeId,"payroll_payslip"));
+  assert.equal(f.caseData.facts.length,0);
+});
+
+test("a strong family classification with a wrong public document pair remains reviewable without extraction",async()=>{
+  const f=fixture({initialStage:"waiting",initialRole:"unknown",classifications:[{role:"evidence",documentTypeId:"debt_certificate",familyId:"payroll_payslip",catalogRelease:classificationRecovery.CLASSIFICATION_CATALOG_RELEASE,boundaryObservation:"single_page",boundaryQuote:null,confidence:"high",reason:"Mismatched pair",titleQuote:"임금명세서",structureQuote:"지급 공제 실수령",evidenceRowsQuote:"실수령 1,000,000원",administrativeStructureQuote:null,legibility:"clear"}]});f.setSaveSuccess();
+  const result=await f.processNext("case-synthetic");assert.equal(result.stage,"classification_rescue");assert.equal(f.job.role,"unknown");assert.equal(f.job.document_type,"unknown");assert.equal(f.extractorCalls,0);
+  const saved=JSON.parse(f.job.result);assert.equal(saved.classification.documentTypeId,null);assert.equal(saved.classification.familyId,null);
+  assert.equal(saved.classificationRaw.documentTypeId,"debt_certificate","invalid raw choice is preserved for inspection");
+});
+
+test("a stored read cannot erase the selected shared subtype by returning only its generic family",async()=>{
+  const f=fixture();f.job.document_type=sharedDocumentCatalog.encodeDocumentRoute("debt_certificate","debt_certificate");
+  const result=await f.processNext("case-synthetic");assert.equal(result.stage,"family_read_review_required");assert.equal(f.job.status,"review_required");assert.equal(f.verifierCalls,0);
+  const saved=JSON.parse(f.job.result);assert.equal(saved.rawRead.documentType,"debt_certificate");
 });
 
 test("malformed persisted classification budgets fail closed without a model call",async()=>{

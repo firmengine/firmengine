@@ -1,4 +1,4 @@
-import { AI_MODEL, type CaseData } from "./domain.ts";
+import { CONSULTATION_AI_MODEL as AI_MODEL, type CaseData } from "./domain.ts";
 import { actor, connection, db, event, getCase, HttpError, now, sha256 } from "./server-store.ts";
 import { callLuna } from "./luna.ts";
 import { INTAKE_CATALOG_SEED } from "./intake-catalog.ts";
@@ -8,6 +8,9 @@ import { resolveIntakeSourceSpanRefs } from "./intake-source-spans.ts";
 import { matchIntakeChecklist, validateIntakeCatalog, validateIntakeClaims } from "./intake-engine.ts";
 import { INTAKE_ACTIVE_MAX_CHARS, INTAKE_NOTE_MAX_CHARS, INTAKE_ENGINE_VERSION, INTAKE_PROMPT_VERSION, type ConsultationNote, type IntakeCatalog, type IntakeChecklistView, type IntakeRun } from "./intake-types.ts";
 import { INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION, INTAKE_FINGERPRINT_SCHEMA, intakeInputFingerprint } from "./intake-fingerprint.ts";
+import { readActiveIntakeCatalogSnapshot, supplementIntakeCatalog } from "./intake-catalog-snapshot.ts";
+import { ensureSharedDocumentTypes, prepareCaseDocumentRequirementWrites } from "./case-document-requirement-store.ts";
+import { recomputeCaseDataUpdate } from "./case-data-recompute.ts";
 
 /** One-way identifier preserves the protected-case guard without publishing case metadata. */
 export const PROTECTED_INTAKE_CASE_SHA256 = "1dfd979da22e0b7222eec78973c993ae0e1220748fd558ac2e236350c9d92aae";
@@ -20,22 +23,43 @@ const integer = (value:unknown,label:string) => {if(!Number.isSafeInteger(value)
 
 /** Immutable catalogue revisions; seed data is intentionally outside SQL migrations. */
 export async function getIntakeCatalog():Promise<CatalogState> {
-  let head = await db().prepare("SELECT version,sha256 FROM intake_catalog_head WHERE id = 'default'").first<{version:number;sha256:string}>();
-  if(!head){
-    const seed=validateIntakeCatalog(structuredClone(INTAKE_CATALOG_SEED)),hash=await digest(seed),at=now();
-    await db().batch([
-      db().prepare("INSERT OR IGNORE INTO intake_catalog_versions (version,schema_version,payload,sha256,actor,created_at) VALUES (?,?,?,?,?,?)").bind(seed.version,seed.schemaVersion,JSON.stringify(seed),hash,"system:reference-seed",at),
-      db().prepare("INSERT OR IGNORE INTO intake_catalog_head (id,version,sha256) SELECT 'default',version,sha256 FROM intake_catalog_versions WHERE version = ?").bind(seed.version),
-    ]);
-    head=await db().prepare("SELECT version,sha256 FROM intake_catalog_head WHERE id = 'default'").first<{version:number;sha256:string}>();
+  const database=db();
+  for(let attempt=0;attempt<4;attempt++){
+    let snapshot;
+    try{snapshot=await readActiveIntakeCatalogSnapshot(database);}catch{throw new HttpError(409,"서류 기준정보 무결성 확인에 실패했습니다.");}
+    if(!snapshot){
+      const seed=validateIntakeCatalog(structuredClone(INTAKE_CATALOG_SEED)),hash=await digest(seed),at=now();
+      await database.batch([
+        database.prepare("INSERT OR IGNORE INTO intake_catalog_versions (version,schema_version,payload,sha256,actor,created_at) VALUES (?,?,?,?,?,?)").bind(seed.version,seed.schemaVersion,JSON.stringify(seed),hash,"system:reference-seed",at),
+        database.prepare("INSERT OR IGNORE INTO intake_catalog_head (id,version,sha256) SELECT 'default',version,sha256 FROM intake_catalog_versions WHERE version = ?").bind(seed.version),
+      ]);
+      continue;
+    }
+    // Registry additions become a new immutable active version. Never overlay a
+    // newer seed onto one consumer while another reads the stored DB payload.
+    const upgrade=supplementIntakeCatalog(snapshot.catalog,INTAKE_CATALOG_SEED);
+    if(upgrade.changed){
+      const latest=await database.prepare("SELECT MAX(version) AS version FROM intake_catalog_versions").first<{version:number|null}>();
+      const catalog=upgrade.catalog;
+      catalog.version=Math.max(catalog.version,(latest?.version??0)+1);
+      const serialized=JSON.stringify(catalog);
+      if(new TextEncoder().encode(serialized).byteLength>750_000)throw new HttpError(413,"서류 기준정보가 허용 크기를 초과했습니다.");
+      const hash=await digest(catalog),at=now();
+      try{
+        const saved=await database.batch([
+          database.prepare("INSERT INTO intake_catalog_versions (version,schema_version,payload,sha256,actor,created_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM intake_catalog_head WHERE id = 'default' AND version = ? AND sha256 = ?)").bind(catalog.version,catalog.schemaVersion,serialized,hash,"system:unified-document-catalog",at,snapshot.catalog.version,snapshot.sha256),
+          database.prepare("UPDATE intake_catalog_head SET version = ?,sha256 = ? WHERE id = 'default' AND version = ? AND sha256 = ? AND EXISTS (SELECT 1 FROM intake_catalog_versions WHERE version = ? AND sha256 = ?)").bind(catalog.version,hash,snapshot.catalog.version,snapshot.sha256,catalog.version,hash),
+        ]);
+        if(!saved[1].meta.changes)continue;
+      }catch(error){if(/unique|constraint/i.test(error instanceof Error?error.message:""))continue;throw error;}
+      // Re-read the authoritative winner, including any concurrent custom edit.
+      continue;
+    }
+    await ensureSharedDocumentTypes(database,{catalog:snapshot.catalog,catalogSha256:snapshot.sha256});
+    const history=(await database.prepare("SELECT version,created_at AS createdAt,actor,sha256 FROM intake_catalog_versions ORDER BY version DESC LIMIT 30").all<CatalogState["history"][number]>()).results;
+    return {catalog:snapshot.catalog,sha256:snapshot.sha256,history,model:AI_MODEL};
   }
-  if(!head)throw new HttpError(503,"서류 기준정보를 준비하지 못했습니다.");
-  const row=await db().prepare("SELECT payload,sha256 FROM intake_catalog_versions WHERE version = ?").bind(head.version).first<{payload:string;sha256:string}>();
-  if(!row)throw new HttpError(409,"서류 기준정보 판본을 확인해 주세요.");
-  const catalog=validateIntakeCatalog(JSON.parse(row.payload));
-  if(catalog.version!==head.version||row.sha256!==head.sha256||await digest(catalog)!==head.sha256)throw new HttpError(409,"서류 기준정보 무결성 확인에 실패했습니다.");
-  const history=(await db().prepare("SELECT version,created_at AS createdAt,actor,sha256 FROM intake_catalog_versions ORDER BY version DESC LIMIT 30").all<CatalogState["history"][number]>()).results;
-  return {catalog,sha256:head.sha256,history,model:AI_MODEL};
+  throw new HttpError(409,"서류 기준정보가 갱신 중입니다. 최신 기준을 다시 불러오세요.");
 }
 
 export async function saveIntakeCatalog(value:unknown,expectedVersion:unknown):Promise<CatalogState>{
@@ -143,6 +167,7 @@ export async function appendConsultation(caseId:string,body:Record<string,unknow
       .bind(expected+1,at,caseId,expected,id),
   ]);
   if(!saved[1].meta.changes)throw new HttpError(409,"사건 또는 상담이 변경되었습니다. 최신 이력을 불러오세요.");
+  await recomputeCaseDataUpdate(db(),{caseId,loadCase:()=>getCase(caseId)}).catch(()=>{});
   return getConsultationView(caseId);
 }
 
@@ -179,13 +204,17 @@ export async function analyzeConsultation(caseId:string,body:Record<string,unkno
     const result=matchIntakeChecklist({claims,catalog:catalog.catalog,courtId:snapshot.data.context.courtId,asOf:snapshot.data.context.asOf});
     const run:IntakeRun={id:runId,caseId,caseRevision:expectedCase,caseStorageToken:snapshot.identity.token,caseInputSha256:snapshot.inputSha256,consultationRevision:expectedConsultation,consultationSha256:historyHash,catalogVersion:expectedCatalog,catalogSha256:catalog.sha256,catalogSnapshot:{features:catalog.catalog.features.map(({id,label})=>({id,label})),sources:catalog.catalog.sources,rules:catalog.catalog.rules.map(({id,title})=>({id,title}))},engineVersion:INTAKE_ENGINE_VERSION,promptVersion:INTAKE_PROMPT_VERSION,model:AI_MODEL,createdAt:now(),result,usage:{inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,durationMs:response.usage.durationMs},classifierReceipt,intakeInputFingerprintVersion:INTAKE_FINGERPRINT_SCHEMA,intakeInputFingerprint:semanticHash,semanticContext:{courtId:snapshot.data.context.courtId,asOf:snapshot.data.context.asOf,outputContractVersion:INTAKE_CLASSIFIER_OUTPUT_CONTRACT_VERSION}};
     const serializedRun=JSON.stringify(run),runHash=await textDigest(serializedRun);
+    await ensureSharedDocumentTypes(db(),{catalog:catalog.catalog,catalogSha256:catalog.sha256});
+    const requirementWrites=await prepareCaseDocumentRequirementWrites(db(),{caseId,runId,catalog:catalog.catalog,catalogSha256:catalog.sha256,result},{allowPending:true});
     const saved=await db().batch([
       db().prepare("UPDATE consultation_runs SET status = 'complete',payload = ?,payload_sha256 = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND status = 'pending' AND lease_until = ?").bind(serializedRun,runHash,now(),runId,leaseUntil),
       db().prepare("UPDATE consultation_heads SET active_run_id = ? WHERE case_id = ? AND revision = ? AND EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?) AND EXISTS (SELECT 1 FROM intake_catalog_head WHERE id = 'default' AND version = ? AND sha256 = ?) AND EXISTS (SELECT 1 FROM consultation_runs WHERE id = ? AND status = 'complete')")
         .bind(runId,caseId,expectedConsultation,caseId,expectedCase,snapshot.identity.token,expectedCatalog,catalog.sha256,runId),
+      ...requirementWrites,
     ]);
     if(!saved[0].meta.changes)throw new HttpError(409,"분석 저장 대기시간이 지나 결과를 현재 분석으로 채택하지 않았습니다. 다시 불러오세요.");
     if(!saved[1].meta.changes)throw new HttpError(409,"분석 중 사건·상담·서류 기준이 변경되었습니다. 이전 결과는 보존했으며 현재 자료로 다시 분석하세요.");
+    await recomputeCaseDataUpdate(db(),{caseId,loadCase:()=>getCase(caseId)}).catch(()=>{});
     return getConsultationView(caseId);
   }catch(error){
     const message=error instanceof HttpError?error.message:"상담 분석을 완료하지 못했습니다. 저장된 상담을 확인한 뒤 다시 시도하세요.";

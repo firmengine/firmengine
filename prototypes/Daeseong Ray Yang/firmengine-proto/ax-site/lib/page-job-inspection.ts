@@ -1,4 +1,4 @@
-import type { CaseData } from "./domain";
+import { isEvidenceModel,type CaseData } from "./domain";
 import { hasBoundExtractionProvenance, hasCurrentProjection, parseHistoricalReadProvenance, prepareStoredReadReprojection, requireReprojectionProvenance, type StoredPageJobForReprojection, type StoredReadResult } from "./reprojection";
 import { isValidSourceBBox, validatePageRead } from "./extraction";
 import { samplePageRole } from "./sample-manifest";
@@ -66,7 +66,7 @@ function hasBoundFailedExtractionTask(job: StoredPageJobForReprojection, saved: 
       && task.caseId === job.caseId && task.pageJobId === job.id && task.documentId === job.documentId && task.page === job.page
       && task.sourceSha256 === documentSha256 && pass.sourceHash === documentSha256
       && task.imageSha256 === job.imageHash && pass.baseImageHash === job.imageHash && sentImages.includes(job.imageHash)
-      && task.model === "gpt-6-luna" && pass.model === task.model
+      && isEvidenceModel(task.model) && pass.model === task.model
       && typeof task.promptVersion === "string" && !!task.promptVersion.trim() && pass.promptVersion === task.promptVersion
       && typeof pass.promptHash === "string" && /^[a-f0-9]{64}$/i.test(pass.promptHash)
       && typeof pass.verifiedAt === "string" && Number.isFinite(Date.parse(pass.verifiedAt));

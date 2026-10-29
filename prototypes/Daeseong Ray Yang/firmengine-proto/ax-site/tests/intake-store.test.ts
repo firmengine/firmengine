@@ -12,6 +12,9 @@ import * as classifier from "../lib/intake-classifier.ts";
 import * as classifierResponse from "../lib/intake-classifier-response.ts";
 import * as sourceSpans from "../lib/intake-source-spans.ts";
 import * as intakeFingerprint from "../lib/intake-fingerprint.ts";
+import * as catalogSnapshot from "../lib/intake-catalog-snapshot.ts";
+import * as caseRequirements from "../lib/case-document-requirement-store.ts";
+import * as caseDataRecompute from "../lib/case-data-recompute.ts";
 import { INTAKE_CATALOG_SEED } from "../lib/intake-catalog.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
@@ -22,7 +25,7 @@ const protectedCaseFingerprint=storeSource.match(/^export const PROTECTED_INTAKE
 assert.ok(protectedCaseFingerprint,"protected case fingerprint must remain available for the synthetic guard test");
 class TestError extends Error{status:number;constructor(status:number,message:string){super(message);this.status=status;}}
 function emptyClassifierResponse(args:unknown){const request=args as {input:{content:{text:string}[]}[]};const packet=JSON.parse(request.input[0].content[0].text);return {subjects:[],reviewedSourceSpanIds:packet.sourceSpans.map((span:{id:string})=>span.id)};}
-function fixture(id="intake-test-case"){
+function fixture(id="intake-test-case",catalogSeed=INTAKE_CATALOG_SEED){
   const sqlite=new DatabaseSync(":memory:");
   for(const name of readdirSync(root+"drizzle").filter(n=>n.endsWith(".sql")).sort())sqlite.exec(readFileSync(root+"drizzle/"+name,"utf8"));
   const data=createCase("상담 체크리스트 테스트",id,"2026-10-29"),at="2026-10-29T00:00:00Z";
@@ -30,18 +33,79 @@ function fixture(id="intake-test-case"){
   const database={prepare(sql:string){return {bind(...values:unknown[]){const params=values as (string|number|null)[];return {async first(){return sqlite.prepare(sql).get(...params)??null;},async all(){return {results:sqlite.prepare(sql).all(...params)};},async run(){return {meta:{changes:Number(sqlite.prepare(sql).run(...params).changes)}};},_sql:sql,_params:params};},async first(){return sqlite.prepare(sql).get()??null;},async all(){return {results:sqlite.prepare(sql).all()};},_sql:sql,_params:[]};},async batch(statements:{_sql:string;_params:(string|number|null)[]}[]){sqlite.exec("BEGIN");try{const results=statements.map(s=>({meta:{changes:Number(sqlite.prepare(s._sql).run(...s._params).changes)}}));sqlite.exec("COMMIT");return results;}catch(error){sqlite.exec("ROLLBACK");throw error;}}};
   let calls=0;let onCall:(args:unknown)=>Promise<unknown>=async(args)=>emptyClassifierResponse(args);const events:unknown[]=[];
   const dependencies:Record<string,unknown>={
-    "./domain.ts":{AI_MODEL:"gpt-6-luna"},"./intake-types.ts":types,"./intake-engine.ts":engine,"./intake-classifier.ts":classifier,"./intake-classifier-response.ts":classifierResponse,"./intake-source-spans.ts":sourceSpans,"./intake-fingerprint.ts":intakeFingerprint,"./intake-catalog.ts":{INTAKE_CATALOG_SEED},
+    "./domain.ts":{AI_MODEL:"gpt-6.1-terra",CONSULTATION_AI_MODEL:"gpt-6-luna"},"./intake-types.ts":types,"./intake-engine.ts":engine,"./intake-classifier.ts":classifier,"./intake-classifier-response.ts":classifierResponse,"./intake-source-spans.ts":sourceSpans,"./intake-fingerprint.ts":intakeFingerprint,"./intake-catalog.ts":{INTAKE_CATALOG_SEED:catalogSeed},"./intake-catalog-snapshot.ts":catalogSnapshot,"./case-document-requirement-store.ts":caseRequirements,"./case-data-recompute.ts":caseDataRecompute,
     "./server-store.ts":{actor:async()=>"tester",connection:()=>({apiKeyConfigured:true}),db:()=>database,event:async(...args:unknown[])=>{events.push(args);},getCase:async(caseId:string)=>{const row=sqlite.prepare("SELECT payload FROM cases WHERE id=?").get(caseId) as {payload:string}|undefined;if(!row)throw new TestError(404,"missing");return JSON.parse(row.payload);},HttpError:TestError,now:()=>new Date().toISOString(),sha256:async(bytes:Uint8Array)=>new TextDecoder().decode(bytes)===SYNTHETIC_PROTECTED_CASE_ID?protectedCaseFingerprint:createHash("sha256").update(bytes).digest("hex")},
     "./luna.ts":{callLuna:async(args:unknown)=>{calls++;return {value:await onCall(args),usage:{inputTokens:10,outputTokens:10,durationMs:1,model:"gpt-6-luna"}};}},
   };
   const module={exports:{} as Record<string,(...args:any[])=>Promise<any>>};new Function("require","module","exports",compiled)((name:string)=>{if(!(name in dependencies))throw new Error("Unexpected import "+name);return dependencies[name];},module,module.exports);
   const api=module.exports;
-  return {api,sqlite,id,data,events,get calls(){return calls;},setModel(fn:typeof onCall){onCall=fn;},close(){sqlite.close();},async append(text="상담 내용: 현재 상황을 확인 중입니다.",supersedesId:string|null=null){const view=await api.getConsultationView(id);return api.appendConsultation(id,{expectedConsultationRevision:view.consultationRevision,text,occurredAt:"2026-10-29",supersedesId});},async analyze(){const view=await api.getConsultationView(id);return api.analyzeConsultation(id,{expectedConsultationRevision:view.consultationRevision,expectedCaseRevision:view.caseRevision,expectedCatalogVersion:view.catalogVersion});}};
+  return {api,sqlite,database,id,data,events,get calls(){return calls;},setModel(fn:typeof onCall){onCall=fn;},close(){sqlite.close();},async append(text="상담 내용: 현재 상황을 확인 중입니다.",supersedesId:string|null=null){const view=await api.getConsultationView(id);return api.appendConsultation(id,{expectedConsultationRevision:view.consultationRevision,text,occurredAt:"2026-10-29",supersedesId});},async analyze(){const view=await api.getConsultationView(id);return api.analyzeConsultation(id,{expectedConsultationRevision:view.consultationRevision,expectedCaseRevision:view.caseRevision,expectedCatalogVersion:view.catalogVersion});}};
 }
 
 test("intake migrations append tables without recreating existing production tables",()=>{const f=fixture();try{assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type='table' AND name IN ('consultation_heads','consultation_notes','consultation_runs','intake_catalog_head','intake_catalog_versions')").get() as {n:number}).n,5);assert.ok(f.sqlite.prepare("SELECT plan_id FROM page_derivatives").all());}finally{f.close();}});
 
-test("catalogue revisions are durable, immutable and compare-and-swap guarded",async()=>{const f=fixture();try{const original=await f.api.getIntakeCatalog();const edited=structuredClone(original.catalog);edited.title="검토한 서류 기준";const saved=await f.api.saveIntakeCatalog(edited,1);assert.equal(saved.catalog.version,2);assert.equal(saved.history.length,2);assert.notEqual(saved.sha256,original.sha256);await assert.rejects(f.api.saveIntakeCatalog(edited,1),{status:409});assert.equal((f.sqlite.prepare("SELECT payload FROM intake_catalog_versions WHERE version=1").get() as {payload:string}).payload,JSON.stringify(original.catalog));}finally{f.close();}});
+test("consultation completion stores typed document requirements under the real case/run and preserves prior runs",async()=>{
+  const f=fixture("normalized-requirements");try{
+    f.sqlite.exec("PRAGMA foreign_keys=ON");
+    await f.append();const first=await f.analyze(),catalog=await f.api.getIntakeCatalog();
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM shared_document_types WHERE active=1").get() as {n:number}).n,catalog.catalog.documents.length);
+    const listed=await caseRequirements.listCaseDocumentRequirements(f.database as unknown as D1Database,f.id);
+    assert.equal(listed.activeRunId,first.run.id);assert.equal(listed.requirements.length,first.run.result.requirements.length);
+    assert.ok(listed.requirements.length>0);
+    assert.ok(listed.requirements.every(row=>row.caseId===f.id&&row.consultationRunId===first.run.id&&row.documentTypeId===row.raw.documentTypeId));
+    const before=(f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n;
+    await caseRequirements.persistCaseDocumentRequirements(f.database as unknown as D1Database,{caseId:f.id,runId:first.run.id,catalog:catalog.catalog,catalogSha256:catalog.sha256,result:first.run.result});
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n,before);
+    await f.append("새 상담 원문입니다.");
+    assert.equal((await caseRequirements.listCaseDocumentRequirements(f.database as unknown as D1Database,f.id)).requirements.length,0);
+    const next=await f.analyze(),current=await caseRequirements.listCaseDocumentRequirements(f.database as unknown as D1Database,f.id);
+    assert.notEqual(next.run.id,first.run.id);assert.equal(current.activeRunId,next.run.id);
+    assert.ok(current.requirements.every(row=>row.consultationRunId===next.run.id));
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements WHERE consultation_run_id=?").get(first.run.id) as {n:number}).n,before);
+    await assert.rejects(caseRequirements.persistCaseDocumentRequirements(f.database as unknown as D1Database,{caseId:"other-case",runId:first.run.id,catalog:catalog.catalog,catalogSha256:catalog.sha256,result:first.run.result}),/CASE_REQUIREMENT_RUN_MISMATCH/);
+    assert.deepEqual(f.sqlite.prepare("PRAGMA foreign_key_check").all(),[]);
+  }finally{f.close();}
+});
+
+test("requirement row failure rolls back run completion and active-head publication",async()=>{
+  const f=fixture("normalized-requirements-rollback");try{
+    await f.append();
+    f.sqlite.exec("CREATE TRIGGER reject_requirement BEFORE INSERT ON case_document_requirements BEGIN SELECT RAISE(ABORT,'synthetic requirement write failure'); END;");
+    await assert.rejects(f.analyze(),{status:502});
+    assert.equal((f.sqlite.prepare("SELECT active_run_id FROM consultation_heads WHERE case_id=?").get(f.id) as {active_run_id:string|null}).active_run_id,null);
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM consultation_runs WHERE status='complete'").get() as {n:number}).n,0);
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n,0);
+  }finally{f.close();}
+});
+
+test("an existing catalogue upgrades once without replacing custom edits or historical bytes",async()=>{
+  const f=fixture("legacy-catalogue");try{
+    const legacy=engine.validateIntakeCatalog(structuredClone(INTAKE_CATALOG_SEED));legacy.version=7;
+    legacy.documents=legacy.documents.slice(0,74);
+    for(const document of legacy.documents)delete document.ocr;
+    legacy.documents[0].name="사용자 지정 서류 이름";legacy.rules[0].enabled=false;
+    legacy.documents.push({...structuredClone(legacy.documents[0]),id:"custom_saved_document",name:"보존할 사용자 문서"});
+    const bytes=JSON.stringify(legacy),hash=createHash("sha256").update(bytes).digest("hex");
+    const insert=f.sqlite.prepare("INSERT INTO intake_catalog_versions(version,schema_version,payload,sha256,actor,created_at) VALUES(?,?,?,?,?,?)");
+    insert.run(7,legacy.schemaVersion,bytes,hash,"original-reviewer","2026-10-28");
+    const inactive={...legacy,version:9},inactiveBytes=JSON.stringify(inactive);
+    insert.run(9,legacy.schemaVersion,inactiveBytes,createHash("sha256").update(inactiveBytes).digest("hex"),"inactive-reviewer","2026-10-28");
+    f.sqlite.prepare("INSERT INTO intake_catalog_head(id,version,sha256) VALUES('default',?,?)").run(7,hash);
+    const [one,two]=await Promise.all([f.api.getIntakeCatalog(),f.api.getIntakeCatalog()]);
+    assert.equal(one.catalog.version,10);assert.equal(two.catalog.version,10);assert.equal(one.sha256,two.sha256);
+    assert.equal(one.catalog.documents[0].name,legacy.documents[0].name);
+    assert.ok(one.catalog.documents.some((document:{id:string})=>document.id==="custom_saved_document"));
+    assert.deepEqual(one.catalog.rules,legacy.rules);
+    assert.ok(INTAKE_CATALOG_SEED.documents.every(document=>one.catalog.documents.some((current:{id:string})=>current.id===document.id)));
+    assert.equal((f.sqlite.prepare("SELECT payload FROM intake_catalog_versions WHERE version=7").get() as {payload:string}).payload,bytes);
+    assert.equal((f.sqlite.prepare("SELECT actor FROM intake_catalog_versions WHERE version=10").get() as {actor:string}).actor,"system:unified-document-catalog");
+    assert.equal((await f.api.getIntakeCatalog()).catalog.version,10);
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM intake_catalog_versions").get() as {n:number}).n,3);
+    assert.equal((await catalogSnapshot.readActiveIntakeCatalogSnapshot(f.database as unknown as D1Database))?.catalog.version,10);
+  }finally{f.close();}
+});
+
+test("catalogue revisions are durable, immutable and compare-and-swap guarded",async()=>{const f=fixture();try{const original=await f.api.getIntakeCatalog();const edited=structuredClone(original.catalog);edited.title="검토한 서류 기준";const saved=await f.api.saveIntakeCatalog(edited,original.catalog.version);assert.equal(saved.catalog.version,original.catalog.version+1);assert.equal(saved.history.length,2);assert.notEqual(saved.sha256,original.sha256);await assert.rejects(f.api.saveIntakeCatalog(edited,original.catalog.version),{status:409});assert.equal((f.sqlite.prepare("SELECT payload FROM intake_catalog_versions WHERE version=?").get(original.catalog.version) as {payload:string}).payload,JSON.stringify(original.catalog));}finally{f.close();}});
 
 test("consultation notes do not mutate the case evidence or calculation revision",async()=>{const f=fixture();try{const before=f.sqlite.prepare("SELECT * FROM cases").get();const view=await f.append();assert.equal(view.consultationRevision,1);assert.equal(view.notes.length,1);assert.deepEqual(f.sqlite.prepare("SELECT * FROM cases").get(),before);assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM analyses").get() as {n:number}).n,0);await assert.rejects(f.api.appendConsultation(f.id,{expectedConsultationRevision:0,text:"이전 판본으로 쓰기"}),{status:409});}finally{f.close();}});
 
@@ -75,6 +139,6 @@ test("stored checklist tampering is rejected instead of displayed as a current r
 
 test("same-revision storage token rotation remains audit-only for v2 semantic freshness",async()=>{const f=fixture();try{await f.append();await f.analyze();f.sqlite.prepare("UPDATE cases SET storage_token='rotated-token' WHERE id=?").run(f.id);const view=await f.api.getConsultationView(f.id);assert.equal(view.run.stale,false);await f.analyze();assert.equal(f.calls,1);assert.equal((await f.api.getConsultationView(f.id)).run.stale,false);}finally{f.close();}});
 
-test("historical source labels stay bound to the run's immutable catalogue",async()=>{const f=fixture();try{await f.append();const view=await f.analyze();const oldTitle=view.run.catalogSnapshot.sources[0].title;const current=await f.api.getIntakeCatalog();current.catalog.sources[0].title="새 출처 제목";await f.api.saveIntakeCatalog(current.catalog,1);const next=await f.api.getConsultationView(f.id);assert.equal(next.run.catalogSnapshot.sources[0].title,oldTitle);assert.equal(next.run.stale,true);}finally{f.close();}});
+test("historical source labels stay bound to the run's immutable catalogue",async()=>{const f=fixture();try{await f.append();const view=await f.analyze();const oldTitle=view.run.catalogSnapshot.sources[0].title;const current=await f.api.getIntakeCatalog();current.catalog.sources[0].title="새 출처 제목";await f.api.saveIntakeCatalog(current.catalog,current.catalog.version);const next=await f.api.getConsultationView(f.id);assert.equal(next.run.catalogSnapshot.sources[0].title,oldTitle);assert.equal(next.run.stale,true);}finally{f.close();}});
 
 test("pending and failed attempts remain visible after reload and an invalid calendar date is rejected",async()=>{const f=fixture();try{await assert.rejects(f.api.appendConsultation(f.id,{expectedConsultationRevision:0,text:"상담",occurredAt:"2026-02-30"}),{status:400});await f.append();let release!:(value:unknown)=>void;let started!:()=>void;const begun=new Promise<void>(r=>{started=r;});f.setModel(async()=>{started();return new Promise(r=>{release=r;});});const pending=f.analyze();await begun;assert.equal((await f.api.getConsultationView(f.id)).latestAttempt.status,"pending");release({claims:[{featureId:"invalid"}]});await assert.rejects(pending,{status:422});const failed=await f.api.getConsultationView(f.id);assert.equal(failed.latestAttempt.status,"failed");assert.equal(failed.latestAttempt.leaseUntil,null);assert.ok(failed.latestAttempt.error);}finally{f.close();}});

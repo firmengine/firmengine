@@ -69,6 +69,15 @@ test("classification diagnostics retain catalog identity and source nature indep
   assert.equal(out.modelCalls,0);
 });
 
+test("diagnostics expose the stored shared document identity without inventing it for historical observations",async()=>{
+  const shared={role:"evidence",familyId:"payroll_payslip",documentTypeId:"salary_statement",documentTypeName:"급여명세서·사용자 소득증명",documentCatalogVersion:2,documentCatalogSha256:"d".repeat(64)};
+  const out=await fixture({classification:shared}).inspect();
+  for(const key of ["documentTypeId","documentTypeName","documentCatalogVersion","documentCatalogSha256"] as const)assert.equal(out.classification[key],shared[key]);
+  const legacy=await fixture({classification:{role:"evidence",familyId:"payroll_payslip"}}).inspect();
+  for(const key of ["documentTypeId","documentTypeName","documentCatalogVersion","documentCatalogSha256"])assert.equal(legacy.classification[key],null);
+  assert.equal(out.modelCalls,0);assert.equal(out.mutatesState,false);
+});
+
 test("inactive or mismatched source, page, image, and recovery bindings block diagnostics", async () => {
   const edits = [
     (_row: any, data: any) => { data.documents[0].status = "withdrawn"; },

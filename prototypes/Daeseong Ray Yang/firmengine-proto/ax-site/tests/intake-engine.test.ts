@@ -362,7 +362,7 @@ test("classifier request binds feature/note enums and keeps injection-like consu
   assert.equal(request.agent, "consultation_classifier");
   assert.equal(request.instructions, INTAKE_CLASSIFIER_INSTRUCTIONS); assert.ok(!request.instructions.includes("실제 상담: 저는 직장인입니다."));
   const packet = JSON.parse(request.input[0].content[0].text);
-  assert.equal(packet.sourceSpans.map((span: { text: string }) => span.text).join(""), suspicious); assert.ok(!("documents" in packet)); assert.ok(!("rules" in packet));
+  assert.equal(packet.sourceSpans.map((span: { text: string }) => span.text).join(""), suspicious); assert.deepEqual(packet.documents.map((document:{id:string;name:string})=>({id:document.id,name:document.name})),catalog().documents.map(document=>({id:document.id,name:document.name}))); assert.ok(!("rules" in packet));
   assert.ok(packet.sourceSpans.every((span: { start: number; end: number }) => span.end > span.start));
   const schema = request.schema as unknown as { $defs: Record<string, { enum?: string[]; items?: { properties: { sourceSpanId: { $ref: string } } } }>; properties: { subjects: { items: { anyOf: { properties: { subjectId: { pattern?: string; enum?: string[] }; subjectLabel: { maxLength?: number; enum?: string[] }; claims: { items: { properties: { featureId: { $ref: string }; state: { $ref: string }; temporal: { $ref: string }; refs: { $ref: string } } } } } }[] } }; reviewedSourceSpanIds: { minItems: number; maxItems: number; items: { $ref: string } } } };
   const alternatives = schema.properties.subjects.items.anyOf;

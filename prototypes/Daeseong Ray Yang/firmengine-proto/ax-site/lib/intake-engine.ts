@@ -1,7 +1,7 @@
 import {
   INTAKE_SCHEMA_VERSION, INTAKE_NOTE_MAX_CHARS, INTAKE_ACTIVE_MAX_CHARS,
   type ConsultationNote, type IntakeCatalog, type IntakeClaim, type IntakeCondition,
-  type IntakeDocumentNeed, type IntakeQuestion, type IntakeQuote, type IntakeRequirement,
+  type IntakeDocumentNeed, type IntakeDocumentOcr, type IntakeQuestion, type IntakeQuote, type IntakeRequirement,
   type IntakeResult, type IntakeRule, type IntakeScope, type IntakeState,
 } from "./intake-types.ts";
 
@@ -102,8 +102,18 @@ export function validateIntakeCatalog(value: unknown): IntakeCatalog {
   });
   const documents = list(raw.documents, "documents", 400).map((item, index) => {
     const row = record(item, `documents[${index}]`);
-    keys(row, ["id", "name", "category", "issuer", "purpose", "fields", "workflowDocumentTypes", "sourceIds"], `documents[${index}]`);
-    return { id: id(row.id, "document.id"), name: text(row.name, "document.name", 300), category: text(row.category, "document.category", 200), issuer: text(row.issuer, "document.issuer", 1_000), purpose: text(row.purpose, "document.purpose", 3_000), fields: strings(row.fields, "document.fields", 100), workflowDocumentTypes: ids(row.workflowDocumentTypes, "document.workflowDocumentTypes"), sourceIds: ids(row.sourceIds, "document.sourceIds") };
+    keys(row, ["id", "name", "category", "issuer", "purpose", "fields", "workflowDocumentTypes", "sourceIds", ...(own(row,"ocr")?["ocr"]:[])], `documents[${index}]`);
+    let ocr:IntakeDocumentOcr|undefined;
+    if(own(row,"ocr")){
+      const metadata=record(row.ocr,"document.ocr");
+      keys(metadata,["familyIds","fieldContractIds","routingStatus","collectionMode"],"document.ocr");
+      const familyIds=ids(metadata.familyIds,"document.ocr.familyIds",100),fieldContractIds=ids(metadata.fieldContractIds,"document.ocr.fieldContractIds",1_000);
+      const routingStatus=enumValue(metadata.routingStatus,["ready","review_required"],"document.ocr.routingStatus");
+      if(routingStatus==="ready"&&(!familyIds.length||!fieldContractIds.length))fail("INTAKE_OCR_CONTRACT_MISSING","document.ocr");
+      ocr={familyIds,fieldContractIds,routingStatus,collectionMode:enumValue(metadata.collectionMode,["client_evidence","generated_or_prior_form"],"document.ocr.collectionMode")};
+    }
+    // Omit absent metadata entirely: old immutable payloads retain their hash.
+    return { id: id(row.id, "document.id"), name: text(row.name, "document.name", 300), category: text(row.category, "document.category", 200), issuer: text(row.issuer, "document.issuer", 1_000), purpose: text(row.purpose, "document.purpose", 3_000), fields: strings(row.fields, "document.fields", 100), workflowDocumentTypes: ids(row.workflowDocumentTypes, "document.workflowDocumentTypes"), sourceIds: ids(row.sourceIds, "document.sourceIds"),...(ocr?{ocr}:{}) };
   });
   const condition = (item: unknown): IntakeCondition => {
     const row = record(item, "condition"); keys(row, ["featureId", "state"], "condition");

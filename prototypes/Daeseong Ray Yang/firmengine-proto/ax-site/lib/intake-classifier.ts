@@ -41,6 +41,9 @@ export function buildIntakeClassifierRequest(notes: ConsultationNote[], catalog:
   const packet = {
     purpose: "consultation_claim_classification_only", promptVersion: INTAKE_PROMPT_VERSION, catalogVersion: checked.version,
     features: checked.features.map(feature => ({ id: feature.id, label: feature.label, scope: feature.scope, description: feature.description })),
+    // The same active public ID/name inventory is supplied to OCR. Internal
+    // extraction families are metadata, not a second public document list.
+    documents: checked.documents.map(document=>({id:document.id,name:document.name,category:document.category,fields:document.fields,...(document.ocr?{ocr:document.ocr}:{})})),
     notes: activeNotes.map(note => ({ id: note.id, sequence: note.sequence, occurredAt: note.occurredAt })),
     sourceSpans: sourceSpans.map(({ id, noteId, start, end, text }) => ({ id, noteId, start, end, text })),
     limits: { maximumClaims: INTAKE_LIMITS.claims, noImplicitAbsence: true, noEvidenceAcceptance: true },

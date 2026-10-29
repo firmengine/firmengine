@@ -6,6 +6,7 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { INTAKE_CATALOG_SEED } from "../lib/intake-catalog.ts";
 import { validateIntakeCatalog } from "../lib/intake-engine.ts";
 import type { IntakeCatalog } from "../lib/intake-types.ts";
+import { isOfficialMonitorUrl } from "../lib/legal-monitor-core.ts";
 import { intakeMonitorProjection, intakeReferenceRecords } from "../lib/intake-reference.ts";
 import { readIntakeReferences, intakeReferenceMonitorRules, intakeReferenceMonitorScope } from "../lib/intake-reference-store.ts";
 
@@ -43,8 +44,8 @@ test("no-head fallback exposes the real catalogue without seeding or reading cas
     const result = await readIntakeReferences(database.database);
     assert.equal(result.initialized, false); assert.equal(result.active, null); assert.equal(result.readOnly, true);
     assert.deepEqual(result.catalog, seed()); assert.equal(result.catalogSha256, digest(seed()));
-    assert.deepEqual(result.counts, { features: 49, documents: 74, rules: 54, sources: 11, enabledRules: 54 });
-    assert.equal(result.records.length, 188);
+    assert.deepEqual(result.counts, { features: seed().features.length, documents: seed().documents.length, rules: seed().rules.length, sources: seed().sources.length, enabledRules: seed().rules.filter(rule=>rule.enabled).length });
+    assert.equal(result.records.length, intakeReferenceRecords(seed()).length);
     assert.equal((database.sqlite.prepare("SELECT COUNT(*) AS n FROM intake_catalog_versions").get() as {n:number}).n, 0);
     assert.equal((database.sqlite.prepare("SELECT COUNT(*) AS n FROM intake_catalog_head").get() as {n:number}).n, 0);
     assert.equal(database.queries.length, 1);
@@ -56,14 +57,14 @@ test("the actual active immutable version wins over seed and later unactivated r
   const database = new MemoryD1();
   try {
     database.save(seed());
-    const active = seed(); active.version = 2; active.documents[0].name = "검토하여 바꾼 서류 이름";
+    const active = seed(); active.version = seed().version+1; active.documents[0].name = "검토하여 바꾼 서류 이름";
     const hash = database.save(active);
-    const later = seed(); later.version = 3; later.title = "현재 판본이 아닌 검토자료"; database.save(later, false);
+    const later = seed(); later.version = seed().version+2; later.title = "현재 판본이 아닌 검토자료"; database.save(later, false);
     const result = await readIntakeReferences(database.database);
-    assert.equal(result.initialized, true); assert.equal(result.catalogVersion, 2); assert.equal(result.catalogSha256, hash);
+    assert.equal(result.initialized, true); assert.equal(result.catalogVersion, active.version); assert.equal(result.catalogSha256, hash);
     assert.deepEqual(result.catalog, active); assert.deepEqual(result.active, active);
     assert.equal(result.records.find(row => row.id === `intake.document.${active.documents[0].id}`)?.title, active.documents[0].name);
-    assert.ok(result.records.every(row => row.catalogVersion === 2));
+    assert.ok(result.records.every(row => row.catalogVersion === active.version));
   } finally { database.close(); }
 });
 
@@ -129,12 +130,12 @@ test("monitor excludes office URLs, preserves official issuing guidance and disa
   try {
     const catalog = seed(); catalog.rules[0].enabled = false; database.save(catalog);
     const result = await readIntakeReferences(database.database), projection = intakeMonitorProjection(result.records);
-    assert.equal(result.counts.enabledRules, 53);
+    assert.equal(result.counts.enabledRules, catalog.rules.filter(rule=>rule.enabled).length);
     assert.ok(result.records.some(row => row.id === `intake.rule.${catalog.rules[0].id}` && !row.enabled));
     assert.ok(!projection.some(row => row.id === `intake.rule.${catalog.rules[0].id}`));
     assert.ok(projection.some(row => row.sourceUrls.some(url => new URL(url).hostname.endsWith("gov.kr"))));
     assert.ok(!projection.some(row => row.sourceUrls.some(url => url.includes("chatgpt.site"))));
-    assert.deepEqual(result.monitoring.excludedSources.map(source => source.sourceId), ["SRC-INTAKE-OFFICE-POLICY"]);
+    assert.deepEqual(result.monitoring.excludedSources.map(source => source.sourceId), catalog.sources.filter(source=>!isOfficialMonitorUrl(source.url)).map(source=>source.id));
     const scope = await intakeReferenceMonitorScope(database.database);
     assert.equal(scope.catalogVersion, catalog.version); assert.equal(scope.catalogSha256, digest(catalog)); assert.equal(scope.initialized, true);
     assert.deepEqual(scope.rules, projection); assert.deepEqual(await intakeReferenceMonitorRules(database.database), projection);
@@ -145,7 +146,7 @@ test("uninitialized monitor reads use the real seed and never create a catalogue
   const database = new MemoryD1();
   try {
     const scope = await intakeReferenceMonitorScope(database.database);
-    assert.equal(scope.initialized, false); assert.equal(scope.rules.length, 188); assert.equal(scope.catalogSha256, digest(seed()));
+    assert.equal(scope.initialized, false); assert.equal(scope.rules.length, intakeMonitorProjection(intakeReferenceRecords(seed())).length); assert.equal(scope.catalogSha256, digest(seed()));
     assert.equal((database.sqlite.prepare("SELECT COUNT(*) AS n FROM intake_catalog_versions").get() as {n:number}).n, 0);
   } finally { database.close(); }
 });

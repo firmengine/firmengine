@@ -14,15 +14,16 @@ const object = (value: unknown): Record<string, unknown> | null =>
 function observation(value: unknown) {
   const read = object(value);
   if (!read) return null;
-  const output: Record<string, string | boolean | null> = {};
+  const output: Record<string, string | number | boolean | null> = {};
   let truncated = false;
-  for (const key of ["role", "documentType", "familyId", "catalogRelease", "boundaryObservation", "boundaryQuote", "sourceNature", "sourceNatureQuote", "confidence", "legibility", "reason", "titleQuote", "issuerQuote", "structureQuote", "evidenceRowsQuote", "administrativeStructureQuote"]) {
+  for (const key of ["role", "documentType", "documentTypeId", "documentTypeName", "documentCatalogSha256", "familyId", "catalogRelease", "boundaryObservation", "boundaryQuote", "sourceNature", "sourceNatureQuote", "confidence", "legibility", "reason", "titleQuote", "issuerQuote", "structureQuote", "evidenceRowsQuote", "administrativeStructureQuote"]) {
     const text = read[key];
     if (typeof text === "string") {
       output[key] = text.slice(0, 4000);
       truncated ||= text.length > 4000;
     } else output[key] = null;
   }
+  output.documentCatalogVersion = typeof read.documentCatalogVersion === "number" && Number.isSafeInteger(read.documentCatalogVersion) && read.documentCatalogVersion > 0 ? read.documentCatalogVersion : null;
   return { ...output, truncated };
 }
 

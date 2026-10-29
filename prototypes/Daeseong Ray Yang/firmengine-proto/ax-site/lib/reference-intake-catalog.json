@@ -1,6 +1,6 @@
 {
   "schemaVersion": "consultation-checklist-v1",
-  "version": 1,
+  "version": 2,
   "title": "상담이력 기반 1차 분류·의뢰인 필요서류 기준정보",
   "features": [
     {
@@ -8,392 +8,392 @@
       "label": "복수 소득원·겸업",
       "scope": "case",
       "question": "급여·사업·임대·연금 등 모든 소득원과 각각의 기간을 알려주세요.",
-      "description": "소득원 두 개 이상을 직접 진술한 경우. 다른 사람의 소득과 합치거나 입금건수만으로 판단하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "소득원 두 개 이상을 직접 진술한 경우. 다른 사람의 소득과 합치거나 입금건수만으로 판단하지 않음."
     },
     {
       "id": "income.wage",
       "label": "급여 근로소득",
       "scope": "income",
       "question": "현재 근무하는 직장, 입사일, 급여 지급주기와 공제내역은 무엇인가요?",
-      "description": "현재 사용자별 급여소득. 과거 직장은 temporal=past로 보존.",
-      "essential": true
+      "essential": true,
+      "description": "현재 사용자별 급여소득. 과거 직장은 temporal=past로 보존."
     },
     {
       "id": "income.business",
       "label": "개인사업·실질 영업소득",
       "scope": "income",
       "question": "직접 운영하는 사업, 영업 시작일과 매출·비용이 있나요?",
-      "description": "실제 사업 운영을 의미하며 사업자등록 보유와 별도. 배우자의 사업을 본인 사업으로 합치지 않음.",
-      "essential": true
+      "essential": true,
+      "description": "실제 사업 운영을 의미하며 사업자등록 보유와 별도. 배우자의 사업을 본인 사업으로 합치지 않음."
     },
     {
       "id": "income.business_registered",
       "label": "본인 명의 사업자등록",
       "scope": "income",
       "question": "이 사업에 본인 명의 사업자등록이 있나요? 등록명의·번호·개업일은 무엇인가요?",
-      "description": "동일 사업 소득원에 대해 등록 유무가 명시된 경우만 present/absent.",
-      "essential": false
+      "essential": false,
+      "description": "동일 사업 소득원에 대해 등록 유무가 명시된 경우만 present/absent."
     },
     {
       "id": "income.vat_taxable",
       "label": "부가가치세 과세사업",
       "scope": "income",
       "question": "이 사업은 부가가치세 과세사업인가요? 일반·간이과세 여부와 신고기간을 알려주세요.",
-      "description": "동일 사업의 과세유형이 확인될 때만 표시. 사업자등록 존재만으로 추정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "동일 사업의 과세유형이 확인될 때만 표시. 사업자등록 존재만으로 추정하지 않음."
     },
     {
       "id": "income.vat_exempt",
       "label": "부가가치세 면세사업",
       "scope": "income",
       "question": "이 사업은 면세사업인가요? 사업장현황신고나 면세수입금액 자료가 있나요?",
-      "description": "면세와 영세율은 구분. 과세사업과 겸영 시 사업별 구분을 추가 질문.",
-      "essential": false
+      "essential": false,
+      "description": "면세와 영세율은 구분. 과세사업과 겸영 시 사업별 구분을 추가 질문."
     },
     {
       "id": "income.freelance",
       "label": "프리랜서·일용·플랫폼 수입",
       "scope": "income",
       "question": "계약·정산하는 업체나 플랫폼별 지급주기와 실제 수입·수수료를 알려주세요.",
-      "description": "반복 노무·서비스 수입. 명칭만으로 근로·사업의 법률적 지위를 확정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "반복 노무·서비스 수입. 명칭만으로 근로·사업의 법률적 지위를 확정하지 않음."
     },
     {
       "id": "income.rent",
       "label": "임대 수입",
       "scope": "income",
       "question": "빌려준 물건별 임차인·계약기간·보증금·임대료가 어떻게 되나요?",
-      "description": "신청인이 받는 임대료. 신청인이 내는 월세와 구분.",
-      "essential": false
+      "essential": false,
+      "description": "신청인이 받는 임대료. 신청인이 내는 월세와 구분."
     },
     {
       "id": "income.interest",
       "label": "이자 수입",
       "scope": "income",
       "question": "어느 계좌·대여금에서 어느 기간의 이자를 받고 있나요?",
-      "description": "원금 회수·계좌 간 이체를 이자수입으로 분류하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "원금 회수·계좌 간 이체를 이자수입으로 분류하지 않음."
     },
     {
       "id": "income.dividend",
       "label": "배당 수입",
       "scope": "income",
       "question": "배당 지급회사·계좌·지급일과 반복 지급 여부를 알려주세요.",
-      "description": "배당 수입과 주식매도대금은 구분.",
-      "essential": false
+      "essential": false,
+      "description": "배당 수입과 주식매도대금은 구분."
     },
     {
       "id": "income.pension",
       "label": "연금 수급",
       "scope": "income",
       "question": "수급 중인 연금의 종류·지급기관·지급기간은 무엇인가요?",
-      "description": "지급받는 연금수입과 아직 수령하지 않는 퇴직연금자산을 구분.",
-      "essential": false
+      "essential": false,
+      "description": "지급받는 연금수입과 아직 수령하지 않는 퇴직연금자산을 구분."
     },
     {
       "id": "income.employment_changed",
       "label": "이직·신규취업·휴직 등 변동",
       "scope": "income",
       "question": "언제 직장·근무상태·급여가 바뀌었고 전후 소득은 어떻게 다른가요?",
-      "description": "현재 소득원을 설명하는 고용변동. 과거사건 자체는 event로 별도 보존 가능.",
-      "essential": false
+      "essential": false,
+      "description": "현재 소득원을 설명하는 고용변동. 과거사건 자체는 event로 별도 보존 가능."
     },
     {
       "id": "debt.financial",
       "label": "금융기관 대출",
       "scope": "debt",
       "question": "대출한 금융기관별 계약과 현재 원금·이자 잔액을 알려주세요.",
-      "description": "채권자·계약별 분리. 기관명이 같아도 계약을 임의 병합하지 않음.",
-      "essential": true
+      "essential": true,
+      "description": "채권자·계약별 분리. 기관명이 같아도 계약을 임의 병합하지 않음."
     },
     {
       "id": "debt.card",
       "label": "신용카드·카드대출 채무",
       "scope": "debt",
       "question": "카드사별 카드대금·현금서비스·카드론 잔액과 사용기간은 어떻게 되나요?",
-      "description": "카드 이용금액과 대출잔액을 중복 합산하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "카드 이용금액과 대출잔액을 중복 합산하지 않음."
     },
     {
       "id": "debt.private",
       "label": "가족·지인·개인 차용",
       "scope": "debt",
       "question": "누구에게 언제 얼마를 빌렸고 차용증·입출금·변제내역이 있나요?",
-      "description": "신청인이 빌린 돈. 신청인이 남에게 빌려준 돈은 asset.receivable.",
-      "essential": false
+      "essential": false,
+      "description": "신청인이 빌린 돈. 신청인이 남에게 빌려준 돈은 asset.receivable."
     },
     {
       "id": "debt.secured",
       "label": "담보부 채무",
       "scope": "debt",
       "question": "담보 물건·소유자·담보권자와 현재 대출잔액은 무엇인가요?",
-      "description": "담보의 존재·소유자를 진술한 경우. 자동차할부라는 명칭만으로 저당 설정을 확정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "담보의 존재·소유자를 진술한 경우. 자동차할부라는 명칭만으로 저당 설정을 확정하지 않음."
     },
     {
       "id": "debt.guarantee",
       "label": "보증·연대·구상 관계",
       "scope": "debt",
       "question": "주채무자·보증인·채권자는 누구이고 대위변제나 청구가 있었나요?",
-      "description": "신청인이 보증한 경우와 신청인의 빚에 타인이 보증한 경우를 subjectLabel과 인용으로 구분.",
-      "essential": false
+      "essential": false,
+      "description": "신청인이 보증한 경우와 신청인의 빚에 타인이 보증한 경우를 subjectLabel과 인용으로 구분."
     },
     {
       "id": "debt.assigned",
       "label": "채권양도·대위변제",
       "scope": "debt",
       "question": "원래 채권자와 현재 청구자는 누구이며 양도·대위변제 통지를 받았나요?",
-      "description": "동일 원채무의 승계 여부 확인. 원채권자와 승계채권자를 별개 빚으로 자동 합산하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "동일 원채무의 승계 여부 확인. 원채권자와 승계채권자를 별개 빚으로 자동 합산하지 않음."
     },
     {
       "id": "debt.tax",
       "label": "국세·지방세 체납",
       "scope": "debt",
       "question": "국세인지 지방세인지, 세목·귀속기간·납기·체납액을 알려주세요.",
-      "description": "완납증명 대신 실제 체납내역 확인. 체납을 자동으로 특정 법적 채권등급에 넣지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "완납증명 대신 실제 체납내역 확인. 체납을 자동으로 특정 법적 채권등급에 넣지 않음."
     },
     {
       "id": "debt.social_insurance",
       "label": "사회보험료·징수금 미납",
       "scope": "debt",
       "question": "어느 기관의 보험료 또는 기타징수금인지, 귀속기간·납기는 언제인가요?",
-      "description": "건강보험료와 기타징수금 등 성질 구분이 필요.",
-      "essential": false
+      "essential": false,
+      "description": "건강보험료와 기타징수금 등 성질 구분이 필요."
     },
     {
       "id": "debt.disputed",
       "label": "다툼·소송·집행 중 채무",
       "scope": "debt",
       "question": "다투는 금액·사유와 진행 중인 소송·지급명령·압류의 사건번호가 있나요?",
-      "description": "청구금액이 확정채무라는 뜻이 아님. 송달·확정 여부를 추가 확인.",
-      "essential": false
+      "essential": false,
+      "description": "청구금액이 확정채무라는 뜻이 아님. 송달·확정 여부를 추가 확인."
     },
     {
       "id": "debt.recent",
       "label": "최근 발생·증가한 채무",
       "scope": "debt",
       "question": "최근 새로 빌리거나 늘어난 채무의 날짜·금액·사용처는 무엇인가요?",
-      "description": "최근의 의미·기간을 임의 고정하지 않고 상담에서 특정된 거래일을 질문.",
-      "essential": false
+      "essential": false,
+      "description": "최근의 의미·기간을 임의 고정하지 않고 상담에서 특정된 거래일을 질문."
     },
     {
       "id": "asset.vehicle_owned",
       "label": "본인 소유 차량·이륜차",
       "scope": "asset",
       "question": "본인 명의 차량별 등록번호·차종·연식·지분과 담보 여부를 알려주세요.",
-      "description": "타인 차량을 운전하는 사실·렌트·리스와 소유를 구분.",
-      "essential": true
+      "essential": true,
+      "description": "타인 차량을 운전하는 사실·렌트·리스와 소유를 구분."
     },
     {
       "id": "asset.vehicle_leased",
       "label": "리스·렌트 차량 이용",
       "scope": "asset",
       "question": "차량 소유자는 누구이며 리스·렌트 계약의 보증금·월납입·종료조건은 무엇인가요?",
-      "description": "사용 사실만으로 차량 전체를 신청인 소유재산으로 만들지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "사용 사실만으로 차량 전체를 신청인 소유재산으로 만들지 않음."
     },
     {
       "id": "asset.vehicle_financed",
       "label": "차량 관련 할부·담보부담",
       "scope": "asset",
       "question": "이 차량의 할부금·대출·저당 설정과 현재 미상환잔액이 있나요?",
-      "description": "동일 차량별 부담. 채무기록과 이중으로 새 채무를 만들지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "동일 차량별 부담. 채무기록과 이중으로 새 채무를 만들지 않음."
     },
     {
       "id": "asset.real_estate",
       "label": "본인 부동산 소유·지분",
       "scope": "asset",
       "question": "본인 소유 토지·건물·주택의 주소·지분·담보·임차관계를 알려주세요.",
-      "description": "임차 거주와 소유를 구분하며 공동소유는 본인 지분 확인.",
-      "essential": true
+      "essential": true,
+      "description": "임차 거주와 소유를 구분하며 공동소유는 본인 지분 확인."
     },
     {
       "id": "asset.lease_deposit",
       "label": "전세·월세·사업장 임차보증금",
       "scope": "asset",
       "question": "본인이 지급한 보증금별 계약자·소재지·금액·반환가능액은 무엇인가요?",
-      "description": "신청인이 돌려받을 보증금. 신청인이 임대인으로 받은 보증금은 별도 반환채무 확인.",
-      "essential": false
+      "essential": false,
+      "description": "신청인이 돌려받을 보증금. 신청인이 임대인으로 받은 보증금은 별도 반환채무 확인."
     },
     {
       "id": "asset.insurance",
       "label": "보험 계약·해약환급금",
       "scope": "asset",
       "question": "가입 보험의 계약자·피보험자·수익자와 해약환급금·약관대출이 있나요?",
-      "description": "단순 피보험자라는 이유만으로 환급금이 본인 재산이라고 추정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "단순 피보험자라는 이유만으로 환급금이 본인 재산이라고 추정하지 않음."
     },
     {
       "id": "asset.insurance_loan",
       "label": "보험계약 대출·약관대출",
       "scope": "asset",
       "question": "이 보험계약에 실제 약관대출이나 환급금 공제액이 있나요?",
-      "description": "동일 보험계약의 대출·공제 존재가 명시된 경우에만 해당. 보험 가입만으로 대출을 추정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "동일 보험계약의 대출·공제 존재가 명시된 경우에만 해당. 보험 가입만으로 대출을 추정하지 않음."
     },
     {
       "id": "asset.deposit",
       "label": "예금·적금·외화·현금",
       "scope": "asset",
       "question": "본인 계좌별 현재 잔액과 예적금·외화·보유현금이 있나요?",
-      "description": "예금잔액과 입금액은 다른 값. 가족 명의 계좌는 명의·실질소유 추가 확인.",
-      "essential": false
+      "essential": false,
+      "description": "예금잔액과 입금액은 다른 값. 가족 명의 계좌는 명의·실질소유 추가 확인."
     },
     {
       "id": "asset.securities",
       "label": "주식·펀드·출자지분",
       "scope": "asset",
       "question": "보유 증권·펀드·비상장지분의 계좌·수량·기준일과 처분내역이 있나요?",
-      "description": "과거 투자 손실과 현재 보유잔액을 구분.",
-      "essential": false
+      "essential": false,
+      "description": "과거 투자 손실과 현재 보유잔액을 구분."
     },
     {
       "id": "asset.crypto",
       "label": "가상자산·거래소·지갑",
       "scope": "asset",
       "question": "거래소·개인지갑별 보유수량·기준일·입출고 내역이 있나요?",
-      "description": "기왕 손실만으로 잔고가 없다고 추정하지 않으며 지갑 간 이체 중복 방지.",
-      "essential": false
+      "essential": false,
+      "description": "기왕 손실만으로 잔고가 없다고 추정하지 않으며 지갑 간 이체 중복 방지."
     },
     {
       "id": "asset.business",
       "label": "사업 재고·설비·권리금",
       "scope": "asset",
       "question": "보유 재고·설비·비품·권리금의 소유자·가치·처분가능성은 무엇인가요?",
-      "description": "장부가·시가·실제 회수가능가치를 구분하고 리스 물건은 소유로 확정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "장부가·시가·실제 회수가능가치를 구분하고 리스 물건은 소유로 확정하지 않음."
     },
     {
       "id": "asset.retirement",
       "label": "퇴직금·퇴직연금·공제금",
       "scope": "asset",
       "question": "퇴직급여 제도·적립기관·예상액과 현재 인출 가능 여부를 알려주세요.",
-      "description": "퇴직금·퇴직연금·일반 예금을 혼동하지 않고 보호범위는 별도 검토.",
-      "essential": false
+      "essential": false,
+      "description": "퇴직금·퇴직연금·일반 예금을 혼동하지 않고 보호범위는 별도 검토."
     },
     {
       "id": "asset.receivable",
       "label": "대여금·매출채권·반환채권",
       "scope": "asset",
       "question": "받을 돈의 상대방·원인·기한·잔액과 회수 가능성을 알려주세요.",
-      "description": "빌린 돈이 아니라 신청인이 받을 돈. 회수불능은 자료 없이 확정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "빌린 돈이 아니라 신청인이 받을 돈. 회수불능은 자료 없이 확정하지 않음."
     },
     {
       "id": "household.dependents",
       "label": "부양 주장 가족",
       "scope": "household",
       "question": "누구를 실제 부양하고 있으며 나이·소득·동거·지원액은 어떻게 되나요?",
-      "description": "동거·가족관계만으로 법적 부양인정을 확정하지 않음.",
-      "essential": true
+      "essential": true,
+      "description": "동거·가족관계만으로 법적 부양인정을 확정하지 않음."
     },
     {
       "id": "household.spouse_assets",
       "label": "배우자·가족 명의 재산 확인 필요",
       "scope": "household",
       "question": "배우자 또는 가족 재산과 신청인의 자금·명의·처분 관계가 있나요?",
-      "description": "배우자가 있다는 사실만으로 모든 가족재산 자료를 요구하거나 본인 청산가치에 합산하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "배우자가 있다는 사실만으로 모든 가족재산 자료를 요구하거나 본인 청산가치에 합산하지 않음."
     },
     {
       "id": "household.free_residence",
       "label": "무상거주",
       "scope": "household",
       "question": "누구 소유·명의의 주거지에서 어떤 조건으로 무상 거주하나요?",
-      "description": "보증금·임료 지급 진술과 모순되면 conflict로 보존.",
-      "essential": false
+      "essential": false,
+      "description": "보증금·임료 지급 진술과 모순되면 conflict로 보존."
     },
     {
       "id": "expense.medical",
       "label": "계속적 의료·돌봄 지출",
       "scope": "expense",
       "question": "누구를 위한 어떤 의료·돌봄비가 얼마씩, 언제까지 필요한가요?",
-      "description": "소득공제자료의 총액과 실제 반복지출·보험보전액을 구분.",
-      "essential": false
+      "essential": false,
+      "description": "소득공제자료의 총액과 실제 반복지출·보험보전액을 구분."
     },
     {
       "id": "expense.housing",
       "label": "추가 주거비 주장",
       "scope": "expense",
       "question": "주거비의 항목·부담자·실제 지급액과 필요기간을 알려주세요.",
-      "description": "임대차보증금과 월세 지출을 구분. 추가 생계비 인정은 담당자 검토.",
-      "essential": false
+      "essential": false,
+      "description": "임대차보증금과 월세 지출을 구분. 추가 생계비 인정은 담당자 검토."
     },
     {
       "id": "expense.education",
       "label": "교육·특수교육 지출",
       "scope": "expense",
       "question": "누구를 위한 교육비인지, 항목·기간·실제 지급자료가 있나요?",
-      "description": "교육비 전액이 추가 인정되는 것으로 자동 판단하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "교육비 전액이 추가 인정되는 것으로 자동 판단하지 않음."
     },
     {
       "id": "event.business_closed",
       "label": "휴업·폐업·사업양도 이력",
       "scope": "event",
       "question": "어느 사업을 언제 휴업·폐업·양도했고 보증금·재고·설비대금은 어떻게 처리했나요?",
-      "description": "과거 사건도 해당. 현재 영업 여부와 독립이며 폐업만으로 재산 0원 처리 금지.",
-      "essential": false
+      "essential": false,
+      "description": "과거 사건도 해당. 현재 영업 여부와 독립이며 폐업만으로 재산 0원 처리 금지."
     },
     {
       "id": "event.asset_disposal",
       "label": "재산 매각·증여·고액인출 이력",
       "scope": "event",
       "question": "어떤 재산을 언제 누구에게 얼마에 처분했고 대금은 어디로 갔나요?",
-      "description": "과거 거래도 해당. 행위의 적법성·부인가능성을 상담만으로 확정하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "과거 거래도 해당. 행위의 적법성·부인가능성을 상담만으로 확정하지 않음."
     },
     {
       "id": "event.preferential_payment",
       "label": "특정 채권자·가족에 지급 이력",
       "scope": "event",
       "question": "누구에게 언제 얼마를 지급했고 지급원인·당시 채무상태는 무엇인가요?",
-      "description": "특정인에게 지급했다는 사실과 법률상 편파변제 판단을 구분.",
-      "essential": false
+      "essential": false,
+      "description": "특정인에게 지급했다는 사실과 법률상 편파변제 판단을 구분."
     },
     {
       "id": "event.inheritance",
       "label": "상속·상속포기·분할 이력",
       "scope": "event",
       "question": "상속 개시일과 상속재산·채무·분할·포기·한정승인 관련 절차가 있나요?",
-      "description": "과거 사건도 해당하며 법적 귀속과 기간 판단은 별도 검토.",
-      "essential": false
+      "essential": false,
+      "description": "과거 사건도 해당하며 법적 귀속과 기간 판단은 별도 검토."
     },
     {
       "id": "event.divorce",
       "label": "이혼·재산분할·양육비 이력",
       "scope": "event",
       "question": "이혼·분할 합의 또는 판결의 날짜와 재산·양육비 지급내역을 알려주세요.",
-      "description": "과거 사건도 해당. 혼인관계와 재산변동을 별도로 확인.",
-      "essential": false
+      "essential": false,
+      "description": "과거 사건도 해당. 혼인관계와 재산변동을 별도로 확인."
     },
     {
       "id": "procedure.previous",
       "label": "과거 회생·파산 신청",
       "scope": "procedure",
       "question": "과거 회생·파산·개인회생의 사건번호·신청일·종국·면책 여부가 있나요?",
-      "description": "과거 사건도 해당. 신청이력과 면책이력을 구분.",
-      "essential": true
+      "essential": true,
+      "description": "과거 사건도 해당. 신청이력과 면책이력을 구분."
     },
     {
       "id": "procedure.private_adjustment",
       "label": "신복위·캠코 등 채무조정",
       "scope": "procedure",
       "question": "사적 채무조정 신청·합의·변제 내역과 관련 보고서가 있나요?",
-      "description": "과거·현재 조정절차 모두 별도로 보존. 기존 자료의 중복 요구를 검토.",
-      "essential": false
+      "essential": false,
+      "description": "과거·현재 조정절차 모두 별도로 보존. 기존 자료의 중복 요구를 검토."
     },
     {
       "id": "procedure.court_order",
       "label": "현재 보정·추가자료 명령",
       "scope": "procedure",
       "question": "법원에서 받은 명령·권고의 사건번호·송달일·기한·요구항목은 무엇인가요?",
-      "description": "현재 사건의 주문을 문서로 확인. 이전 사건 명령은 현재의 제출의무로 자동 전환하지 않음.",
-      "essential": false
+      "essential": false,
+      "description": "현재 사건의 주문을 문서로 확인. 이전 사건 명령은 현재의 제출의무로 자동 전환하지 않음."
     }
   ],
   "documents": [
@@ -415,7 +415,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "identity_residence_record"
+        ],
+        "fieldContractIds": [
+          "resident_registration:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "family_relation",
@@ -435,7 +445,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "identity_residence_record",
+          "household_composition_support"
+        ],
+        "fieldContractIds": [
+          "family_relation:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "income_source_inventory",
@@ -454,7 +475,19 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "employment_relationship",
+          "current_nonwage_income",
+          "business_current_income_summary"
+        ],
+        "fieldContractIds": [
+          "income_source_inventory:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "employment_certificate",
@@ -475,7 +508,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "employment_relationship"
+        ],
+        "fieldContractIds": [
+          "employment_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "employment_contract",
@@ -495,7 +538,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "employment_relationship"
+        ],
+        "fieldContractIds": [
+          "employment_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "salary_withholding",
@@ -516,7 +569,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "wage_withholding_tax"
+        ],
+        "fieldContractIds": [
+          "salary_withholding:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "salary_statement",
@@ -537,7 +600,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "payroll_payslip"
+        ],
+        "fieldContractIds": [
+          "salary_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "salary_bank_statement",
@@ -558,7 +631,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "salary_bank_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "employment_history",
@@ -578,7 +661,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "pension_contribution_benefit",
+          "employment_relationship",
+          "conditional_nonstandard_income_or_household_event"
+        ],
+        "fieldContractIds": [
+          "employment_history:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "business_status_evidence",
@@ -601,7 +696,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_registration"
+        ],
+        "fieldContractIds": [
+          "business_status_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "business_registration",
@@ -624,7 +729,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-GOV-BUSINESS"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_registration"
+        ],
+        "fieldContractIds": [
+          "business_registration:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "business_contract",
@@ -645,7 +760,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_registration",
+          "business_current_income_summary"
+        ],
+        "fieldContractIds": [
+          "business_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "business_income_report",
@@ -667,7 +793,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_sales_vat",
+          "business_costs_and_ledgers",
+          "business_current_income_summary"
+        ],
+        "fieldContractIds": [
+          "business_income_report:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "financial_statement",
@@ -689,7 +827,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "accounting_source",
+          "business_costs_and_ledgers"
+        ],
+        "fieldContractIds": [
+          "financial_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "income_amount_certificate",
@@ -711,7 +860,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-GOV-INCOME"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "tax_income"
+        ],
+        "fieldContractIds": [
+          "income_amount_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "vat_certificate",
@@ -732,7 +891,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-GOV-VAT"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_sales_vat"
+        ],
+        "fieldContractIds": [
+          "vat_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "vat_exempt_certificate",
@@ -752,7 +921,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_sales_vat"
+        ],
+        "fieldContractIds": [
+          "vat_exempt_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "sales_purchase_summary",
@@ -774,7 +953,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_sales_vat",
+          "business_costs_and_ledgers"
+        ],
+        "fieldContractIds": [
+          "sales_purchase_summary:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "operating_expenses",
@@ -796,7 +986,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "lease_housing",
+          "business_costs_and_ledgers"
+        ],
+        "fieldContractIds": [
+          "operating_expenses:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "platform_settlement",
@@ -817,7 +1018,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_current_income_summary"
+        ],
+        "fieldContractIds": [
+          "platform_settlement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "income_bank_statement",
@@ -838,7 +1049,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "income_bank_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "rental_income_contract",
@@ -859,7 +1080,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "lease_housing",
+          "current_nonwage_income"
+        ],
+        "fieldContractIds": [
+          "rental_income_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "interest_income_statement",
@@ -880,7 +1112,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions",
+          "current_nonwage_income"
+        ],
+        "fieldContractIds": [
+          "interest_income_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "dividend_statement",
@@ -901,7 +1144,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "current_nonwage_income"
+        ],
+        "fieldContractIds": [
+          "dividend_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "pension_certificate",
@@ -921,7 +1174,18 @@
       "sourceIds": [
         "SRC-INTAKE-ADMIN-INFO",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "pension_contribution_benefit",
+          "pension_benefit_income"
+        ],
+        "fieldContractIds": [
+          "pension_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "debt_certificate",
@@ -943,7 +1207,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-SC-GUIDE"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate"
+        ],
+        "fieldContractIds": [
+          "debt_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "creditor_request_copy",
@@ -963,7 +1237,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-SC-GUIDE"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "procedure_private_creditor_request"
+        ],
+        "fieldContractIds": [
+          "creditor_request_copy:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "loan_contract",
@@ -986,7 +1271,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "guarantee_joint_claim",
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "loan_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "card_statement",
@@ -1008,7 +1305,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "card_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "private_loan_transfer",
@@ -1030,7 +1338,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "private_loan_transfer:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "security_register",
@@ -1052,7 +1371,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "secured_claim_security",
+          "vehicle_registry",
+          "real_property_register"
+        ],
+        "fieldContractIds": [
+          "security_register:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "mortgage_balance",
@@ -1075,7 +1406,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "secured_claim_security"
+        ],
+        "fieldContractIds": [
+          "mortgage_balance:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "guarantee_contract",
@@ -1097,7 +1439,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "guarantee_joint_claim"
+        ],
+        "fieldContractIds": [
+          "guarantee_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "assignment_notice",
@@ -1118,7 +1470,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "creditor_assignment_dispute"
+        ],
+        "fieldContractIds": [
+          "assignment_notice:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "tax_arrears",
@@ -1142,7 +1504,18 @@
         "SRC-INTAKE-GOV-TAX-FACT",
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "tax_public_arrear",
+          "local_tax"
+        ],
+        "fieldContractIds": [
+          "tax_arrears:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "national_tax_arrears_fact",
@@ -1162,7 +1535,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-GOV-TAX-FACT"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "tax_public_arrear"
+        ],
+        "fieldContractIds": [
+          "national_tax_arrears_fact:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "social_insurance_arrears",
@@ -1186,7 +1569,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "tax_public_arrear",
+          "health_insurance_arrears"
+        ],
+        "fieldContractIds": [
+          "social_insurance_arrears:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "litigation_record",
@@ -1209,7 +1603,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "litigation_enforcement",
+          "account_garnishment",
+          "procedure_enforcement_garnishment"
+        ],
+        "fieldContractIds": [
+          "litigation_record:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "loan_use_of_funds",
@@ -1230,7 +1636,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "loan_use_of_funds:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "vehicle_registration",
@@ -1254,7 +1671,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-GOV-VEHICLE"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "vehicle_registry"
+        ],
+        "fieldContractIds": [
+          "vehicle_registration:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "vehicle_valuation",
@@ -1276,7 +1703,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "vehicle_valuation"
+        ],
+        "fieldContractIds": [
+          "vehicle_valuation:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "vehicle_lease_contract",
@@ -1299,7 +1736,19 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "vehicle_registry",
+          "lease_housing"
+        ],
+        "fieldContractIds": [
+          "vehicle_lease_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "real_estate_register",
@@ -1321,7 +1770,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "real_property_register"
+        ],
+        "fieldContractIds": [
+          "real_estate_register:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "real_estate_valuation",
@@ -1343,7 +1802,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "real_property_valuation"
+        ],
+        "fieldContractIds": [
+          "real_estate_valuation:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "lease_contract",
@@ -1366,7 +1835,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "lease_housing"
+        ],
+        "fieldContractIds": [
+          "lease_contract:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "deposit_rights",
@@ -1389,7 +1868,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions",
+          "lease_housing"
+        ],
+        "fieldContractIds": [
+          "deposit_rights:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "insurance_surrender_statement",
@@ -1411,7 +1901,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "insurance_policy_asset"
+        ],
+        "fieldContractIds": [
+          "insurance_surrender_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "insurance_loan_statement",
@@ -1432,7 +1932,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "insurance_policy_asset"
+        ],
+        "fieldContractIds": [
+          "insurance_loan_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "bank_balance_certificate",
@@ -1454,7 +1964,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_account_balance",
+          "cash_deposit_asset"
+        ],
+        "fieldContractIds": [
+          "bank_balance_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "bank_statement",
@@ -1478,7 +1999,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions"
+        ],
+        "fieldContractIds": [
+          "bank_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "securities_balance",
@@ -1499,7 +2030,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "cash_deposit_asset"
+        ],
+        "fieldContractIds": [
+          "securities_balance:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "securities_transactions",
@@ -1520,7 +2061,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions",
+          "asset_transfer_disposition"
+        ],
+        "fieldContractIds": [
+          "securities_transactions:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "crypto_balance",
@@ -1541,7 +2093,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "cash_deposit_asset"
+        ],
+        "fieldContractIds": [
+          "crypto_balance:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "crypto_transactions",
@@ -1561,7 +2123,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions",
+          "asset_transfer_disposition"
+        ],
+        "fieldContractIds": [
+          "crypto_transactions:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "business_asset_inventory",
@@ -1585,7 +2158,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_assets_liabilities"
+        ],
+        "fieldContractIds": [
+          "business_asset_inventory:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "retirement_estimate",
@@ -1607,7 +2190,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "pension_contribution_benefit"
+        ],
+        "fieldContractIds": [
+          "retirement_estimate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "receivable_statement",
@@ -1628,7 +2221,17 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_assets_liabilities"
+        ],
+        "fieldContractIds": [
+          "receivable_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "receivable_collectability",
@@ -1649,7 +2252,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_assets_liabilities",
+          "litigation_enforcement"
+        ],
+        "fieldContractIds": [
+          "receivable_collectability:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "dependent_evidence",
@@ -1671,7 +2285,17 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "household_composition_support"
+        ],
+        "fieldContractIds": [
+          "dependent_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "spouse_asset_evidence",
@@ -1695,7 +2319,19 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "real_property_register",
+          "asset_transfer_disposition",
+          "household_composition_support"
+        ],
+        "fieldContractIds": [
+          "spouse_asset_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "free_residence_confirmation",
@@ -1718,7 +2354,20 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "lease_housing",
+          "identity_residence_record",
+          "household_composition_support",
+          "household_living_expense"
+        ],
+        "fieldContractIds": [
+          "free_residence_confirmation:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "medical_expense_evidence",
@@ -1739,7 +2388,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "household_living_expense",
+          "conditional_medical_expense",
+          "conditional_nonstandard_income_or_household_event"
+        ],
+        "fieldContractIds": [
+          "medical_expense_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "housing_expense_evidence",
@@ -1761,7 +2422,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "lease_housing",
+          "household_living_expense"
+        ],
+        "fieldContractIds": [
+          "housing_expense_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "education_expense_evidence",
@@ -1783,7 +2455,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-MANUAL",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "household_living_expense",
+          "conditional_education_childcare"
+        ],
+        "fieldContractIds": [
+          "education_expense_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "closure_certificate",
@@ -1804,7 +2487,19 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_registration",
+          "business_assets_liabilities",
+          "conditional_nonstandard_income_or_household_event"
+        ],
+        "fieldContractIds": [
+          "closure_certificate:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "business_liquidation",
@@ -1825,7 +2520,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "business_assets_liabilities",
+          "asset_transfer_disposition"
+        ],
+        "fieldContractIds": [
+          "business_liquidation:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "disposal_records",
@@ -1848,7 +2554,18 @@
       "sourceIds": [
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions",
+          "asset_transfer_disposition"
+        ],
+        "fieldContractIds": [
+          "disposal_records:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "selective_payment_records",
@@ -1870,7 +2587,18 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "bank_transactions",
+          "asset_transfer_disposition"
+        ],
+        "fieldContractIds": [
+          "selective_payment_records:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "inheritance_records",
@@ -1893,7 +2621,19 @@
       ],
       "sourceIds": [
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "real_property_register",
+          "asset_transfer_disposition",
+          "identity_residence_record"
+        ],
+        "fieldContractIds": [
+          "inheritance_records:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "divorce_records",
@@ -1917,7 +2657,20 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "asset_transfer_disposition",
+          "identity_residence_record",
+          "household_composition_support",
+          "conditional_nonstandard_income_or_household_event"
+        ],
+        "fieldContractIds": [
+          "divorce_records:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "prior_case_records",
@@ -1939,7 +2692,17 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-ADMIN-INFO"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "procedure_prior_insolvency"
+        ],
+        "fieldContractIds": [
+          "prior_case_records:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "prior_creditor_list",
@@ -1961,7 +2724,18 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "procedure_prior_insolvency"
+        ],
+        "fieldContractIds": [
+          "prior_creditor_list:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "private_adjustment_records",
@@ -1984,7 +2758,18 @@
         "SRC-INTAKE-SEOUL-402",
         "SRC-INTAKE-BUSAN-402",
         "SRC-INTAKE-SC-GUIDE"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "debt_certificate",
+          "procedure_prior_insolvency"
+        ],
+        "fieldContractIds": [
+          "private_adjustment_records:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     },
     {
       "id": "court_correction_order",
@@ -2006,15 +2791,384 @@
       "sourceIds": [
         "SRC-INTAKE-SC-GUIDE",
         "SRC-INTAKE-OFFICE-POLICY"
-      ]
+      ],
+      "ocr": {
+        "familyIds": [
+          "procedure_court_orders",
+          "conditional_case_specific_request"
+        ],
+        "fieldContractIds": [
+          "court_correction_order:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "credit_information_report",
+      "name": "신용정보조회서·채권자변동정보 조회자료",
+      "category": "채무·신용이력",
+      "issuer": "한국신용정보원 등 원문 발급기관",
+      "purpose": "채권자목록 누락과 신용이력을 확인하되 현재잔액 증명과 분리한다.",
+      "fields": [
+        "조회대상",
+        "조회·발급일",
+        "정보종류",
+        "기관",
+        "상품·계약",
+        "발생·변경일",
+        "신고금액·단위",
+        "등록상태"
+      ],
+      "workflowDocumentTypes": [
+        "credit_information_history"
+      ],
+      "sourceIds": [
+        "SRC-SHARED-CREDIT4U"
+      ],
+      "ocr": {
+        "familyIds": [
+          "credit_report"
+        ],
+        "fieldContractIds": [
+          "credit_information_report:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "property_ownership_search",
+      "name": "지적전산자료·부동산 소유현황 조회결과",
+      "category": "재산목록 조회",
+      "issuer": "지자체·국토정보 관련 발급기관",
+      "purpose": "알려진 물건의 등기부와 구별하여 조회범위 내 소유목록 관측을 보존한다.",
+      "fields": [
+        "조회대상",
+        "조회지역·범위",
+        "조회기준일",
+        "조회결과·물건식별",
+        "명의자",
+        "지분",
+        "발급일"
+      ],
+      "workflowDocumentTypes": [
+        "property_search_result"
+      ],
+      "sourceIds": [
+        "SRC-SHARED-PROPERTY-SEARCH"
+      ],
+      "ocr": {
+        "familyIds": [
+          "property_search"
+        ],
+        "fieldContractIds": [
+          "property_ownership_search:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "cash_holding_statement",
+      "name": "현금·현금성자산 보유내역 및 자금출처자료",
+      "category": "현금·재산",
+      "issuer": "신청인 작성 및 해당 보유·보관 증빙 발급기관",
+      "purpose": "은행·증권·가상자산 계좌잔고와 별개인 실제 현금 관측을 보존한다.",
+      "fields": [
+        "보유자",
+        "현금·자산종류",
+        "보관·식별",
+        "금액·통화·단위",
+        "기준일",
+        "취득·보관 근거"
+      ],
+      "workflowDocumentTypes": [
+        "cash_or_deposit_asset"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "cash_deposit_asset"
+        ],
+        "fieldContractIds": [
+          "cash_holding_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "local_tax_assessment",
+      "name": "지방세 세목별 과세증명서·미과세 내역",
+      "category": "지방세·재산조회",
+      "issuer": "관할 지방정부·정부24·위택스",
+      "purpose": "과세내역·미과세 주장과 현재체납·납부를 별도 필드로 보존한다.",
+      "fields": [
+        "납세자",
+        "발급기관",
+        "과세지역·조회연도",
+        "세목·과세대상",
+        "과세액",
+        "납부·체납상태",
+        "미과세 표시",
+        "발급일"
+      ],
+      "workflowDocumentTypes": [
+        "local_tax_notice"
+      ],
+      "sourceIds": [
+        "SRC-SHARED-GOV-LOCAL-TAX"
+      ],
+      "ocr": {
+        "familyIds": [
+          "local_tax"
+        ],
+        "fieldContractIds": [
+          "local_tax_assessment:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "pension_contribution_statement",
+      "name": "국민연금 가입·납부내역 및 연금산정용 가입내역 확인서",
+      "category": "연금 가입·납부이력",
+      "issuer": "국민연금공단",
+      "purpose": "연금보험료 납부이력과 수급소득·퇴직금잔액을 구분한다.",
+      "fields": [
+        "가입자",
+        "확인기준·발급일",
+        "가입·납부기간",
+        "사업장·가입유형",
+        "기준소득월액",
+        "납부할·납부한·미납 월수와 금액"
+      ],
+      "workflowDocumentTypes": [
+        "pension_or_retirement_record"
+      ],
+      "sourceIds": [
+        "SRC-SHARED-NPS-CONTRIBUTION",
+        "SRC-SHARED-NPS-CONTRIBUTION-SAMPLE"
+      ],
+      "ocr": {
+        "familyIds": [
+          "pension_contribution_benefit"
+        ],
+        "fieldContractIds": [
+          "pension_contribution_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "household_expense_ledger",
+      "name": "가계지출 명세·공과금 청구 및 실제 지급자료",
+      "category": "가계지출",
+      "issuer": "신청인 작성 및 공급기관·결제기관",
+      "purpose": "추가지출 증빙과 함께 청구·실지급·분담·보전 기간을 분리해 저장한다.",
+      "fields": [
+        "지출종류",
+        "공급자",
+        "지급자·수혜자",
+        "청구기간",
+        "청구액",
+        "실지급액",
+        "미납",
+        "공동부담·지원"
+      ],
+      "workflowDocumentTypes": [
+        "household_living_expense"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "household_living_expense"
+        ],
+        "fieldContractIds": [
+          "household_expense_ledger:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "applicant_statement",
+      "name": "신청인 진술서·채무증대경위서",
+      "category": "신청인 진술·작성서식",
+      "issuer": "신청인 작성",
+      "purpose": "기존 진술과 신규 작성문안의 작성자·서명·버전·사건경위를 보존한다.",
+      "fields": [
+        "작성자",
+        "작성·서명일",
+        "문서버전",
+        "주제·문단별본문",
+        "사건발생기간",
+        "수정·보충내용",
+        "서명상태"
+      ],
+      "workflowDocumentTypes": [
+        "applicant_narrative_statement"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "applicant_narrative_statement"
+        ],
+        "fieldContractIds": [
+          "applicant_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "generated_or_prior_form"
+      }
+    },
+    {
+      "id": "application_form_input",
+      "name": "개시신청서·인적사항 및 관할 기재자료",
+      "category": "작성서식·사건정보",
+      "issuer": "신청인·대리인 작성 및 법원 접수자료",
+      "purpose": "기존 제출본·작성입력의 인적사항·관할·접수 이력을 수집경로와 구분한다.",
+      "fields": [
+        "신청인",
+        "가림 식별정보",
+        "주소·연락처",
+        "신청·접수일",
+        "법원·사건번호",
+        "관할근거",
+        "적용규칙 기재"
+      ],
+      "workflowDocumentTypes": [
+        "application_identity_venue"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "application_identity_venue"
+        ],
+        "fieldContractIds": [
+          "application_form_input:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "generated_or_prior_form"
+      }
+    },
+    {
+      "id": "case_specific_court_request",
+      "name": "현재 사건 개별 자료제출요구·질의 및 회신자료",
+      "category": "현재 사건 법원요구",
+      "issuer": "해당 법원·신청인 제출답변",
+      "purpose": "보정권고·명령 외 개별 요청의 원문·대상·기간·기한·제출답변을 구분하여 보존한다.",
+      "fields": [
+        "법원·사건번호",
+        "요구종류",
+        "요구문",
+        "인용근거",
+        "송달일",
+        "답변기한",
+        "요구대상·기간",
+        "제출답변·제출일",
+        "후속 상태"
+      ],
+      "workflowDocumentTypes": [
+        "conditional_case_specific_request"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "conditional_case_specific_request"
+        ],
+        "fieldContractIds": [
+          "case_specific_court_request:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
+    },
+    {
+      "id": "plan_funding_statement",
+      "name": "변제계획 재원·재산처분 및 지급일정 기재자료",
+      "category": "계획 재원·작성서식",
+      "issuer": "신청인·대리인 작성 및 재원 증빙 발급기관",
+      "purpose": "계획에서 주장된 재원과 실제 근거문서·재산·입금 관측을 별도로 연결한다.",
+      "fields": [
+        "계획재원 구분",
+        "연결 소득증빙",
+        "처분재산",
+        "처분대금·일자",
+        "계획투입액",
+        "선택서식",
+        "서식버전",
+        "검토상태"
+      ],
+      "workflowDocumentTypes": [
+        "conditional_plan_funding_source"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "conditional_plan_funding_source"
+        ],
+        "fieldContractIds": [
+          "plan_funding_statement:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "generated_or_prior_form"
+      }
+    },
+    {
+      "id": "income_household_change_evidence",
+      "name": "소득·가구 변동 및 비정형 사정의 기간·영향 증빙",
+      "category": "변동사정",
+      "issuer": "해당 사실의 발급기관·신청인",
+      "purpose": "기존 고용·휴폐업·이혼·의료 증빙으로 포괄되지 않는 변동의 시점·기간과 원문금액을 관측한다.",
+      "fields": [
+        "영향대상",
+        "사건종류",
+        "발생일·효력일",
+        "변경전·후 상태",
+        "영향종료일",
+        "명시 소득증감",
+        "명시 지출증감",
+        "발급기관"
+      ],
+      "workflowDocumentTypes": [
+        "conditional_nonstandard_income_or_household_event"
+      ],
+      "sourceIds": [
+        "SRC-INTAKE-OFFICE-POLICY"
+      ],
+      "ocr": {
+        "familyIds": [
+          "conditional_nonstandard_income_or_household_event"
+        ],
+        "fieldContractIds": [
+          "income_household_change_evidence:shared-document-fields-v1"
+        ],
+        "routingStatus": "ready",
+        "collectionMode": "client_evidence"
+      }
     }
   ],
   "rules": [
     {
       "id": "INTAKE-001",
       "title": "기본 신원·주소·가족 확인",
-      "scope": "case",
       "enabled": true,
+      "scope": "case",
       "all": [],
       "any": [],
       "documents": [
@@ -2055,8 +3209,8 @@
     {
       "id": "INTAKE-002",
       "title": "복수 소득원 누락·중복 확인",
-      "scope": "case",
       "enabled": true,
+      "scope": "case",
       "all": [
         {
           "featureId": "case.multiple_income",
@@ -2089,8 +3243,8 @@
     {
       "id": "INTAKE-003",
       "title": "근로소득 자료",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.wage",
@@ -2141,8 +3295,8 @@
     {
       "id": "INTAKE-004",
       "title": "개인사업 영업·매출·비용 자료",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.business",
@@ -2217,8 +3371,8 @@
     {
       "id": "INTAKE-005",
       "title": "등록 사업체 확인",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.business_registered",
@@ -2253,8 +3407,8 @@
     {
       "id": "INTAKE-006",
       "title": "미등록·타인명의 영업 보완",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.business",
@@ -2296,8 +3450,8 @@
     {
       "id": "INTAKE-007",
       "title": "과세사업 신고매출",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.vat_taxable",
@@ -2334,8 +3488,8 @@
     {
       "id": "INTAKE-008",
       "title": "면세사업 신고수입",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.vat_exempt",
@@ -2369,8 +3523,8 @@
     {
       "id": "INTAKE-009",
       "title": "프리랜서·일용·플랫폼 소득",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.freelance",
@@ -2421,8 +3575,8 @@
     {
       "id": "INTAKE-010",
       "title": "임대료 수입",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.rent",
@@ -2463,8 +3617,8 @@
     {
       "id": "INTAKE-011",
       "title": "이자 수입",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.interest",
@@ -2497,8 +3651,8 @@
     {
       "id": "INTAKE-012",
       "title": "배당 수입",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.dividend",
@@ -2531,8 +3685,8 @@
     {
       "id": "INTAKE-013",
       "title": "연금 수급",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.pension",
@@ -2568,8 +3722,8 @@
     {
       "id": "INTAKE-014",
       "title": "소득원 변동 전후 확인",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.employment_changed",
@@ -2603,8 +3757,8 @@
     {
       "id": "INTAKE-015",
       "title": "금융기관별 채무",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.financial",
@@ -2641,8 +3795,8 @@
     {
       "id": "INTAKE-016",
       "title": "카드·카드대출 채무",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.card",
@@ -2687,8 +3841,8 @@
     {
       "id": "INTAKE-017",
       "title": "개인 간 차용",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.private",
@@ -2730,8 +3884,8 @@
     {
       "id": "INTAKE-018",
       "title": "담보부 채무",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.secured",
@@ -2775,8 +3929,8 @@
     {
       "id": "INTAKE-019",
       "title": "보증·연대·구상 관계",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.guarantee",
@@ -2820,8 +3974,8 @@
     {
       "id": "INTAKE-020",
       "title": "채권 승계",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.assigned",
@@ -2865,8 +4019,8 @@
     {
       "id": "INTAKE-021",
       "title": "국세·지방세 체납",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.tax",
@@ -2906,8 +4060,8 @@
     {
       "id": "INTAKE-022",
       "title": "사회보험 미납",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.social_insurance",
@@ -2942,8 +4096,8 @@
     {
       "id": "INTAKE-023",
       "title": "다툼·소송·집행 자료",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.disputed",
@@ -2977,8 +4131,8 @@
     {
       "id": "INTAKE-024",
       "title": "최근 차입·증가 사용처",
-      "scope": "debt",
       "enabled": true,
+      "scope": "debt",
       "all": [
         {
           "featureId": "debt.recent",
@@ -3013,8 +4167,8 @@
     {
       "id": "INTAKE-025",
       "title": "본인 소유 차량",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.vehicle_owned",
@@ -3060,8 +4214,8 @@
     {
       "id": "INTAKE-026",
       "title": "리스·렌트 차량",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.vehicle_leased",
@@ -3096,8 +4250,8 @@
     {
       "id": "INTAKE-027",
       "title": "차량 할부·담보 잔액",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.vehicle_financed",
@@ -3140,8 +4294,8 @@
     {
       "id": "INTAKE-028",
       "title": "본인 소유 부동산",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.real_estate",
@@ -3186,8 +4340,8 @@
     {
       "id": "INTAKE-029",
       "title": "임차보증금",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.lease_deposit",
@@ -3233,8 +4387,8 @@
     {
       "id": "INTAKE-030",
       "title": "보험 환급금",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.insurance",
@@ -3272,8 +4426,8 @@
     {
       "id": "INTAKE-031",
       "title": "예금·적금·현금",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.deposit",
@@ -3309,8 +4463,8 @@
     {
       "id": "INTAKE-032",
       "title": "증권·출자지분",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.securities",
@@ -3351,8 +4505,8 @@
     {
       "id": "INTAKE-033",
       "title": "가상자산",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.crypto",
@@ -3393,8 +4547,8 @@
     {
       "id": "INTAKE-034",
       "title": "사업용 자산",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.business",
@@ -3432,8 +4586,8 @@
     {
       "id": "INTAKE-035",
       "title": "퇴직급여",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.retirement",
@@ -3467,8 +4621,8 @@
     {
       "id": "INTAKE-036",
       "title": "받을 돈·미회수 채권",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.receivable",
@@ -3510,8 +4664,8 @@
     {
       "id": "INTAKE-037",
       "title": "부양 주장 가족",
-      "scope": "household",
       "enabled": true,
+      "scope": "household",
       "all": [
         {
           "featureId": "household.dependents",
@@ -3545,8 +4699,8 @@
     {
       "id": "INTAKE-038",
       "title": "가족 명의 재산 확인 필요",
-      "scope": "household",
       "enabled": true,
+      "scope": "household",
       "all": [
         {
           "featureId": "household.spouse_assets",
@@ -3583,8 +4737,8 @@
     {
       "id": "INTAKE-039",
       "title": "무상거주",
-      "scope": "household",
       "enabled": true,
+      "scope": "household",
       "all": [
         {
           "featureId": "household.free_residence",
@@ -3620,8 +4774,8 @@
     {
       "id": "INTAKE-040",
       "title": "의료·돌봄 지출",
-      "scope": "expense",
       "enabled": true,
+      "scope": "expense",
       "all": [
         {
           "featureId": "expense.medical",
@@ -3655,8 +4809,8 @@
     {
       "id": "INTAKE-041",
       "title": "추가 주거비",
-      "scope": "expense",
       "enabled": true,
+      "scope": "expense",
       "all": [
         {
           "featureId": "expense.housing",
@@ -3690,8 +4844,8 @@
     {
       "id": "INTAKE-042",
       "title": "교육·특수교육비",
-      "scope": "expense",
       "enabled": true,
+      "scope": "expense",
       "all": [
         {
           "featureId": "expense.education",
@@ -3725,8 +4879,8 @@
     {
       "id": "INTAKE-043",
       "title": "휴폐업·사업양도 정산",
-      "scope": "event",
       "enabled": true,
+      "scope": "event",
       "all": [
         {
           "featureId": "event.business_closed",
@@ -3770,8 +4924,8 @@
     {
       "id": "INTAKE-044",
       "title": "재산 처분·증여",
-      "scope": "event",
       "enabled": true,
+      "scope": "event",
       "all": [
         {
           "featureId": "event.asset_disposal",
@@ -3806,8 +4960,8 @@
     {
       "id": "INTAKE-045",
       "title": "특정인 지급·상환",
-      "scope": "event",
       "enabled": true,
+      "scope": "event",
       "all": [
         {
           "featureId": "event.preferential_payment",
@@ -3840,8 +4994,8 @@
     {
       "id": "INTAKE-046",
       "title": "상속 관련 재산변동",
-      "scope": "event",
       "enabled": true,
+      "scope": "event",
       "all": [
         {
           "featureId": "event.inheritance",
@@ -3874,8 +5028,8 @@
     {
       "id": "INTAKE-047",
       "title": "이혼·재산분할",
-      "scope": "event",
       "enabled": true,
+      "scope": "event",
       "all": [
         {
           "featureId": "event.divorce",
@@ -3910,8 +5064,8 @@
     {
       "id": "INTAKE-048",
       "title": "과거 회생·파산 신청",
-      "scope": "procedure",
       "enabled": true,
+      "scope": "procedure",
       "all": [
         {
           "featureId": "procedure.previous",
@@ -3956,8 +5110,8 @@
     {
       "id": "INTAKE-049",
       "title": "사적 채무조정 이력",
-      "scope": "procedure",
       "enabled": true,
+      "scope": "procedure",
       "all": [
         {
           "featureId": "procedure.private_adjustment",
@@ -3992,8 +5146,8 @@
     {
       "id": "INTAKE-050",
       "title": "현재 사건 법원 요구",
-      "scope": "procedure",
       "enabled": true,
+      "scope": "procedure",
       "all": [
         {
           "featureId": "procedure.court_order",
@@ -4027,8 +5181,8 @@
     {
       "id": "INTAKE-051",
       "title": "서울·부산 소유차량 첨부자료",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.vehicle_owned",
@@ -4073,8 +5227,8 @@
     {
       "id": "INTAKE-052",
       "title": "서울·부산 소유부동산 첨부자료",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.real_estate",
@@ -4119,8 +5273,8 @@
     {
       "id": "INTAKE-053",
       "title": "서울·부산 급여소득 첨부자료",
-      "scope": "income",
       "enabled": true,
+      "scope": "income",
       "all": [
         {
           "featureId": "income.wage",
@@ -4172,8 +5326,8 @@
     {
       "id": "INTAKE-054",
       "title": "보험계약 대출·공제 확인",
-      "scope": "asset",
       "enabled": true,
+      "scope": "asset",
       "all": [
         {
           "featureId": "asset.insurance_loan",
@@ -4304,7 +5458,115 @@
       "checkedAt": "2026-10-29",
       "locator": "상담별 필요서류 기준정보 v1",
       "note": "공식 자료를 참고해 구성한 초기 수집 후보. recommended는 전국 법원 공통 의무가 아님. 관할·대상·기간·대체서류를 담당자가 확인하며 의뢰인 진술을 사실 인정으로 승격하지 않음."
+    },
+    {
+      "id": "SRC-SHARED-CREDIT4U",
+      "title": "한국신용정보원 본인신용정보 열람서비스",
+      "url": "https://www.credit4u.or.kr/",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "신용정보조회서·채권자변동정보·대출·연체·보증 등 조회유형 존재. 현재채무잔액 증명과 역사조회 분리."
+    },
+    {
+      "id": "SRC-SHARED-PROPERTY-SEARCH",
+      "title": "하남시 지적전산자료 개인별 토지소유현황 민원 안내",
+      "url": "https://www.hanam.go.kr/jumin/selectBbsNttView.do?bbsNo=22&integrDeptCode=&key=12074&nttNo=84501&pageIndex=3&searchCnd=all&searchCtgry=%EB%8F%84%EC%8B%9C%2F%EC%A3%BC%ED%83%9D&searchKrwd=",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "개인별 토지소유현황·지적전산자료 조회결과 문서 존재. 알려진 단일물건 등기부와 목록조회 구분."
+    },
+    {
+      "id": "SRC-SHARED-GOV-LOCAL-TAX",
+      "title": "정부24 지방세 세목별 과세증명서 발급",
+      "url": "https://www.gov.kr/mw/AA020InfoCappView.do?CappBizCD=13100000084",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "지방세 세목별 과세사실 문서와 별지49호 명칭 확인; 현재체납없음 또는 납부확인 문서와 단정혼합 금지."
+    },
+    {
+      "id": "SRC-SHARED-NPS-CONTRIBUTION",
+      "title": "국민연금공단 연금산정용 가입내역 확인서",
+      "url": "https://www.nps.or.kr/elctcvlcpt/comm/getOHAC0000M5.do?menuId=MN24001055",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "보험료총납부·기간별상세 내역과 당월미납표기·전산반영시차 유의. 연금수급액과 납부이력 분리."
+    },
+    {
+      "id": "SRC-SHARED-NPS-CONTRIBUTION-SAMPLE",
+      "title": "국민연금공단 연금산정용 가입내역 확인서 공식 예시 PDF",
+      "url": "https://www.nps.or.kr/html/download/minwon/view_MN24001055.pdf",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "기간별 기준소득월액/납부할·납부한·납부하지않은 월수·금액 칼럼 구분."
+    },
+    {
+      "id": "SRC-SHARED-SECURITIES-BALANCE",
+      "title": "한국투자증권 잔고증명서 도움말",
+      "url": "https://securities.koreainvestment.com/main/help/popup_online12.jsp?d1=5&d2=12",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "고객/상품계좌/기준일/퇴직연금포함범위가 다른 잔고증명 존재. 일부계좌를 전계좌로 추정하지 않음."
+    },
+    {
+      "id": "SRC-SHARED-SECURITIES-POSITION",
+      "title": "삼성증권 종합잔고 화면 공식 도움말",
+      "url": "https://samsungpop.com/contents/poptrading/help/4205.html",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "종목별 수량단위·평가기준 차이와 예수금/증권평가/부채의 구분. 가격×수량을 은행잔고로 단순치환 금지."
+    },
+    {
+      "id": "SRC-SHARED-SECURITIES-TRANSACTIONS",
+      "title": "삼성증권 거래내역 공식 도움말",
+      "url": "https://www.samsungpop.com/contents/poptrading/help/4513.html",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "매수/매도/입금/출금/입고/출고 및 종목·상대계좌·금액·수량 의미 구분."
+    },
+    {
+      "id": "SRC-SHARED-UPBIT-CERTIFICATE",
+      "title": "업비트 발급 가능한 증명서 종류와 방법",
+      "url": "https://support.upbit.com/hc/ko/articles/26399693025049-%EB%B0%9C%EA%B8%89-%EA%B0%80%EB%8A%A5%ED%95%9C-%EC%A6%9D%EB%AA%85%EC%84%9C-%EC%A2%85%EB%A5%98%EC%99%80-%EB%B0%9C%EA%B8%89-%EB%B0%A9%EB%B2%95%EC%9D%B4-%EA%B6%81%EA%B8%88%ED%95%B4%EC%9A%94",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "잔고증명서와 거래내역서가 별도 문서임을 확인."
+    },
+    {
+      "id": "SRC-SHARED-UPBIT-TRANSFER",
+      "title": "업비트 입금 출처 소명 안내",
+      "url": "https://support.upbit.com/hc/ko/articles/4888205045785-%EC%9E%85%EA%B8%88-%EC%A0%95%EB%B3%B4-%EC%9E%85%EB%A0%A5-%EC%95%88%EB%82%B4",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "송금인 계정주 정보와 TXID·자산명·수량·송금일시·수취주소를 구분하여 연결."
+    },
+    {
+      "id": "SRC-SHARED-UPBIT-WITHDRAWAL",
+      "title": "업비트 개별 출금 조회 공식 사양",
+      "url": "https://docs.upbit.com/kr/reference/get-withdrawal",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "currency/net_type/txid/state/created_at/done_at/amount/fee 구분. API사양은 문서에 반드시 인쇄된 필드라는 증거가 아님."
+    },
+    {
+      "id": "SRC-SHARED-UPBIT-BALANCE-SEMANTICS",
+      "title": "업비트 주문가능정보 공식 사양",
+      "url": "https://docs.upbit.com/kr/reference/available-order-information",
+      "jurisdiction": "문서 발급기관·원문 형식",
+      "checkedAt": "2026-10-29",
+      "locator": "원문 문서종류·필드 의미 확인; 개별사건 필수성·허용기간 검증 아님",
+      "note": "balance/locked/avg_buy_price/unit_currency 의미 구분. API사양은 보유자산 평가액 정답이나 문서필수칸 증거가 아님."
     }
   ],
-  "note": "상담 진술에서 여러 특성을 동시에 분류해 의뢰인이 준비할 증빙 후보를 매칭합니다. 신청서·채권자목록·재산목록·변제계획안 등의 최종 법원서식 작성은 기존 문서작성 단계입니다. 자료가 없거나 발급이 어렵다는 사정은 0원·비해당·검증완료로 바꾸지 않습니다. 추천자료, 관할별 첨부자료, 법원의 구체적 명령을 구분합니다. 관할별 기준과 기간은 확인된 범위만 적용하며 특히 배우자 자료·과거 거래자료를 전국 공통 필수로 요구하지 않습니다. 대체자료는 목적·대상·기간과 필요한 필드가 충족되는지 담당자가 검토합니다. 이 목록은 상담단계 준비 안내이며 사실·법률 인정이나 제출승인을 부여하지 않습니다."
+  "note": "상담 진술에서 여러 특성을 동시에 분류해 의뢰인이 준비할 증빙 후보를 매칭합니다. 신청서·채권자목록·재산목록·변제계획안 등의 최종 법원서식 작성은 기존 문서작성 단계입니다. 자료가 없거나 발급이 어렵다는 사정은 0원·비해당·검증완료로 바꾸지 않습니다. 추천자료, 관할별 첨부자료, 법원의 구체적 명령을 구분합니다. 관할별 기준과 기간은 확인된 범위만 적용하며 특히 배우자 자료·과거 거래자료를 전국 공통 필수로 요구하지 않습니다. 대체자료는 목적·대상·기간과 필요한 필드가 충족되는지 담당자가 검토합니다. 이 목록은 상담단계 준비 안내이며 사실·법률 인정이나 제출승인을 부여하지 않습니다. 공통 서류목록 v2: 기존74항목 ID·표시명을 보존하고 source-family 역커버리지11항목을 보완했습니다. OCR 준비 상태는 라우팅·필드계약 존재 여부이며, 실제추출정확도·법원필수성·법적인정을 뜻하지 않습니다. 신규항목을 자동필수요청하는 상담규칙은 추가하지 않았습니다."
 }

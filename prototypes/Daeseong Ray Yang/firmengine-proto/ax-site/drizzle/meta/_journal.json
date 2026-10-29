@@ -57,6 +57,41 @@
       "when": 1793246400000,
       "tag": "0007_case_commands",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793293200000,
+      "tag": "0008_normalized_extractions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793296800000,
+      "tag": "0009_case_document_requirements",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1793300400000,
+      "tag": "0010_case_data_watch",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1793304000000,
+      "tag": "0011_case_calculation_features",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793307600000,
+      "tag": "0012_case_lawgraph_reviews",
+      "breakpoints": true
     }
   ]
 }

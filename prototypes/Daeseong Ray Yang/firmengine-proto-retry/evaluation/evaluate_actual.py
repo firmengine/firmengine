@@ -16,7 +16,7 @@ import re
 import unicodedata
 from docx import Document
 
-VERSION = "strict-body-and-row-coverage-2-label-only-fix"
+VERSION = "strict-body-and-row-coverage-3-unknown-value-row-fix"
 
 
 def normalize(value):
@@ -57,6 +57,13 @@ def label_only(check):
         expense_labels={"생계비","주거비","의료비","교육비","교통비","식비","합계","계"}
         return len(nonempty)==1 and normalize(nonempty[0]) in expense_labels
     return False
+
+
+def unresolved_label_value_row(row):
+    if len(row["cells"]) != 2:
+        return False
+    value=normalize(row["cells"][1])
+    return not value or value in {"확인필요","계산보류","기간선택필요","미확인","미입력","입력필요"}
 
 
 def aliases(check):
@@ -157,6 +164,8 @@ def evaluate(output_dir: Path | None, truth_path: Path, *, mode="normal", workfl
                 for name,doc in targets:
                     for row in doc["rows"]:
                         identity=(name,row["id"])
+                        if unresolved_label_value_row(row):
+                            continue
                         if identity not in used and all(matches(value,row["text"]) for value in expected):
                             hit=(name,row,identity)
                             break

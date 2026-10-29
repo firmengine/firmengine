@@ -9,6 +9,7 @@ import { inspectProcessingReadiness,type StoredDocumentState,type StoredPageStat
 import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { snapshotSha256 } from "./calculator-tools.ts";
 import { buildDerivedExecution, completeDerivedEvaluation, DERIVED_EVALUATION_INLINE_LIMIT, isDerivedEvaluation, pendingDerivedEvaluation, type DerivedEvaluationEnvelope, type ExecutionSnapshot } from "./reactive-evaluation.ts";
+import { getCaseDataRecomputeEligibility, recomputeCaseDataUpdate } from "./case-data-recompute.ts";
 
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 export const now=()=>new Date().toISOString();
@@ -120,6 +121,7 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   caseSnapshots.delete(previous);caseSnapshots.set(data,{id:data.context.id,revision:data.context.revision,token});
   if(mutation)await drainCaseRecomputeJobs(data.context.id,1).catch(()=>{});
   else await finishDerivedEvaluation(data,evaluationId,pending);
+  await recomputeCaseDataUpdate(db(),{caseId:data.context.id,loadCase:()=>getCase(data.context.id)}).catch(()=>{});
   return {stateFingerprint:afterStateHash,receiptId:mutation?receiptId:undefined,evaluationId};
 }
 
@@ -147,6 +149,9 @@ export async function drainCaseRecomputeJobs(caseId:string,limit=2){
 async function finishDerivedEvaluation(data:CaseData,id:string,pending:DerivedEvaluationEnvelope,lease?:{jobId:string;token:string}){
   let key:string|undefined;
   try{
+    // Source data must stay unchanged for ten minutes before any legacy cache
+    // path performs arithmetic. A read or a computed write does not reset it.
+    if(!(await getCaseDataRecomputeEligibility(db(),{caseId:data.context.id})).isQuiet)return;
     const execution=buildDerivedExecution(data),bytes=new TextEncoder().encode(JSON.stringify(execution)),evaluationSha256=await sha256(bytes);
     let completed:DerivedEvaluationEnvelope;
     if(bytes.byteLength<=DERIVED_EVALUATION_INLINE_LIMIT)completed=completeDerivedEvaluation(pending,execution,evaluationSha256);

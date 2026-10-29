@@ -4,6 +4,7 @@ import { REFERENCE_RELEASE, referenceRecordsPage } from "../../lib/reference-reg
 import { currentReferenceSnapshot } from "../../lib/reference-runtime.ts";
 import { legalMonitorOverview, runStoredLegalMonitor } from "../../lib/legal-monitor-store.ts";
 import { readIntakeReferences } from "../../lib/intake-reference-store.ts";
+import { caseSchemaServices } from "../../lib/case-schema-services.ts";
 
 // Sites checks the existing owner-private audience before forwarding /mcp.
 // Case tools remain read-only. Monitor writes are explicitly annotated, isolated
@@ -13,5 +14,6 @@ const handler=createSiteCalculatorHandler(getCase,{
   monitor:runStoredLegalMonitor,
   alerts:legalMonitorOverview,
   intake:()=>readIntakeReferences(db()),
+  ...caseSchemaServices(),
 });
 export async function POST(request:Request){return handler.fetch(request);}

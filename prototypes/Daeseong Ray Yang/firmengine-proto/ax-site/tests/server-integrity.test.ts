@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import * as nodeCrypto from "node:crypto";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import { DatabaseSync } from "node:sqlite";
 import type { SQLInputValue } from "node:sqlite";
@@ -35,7 +35,7 @@ const loadTs=<T>(path:string,mocks:Record<string,unknown>={},cache=new Map<strin
     if(Object.hasOwn(mocks,name))return mocks[name];
     if(name.startsWith("node:"))return nodeRequire(name);
     if(name==="cloudflare:workers")return {env:{DB:undefined,BUCKET:undefined}};
-    if(name.startsWith(".")){const resolved=new URL(name,`file://${absolute}`).pathname;return loadTs(resolved.endsWith(".ts")||resolved.endsWith(".json")?resolved:`${resolved}.ts`,mocks,cache);}
+    if(name.startsWith(".")){const resolved=fileURLToPath(new URL(name,pathToFileURL(absolute)));return loadTs(resolved.endsWith(".ts")||resolved.endsWith(".json")?resolved:`${resolved}.ts`,mocks,cache);}
     return nodeRequire(name);
   },commonJsModule,commonJsModule.exports);}catch(error){throw new Error(`Failed loading ${absolute}: ${error instanceof Error?error.message:String(error)}`,{cause:error});}
   return commonJsModule.exports as T;
@@ -78,7 +78,7 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
     async all(){return {results:sqlite.prepare(sql).all(...params)};},
   };}};},async batch(commands:Array<{run():Promise<unknown>}>){const results=[];for(const command of commands)results.push(await command.run());return results;}};
   let authenticatedUser:{userId:string}|null={userId:"synthetic-owner"};
-  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":derivedHooks,"./reference-application.ts":referenceApplication,"./reference-runtime.ts":referenceRuntime,"./calculator-tools.ts":calculatorTools});
+  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./case-data-recompute.ts":{getCaseDataRecomputeEligibility:async()=>({isQuiet:true}),recomputeCaseDataUpdate:async()=>({status:"debouncing"})},"./reactive-evaluation.ts":derivedHooks,"./reference-application.ts":referenceApplication,"./reference-runtime.ts":referenceRuntime,"./calculator-tools.ts":calculatorTools});
   return {sqlite,data,objects,store,setAuthenticatedUser:(user:{userId:string}|null)=>{authenticatedUser=user;}};
 }
 

@@ -59,6 +59,15 @@ test("a count, partial or mismatched provenance cannot authorize stored-read mut
   for(const value of [[],[pass,null],[pass,{}],99]){f.saved.extractionPasses=value;assert.throws(()=>requireReprojectionProvenance(f.saved,f.job,provenance),{status:409});}
 });
 
+test("Terra extraction provenance is accepted only when its actual model matches the stored cache",()=>{
+  const f=fixture(),tuple=JSON.parse(f.job.cacheKey!);tuple[5]="gpt-6.1-terra";f.job.cacheKey=JSON.stringify(tuple);
+  const provenance=f.prepare().provenance;
+  f.saved.extractionPasses=[{model:"gpt-6.1-terra",promptVersion:"historical-prompt-1.0",promptHash:"a".repeat(64),sourceHash:hash,baseImageHash:imageHash,verifiedAt:"2026-10-27T00:00:00.000Z"}];
+  assert.doesNotThrow(()=>requireReprojectionProvenance(f.saved,f.job,provenance));
+  (f.saved.extractionPasses as {model:string}[])[0].model="gpt-6-luna";
+  assert.throws(()=>requireReprojectionProvenance(f.saved,f.job,provenance),{status:409});
+});
+
 test("stored historical read reprojects deterministically without a model call or new proof", () => {
   const f = fixture(), prepared = f.prepare(), result = reprojectStoredPage(f.data, prepared);
   assert.equal(prepared.provenance.promptVersion, "historical-prompt-1.0");

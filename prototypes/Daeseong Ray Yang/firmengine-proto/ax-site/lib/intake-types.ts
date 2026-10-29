@@ -8,7 +8,11 @@ export type IntakeScope = "case" | "income" | "debt" | "asset" | "household" | "
 export type IntakeState = "present" | "absent" | "unknown" | "conflict" | "legal_review";
 export interface IntakeFeature { id:string; label:string; scope:IntakeScope; question:string; essential:boolean; description:string }
 export interface IntakeSource { id:string; title:string; url:string; jurisdiction:string; checkedAt:string; locator:string; note:string }
-export interface IntakeDocumentType { id:string; name:string; category:string; issuer:string; purpose:string; fields:string[]; workflowDocumentTypes:string[]; sourceIds:string[] }
+export interface IntakeDocumentOcr {
+  familyIds:string[]; fieldContractIds:string[]; routingStatus:"ready"|"review_required";
+  collectionMode:"client_evidence"|"generated_or_prior_form";
+}
+export interface IntakeDocumentType { id:string; name:string; category:string; issuer:string; purpose:string; fields:string[]; workflowDocumentTypes:string[]; sourceIds:string[]; ocr?:IntakeDocumentOcr }
 export interface IntakeCondition { featureId:string; state:"present" | "absent" }
 export interface IntakeDocumentNeed { documentTypeId:string; alternatives:string[]; alternativePolicy:"any_of" | "review_required"; period:string; requirement:"required_when_applicable" | "recommended" | "court_ordered"; reason:string }
 export interface IntakeRule { id:string; title:string; enabled:boolean; scope:IntakeScope; all:IntakeCondition[]; any:IntakeCondition[]; documents:IntakeDocumentNeed[]; questions:string[]; workflowIds:string[]; sourceIds:string[]; jurisdictions:string[]; effectiveFrom:string|null; effectiveTo:string|null; legalReviewRequired:boolean }

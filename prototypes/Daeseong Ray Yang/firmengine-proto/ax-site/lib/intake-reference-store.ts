@@ -2,34 +2,14 @@ import { INTAKE_CATALOG_SEED } from "./intake-catalog.ts";
 import { validateIntakeCatalog } from "./intake-engine.ts";
 import { INTAKE_REFERENCE_SCHEMA_VERSION, intakeMonitorProjection, intakeReferenceRecords } from "./intake-reference.ts";
 import { isOfficialMonitorUrl } from "./legal-monitor-core.ts";
-
-const hash = async (value: unknown) => [...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(JSON.stringify(value))))].map(byte => byte.toString(16).padStart(2, "0")).join("");
-const HASH = /^[a-f0-9]{64}$/;
-type CatalogSnapshot = {
-  headVersion: number; headSha256: string; storedVersion: number | null;
-  schemaVersion: string | null; payload: string | null; storedSha256: string | null;
-};
+import { intakeCatalogSha256, readActiveIntakeCatalogSnapshot } from "./intake-catalog-snapshot.ts";
 
 /** One SELECT reads a consistent catalogue head/version pair. GET/MCP never seed. */
 export async function readIntakeReferences(database: D1Database) {
-  const stored = await database.prepare(`SELECT head.version AS headVersion, head.sha256 AS headSha256,
-    version.version AS storedVersion, version.schema_version AS schemaVersion,
-    version.payload AS payload, version.sha256 AS storedSha256
-    FROM intake_catalog_head AS head
-    LEFT JOIN intake_catalog_versions AS version ON version.version = head.version
-    WHERE head.id = 'default'`).first<CatalogSnapshot>();
+  const stored=await readActiveIntakeCatalogSnapshot(database);
   const initialized = stored !== null;
-  let catalog;
-  try {
-    if (stored && (!Number.isSafeInteger(stored.headVersion) || stored.headVersion < 1 || stored.storedVersion !== stored.headVersion ||
-      stored.schemaVersion !== INTAKE_REFERENCE_SCHEMA_VERSION || typeof stored.payload !== "string" ||
-      !HASH.test(stored.headSha256) || stored.storedSha256 !== stored.headSha256)) throw new Error("invalid stored catalogue metadata");
-    catalog = validateIntakeCatalog(stored ? JSON.parse(stored.payload!) : structuredClone(INTAKE_CATALOG_SEED));
-  } catch {
-    throw new Error("INTAKE_CATALOG_INTEGRITY_FAILED");
-  }
-  const catalogSha256 = await hash(catalog);
-  if (stored && (catalog.version !== stored.headVersion || catalogSha256 !== stored.headSha256)) throw new Error("INTAKE_CATALOG_INTEGRITY_FAILED");
+  const catalog=stored?.catalog??validateIntakeCatalog(structuredClone(INTAKE_CATALOG_SEED));
+  const catalogSha256=stored?.sha256??await intakeCatalogSha256(catalog);
   const records = intakeReferenceRecords(catalog);
   return {
     schemaVersion: INTAKE_REFERENCE_SCHEMA_VERSION,

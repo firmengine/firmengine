@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, index, primaryKey, unique } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, index, primaryKey, unique, foreignKey } from "drizzle-orm/sqlite-core";
 
 export const cases = sqliteTable("cases", {
   id: text("id").primaryKey(), name: text("name").notNull(),
@@ -175,3 +175,107 @@ export const appRoleGrants = sqliteTable("app_role_grants", {
   effectiveFrom:text("effective_from").notNull(),effectiveTo:text("effective_to"),grantedBy:text("granted_by").notNull(),reason:text("reason").notNull(),
   policyRevision:integer("policy_revision").notNull(),createdAt:text("created_at").notNull(),revokedAt:text("revoked_at"),
 },t=>[primaryKey({columns:[t.actorId,t.role,t.scopeId]})]);
+
+// Public document identities and consultation-selected requirement rows. The
+// immutable catalogue/run payloads remain available alongside typed columns.
+export const sharedDocumentTypes=sqliteTable("shared_document_types",{
+  id:text("id").primaryKey().notNull(),name:text("name").notNull(),category:text("category").notNull(),
+  issuer:text("issuer").notNull(),purpose:text("purpose").notNull(),collectionMode:text("collection_mode").notNull(),routingStatus:text("routing_status").notNull(),
+  catalogVersion:integer("catalog_version").notNull().references(()=>intakeCatalogVersions.version),catalogSha256:text("catalog_sha256").notNull(),
+  active:integer("active").notNull().default(1),payloadJson:text("payload_json").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[index("shared_document_types_active_idx").on(t.active,t.catalogSha256)]);
+export const sharedDocumentTypeVersions=sqliteTable("shared_document_type_versions",{
+  catalogSha256:text("catalog_sha256").notNull(),documentTypeId:text("document_type_id").notNull().references(()=>sharedDocumentTypes.id),
+  catalogVersion:integer("catalog_version").notNull().references(()=>intakeCatalogVersions.version),name:text("name").notNull(),category:text("category").notNull(),
+  issuer:text("issuer").notNull(),purpose:text("purpose").notNull(),collectionMode:text("collection_mode").notNull(),routingStatus:text("routing_status").notNull(),
+  payloadJson:text("payload_json").notNull(),createdAt:text("created_at").notNull(),
+},t=>[primaryKey({columns:[t.catalogSha256,t.documentTypeId]}),index("shared_document_type_versions_type_idx").on(t.documentTypeId,t.catalogVersion)]);
+export const caseDocumentRequirements=sqliteTable("case_document_requirements",{
+  consultationRunId:text("consultation_run_id").notNull().references(()=>consultationRuns.id),requirementId:text("requirement_id").notNull(),
+  caseId:text("case_id").notNull().references(()=>cases.id),documentTypeId:text("document_type_id").notNull().references(()=>sharedDocumentTypes.id),
+  documentName:text("document_name").notNull(),subjectId:text("subject_id").notNull(),subjectLabel:text("subject_label").notNull(),requiredPeriod:text("required_period").notNull(),
+  requirement:text("requirement").notNull(),status:text("status").notNull(),catalogVersion:integer("catalog_version").notNull().references(()=>intakeCatalogVersions.version),
+  catalogSha256:text("catalog_sha256").notNull(),rawJson:text("raw_json").notNull(),rawSha256:text("raw_sha256").notNull(),createdAt:text("created_at").notNull(),
+},t=>[primaryKey({columns:[t.consultationRunId,t.requirementId]}),foreignKey({columns:[t.catalogSha256,t.documentTypeId],foreignColumns:[sharedDocumentTypeVersions.catalogSha256,sharedDocumentTypeVersions.documentTypeId]}),index("case_document_requirements_case_idx").on(t.caseId,t.consultationRunId,t.status),index("case_document_requirements_type_idx").on(t.documentTypeId,t.caseId)]);
+
+// Immutable source extraction schemas and row observations. These tables do not
+// grant fact verification, legal recognition, or court approval.
+export const extractionSchemaVersions = sqliteTable("extraction_schema_versions", {
+  id:text("id").primaryKey().notNull(),sha256:text("sha256").notNull(),documentTypeId:text("document_type_id"),
+  familyId:text("family_id"),contractVersion:text("contract_version").notNull(),payloadJson:text("payload_json").notNull(),createdAt:text("created_at").notNull(),
+});
+export const extractionSchemaFields = sqliteTable("extraction_schema_fields", {
+  schemaId:text("schema_id").notNull(),canonicalFieldId:text("canonical_field_id").notNull(),ordinal:integer("ordinal").notNull(),
+  localKey:text("local_key").notNull(),label:text("label").notNull(),datatype:text("datatype").notNull(),unit:text("unit").notNull(),
+  subjectRole:text("subject_role").notNull(),partyRole:text("party_role").notNull(),temporalRole:text("temporal_role").notNull(),
+  amountOwnerRole:text("amount_owner_role"),definitionJson:text("definition_json").notNull(),
+},t=>[primaryKey({columns:[t.schemaId,t.canonicalFieldId]}),index("extraction_schema_fields_key_idx").on(t.schemaId,t.localKey)]);
+export const documentInstances = sqliteTable("document_instances", {
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),sourceDocumentId:text("source_document_id").notNull(),page:integer("page").notNull(),
+  sharedDocumentTypeId:text("shared_document_type_id"),sharedDocumentTypeName:text("shared_document_type_name"),familyId:text("family_id"),
+  boundaryStatus:text("boundary_status").notNull(),catalogVersion:integer("catalog_version"),catalogSha256:text("catalog_sha256"),createdAt:text("created_at").notNull(),
+},t=>[index("document_instances_case_type_idx").on(t.caseId,t.sharedDocumentTypeId)]);
+export const extractionRuns = sqliteTable("extraction_runs", {
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),documentInstanceId:text("document_instance_id").notNull(),schemaId:text("schema_id").notNull(),
+  pageJobId:text("page_job_id"),stage:text("stage").notNull(),model:text("model").notNull(),sourceHash:text("source_hash").notNull(),imageHash:text("image_hash").notNull(),
+  readSha256:text("read_sha256").notNull(),readJson:text("read_json").notNull(),caseRevision:integer("case_revision").notNull(),createdAt:text("created_at").notNull(),
+},t=>[index("extraction_runs_case_idx").on(t.caseId,t.createdAt)]);
+export const extractionRecords = sqliteTable("extraction_records", {
+  id:text("id").primaryKey().notNull(),runId:text("run_id").notNull(),ordinal:integer("ordinal").notNull(),category:text("category").notNull(),label:text("label").notNull(),
+},t=>[unique("extraction_records_run_ordinal_unique").on(t.runId,t.ordinal)]);
+export const extractedFeatures = sqliteTable("extracted_features", {
+  id:text("id").primaryKey().notNull(),recordId:text("record_id").notNull(),schemaId:text("schema_id").notNull(),ordinal:integer("ordinal").notNull(),
+  canonicalFieldId:text("canonical_field_id"),fieldKey:text("field_key").notNull(),label:text("label").notNull(),rawValueJson:text("raw_value_json").notNull(),unit:text("unit"),
+  sourceState:text("source_state"),confidence:text("confidence").notNull(),quote:text("quote"),bboxJson:text("bbox_json").notNull(),rawFieldJson:text("raw_field_json").notNull(),
+  bindingStatus:text("binding_status").notNull(),validationStatus:text("validation_status").notNull(),validationJson:text("validation_json").notNull(),
+},t=>[unique("extracted_features_record_ordinal_unique").on(t.recordId,t.ordinal),index("extracted_features_canonical_idx").on(t.schemaId,t.canonicalFieldId)]);
+export const caseExtractionHeads = sqliteTable("case_extraction_heads", {
+  caseId:text("case_id").notNull(),sourceDocumentId:text("source_document_id").notNull(),page:integer("page").notNull(),runId:text("run_id").notNull(),
+  caseRevision:integer("case_revision").notNull(),updatedAt:text("updated_at").notNull(),
+},t=>[primaryKey({columns:[t.caseId,t.sourceDocumentId,t.page]})]);
+
+// Append-only source-data notifications. SQL triggers maintain these counters;
+// model/calculation/review output tables deliberately do not reset the quiet window.
+export const caseDataChangeEvents=sqliteTable("case_data_change_events",{
+  id:integer("id").primaryKey({autoIncrement:true}).notNull(),caseId:text("case_id").notNull(),
+  tableName:text("table_name").notNull(),rowId:text("row_id").notNull(),operation:text("operation").notNull(),
+  eventKind:text("event_kind").notNull(),caseRevision:integer("case_revision"),changedAt:text("changed_at").notNull(),
+},t=>[index("case_data_change_events_case_cursor_idx").on(t.caseId,t.id)]);
+export const caseDataChangeState=sqliteTable("case_data_change_state",{
+  caseId:text("case_id").primaryKey().notNull(),dataVersion:integer("data_version").notNull(),
+  lastEventId:integer("last_event_id").notNull(),lastCaseRevision:integer("last_case_revision"),lastChangedAt:text("last_changed_at").notNull(),
+});
+export const caseCalculationRuns = sqliteTable("case_calculation_runs", {
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
+  inputSha256:text("input_sha256").notNull(),ruleReleaseId:text("rule_release_id").notNull(),referenceId:text("reference_id").notNull(),referenceRevision:integer("reference_revision").notNull(),
+  referenceSha256:text("reference_sha256").notNull(),contractVersion:text("contract_version").notNull(),status:text("status").notNull(),missingJson:text("missing_json").notNull(),
+  rawResultJson:text("raw_result_json").notNull(),sourceHeadsJson:text("source_heads_json").notNull(),sourceHeadsSha256:text("source_heads_sha256").notNull(),createdAt:text("created_at").notNull(),
+},t=>[index("case_calculation_runs_case_version_idx").on(t.caseId,t.dataVersion,t.caseRevision)]);
+export const caseCalculationFeatures = sqliteTable("case_calculation_features", {
+  id:text("id").primaryKey().notNull(),runId:text("run_id").notNull(),calculationId:text("calculation_id").notNull(),outputName:text("output_name").notNull(),outputPath:text("output_path").notNull(),
+  subjectId:text("subject_id"),rowOrdinal:integer("row_ordinal"),valueJson:text("value_json").notNull(),valueWon:text("value_won"),status:text("status").notNull(),
+  sourceFactIdsJson:text("source_fact_ids_json").notNull(),inputRefsJson:text("input_refs_json").notNull(),formula:text("formula").notNull(),
+},t=>[index("case_calculation_features_output_idx").on(t.runId,t.calculationId,t.outputName)]);
+export const caseCalculationHeads = sqliteTable("case_calculation_heads", {
+  caseId:text("case_id").primaryKey().notNull(),runId:text("run_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
+  inputSha256:text("input_sha256").notNull(),updatedAt:text("updated_at").notNull(),
+});
+export const caseLegalReviewRuns=sqliteTable("case_legal_review_runs",{
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
+  calculationRunId:text("calculation_run_id").notNull(),inputSha256:text("input_sha256").notNull(),model:text("model").notNull(),status:text("status").notNull(),
+  complete:integer("complete").notNull(),expectedCheckIdsJson:text("expected_check_ids_json").notNull(),summary:text("summary").notNull(),rawResultJson:text("raw_result_json").notNull(),createdAt:text("created_at").notNull(),
+},t=>[index("case_legal_review_runs_case_idx").on(t.caseId,t.dataVersion,t.caseRevision)]);
+export const caseLegalConditions=sqliteTable("case_legal_conditions",{
+  id:text("id").primaryKey().notNull(),reviewRunId:text("review_run_id").notNull(),ordinal:integer("ordinal").notNull(),conditionId:text("condition_id").notNull(),status:text("status").notNull(),reason:text("reason").notNull(),
+  sourceFactIdsJson:text("source_fact_ids_json").notNull(),ruleIdsJson:text("rule_ids_json").notNull(),missingDocumentsJson:text("missing_documents_json").notNull(),nextAction:text("next_action").notNull(),
+},t=>[unique("case_legal_conditions_run_condition_unique").on(t.reviewRunId,t.conditionId)]);
+export const caseDocumentFieldValues=sqliteTable("case_document_field_values",{
+  id:text("id").primaryKey().notNull(),reviewRunId:text("review_run_id").notNull(),ordinal:integer("ordinal").notNull(),formCode:text("form_code").notNull(),artifactKind:text("artifact_kind").notNull(),token:text("token").notNull(),
+  subjectId:text("subject_id"),rowOrdinal:integer("row_ordinal"),valueJson:text("value_json").notNull(),valueKind:text("value_kind").notNull(),sourceFactIdsJson:text("source_fact_ids_json").notNull(),calculationFeatureRefsJson:text("calculation_feature_refs_json").notNull(),citationJson:text("citation_json").notNull(),
+},t=>[unique("case_document_field_values_run_ordinal_unique").on(t.reviewRunId,t.ordinal),index("case_document_field_values_token_idx").on(t.reviewRunId,t.formCode,t.token,t.subjectId)]);
+export const caseLegalReviewHeads=sqliteTable("case_legal_review_heads",{
+  caseId:text("case_id").primaryKey().notNull(),reviewRunId:text("review_run_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),calculationRunId:text("calculation_run_id").notNull(),inputSha256:text("input_sha256").notNull(),updatedAt:text("updated_at").notNull(),
+});
+export const caseAutomaticDocumentRuns=sqliteTable("case_automatic_document_runs",{
+  id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),legalReviewRunId:text("legal_review_run_id").notNull().unique(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),status:text("status").notNull(),artifactsJson:text("artifacts_json").notNull(),reason:text("reason"),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
+});

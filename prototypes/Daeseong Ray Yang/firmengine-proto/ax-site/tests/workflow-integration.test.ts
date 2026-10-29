@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { createRequire } from "node:module";
 import ts from "typescript";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
@@ -39,7 +39,7 @@ function loadTs<T>(file:string,mocks:Record<string,unknown>={},cache=new Map<str
     if(name==="cloudflare:workers")return {env:{DB:undefined,BUCKET:undefined}};
     if(name.startsWith("node:"))return nodeRequire(name);
     if(name.startsWith(".")){
-      const resolved=new URL(name,`file://${absolute}`).pathname;
+      const resolved=fileURLToPath(new URL(name,pathToFileURL(absolute)));
       const path=resolved.endsWith(".ts")||resolved.endsWith(".json")?resolved:`${resolved}.ts`;
       return loadTs(path,mocks,cache);
     }
@@ -55,7 +55,7 @@ function setup(){
   const objects=new Map<string,Uint8Array>();
   const bucket={async put(key:string,value:ReadableStream<Uint8Array>|Uint8Array|ArrayBuffer){const bytes=value instanceof ReadableStream?new Uint8Array(await new Response(value).arrayBuffer()):new Uint8Array(value instanceof ArrayBuffer?value:value);objects.set(key,bytes);return{};},async get(key:string){const bytes=objects.get(key);return bytes?{arrayBuffer:async()=>bytes.buffer.slice(bytes.byteOffset,bytes.byteOffset+bytes.byteLength)}:null;},async delete(key:string){objects.delete(key);}};
   const db={prepare(sql:string){return{bind(...params:SQLInputValue[]){return{async first(){return sqlite.prepare(sql).get(...params)??null;},async run(){const result=sqlite.prepare(sql).run(...params);return{meta:{changes:Number(result.changes)}};},async all(){return{results:sqlite.prepare(sql).all(...params)};}};}};},async batch(commands:Array<{run():Promise<{meta:{changes:number}}>}>){sqlite.exec("BEGIN IMMEDIATE");try{const results=[];for(const command of commands)results.push(await command.run());sqlite.exec("COMMIT");return results;}catch(error){try{sqlite.exec("ROLLBACK");}catch{}throw error;}}};
-  const dependencies:Record<string,unknown>={"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>({userId:"synthetic-owner"})},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":{...reactiveEvaluation},"./calculator-tools.ts":calculatorTools,"./reference-runtime.ts":referenceRuntime,"./reference-context.ts":referenceContext,"./reference-application.ts":referenceApplication,"./reference-release.json":{default:referenceRelease}};
+  const dependencies:Record<string,unknown>={"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>({userId:"synthetic-owner"})},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./case-data-recompute.ts":{getCaseDataRecomputeEligibility:async()=>({isQuiet:true}),recomputeCaseDataUpdate:async()=>({status:"debouncing"})},"./reactive-evaluation.ts":{...reactiveEvaluation},"./calculator-tools.ts":calculatorTools,"./reference-runtime.ts":referenceRuntime,"./reference-context.ts":referenceContext,"./reference-application.ts":referenceApplication,"./reference-release.json":{default:referenceRelease}};
   const output=ts.transpileModule(readFileSync(root+"lib/server-store.ts","utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const mod={exports:{}};new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(dependencies,name))return dependencies[name];throw new Error(`Unexpected server-store dependency ${name}`);},mod,mod.exports);
   return{sqlite,objects,data,store:mod.exports as Store};

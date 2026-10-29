@@ -11,6 +11,11 @@ export interface ReferenceMcpServices {
   monitor:(input:{agent?:"all"|"legislation"|"court_documents";cursor?:number;maxSources?:number})=>Promise<unknown>;
   alerts:()=>Promise<unknown>;
   intake?:()=>Promise<unknown>;
+  caseRequirements?:(input:{caseId:string;expectedRevision?:number})=>Promise<unknown>;
+  caseExtractions?:(input:{caseId:string;documentTypeId?:string;expectedRevision?:number;limit?:number;offset?:number})=>Promise<unknown>;
+  caseUpdates?:(input:{caseId?:string;afterEventId?:number;limit?:number})=>Promise<unknown>;
+  caseCalculations?:(input:{caseId:string;expectedDataVersion?:number;limit?:number;offset?:number})=>Promise<unknown>;
+  processCaseUpdates?:(input:{caseId?:string;limit?:number})=>Promise<unknown>;
 }
 export function createSiteCalculatorHandler(loadCase:(caseId:string)=>Promise<CaseData>,references?:ReferenceMcpServices) {
   return createMcpHandler(()=>{
@@ -31,6 +36,17 @@ export function createSiteCalculatorHandler(loadCase:(caseId:string)=>Promise<Ca
     for(const name of ["get_execution_catalog","calculate_disposal"] as const)server.registerTool(name,{description:CALCULATOR_TOOL_DESCRIPTIONS[name],inputSchema:TOOL_INPUT_SCHEMAS[name],annotations},async(input:unknown)=>respond(await callCalculatorTool(name,input)));
     if(references){
       const referenceResponse=async(run:()=>Promise<unknown>)=>{try{return respond({ok:true,result:await run()});}catch{return respond({ok:false,error:{code:"REFERENCE_OPERATION_FAILED"}});}};
+      const caseRead=async(input:{caseId:string;expectedRevision?:number},run:()=>Promise<unknown>)=>{
+        try{const data=await loadCase(input.caseId);if(input.expectedRevision!==undefined&&input.expectedRevision!==data.context.revision)return respond({ok:false,error:{code:"CASE_REVISION_MISMATCH"}});
+          return respond({ok:true,dataOrigin:"D1_normalized_case_schema",caseId:data.context.id,caseRevision:data.context.revision,result:await run()});
+        }catch(error){const code=(error as {code?:string}).code;return respond({ok:false,error:{code:code&&/^[A-Z_]+$/.test(code)?code:"CASE_SCHEMA_OPERATION_FAILED"}});}
+      };
+      const caseId=z.string().min(1).max(300),revision=z.number().int().positive().optional();
+      if(references.caseRequirements)server.registerTool("get_case_document_requirements",{description:"현재 사건의 활성 상담 분석이 요청한 서류 행을 D1 case_document_requirements에서 읽습니다. 요청은 제출·검증 완료를 뜻하지 않습니다.",inputSchema:z.object({caseId,expectedRevision:revision}).strict(),annotations},input=>caseRead(input,()=>references.caseRequirements!(input)));
+      if(references.caseExtractions)server.registerTool("get_case_extracted_features",{description:"D1의 현재 추출 버전에서 사건·서류별 반복 레코드와 피처 행을 조회합니다. 원문값·단위·페이지·스키마·출처와 미추출 상태를 유지합니다. 계산 입력에 필요한 법적 판단을 자동 확정하지 않습니다.",inputSchema:z.object({caseId,documentTypeId:z.string().min(1).max(120).optional(),expectedRevision:revision,limit:z.number().int().min(1).max(50).optional(),offset:z.number().int().min(0).optional()}).strict(),annotations},input=>caseRead(input,()=>references.caseExtractions!(input)));
+      if(references.caseUpdates)server.registerTool("get_case_data_updates",{description:"DB 트리거가 기록한 사건별 원본 데이터 변경 이벤트·버전을 조회합니다. 계산·검토 결과 저장은 원본 변경으로 다시 취급하지 않습니다.",inputSchema:z.object({caseId:caseId.optional(),afterEventId:z.number().int().min(0).optional(),limit:z.number().int().min(1).max(100).optional()}).strict(),annotations},input=>referenceResponse(()=>references.caseUpdates!(input)));
+      if(references.caseCalculations)server.registerTool("get_case_calculation_features",{description:"D1에 버전별로 저장된 법적계산 피처를 읽습니다. 가능한 잠정 계산값과 missing/blocked 항목을 구분하며 최신 OCR 데이터 버전과의 일치 여부를 확인합니다.",inputSchema:z.object({caseId,expectedDataVersion:z.number().int().min(0).optional(),limit:z.number().int().min(1).max(100).optional(),offset:z.number().int().min(0).optional()}).strict(),annotations},input=>caseRead(input,()=>references.caseCalculations!(input)));
+      if(references.processCaseUpdates)server.registerTool("process_case_data_updates",{description:"마지막 원본 변경 후 10분이 지난 사건만 처리합니다. 저장된 사건 피처로 기존 계산 엔진을 실행하고 새 계산 피처 버전을 적재합니다. 모델이 임의 금액이나 승인 상태를 입력할 수 없습니다.",inputSchema:z.object({caseId:caseId.optional(),limit:z.number().int().min(1).max(5).optional()}).strict(),annotations:{...annotations,readOnlyHint:false}},input=>referenceResponse(()=>references.processCaseUpdates!(input)));
       server.registerTool("get_reference_catalog",{description:"법령·실무준칙·계산 파라미터·문서/필드·프롬프트 규약과 출처·시행일·소비 코드·현재 판본을 페이지별로 조회합니다. 사건 데이터는 읽지 않습니다.",inputSchema:z.object({kind:z.string().max(100).optional(),q:z.string().max(500).optional(),offset:z.number().int().min(0).optional(),limit:z.number().int().min(1).max(100).optional()}).strict(),annotations},async input=>referenceResponse(()=>references.catalog(input)));
       server.registerTool("run_legal_monitors",{description:"법령 개정과 법원 실무준칙·공고·서식·안내 서류 종류의 변경을 공식 출처에서 확인합니다. 하루 1회 웹검색과 제한된 출처 구간 수집을 수행하고 기준본·실패상태·검토 알림을 저장합니다. nextCursor가 있으면 같은 agent로 이어 호출합니다. 사건·법적 인정·현재 적용 기준을 변경하지 않습니다.",inputSchema:z.object({agent:z.enum(["all","legislation","court_documents"]).default("all"),cursor:z.number().int().min(0).optional(),maxSources:z.number().int().min(1).max(20).optional()}).strict(),annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true,openWorldHint:true}},async input=>referenceResponse(()=>references.monitor(input)));
       server.registerTool("get_legal_change_alerts",{description:"기준정보 변경 후보, 관련 기준 ID, 법원 서식·서류 종류 변경 알림, 수집 실패와 일일 점검 진행 상태를 조회합니다. 변경 없음과 확인 실패를 구분하며 법률안·공포·시행·문서 변경을 구별합니다.",inputSchema:z.object({}).strict(),annotations},async()=>referenceResponse(()=>references.alerts()));

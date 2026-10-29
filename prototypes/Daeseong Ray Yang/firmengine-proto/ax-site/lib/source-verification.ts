@@ -1,4 +1,4 @@
-import { AI_MODEL, normalizeMoney } from "./domain.ts";
+import { AI_MODEL, isEvidenceModel, normalizeMoney, type EvidenceModel } from "./domain.ts";
 import { isSourceMoney } from "./source-quantity.ts";
 import { bboxLocatorFingerprintSegment, isValidSourceBBox, sameSourceBBox, sourceBBoxesAreDistinctAndDisjoint, sourceQuotesOverlap, type BBoxReceiptLocator, type SourceBBox } from "./source-verification-identity.ts";
 import { requiresRecordCategoryStatus } from "./category-contract.ts";
@@ -18,7 +18,7 @@ export interface ReviewPass {
   originalChecks?: readonly Check[];
   bindingStatus?: "bound" | "unbound";
   bindingIssues?: readonly string[];
-  model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string;
+  model: EvidenceModel; promptVersion: string; promptHash: string; verifiedAt: string;
   /** Routing/task provenance only; separate task contexts do not imply model independence. */
   agentTask?: import("./document-agent-registry.ts").DocumentTaskEnvelope;
 }
@@ -28,17 +28,17 @@ export interface SourceVerificationInput {
   originalRead: PageRead; read: PageRead; passes: readonly ReviewPass[]; errors?: readonly FieldError[];
 }
 export interface SourceVerificationReceipt {
-  method: typeof SOURCE_VERIFICATION_METHOD; model: typeof AI_MODEL; promptVersion: string; verifiedAt: string;
+  method: typeof SOURCE_VERIFICATION_METHOD; model: EvidenceModel; promptVersion: string; verifiedAt: string;
   /** Absent on historical value/unit/quote-only receipts. */
   verificationScope?: "field_meaning_v1";
   source: { documentId: string; page: number; sha256: string };
   field: { recordCategory: string; key: string; value: string; unit: string | null; quote: string; locator?: BBoxReceiptLocator };
   extractionReading: { value: string; unit: string | null; quote: string; bbox?: SourceBBox };
   verificationQuotes: string[]; fieldFingerprint: string;
-  proofReads: Array<{ pass: "verify" | "repair"; model: typeof AI_MODEL; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; categoryStatus?: "supported"; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string; bbox?: SourceBBox }>;
+  proofReads: Array<{ pass: "verify" | "repair"; model: EvidenceModel; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; categoryStatus?: "supported"; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string; bbox?: SourceBBox }>;
   proofReadIndexes: Array<{ pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }>;
   /** New receipts bind the source and independent verifier locations. Legacy receipts omit this field. */
-  geometry?: { version: "bbox_corroboration_v1"; extractionBBox: SourceBBox | null; finalBBox: SourceBBox; verifierReads: Array<{pass:"verify"|"repair";model:typeof AI_MODEL;promptVersion:string;promptHash:string;verifiedAt:string;recordIndex:number;fieldIndex:number;categoryStatus?:"supported";meaningStatus:"supported";status:"agrees"|"corrected";value:string;unit:string|null;quote:string;bbox:SourceBBox}> };
+  geometry?: { version: "bbox_corroboration_v1"; extractionBBox: SourceBBox | null; finalBBox: SourceBBox; verifierReads: Array<{pass:"verify"|"repair";model:EvidenceModel;promptVersion:string;promptHash:string;verifiedAt:string;recordIndex:number;fieldIndex:number;categoryStatus?:"supported";meaningStatus:"supported";status:"agrees"|"corrected";value:string;unit:string|null;quote:string;bbox:SourceBBox}> };
   recognition: "unreviewed";
 }
 
@@ -138,7 +138,9 @@ function resolveReceiptLocation(receipt:SourceVerificationReceipt,read:PageRead)
 
 /** Build server-only receipts. Page incompleteness leaves missing facts unproved but preserves proof for clear cited fields. */
 export function createSourceVerificationReceipts(input: SourceVerificationInput): SourceVerificationReceipt[] {
-  if(!input.documentId.trim()||!Number.isSafeInteger(input.page)||input.page<1||!validHash(input.sourceHash)||!input.promptVersion.trim()||!validInstant(input.verifiedAt)||input.passes.some(p=>p.kind!=="verify"&&p.kind!=="repair"||p.model!==AI_MODEL||p.promptVersion!==input.promptVersion||!validHash(p.promptHash)||!validInstant(p.verifiedAt)))return [];
+  const model=input.passes[0]?.model;
+  if(!isEvidenceModel(model))return [];
+  if(!input.documentId.trim()||!Number.isSafeInteger(input.page)||input.page<1||!validHash(input.sourceHash)||!input.promptVersion.trim()||!validInstant(input.verifiedAt)||input.passes.some(p=>p.kind!=="verify"&&p.kind!=="repair"||p.model!==model||p.promptVersion!==input.promptVersion||!validHash(p.promptHash)||!validInstant(p.verifiedAt)))return [];
   const errors=new Set((input.errors??[]).map(e=>`${e.recordIndex}:${e.fieldIndex}`));
   const drafts:SourceVerificationReceipt[]=[];
   input.read.records.forEach((record,ri)=>record.fields.forEach((field,fi)=>{
@@ -161,19 +163,20 @@ export function createSourceVerificationReceipts(input: SourceVerificationInput)
     const verificationScope="field_meaning_v1" as const;
     const proofBBoxes=locator?proof.map(item=>[...item.check.bbox!] as SourceBBox):undefined;
     const locatorSegment=locator?bboxLocatorFingerprintSegment({locator,extractionBBox:extractionBBox!,proofBBoxes:proofBBoxes!}):undefined;
-    drafts.push({method:SOURCE_VERIFICATION_METHOD,model:SOURCE_VERIFICATION_MODEL,promptVersion:input.promptVersion,verifiedAt:input.verifiedAt,verificationScope,source:{documentId:input.documentId,page:input.page,sha256:input.sourceHash.toLowerCase()},field:{recordCategory:record.category,key,value,unit,quote,...(locator?{locator}:{})},extractionReading,verificationQuotes:proofQuotes,fieldFingerprint:fingerprint(input,record.category,key,value,unit,quote,proofQuotes,extractionReading,verificationScope,locatorSegment,geometry),proofReadIndexes:proof.map(p=>({pass:p.pass.kind,recordIndex:ri,fieldIndex:fi})),proofReads:proof.map(p=>({pass:p.pass.kind,model:p.pass.model,promptVersion:p.pass.promptVersion,promptHash:p.pass.promptHash,verifiedAt:p.pass.verifiedAt,recordIndex:ri,fieldIndex:fi,...(p.check.categoryStatus==="supported"?{categoryStatus:"supported" as const}:{}),meaningStatus:p.check.meaningStatus,status:p.check.status as "agrees"|"corrected",value:normalize(p.check.value!),unit:p.check.unit===null?null:normalize(p.check.unit),quote:normalize(p.check.quote!),...(locator?{bbox:[...p.check.bbox!] as SourceBBox}:{})})),geometry,recognition:"unreviewed"});
+    drafts.push({method:SOURCE_VERIFICATION_METHOD,model,promptVersion:input.promptVersion,verifiedAt:input.verifiedAt,verificationScope,source:{documentId:input.documentId,page:input.page,sha256:input.sourceHash.toLowerCase()},field:{recordCategory:record.category,key,value,unit,quote,...(locator?{locator}:{})},extractionReading,verificationQuotes:proofQuotes,fieldFingerprint:fingerprint(input,record.category,key,value,unit,quote,proofQuotes,extractionReading,verificationScope,locatorSegment,geometry),proofReadIndexes:proof.map(p=>({pass:p.pass.kind,recordIndex:ri,fieldIndex:fi})),proofReads:proof.map(p=>({pass:p.pass.kind,model:p.pass.model,promptVersion:p.pass.promptVersion,promptHash:p.pass.promptHash,verifiedAt:p.pass.verifiedAt,recordIndex:ri,fieldIndex:fi,...(p.check.categoryStatus==="supported"?{categoryStatus:"supported" as const}:{}),meaningStatus:p.check.meaningStatus,status:p.check.status as "agrees"|"corrected",value:normalize(p.check.value!),unit:p.check.unit===null?null:normalize(p.check.unit),quote:normalize(p.check.quote!),...(locator?{bbox:[...p.check.bbox!] as SourceBBox}:{})})),geometry,recognition:"unreviewed"});
   }));
   const counts=new Map<string,number>();for(const r of drafts)counts.set(r.fieldFingerprint,(counts.get(r.fieldFingerprint)??0)+1);
   return drafts.filter(r=>counts.get(r.fieldFingerprint)===1);
 }
 export function sourceVerificationReceiptMatches(receipt: SourceVerificationReceipt, input: Pick<SourceVerificationInput,"documentId"|"page"|"sourceHash"|"read">):boolean {
+  if(!isEvidenceModel(receipt.model))return false;
   if(receipt.source.documentId!==input.documentId||receipt.source.page!==input.page||receipt.source.sha256!==input.sourceHash.toLowerCase()||!validHash(input.sourceHash))return false;
   const location=resolveReceiptLocation(receipt,input.read);if(!location)return false;
   const candidate=input.read.records[location.recordIndex]?.fields[location.fieldIndex];
   const category=input.read.records[location.recordIndex]?.category;
   if(!candidate||candidate.confidence!=="clear"||!category)return false;
   const fingerprintHasMeaningScope=(()=>{try{const parsed=JSON.parse(receipt.fieldFingerprint);return Array.isArray(parsed)&&parsed[10]==="field_meaning_v1";}catch{return false;}})();
-  if(!Array.isArray(receipt.proofReads))return false;
+  if(!Array.isArray(receipt.proofReads)||receipt.proofReads.some(proof=>proof.model!==receipt.model))return false;
   const hasMeaningReadMetadata=receipt.proofReads.some(proof=>Object.hasOwn(proof,"meaningStatus"));
   const categoryStatusRequired=requiresRecordCategoryStatus(receipt.promptVersion)||(Array.isArray(receipt.proofReads)&&receipt.proofReads.some(proof=>!!proof&&typeof proof==="object"&&requiresRecordCategoryStatus(proof.promptVersion)))||(Array.isArray(receipt.geometry?.verifierReads)&&receipt.geometry!.verifierReads.some(read=>!!read&&typeof read==="object"&&requiresRecordCategoryStatus(read.promptVersion)));
   if(receipt.proofReads.some(proof=>proof.categoryStatus!==undefined&&proof.categoryStatus!=="supported")||categoryStatusRequired&&receipt.proofReads.some(proof=>proof.categoryStatus!=="supported"))return false;
@@ -191,7 +194,7 @@ export function sourceVerificationReceiptMatches(receipt: SourceVerificationRece
     const seenPasses=new Set<string>();
     for(const read of geometry.verifierReads){
       if(!read||typeof read!=="object")return false;
-      if(!["verify","repair"].includes(read.pass)||read.model!==AI_MODEL||typeof read.promptVersion!=="string"||!read.promptVersion.trim()||!Number.isSafeInteger(read.recordIndex)||read.recordIndex<0||!Number.isSafeInteger(read.fieldIndex)||read.fieldIndex<0||!validHash(read.promptHash)||!validInstant(read.verifiedAt)||read.meaningStatus!=="supported"||read.categoryStatus!==undefined&&read.categoryStatus!=="supported"||categoryStatusRequired&&read.categoryStatus!=="supported"||!(read.status==="agrees"||read.status==="corrected")||read.value!==receipt.field.value||!sameUnit(read.unit,receipt.field.unit)||!sourceQuotesOverlap(read.quote,receipt.field.quote)||!isValidSourceBBox(read.bbox)||bboxIoU(read.bbox,geometry.finalBBox)<RECEIPT_BBOX_IOU||seenPasses.has(read.pass))return false;
+      if(!["verify","repair"].includes(read.pass)||read.model!==receipt.model||typeof read.promptVersion!=="string"||!read.promptVersion.trim()||!Number.isSafeInteger(read.recordIndex)||read.recordIndex<0||!Number.isSafeInteger(read.fieldIndex)||read.fieldIndex<0||!validHash(read.promptHash)||!validInstant(read.verifiedAt)||read.meaningStatus!=="supported"||read.categoryStatus!==undefined&&read.categoryStatus!=="supported"||categoryStatusRequired&&read.categoryStatus!=="supported"||!(read.status==="agrees"||read.status==="corrected")||read.value!==receipt.field.value||!sameUnit(read.unit,receipt.field.unit)||!sourceQuotesOverlap(read.quote,receipt.field.quote)||!isValidSourceBBox(read.bbox)||bboxIoU(read.bbox,geometry.finalBBox)<RECEIPT_BBOX_IOU||seenPasses.has(read.pass))return false;
       seenPasses.add(read.pass);
     }
     const needsTwoReads=!geometry.extractionBBox||bboxIoU(geometry.extractionBBox,geometry.finalBBox)<RECEIPT_BBOX_IOU;

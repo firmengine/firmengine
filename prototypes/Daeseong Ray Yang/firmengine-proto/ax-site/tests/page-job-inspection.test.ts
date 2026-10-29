@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import { isEvidenceModel } from "../lib/domain.ts";
 import { hasBoundExtractionProvenance, parseHistoricalReadProvenance, requireReprojectionProvenance } from "../lib/reprojection.ts";
 import { isValidSourceBBox, validatePageRead } from "../lib/extraction.ts";
 
@@ -13,7 +14,7 @@ function load(saved:any,action="inspectStoredPageJob",alreadyApplied=false,overr
   const row={...job,case_id:"case-1",image_key:job.imageKey,image_hash:job.imageHash,cache_key:job.cacheKey,lease_until:job.leaseUntil,document_sha256:String(overrides.document_sha256??"a".repeat(64)),ready:Number(overrides.ready??1),original_key:String(overrides.original_key??"cases/case-1/documents/doc-1/original/source.pdf"),active_processing_jobs:Number(overrides.active_processing_jobs??0)};
   const data={context:{id:"case-1"},documents:[{id:"doc-1",status:"active",sha256:"a".repeat(64),pages:[2]}],pages:[{documentId:"doc-1",page:2,role:"evidence"}]};
   const modules:Record<string,unknown>={
-    "./domain":{},"./extraction":{validatePageRead,isValidSourceBBox},"./sample-manifest":{samplePageRole:()=>({role:String(overrides.samplePageRole??"evidence")})},"./reprojection":{parseHistoricalReadProvenance,prepareStoredReadReprojection:()=>({provenance:{documentId:"doc-1",documentSha256:"a".repeat(64),page:2,mappingVersion:"income",promptVersion:"historical-prompt",model:"gpt-6-luna",ruleReleaseId:"rules",verificationPasses:0,storedReceiptCount:0}}),hasCurrentProjection:()=>alreadyApplied,hasBoundExtractionProvenance,requireReprojectionProvenance},
+    "./domain":{isEvidenceModel},"./extraction":{validatePageRead,isValidSourceBBox},"./sample-manifest":{samplePageRole:()=>({role:String(overrides.samplePageRole??"evidence")})},"./reprojection":{parseHistoricalReadProvenance,prepareStoredReadReprojection:()=>({provenance:{documentId:"doc-1",documentSha256:"a".repeat(64),page:2,mappingVersion:"income",promptVersion:"historical-prompt",model:"gpt-6-luna",ruleReleaseId:"rules",verificationPasses:0,storedReceiptCount:0}}),hasCurrentProjection:()=>alreadyApplied,hasBoundExtractionProvenance,requireReprojectionProvenance},
     "./server-store":{db:()=>({prepare:()=>({bind:()=>({first:async()=>row})})}),bucket:()=>({get:async()=>({arrayBuffer:async()=>new ArrayBuffer(1)})}),getCase:async()=>data,HttpError:class extends Error{},sha256:async()=>"a".repeat(64)},
   };
   const mod={exports:{} as Record<string,any>};new Function("require","module","exports",output)((name:string)=>modules[name],mod,mod.exports);return mod.exports[action]("case-1","job-1");
