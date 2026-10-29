@@ -16,6 +16,7 @@ export interface SubstitutionReview {
   originalDocumentTypeId: string;
   alternativeDocumentTypeIds: string[];
   proofs: SubstitutionProof[];
+  proofFingerprints: {factId:string;sha256:string}[];
   periodStart: string;
   periodEnd: string;
   courtId: string;
