@@ -53,6 +53,9 @@ test("consultation completion stores typed document requirements under the real 
     assert.equal(listed.activeRunId,first.run.id);assert.equal(listed.requirements.length,first.run.result.requirements.length);
     assert.ok(listed.requirements.length>0);
     assert.ok(listed.requirements.every(row=>row.caseId===f.id&&row.consultationRunId===first.run.id&&row.documentTypeId===row.raw.documentTypeId));
+    assert.ok(listed.requirements.every(row=>row.fieldPlanStatus==="materialized"&&row.fieldPlan?.caseId===f.id&&row.fieldPlan?.consultationRunId===first.run.id&&row.fieldPlan.requiredSourceFields.length===row.raw.fields.length));
+    assert.ok(listed.requirements.every(row=>row.fieldPlan?.mappingStatus==="review_required"),"Candidate OCR fields are not automatically approved obligations");
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_requirement_field_plans WHERE case_id=? AND consultation_run_id=?").get(f.id,first.run.id) as {n:number}).n,listed.requirements.length);
     const before=(f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n;
     await caseRequirements.persistCaseDocumentRequirements(f.database as unknown as D1Database,{caseId:f.id,runId:first.run.id,catalog:catalog.catalog,catalogSha256:catalog.sha256,result:first.run.result});
     assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n,before);
@@ -75,6 +78,7 @@ test("requirement row failure rolls back run completion and active-head publicat
     assert.equal((f.sqlite.prepare("SELECT active_run_id FROM consultation_heads WHERE case_id=?").get(f.id) as {active_run_id:string|null}).active_run_id,null);
     assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM consultation_runs WHERE status='complete'").get() as {n:number}).n,0);
     assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_document_requirements").get() as {n:number}).n,0);
+    assert.equal((f.sqlite.prepare("SELECT COUNT(*) AS n FROM case_requirement_field_plans").get() as {n:number}).n,0);
   }finally{f.close();}
 });
 
