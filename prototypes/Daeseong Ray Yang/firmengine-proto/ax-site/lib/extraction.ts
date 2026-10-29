@@ -1,4 +1,6 @@
 import { renderPromptPolicy } from "./reference-prompts.ts";
+import { bindCanonicalSourceField, canonicalProjectionKey } from "./canonical-field-binding.ts";
+import { documentFieldContract } from "./document-agent-registry.ts";
 import { observeField, pageFieldCoverage, SOURCE_STATES, VERIFICATION_STATES, FIELD_OBSERVATION_INSTRUCTIONS, type ObservationInput, type VerificationState } from "./field-observation.ts";
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
 import { isSourceMoney,isDebtComponentSlot,debtComponentSlotKey,INSURANCE_SURRENDER_KEYS,isInsuranceSurrenderQuote,quotedInsuranceSurrenderAmount } from "./source-quantity.ts";
@@ -258,11 +260,24 @@ export function projectPage(read:PageRead,documentId:string,page:number,document
   const facts:Partial<Fact>[]=[],incomes:IncomeSource[]=[],debts:Debt[]=[],assets:Asset[]=[],transactions:Transaction[]=[];
   const warnings=[...read.warnings];
   const family=documentFamily(read.documentType),isCreditReport=creditReportType(read.documentType),isHealthArrears=healthArrearsType(read.documentType);
+  const sourceContract=documentFieldContract(read.documentType),strictCanonicalRoute=read.documentType.startsWith("shared-document:");
 const namespaces=new Set(["person","income","debt","asset","transaction","household","case","applicant","spouse","court","business","statement","family","tax","procedure","credit_report","health_insurance_arrears","bank_account","lease","insurance"]);
   let household:ExtractionPayload["household"];
   read.records.forEach((r,ri)=>{
     const id=`${documentId}:p${page}:${r.category}:${ri}`,ids:string[]=[];
-    const localKey=(f:ReadField)=>{const key=canonicalKey(f.key),prefixes=[r.category,...(isCreditReport?["credit_report"]:[]),...(isHealthArrears?["health_insurance_arrears"]:[]),...(family==="insurance"?["insurance"]:[]),"bank_account","lease"],prefix=prefixes.find(p=>key.startsWith(p+".")),local=prefix?key.slice(prefix.length+1):key;return sourceFieldKey(local,read.documentType);};
+    const keyCache=new WeakMap<ReadField,string>();
+    const localKey=(f:ReadField)=>{
+      const cached=keyCache.get(f);if(cached!==undefined)return cached;
+      const binding=bindCanonicalSourceField(f,sourceContract);
+      const typed=canonicalProjectionKey(sourceContract,binding,r.category);
+      const raw=canonicalKey(f.key);
+      // An unknown/contradictory source ID cannot enter a legal calculation by a
+      // coincidental field name. It is still preserved in the raw OCR ledger.
+      const key=typed??((strictCanonicalRoute||!!f.canonicalFieldId)&&binding.binding==="unbound"
+        ?"unbound_source."+raw
+        :(()=>{const prefixes=[r.category,...(isCreditReport?["credit_report"]:[]),...(isHealthArrears?["health_insurance_arrears"]:[]),...(family==="insurance"?["insurance"]:[]),"bank_account","lease"];const prefix=prefixes.find(p=>raw.startsWith(p+"."));return sourceFieldKey(prefix?raw.slice(prefix.length+1):raw,read.documentType);})());
+      keyCache.set(f,key);return key;
+    };
     const statementTextIndexes=new Set<number>(),duplicateStatementTextIndexes=new Set<number>(),conflictingStatementTextIndexes=new Set<number>(),statementTextIdentity=new Map<number,string>();
     if(r.category==="statement"){
       const locationGroups=new Map<string,number[]>(),sectionOrdinals=new Map<string,number>();let paragraphOrdinal=0,sectionAnchor:string|undefined;
@@ -336,12 +351,23 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const normalizedKey=canonicalKey(f.key),rawPrefix=namespaces.has(normalizedKey.split(".")[0])&&normalizedKey.includes(".")?normalizedKey.split(".")[0]:null,rawLocal=rawPrefix?normalizedKey.slice(rawPrefix.length+1):normalizedKey,factType=isCreditReport?"credit_report":isHealthArrears?"health_insurance_arrears":r.category;
       const leaseField=family==="lease"&&["tenant","landlord","applicant_role","applicant_is_tenant","applicant_is_landlord","property_address","property_reference","deposit","monthly_rent","secured_balance","arrears_deduction","use","start_date","end_date","period_start","period_end"].includes(key);
       const accountField=["bank_account","bank_transactions"].includes(family)&&r.category!=="transaction"&&["institution","owner","account_number","balance","active","as_of","encumbrance_status","seizure_status","pledge_status"].includes(key);
-      const factKey=isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
+      // The same exact canonical identifier defines the original source row,
+      // its normalized SQL projection, and the CaseData fact read by legal
+      // calculations/forms. PageRead still preserves the raw OCR key and quote.
+      const verifiedBinding=bindCanonicalSourceField(f,sourceContract);
+      const verifiedCaseKey=canonicalProjectionKey(sourceContract,verifiedBinding,r.category);
+      const factKey=verifiedCaseKey&&verifiedBinding.binding!=="unbound"
+        ? `${r.category}.${verifiedCaseKey}`
+        :isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
       const logicalId=`${id}:${key}${repeatableStatementText?`:paragraph:${statementTextIdentity.get(fi)}`:""}${fieldConflict?`:candidate:${fi}`:""}`;
       facts.push({id:fid,subjectId:id,logicalId,key:factKey,fieldObservation:observation,canonicalFieldId:observation.canonicalFieldId??undefined,value:f.value,rawValue:f.value??undefined,sourceUnit:f.unit,...(monetary?{numeric:sourceMoney(f)}:{}),periodStart:value("period_start"),periodEnd:value("period_end"),asOf:value("as_of"),refs:typeof f.quote==="string"&&f.quote.trim()?[{documentId,page,quote:f.quote,sourceHash:documentHash,...(isValidSourceBBox(f.bbox)?{bbox:f.bbox}:{})}]:[],validation});
     }
     if(!ids.length)return;
     if(r.category==="income"){
+      if(strictCanonicalRoute&&!["gross","expenses","net","period_start","period_end"].some(name=>!!field(name))){
+        warnings.push(`${id}: 표준 소득 피처가 매핑되지 않아 원문만 보존하고 소득 계산 객체 생성을 보류합니다.`);
+        return;
+      }
       if(leaseType(read.documentType)&&!(["applicant_is_landlord","income_owner_role"].some(k=>value(k)==="yes"||value(k)==="applicant"))){warnings.push(`${id}: 임대차 문서만으로 신청인 임대수입을 판단하지 않았습니다. 신청인이 임대인이라는 원문 근거가 필요합니다.`);}
       else {if(!value("label"))warnings.push(`${id}: 인용된 소득원명이 없어 확인이 필요합니다.`);incomes.push({id,kind:known(value("kind"),["wage","business","rent","interest","dividend","pension","benefit","other"],"other"),label:value("label")||"",employer:value("employer"),payerIdentityId:value("payer_identity_id"),aggregationTreatment:"unknown",aggregationReviewed:false,gross:num("gross"),expenses:num("expenses"),net:num("net"),periodStart:value("period_start"),periodEnd:value("period_end"),periodMonths:integer("period_months"),amountBasis:sourceAmountBasis(value("amount_basis")),recurring:tri(value("recurring")),recognition:"unreviewed",factIds:ids});}
     }

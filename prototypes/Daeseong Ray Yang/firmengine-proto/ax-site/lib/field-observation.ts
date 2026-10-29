@@ -1,4 +1,5 @@
 import { renderPromptPolicy } from "./reference-prompts.ts";
+import { bindCanonicalSourceField } from "./canonical-field-binding.ts";
 import { documentFieldContract, FIELD_CATALOG_RELEASE, FIELD_CATALOG_RELEASE_SHA256 } from "./document-agent-registry.ts";
 
 export const FIELD_OBSERVATION_VERSION = "field-observation-2" as const;
@@ -46,18 +47,8 @@ const bboxValid = (v: number[] | null) => !!v && v.length === 4 && v.every(x => 
 /** Identity binding is exact and family-scoped. A label or value match never binds a field. */
 export function observeField(type: string, field: ObservationInput, source: {documentId: string; page: number; sourceSha256: string}, recordIndex: number | null, fieldIndex: number | null): FieldObservation {
   const contract = documentFieldContract(type);
-  const explicit = typeof field.canonicalFieldId === "string" && field.canonicalFieldId.length > 0;
-  const candidates = (contract?.fields ?? []).filter(f => explicit ? f.global_field_id === field.canonicalFieldId : f.local_id === field.key || f.global_field_id === field.key);
-  let definition = candidates.length === 1 ? candidates[0] : undefined;
-  const issues: string[] = [];
-  if (definition && explicit) {
-    const local = definition.local_id, leaf = local.split(".").at(-1)!;
-    const leafUnique = contract!.fields.filter(f => f.local_id.split(".").at(-1) === leaf).length === 1;
-    const shortKey = field.key.split(".");
-    const compatible = field.key === local || field.key === definition.global_field_id || leafUnique && (field.key === leaf || shortKey.length === 2 && ["person", "income", "debt", "asset", "transaction", "household", "business", "statement", "other", "bank_account", "lease", "insurance", "credit_report", "health_insurance_arrears"].includes(shortKey[0]) && shortKey[1] === leaf);
-    if (!compatible) { definition = undefined; issues.push("canonical_id_key_conflict"); }
-  }
-  if (!definition) issues.push(explicit ? "canonical_id_outside_family" : "canonical_id_unbound");
+  const resolved=bindCanonicalSourceField(field,contract);
+  const definition=resolved.definition,issues=[...resolved.issues];
   let state: SourceState = SOURCE_STATES.includes(field.sourceState as SourceState) ? field.sourceState! : field.value !== null ? "present" : field.confidence === "unreadable" ? "illegible" : "unknown";
   // Missing metadata is never evidence of a blank, zero, or inapplicability.
   if (state === "present" && (field.value === null || !field.value.trim())) { state = "unknown"; issues.push("present_without_value"); }
@@ -78,7 +69,7 @@ export function observeField(type: string, field: ObservationInput, source: {doc
   return { version: FIELD_OBSERVATION_VERSION, ...source, recordIndex, fieldIndex, origin: recordIndex === null ? "catalog_gap" : "source_read",
     canonicalFieldId: definition?.global_field_id ?? null, familyId: contract?.family_id ?? null,
     catalogRelease: FIELD_CATALOG_RELEASE, catalogSha256: FIELD_CATALOG_RELEASE_SHA256,
-    binding: definition ? explicit ? "explicit_id" : "exact_key" : "unbound",
+    binding: resolved.binding,
     label: field.label, rawValue: field.value, rawUnit: field.unit, quote: field.quote,
     bbox: bboxValid(field.bbox) ? [...field.bbox!] : null, sourceState: state, extractionState,
     applicability: { sourceClaim: claim, quote: claim === "unknown" ? null : quote, caseDecision: "unreviewed" },

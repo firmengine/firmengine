@@ -3,10 +3,11 @@ import type { PageRead, ReadField } from "./extraction.ts";
 import type { ClassificationRead } from "./classification-recovery.ts";
 import { documentFieldContract } from "./document-agent-registry.ts";
 import { parseDocumentRoute, sharedDocumentFieldContract } from "./shared-document-catalog.ts";
+import { bindCanonicalSourceField, canonicalProjectionKey, CANONICAL_SOURCE_BINDING_VERSION } from "./canonical-field-binding.ts";
 
 export const EXTRACTION_ROW_STORE_VERSION="normalized-source-extraction/1";
 type Contract=NonNullable<ReturnType<typeof documentFieldContract>>;
-type ContractField=Contract["fields"][number];
+
 type Classification=Pick<ClassificationRead,"documentTypeId"|"documentTypeName"|"familyId"|"documentCatalogVersion"|"documentCatalogSha256">;
 export interface PersistPageExtractionRowsInput {
   caseId:string;documentId:string;page:number;pageJobId?:string|null;read:PageRead;
@@ -28,27 +29,20 @@ function inputGuard(input:PersistPageExtractionRowsInput):void {
   }
   if(input.read.records.length>500||fields>5000||new TextEncoder().encode(json(input.read)).length>1_900_000)throw fault("EXTRACTION_ROW_SIZE_LIMIT");
 }
-function bindField(field:ReadField,contract:Contract|null){
-  const candidates=contract?.fields??[];
-  let selected:ContractField|undefined,bindingStatus="unbound";
-  const issues:string[]=[];
-  if(field.canonicalFieldId){
-    selected=candidates.find(f=>f.global_field_id===field.canonicalFieldId);
-    if(selected)bindingStatus="bound_exact_id";else issues.push("CANONICAL_FIELD_NOT_IN_SCHEMA");
-  }else{
-    const exact=candidates.filter(f=>f.local_id===field.key||f.global_field_id===field.key);
-    if(exact.length===1){selected=exact[0];bindingStatus="bound_exact_key";}
-    else if(exact.length>1){bindingStatus="ambiguous";issues.push("AMBIGUOUS_SOURCE_FIELD_KEY");}
-    else issues.push("SOURCE_FIELD_KEY_UNBOUND");
-  }
+function bindField(field:ReadField,contract:Contract|null,category:string){
+  const resolved=bindCanonicalSourceField(field,contract),selected=resolved.definition;
+  const bindingStatus=resolved.binding==="explicit_id"?"bound_exact_id":resolved.binding==="exact_key"?"bound_exact_key":"unbound";
+  const issues=resolved.issues.map(issue=>issue==="canonical_id_key_conflict"?"CANONICAL_ID_KEY_CONFLICT":issue==="canonical_id_outside_family"?"CANONICAL_FIELD_NOT_IN_SCHEMA":issue==="canonical_id_ambiguous"?"AMBIGUOUS_SOURCE_FIELD_KEY":"SOURCE_FIELD_KEY_UNBOUND");
   if(selected&&field.sourceState==="present"&&field.value!==null){
     if(["money","money_or_itemized"].includes(selected.datatype)&&!field.unit?.trim())issues.push("SOURCE_MONETARY_UNIT_MISSING");
     if(selected.datatype==="integer"&&!/^[+-]?\d+$/.test(field.value.replace(/,/g,"").trim()))issues.push("SOURCE_INTEGER_FORMAT_REVIEW");
   }
   if(field.confidence!=="clear")issues.push("SOURCE_READ_UNCERTAIN");
   if(field.sourceState!==undefined&&field.sourceState!=="present"&&field.sourceState!=="explicit_none")issues.push("SOURCE_STATE_REQUIRES_REVIEW");
-  return {canonicalFieldId:selected?.global_field_id??null,bindingStatus,validationStatus:!selected?"unbound":issues.length?"source_review_required":"source_only",issues};
+  return {canonicalFieldId:resolved.canonicalFieldId,projectionKey:canonicalProjectionKey(contract,resolved,category),
+    bindingStatus,validationStatus:!selected?"unbound":issues.length?"source_review_required":"source_only",issues};
 }
+
 type Value=string|number|null;
 function insertRows(database:D1Database,table:string,columns:string[],rows:Value[][]):D1PreparedStatement[]{
   const size=Math.max(1,Math.floor(90/columns.length)),statements:D1PreparedStatement[]=[];
@@ -84,23 +78,39 @@ export async function persistPageExtractionRows(database:D1Database,input:Persis
     database.prepare("INSERT OR IGNORE INTO extraction_runs (id,case_id,document_instance_id,schema_id,page_job_id,stage,model,source_hash,image_hash,read_sha256,read_json,case_revision,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(runId,input.caseId,instanceId,schemaId,input.pageJobId??null,input.stage,input.model,input.sourceHash,input.imageHash,readSha,readJson,input.caseRevision,at),
   ];
   const records:Value[][]=[],features:Value[][]=[];
+  const coverage=new Map<string,{counts:Record<string,number>;observed:number;review:number}>(
+    (contract?.fields??[]).map(field=>[field.global_field_id,{counts:{},observed:0,review:0}]));
   for(const [ri,record] of input.read.records.entries()){
     const recordId=`${runId}:record:${ri}`;records.push([recordId,runId,ri,record.category,record.label]);
     for(const [fi,f]of record.fields.entries()){
-      const binding=bindField(f,contract);
-      features.push([`${recordId}:field:${fi}`,recordId,schemaId,fi,binding.canonicalFieldId,f.key,f.label,json(f.value),f.unit,f.sourceState??null,f.confidence,f.quote,json(f.bbox??null),json(f),binding.bindingStatus,binding.validationStatus,json(binding.issues)]);
+      const binding=bindField(f,contract,record.category);
+      features.push([`${recordId}:field:${fi}`,recordId,schemaId,fi,binding.canonicalFieldId,f.key,f.label,json(f.value),f.unit,f.sourceState??null,f.confidence,f.quote,json(f.bbox??null),json(f),binding.bindingStatus,binding.validationStatus,json(binding.issues),binding.projectionKey,CANONICAL_SOURCE_BINDING_VERSION]);
+      if(binding.canonicalFieldId){
+        const item=coverage.get(binding.canonicalFieldId);
+        if(item){
+          item.observed++;if(binding.validationStatus!=="source_only")item.review++;
+          const state=f.sourceState??(f.value!==null?"present":"unknown");
+          item.counts[state]=(item.counts[state]??0)+1;
+        }
+      }
     }
   }
-  statements.push(...insertRows(database,"extraction_records",["id","run_id","ordinal","category","label"],records),...insertRows(database,"extracted_features",["id","record_id","schema_id","ordinal","canonical_field_id","field_key","label","raw_value_json","unit","source_state","confidence","quote","bbox_json","raw_field_json","binding_status","validation_status","validation_json"],features));
+  statements.push(...insertRows(database,"extraction_records",["id","run_id","ordinal","category","label"],records),
+    ...insertRows(database,"extracted_features",["id","record_id","schema_id","ordinal","canonical_field_id","field_key","label","raw_value_json","unit","source_state","confidence","quote","bbox_json","raw_field_json","binding_status","validation_status","validation_json","projection_key","binding_version"],features));
+  const coverageRows:Value[][]=[...coverage].map(([canonicalId,item])=>[runId,schemaId,canonicalId,
+    item.observed===0?"not_observed_on_page":item.review>0?"observed_review_required":"observed_source_only",
+    item.observed,item.review,json(item.counts),at]);
+  statements.push(...insertRows(database,"extraction_field_coverage",
+    ["run_id","schema_id","canonical_field_id","observation_status","observed_count","review_count","source_state_counts_json","created_at"],coverageRows));
   const promote=input.stage==="committed";
   if(promote)statements.push(database.prepare("INSERT INTO case_extraction_heads (case_id,source_document_id,page,run_id,case_revision,updated_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases WHERE id=? AND revision=?) ON CONFLICT(case_id,source_document_id,page) DO UPDATE SET run_id=excluded.run_id,case_revision=excluded.case_revision,updated_at=excluded.updated_at WHERE excluded.case_revision>=case_extraction_heads.case_revision").bind(input.caseId,input.documentId,input.page,runId,input.caseRevision,at,input.caseId,input.caseRevision));
   const result=await database.batch(statements);
   if(promote&&!result.at(-1)?.meta?.changes)throw fault("CASE_REVISION_MISMATCH");
-  return {runId,schemaId,documentInstanceId:instanceId,records:records.length,features:features.length,headPromoted:promote,sourceOnly:true as const,legalRecognition:"not_provided" as const};
+  return {runId,schemaId,documentInstanceId:instanceId,records:records.length,features:features.length,expectedFields:coverageRows.length,notObservedOnPage:coverageRows.filter(x=>x[3]==="not_observed_on_page").length,headPromoted:promote,sourceOnly:true as const,legalRecognition:"not_provided" as const};
 }
 
 interface StoredRecord {id:string;run_id:string;ordinal:number;category:string;label:string;case_revision:number;head_case_revision:number;stage:string;model:string;source_hash:string;image_hash:string;read_sha256:string;schema_id:string;source_document_id:string;page:number;shared_document_type_id:string|null;shared_document_type_name:string|null;family_id:string|null;boundary_status:string;catalog_version:number|null;catalog_sha256:string|null;contract_version:string;schema_sha256:string;feature_count:number;}
-interface StoredFeature {id:string;record_id:string;ordinal:number;canonical_field_id:string|null;field_key:string;label:string;raw_value_json:string;unit:string|null;source_state:string|null;confidence:string;quote:string|null;bbox_json:string;binding_status:string;validation_status:string;validation_json:string;datatype:string|null;expected_unit:string|null;subject_role:string|null;party_role:string|null;temporal_role:string|null;amount_owner_role:string|null;}
+interface StoredFeature {id:string;record_id:string;ordinal:number;canonical_field_id:string|null;field_key:string;label:string;raw_value_json:string;unit:string|null;source_state:string|null;confidence:string;quote:string|null;bbox_json:string;binding_status:string;validation_status:string;validation_json:string;projection_key:string|null;binding_version:string;datatype:string|null;expected_unit:string|null;subject_role:string|null;party_role:string|null;temporal_role:string|null;amount_owner_role:string|null;}
 /** Bounded SQL projection of active committed page reads, with explicit lineage. */
 export async function listCaseExtractionRows(database:D1Database,input:{caseId:string;documentTypeId?:string;limit?:number;offset?:number;expectedRevision?:number}){
   const limit=input.limit??25,offset=input.offset??0;
@@ -123,5 +133,28 @@ export async function listCaseExtractionRows(database:D1Database,input:{caseId:s
     totalRecords:count?.n??0,limit,offset,nextOffset:offset+records.length<(count?.n??0)?offset+records.length:null,featureLimit,featuresTruncated:features.length>featureLimit,
     records:records.map(row=>({recordId:row.id,recordOrdinal:row.ordinal,category:row.category,label:row.label,runId:row.run_id,
       source:{documentId:row.source_document_id,page:row.page,documentTypeId:row.shared_document_type_id,documentTypeName:row.shared_document_type_name,familyId:row.family_id,boundaryStatus:row.boundary_status,model:row.model,stage:row.stage,sourceHash:row.source_hash,imageHash:row.image_hash,readSha256:row.read_sha256,runCaseRevision:row.case_revision,headCaseRevision:row.head_case_revision,catalogVersion:row.catalog_version,catalogSha256:row.catalog_sha256,schemaId:row.schema_id,schemaSha256:row.schema_sha256,contractVersion:row.contract_version},
-      fieldCount:row.feature_count,fields:bounded.filter(f=>f.record_id===row.id).map(f=>({featureId:f.id,recordId:f.record_id,fieldOrdinal:f.ordinal,canonicalFieldId:f.canonical_field_id,key:f.field_key,label:f.label,value:JSON.parse(f.raw_value_json),unit:f.unit,sourceState:f.source_state,confidence:f.confidence,quote:f.quote,bbox:JSON.parse(f.bbox_json),bindingStatus:f.binding_status,validationStatus:f.validation_status,validation:JSON.parse(f.validation_json),expected:{datatype:f.datatype,unit:f.expected_unit,subjectRole:f.subject_role,partyRole:f.party_role,temporalRole:f.temporal_role,amountOwnerRole:f.amount_owner_role}}))}))};
+      fieldCount:row.feature_count,fields:bounded.filter(f=>f.record_id===row.id).map(f=>({featureId:f.id,recordId:f.record_id,fieldOrdinal:f.ordinal,canonicalFieldId:f.canonical_field_id,key:f.field_key,label:f.label,value:JSON.parse(f.raw_value_json),unit:f.unit,projectionKey:f.projection_key,bindingVersion:f.binding_version,sourceState:f.source_state,confidence:f.confidence,quote:f.quote,bbox:JSON.parse(f.bbox_json),bindingStatus:f.binding_status,validationStatus:f.validation_status,validation:JSON.parse(f.validation_json),expected:{datatype:f.datatype,unit:f.expected_unit,subjectRole:f.subject_role,partyRole:f.party_role,temporalRole:f.temporal_role,amountOwnerRole:f.amount_owner_role}}))}))};
+}
+
+/** Records every expected schema key, even when OCR found nothing. This is
+ * PAGE coverage only; unobserved is never legal non-applicability or zero. */
+export async function listCaseExtractionCoverage(database:D1Database,input:{caseId:string;documentTypeId?:string;limit?:number;offset?:number;expectedRevision?:number}){
+  const limit=input.limit??25,offset=input.offset??0;
+  if(!input.caseId||!Number.isSafeInteger(limit)||limit<1||limit>100||!Number.isSafeInteger(offset)||offset<0)throw fault("INVALID_EXTRACTION_COVERAGE_QUERY");
+  const before=await database.prepare("SELECT revision FROM cases WHERE id=?").bind(input.caseId).first<{revision:number}>();
+  if(!before)throw fault("EXTRACTION_CASE_NOT_FOUND");
+  if(input.expectedRevision!==undefined&&input.expectedRevision!==before.revision)throw fault("CASE_REVISION_MISMATCH");
+  const filter=input.documentTypeId?" AND i.shared_document_type_id=?":"";
+  const params=[input.caseId,...(input.documentTypeId?[input.documentTypeId]:[])];
+  const from=" FROM case_extraction_heads h JOIN extraction_runs r ON r.id=h.run_id JOIN document_instances i ON i.id=r.document_instance_id JOIN extraction_field_coverage c ON c.run_id=r.id JOIN extraction_schema_fields f ON f.schema_id=c.schema_id AND f.canonical_field_id=c.canonical_field_id WHERE h.case_id=?"+filter;
+  const count=await database.prepare("SELECT COUNT(*) AS n"+from).bind(...params).first<{n:number}>();
+  const result=await database.prepare("SELECT i.source_document_id AS documentId,i.page,i.shared_document_type_id AS documentTypeId,i.family_id AS familyId,r.id AS runId,c.canonical_field_id AS canonicalFieldId,c.observation_status AS observationStatus,c.observed_count AS observedCount,c.review_count AS reviewCount,c.source_state_counts_json AS statesJson,f.local_key AS localKey,f.datatype AS datatype,f.unit AS expectedUnit"+from+" ORDER BY i.source_document_id,i.page,f.ordinal LIMIT ? OFFSET ?")
+    .bind(...params,limit,offset).all<{documentId:string;page:number;documentTypeId:string|null;familyId:string|null;runId:string;canonicalFieldId:string;observationStatus:string;observedCount:number;reviewCount:number;statesJson:string;localKey:string;datatype:string;expectedUnit:string}>();
+  const after=await database.prepare("SELECT revision FROM cases WHERE id=?").bind(input.caseId).first<{revision:number}>();
+  if(after?.revision!==before.revision)throw fault("CASE_REVISION_MISMATCH");
+  const rows=result.results??[];
+  return {schemaVersion:"source-field-coverage/1",caseId:input.caseId,caseRevision:before.revision,
+    totalFields:count?.n??0,limit,offset,nextOffset:offset+rows.length<(count?.n??0)?offset+rows.length:null,
+    missingMeans:"Not observed on this page; not proof of absence, inapplicability, or zero.",
+    legalRecognition:"not_provided",rows:rows.map(({statesJson,...item})=>({...item,sourceStateCounts:JSON.parse(statesJson) as Record<string,number>}))};
 }

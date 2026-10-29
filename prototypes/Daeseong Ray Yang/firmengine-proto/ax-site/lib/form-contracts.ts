@@ -1,5 +1,6 @@
 import { PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 import tokenCatalog from "./template-token-catalog.json" with { type: "json" };
+import legalFieldPolicy from "./legal-form-field-policy.json" with { type: "json" };
 
 export const FORM_CONTRACT_VERSION = "document-form-contract/1.1";
 export type FormValueKind = "source" | "derived" | "prose" | "layout";
@@ -11,6 +12,7 @@ export interface FormFieldContract {
   requiredReason?: string;
   requiredWhen?: string;
   source: string;
+  authorityBasis?: "statutory_minimum" | "internal_integrity" | "unverified";
 }
 export interface RepeatGroupContract { id: string; fields: string[]; identitySource: string; }
 export interface FormContract {
@@ -34,12 +36,17 @@ const appRequired: Record<string,{reason:string;when?:string}> = {
 };
 type CatalogTemplate={id:string;path:string;sha256:string;tokens:string[];repeatGroups:Record<string,string[]>};
 const catalog=(tokenCatalog as unknown as {templates:CatalogTemplate[]}).templates;
+type LegalRule={requiredness:Requiredness;basis:"statutory_minimum"|"internal_integrity";sourceId:string;reason:string;when?:string};
+const legalPolicies=legalFieldPolicy.forms as unknown as Record<string,Record<string,LegalRule>>;
 const officialMeta=PUBLIC_FORM_METADATA as unknown as Record<string,{code:string;title:string;template_version:string;template:{sha256:string};approval_status:string;reconstruction:boolean;limitations:string;mapped_tokens:string[]}>;
 function createContract(template:CatalogTemplate,meta=officialMeta[template.id]):FormContract {
  const groups=new Map(Object.entries(template.repeatGroups));
  const fields=template.tokens.map((token):FormFieldContract=>{
-  const required=appRequired[token];
-  return {token,kind:valueKind(token),requiredness:required?(required.when?"conditional":"required"):"unverified",...(required?{requiredReason:required.reason,requiredWhen:required.when}:{}),source:"DOCX template token inventory + FirmEngine application contract; official portal status unverified"};
+  const required=appRequired[token],legal=legalPolicies[template.id]?.[token];
+  const requiredness:Requiredness=legal?.requiredness??(required?(required.when?"conditional":"required"):"unverified");
+  return {token,kind:valueKind(token),requiredness,
+    ...(legal?{requiredReason:legal.reason,requiredWhen:legal.when,authorityBasis:legal.basis}:required?{requiredReason:required.reason,requiredWhen:required.when,authorityBasis:"internal_integrity" as const}:{authorityBasis:"unverified" as const}),
+    source:legal?"Cited "+legal.sourceId+" minimum or integrity control; official e-form parity unverified.":"DOCX inventory + FirmEngine application contract; official portal requiredness unverified"};
  });
  const identitySources:Record<string,string>={creditor:"CaseData debtId",secured:"CaseData debtId",disputed:"CaseData debtId",assignment:"CaseData debtId",asset:"CaseData assetId",month:"income entity ID + period",family:"household entity ID",attachment:"documentId",allocation:"debtId or assetId + allocation scope"};
  return {code:template.id,title:meta?.title??template.id,templateVersion:meta?.template_version??"public-editable-template",templateHash:template.sha256,approvalStatus:meta?.approval_status??"reviewer_pending",reconstruction:meta?.reconstruction??true,limitations:meta?.limitations??"Token inventory was read from the repository DOCX template. Official portal parity, field applicability, and legal requiredness have not been verified.",fields,repeatGroups:[...groups].map(([id,fields])=>({id,fields,identitySource:identitySources[id]??"stable source entity ID (never display row number)"}))};

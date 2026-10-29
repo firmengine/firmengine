@@ -2,6 +2,7 @@
 import type { IntakeCatalog } from "./intake-types.ts";
 import families from "./document-agent-field-contracts.json" with { type: "json" };
 import definitions from "./shared-document-field-contracts.json" with { type: "json" };
+import supplements from "./ocr-field-supplements.json" with { type: "json" };
 
 type BaseContract = (typeof families.families)[keyof typeof families.families];
 type BaseField = BaseContract["fields"][number];
@@ -33,12 +34,13 @@ export function sharedDocumentFieldContract(documentTypeId: string, familyId: st
   if (!definition || !base || !definition.allowedFamilyIds.includes(familyId)) return null;
   const fields = [...base.fields] as BaseField[];
   const ids = new Set(fields.map(f => f.global_field_id));
-  for (const field of definition.fieldsByFamily[familyId] ?? []) {
+  const additions=(supplements.documents as unknown as Record<string,Record<string,BaseField[]>>)[documentTypeId]?.[familyId]??[];
+  for (const field of [...(definition.fieldsByFamily[familyId]??[]),...additions]) {
     if (ids.has(field.global_field_id)) throw new Error("DUPLICATE_SHARED_DOCUMENT_FIELD_ID");
     ids.add(field.global_field_id);fields.push(field);
   }
   return {...base,canonical_type:encodeDocumentRoute(documentTypeId,familyId),
-    field_contract_version:definition.fieldContractVersion,fields,
+    field_contract_version:additions.length?definition.fieldContractVersion+"+supplement/1":definition.fieldContractVersion,fields,
     shared_document_type_id:documentTypeId,record_policy:definition.recordPolicy} as unknown as BaseContract;
 }
 
