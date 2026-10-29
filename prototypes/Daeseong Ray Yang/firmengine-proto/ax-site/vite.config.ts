@@ -18,6 +18,8 @@ const managedLinux = readExecutionProfile() === "managed-linux";
 const localBindingConfig = {
   main: "./worker/index.ts",
   compatibility_flags: ["nodejs_compat"],
+  // Registration depends on the existing Cloudflare Sites hosting deployment.
+  triggers: { crons: ["* * * * *"] },
   d1_databases: d1
     ? [
         {

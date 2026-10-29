@@ -2,9 +2,7 @@ import { runWithReferenceContext } from "../lib/reference-context";
 import handler from "vinext/server/fetch-handler";
 import { runWithConnectorBinding } from "../lib/connector-context";
 import type { ConnectorBinding } from "../lib/connector-contract.mjs";
-import { drainCaseSubstitutionWatch } from "../lib/case-substitution-watch.ts";
-import { getCase } from "../lib/server-store.ts";
-import { getIntakeCatalog } from "../lib/intake-store.ts";
+import { processCaseAgentUpdates } from "../lib/case-agent-scheduler.ts";
 
 const worker = {
   fetch(request: Request, env: Cloudflare.Env, ctx: ExecutionContext<{ CONNECTORS?: ConnectorBinding }>) {
@@ -29,14 +27,12 @@ const worker = {
     }
     return runWithReferenceContext(env.DB, () => runWithConnectorBinding(binding, () => handler.fetch(request, env, ctx)));
   },
-  // Scheduled events are supported when a Cloudflare Cron Trigger is enabled on
-  // the existing Worker. A missing trigger does NOT imply unattended execution.
+  // A configured Cron Trigger checks due work. Every step is version-bound,
+  // leased, bounded to one AI batch, and non-filing. It never sleeps for ten minutes.
   scheduled(_event:ScheduledController, env:Cloudflare.Env, ctx:ExecutionContext) {
     if(!env.DB)return;
     ctx.waitUntil(runWithReferenceContext(env.DB,()=>
-      drainCaseSubstitutionWatch(env.DB!,{limit:5,source:{
-        getCase,getCatalogVersion:async()=>(await getIntakeCatalog()).catalog.version
-      }})
+      processCaseAgentUpdates({limit:1})
     ).then(()=>undefined));
   },
 };

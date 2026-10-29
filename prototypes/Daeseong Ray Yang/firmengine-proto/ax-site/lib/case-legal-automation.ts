@@ -55,7 +55,7 @@ async function transition(database:D1Database,job:Job,lease:string,status:string
      fields.legalReviewRunId??null,fields.documentRunId??null,JSON.stringify(fields.outcome??decode(job.outcomeJson,{})),fields.error??null,
      now,job.id,lease,now,job.caseId,job.caseRevision,job.dataVersion,job.calculationRunId,job.inputSha256).run();
  if(!updated.meta.changes)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
- await note(database,job,status,{status,checks:fields.completedChecks??job.completedChecks});
+ await note(database,job,status,{status,checks:fields.completedChecks??job.completedChecks}).catch(()=>{});
 }
 async function gatherChecks(database:D1Database,job:Job,data:CaseData){
  const exactFingerprint=await legalReviewInputFingerprint(data,job.referenceSha256,EXECUTION_CONTRACT_VERSION);
@@ -153,7 +153,7 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
  if(!job||job.leaseToken!==lease)throw new Error("LEGAL_AUTOMATION_CLAIM_LOST");
  try{
   await assertCurrent(database,job);
-  if(candidate.jobStatus==="draft_pending")return await processDraft(database,job,lease,services);
+  if(job.legalReviewRunId&&["draft_pending","retry_wait","running"].includes(candidate.jobStatus??""))return await processDraft(database,job,lease,services);
   const response=await services.reviewLegal(job.caseId);
   await assertCurrent(database,job);
   if(response.stage==="legal_snapshot_changed")throw new Error("LEGAL_AUTOMATION_SUPERSEDED");

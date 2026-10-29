@@ -3,9 +3,12 @@
  * never issue document deletion, legal acceptance or filing approval.
  */
 import { drainCaseDataUpdates } from "./case-data-recompute.ts";
+import { drainCaseLegalAutomation } from "./case-legal-automation.ts";
+import { reviewLegal } from "./pipeline.ts";
+import { generateAutomaticReviewDraft } from "./automatic-review-draft.ts";
 import { drainCaseSubstitutionWatch } from "./case-substitution-watch.ts";
 import { getIntakeCatalog } from "./intake-store.ts";
-import { db, getCase } from "./server-store.ts";
+import { db, getCase, caseExtras } from "./server-store.ts";
 
 export async function processCaseAgentUpdates(input:{caseId?:string;limit?:number}={}){
   if(input.caseId!==undefined&&(!input.caseId.trim()||input.caseId.length>300))throw new Error("INVALID_CASE_ID");
@@ -26,5 +29,17 @@ export async function processCaseAgentUpdates(input:{caseId?:string;limit?:numbe
       scanned:0,deactivated:0,restored:0,results:[]};
   }
   const calculated=await drainCaseDataUpdates(database,{caseId:input.caseId,limit,loadCase:getCase});
-  return {...calculated,substitution};
+  let legal;
+  try{
+    legal=await drainCaseLegalAutomation(database,{caseId:input.caseId,limit,services:{
+      loadCase:getCase,reviewLegal,
+      processingComplete:async data=>(await caseExtras(data)).processingReadiness.complete,
+      generateDraft:generateAutomaticReviewDraft,
+    }});
+  }catch(error){
+    legal={scanned:0,reviewing:0,draftReady:0,attention:0,results:[],
+      status:"unavailable" as const,reason:error instanceof Error&&error.message.startsWith("LEGAL_")
+        ?error.message:"LEGAL_AUTOMATION_STORAGE_OR_PROCESSOR_UNAVAILABLE"};
+  }
+  return {...calculated,substitution,legal};
 }

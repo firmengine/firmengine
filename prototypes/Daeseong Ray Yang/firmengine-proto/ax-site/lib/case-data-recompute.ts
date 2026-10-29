@@ -3,6 +3,8 @@ import {runCaseCalculatorNode} from "./case-agent.ts";
 import {getCaseDataUpdateState} from "./case-data-watch.ts";
 import {persistCaseCalculationFeatures} from "./case-calculation-feature-store.ts";
 import {buildCaseFeatureSnapshot} from "./case-feature-snapshot.ts";
+import {referenceIdentity} from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with {type:"json"};
 
 export const CASE_DATA_QUIET_PERIOD_MS=600_000;
 type Clock=()=>number;
@@ -34,8 +36,8 @@ export async function recomputeCaseDataUpdate(database:D1Database,input:{caseId:
   const state=await getCaseDataRecomputeEligibility(database,input);
   if(!state.dataVersion||!state.lastChangedAt)return {caseId:input.caseId,status:"no_source_version" as const,dataVersion:state.dataVersion};
   if(!state.isQuiet)return {caseId:input.caseId,status:"debouncing" as const,dataVersion:state.dataVersion,dueAt:state.dueAt,remainingMs:state.remainingMs};
-  const head=await database.prepare("SELECT run_id AS runId,data_version AS dataVersion,case_revision AS caseRevision FROM case_calculation_heads WHERE case_id = ?").bind(input.caseId).first<{runId:string;dataVersion:number;caseRevision:number}>();
-  if(head&&head.dataVersion===state.dataVersion&&head.caseRevision===state.currentCaseRevision)return {caseId:input.caseId,status:"current" as const,dataVersion:state.dataVersion,runId:head.runId};
+  const head=await database.prepare("SELECT h.run_id AS runId,h.data_version AS dataVersion,h.case_revision AS caseRevision,r.reference_sha256 AS referenceSha256 FROM case_calculation_heads h JOIN case_calculation_runs r ON r.id=h.run_id WHERE h.case_id = ?").bind(input.caseId).first<{runId:string;dataVersion:number;caseRevision:number;referenceSha256:string}>();
+  if(head&&head.dataVersion===state.dataVersion&&head.caseRevision===state.currentCaseRevision&&head.referenceSha256===(referenceIdentity()?.sha256??referenceRelease.sha256))return {caseId:input.caseId,status:"current" as const,dataVersion:state.dataVersion,runId:head.runId};
   const loaded=await input.loadCase();
   if(loaded.context.id!==input.caseId||loaded.context.revision!==state.currentCaseRevision)return {caseId:input.caseId,status:"superseded" as const,dataVersion:state.dataVersion};
   let snapshot:Awaited<ReturnType<typeof buildCaseFeatureSnapshot>>;
@@ -60,10 +62,11 @@ export async function drainCaseDataUpdates(database:D1Database,input:{caseId?:st
   const rows=(await database.prepare(`SELECT state.case_id AS caseId,state.data_version AS dataVersion,state.last_changed_at AS lastChangedAt
     FROM case_data_change_state AS state
     LEFT JOIN case_calculation_heads AS calculated ON calculated.case_id = state.case_id
+    LEFT JOIN case_calculation_runs AS calc_run ON calc_run.id = calculated.run_id
     JOIN cases AS current_case ON current_case.id = state.case_id
-    WHERE (calculated.case_id IS NULL OR calculated.data_version < state.data_version OR calculated.case_revision <> current_case.revision)
+    WHERE (calculated.case_id IS NULL OR calculated.data_version < state.data_version OR calculated.case_revision <> current_case.revision OR calc_run.reference_sha256 IS NULL OR calc_run.reference_sha256 <> ?)
     ${input.caseId?"AND state.case_id = ?":""}
-    ORDER BY state.last_changed_at,state.case_id LIMIT ?`).bind(...(input.caseId?[input.caseId,limit]:[limit])).all<{caseId:string;dataVersion:number;lastChangedAt:string}>()).results;
+    ORDER BY state.last_changed_at,state.case_id LIMIT ?`).bind(referenceIdentity()?.sha256??referenceRelease.sha256,...(input.caseId?[input.caseId,limit]:[limit])).all<{caseId:string;dataVersion:number;lastChangedAt:string}>()).results;
   const results=[];
   for(const row of rows){
     try{results.push(await recomputeCaseDataUpdate(database,{caseId:row.caseId,loadCase:()=>input.loadCase(row.caseId),now:input.now}));}

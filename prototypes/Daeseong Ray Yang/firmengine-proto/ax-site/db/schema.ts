@@ -1,4 +1,4 @@
-import { integer, sqliteTable, text, index, primaryKey, unique, foreignKey } from "drizzle-orm/sqlite-core";
+import { integer, sqliteTable, text, index, uniqueIndex, primaryKey, unique, foreignKey } from "drizzle-orm/sqlite-core";
 
 export const cases = sqliteTable("cases", {
   id: text("id").primaryKey(), name: text("name").notNull(),
