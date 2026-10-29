@@ -22,7 +22,7 @@ export async function caseWorkflowResponse(caseId:string){
   const [intake,identityRows,pendingPolicy]=await Promise.all([
     getConsultationView(caseId),
     db().prepare("SELECT source_document_id AS documentId,page,shared_document_type_id AS documentTypeId FROM document_instances WHERE case_id=?").bind(caseId).all<{documentId:string;page:number;documentTypeId:string|null}>(),
-    db().prepare("SELECT COUNT(*) AS count FROM legal_monitor_alerts WHERE acknowledged_at IS NULL").first<{count:number}>()
+    db().prepare("SELECT (SELECT COUNT(*) FROM legal_monitor_alerts WHERE acknowledged_at IS NULL) AS count,MAX(created_at) AS latest FROM legal_monitor_alerts").first<{count:number;latest:string|null}>()
   ]);
   const observed=new Map<string,Set<string>>();
   for(const row of identityRows.results){
@@ -33,7 +33,7 @@ export async function caseWorkflowResponse(caseId:string){
   const pageTypes=[...observed].map(([key,ids])=>({documentId:key.slice(0,key.lastIndexOf(":")),page:Number(key.slice(key.lastIndexOf(":")+1)),
     documentTypeId:ids.size===1?[...ids][0]:null}));
   const [view,roles,recomputeJobs,extras,commandRows]=await Promise.all([
-    buildCaseWorkflowView(data,{catalogVersion:intake.catalogVersion,pendingCourtPolicyChange:!!pendingPolicy?.count,pageTypes}),rolesForActor(await actor(),caseId),
+    buildCaseWorkflowView(data,{catalogVersion:intake.catalogVersion,pendingCourtPolicyChange:!!pendingPolicy?.count,latestCourtPolicyAlertAt:pendingPolicy?.latest,activeIntakeRunId:intake.run?.id??null,activeIntakeCatalogVersion:intake.run?.catalogVersion??null,pageTypes}),rolesForActor(await actor(),caseId),
     db().prepare("SELECT id,job_kind AS kind,status,attempts,next_attempt_at AS nextAttemptAt,last_error AS lastError,created_at AS createdAt,updated_at AS updatedAt FROM case_recompute_jobs WHERE case_id=? ORDER BY created_at DESC LIMIT 51").bind(caseId).all<HealthJob>(),
     caseExtras(data),
     db().prepare("SELECT command_id AS commandId,command_type AS commandType,after_revision AS revision,created_at AS at FROM case_mutation_receipts WHERE case_id=? ORDER BY created_at DESC LIMIT 21").bind(caseId).all<HealthCommand>(),
