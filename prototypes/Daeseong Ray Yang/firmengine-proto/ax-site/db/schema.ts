@@ -198,6 +198,25 @@ export const caseDocumentRequirements=sqliteTable("case_document_requirements",{
   catalogSha256:text("catalog_sha256").notNull(),rawJson:text("raw_json").notNull(),rawSha256:text("raw_sha256").notNull(),createdAt:text("created_at").notNull(),
 },t=>[primaryKey({columns:[t.consultationRunId,t.requirementId]}),foreignKey({columns:[t.catalogSha256,t.documentTypeId],foreignColumns:[sharedDocumentTypeVersions.catalogSha256,sharedDocumentTypeVersions.documentTypeId]}),index("case_document_requirements_case_idx").on(t.caseId,t.consultationRunId,t.status),index("case_document_requirements_type_idx").on(t.documentTypeId,t.caseId)]);
 
+
+export const caseRequirementFieldPlans = sqliteTable("case_requirement_field_plans", {
+  consultationRunId:text("consultation_run_id").notNull().references(()=>consultationRuns.id),
+  requirementId:text("requirement_id").notNull(),
+  caseId:text("case_id").notNull().references(()=>cases.id),
+  documentTypeId:text("document_type_id").notNull().references(()=>sharedDocumentTypes.id),
+  catalogSha256:text("catalog_sha256").notNull(),
+  schemaVersion:text("schema_version").notNull(),
+  routingStatus:text("routing_status").notNull(),
+  mappingStatus:text("mapping_status").notNull(),
+  planJson:text("plan_json").notNull(),
+  planSha256:text("plan_sha256").notNull(),
+  createdAt:text("created_at").notNull(),
+},t=>[
+  primaryKey({columns:[t.consultationRunId,t.requirementId]}),
+  foreignKey({columns:[t.consultationRunId,t.requirementId],foreignColumns:[caseDocumentRequirements.consultationRunId,caseDocumentRequirements.requirementId]}),
+  index("case_requirement_field_plans_case_idx").on(t.caseId,t.consultationRunId,t.documentTypeId),
+]);
+
 // Immutable source extraction schemas and row observations. These tables do not
 // grant fact verification, legal recognition, or court approval.
 export const extractionSchemaVersions = sqliteTable("extraction_schema_versions", {
