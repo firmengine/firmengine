@@ -37,12 +37,12 @@ test("deadline errors reach the durable pipeline without an unbounded retry or m
   assert.equal(f.calls,1);assert.equal(f.body.model,"gpt-6.1-terra");
 });
 
-test("every OCR stage and legal review use Terra while consultation and monitors retain Luna",async()=>{
-  for(const agent of ["document_classifier","document_classifier_recovery","evidence_extractor","source_verifier","targeted_rereader","legal_checklist_reviewer"]){
+test("OCR stages use Terra while consultation and legal reviews use Luna",async()=>{
+  for(const agent of ["document_classifier","document_classifier_recovery","evidence_extractor","source_verifier","targeted_rereader"]){
     const f=boundary();const response=await f.call(undefined,agent);
     assert.equal(f.body.model,"gpt-6.1-terra");assert.equal(response.usage.model,"gpt-6.1-terra");
   }
-  for(const agent of ["consultation_classifier","legal_monitor_change_analysis","legal_monitor_all_discovery"]){
+  for(const agent of ["consultation_classifier","legal_monitor_change_analysis","legal_monitor_all_discovery","legal_checklist_reviewer"]){
     const f=boundary();const response=await f.call(undefined,agent);
     assert.equal(f.body.model,"gpt-6-luna");assert.equal(response.usage.model,"gpt-6-luna");
   }
