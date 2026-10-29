@@ -1,0 +1,50 @@
+{
+  "artifact": "FirmEngine AX current deployed source backup",
+  "captured_at_utc": "2026-10-29T03:13:08.337Z",
+  "timezone": "Asia/Seoul",
+  "project_id": "appgprj_6ae025c864388191a9452d1d75e9f697",
+  "site_url": "https://firmengine-ax-review.starry-tiger-1837.chatgpt.site",
+  "version_number": 43,
+  "version_id": "appgprj_6ae025c864388191a9452d1d75e9f697~appgver_522418056d2c8191b429e5672a53e0d7",
+  "source_commit": "72b23f2c3faee5656caeeb1e6e6afce9a65de3cb",
+  "deployment": {
+    "id": "appgdep_6ae2b5a4cf8c819198476bbe0fcf6988",
+    "status": "succeeded",
+    "updated_at_utc": "2026-10-29T02:57:15.039140+00:00",
+    "environment_revision": 1,
+    "type": "publish"
+  },
+  "access": {
+    "owner_private": true,
+    "allowed_users": 1,
+    "external_visitors": 0
+  },
+  "source_scope": "All 528 tracked files at the exact deployed commit; no working-tree modifications.",
+  "excludes": [
+    "Git history and .git internals",
+    "Installed dependencies and ignored build caches",
+    "Production database rows",
+    "R2 uploaded case documents",
+    "Runtime environment secrets and credentials"
+  ],
+  "operations_performed": [
+    "Read Site metadata",
+    "Read latest saved version metadata",
+    "Verify successful production deployment",
+    "Fetch existing source repository",
+    "Archive exact deployed source commit"
+  ],
+  "pending_work": "Evaluation and implementation paused at user request; no case processing or deployment performed.",
+  "original_deployment_artifact": {
+    "content_hash": "sha256:46762d3e0426183af99a0fd2af7e209caaae30b104bfeaff506107c089e4ca57",
+    "size_bytes": 29931520,
+    "file_count": 240
+  },
+  "verification": {
+    "tracked_files": 528,
+    "git_blob_matches": 528,
+    "source_commit_matches_deployed": true,
+    "working_tree_clean": true,
+    "credential_pattern_scan": "no high-confidence key patterns found"
+  }
+}

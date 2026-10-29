@@ -11,6 +11,7 @@ import { buildFormBindings } from "./form-mapping.ts";
 import type { FormProvenance } from "./form-mapping.ts";
 import type { ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { buildExportProvenance,type ExportPageReceipt,type ExportProvenance } from "./export-provenance.ts";
+import { assessDocumentFilingReadiness, type FilingReadinessReport } from "./document-filing-readiness.ts";
 
 export type OfficeMode = "draft" | "final";
 export interface OfficeArtifact {
@@ -50,6 +51,7 @@ export interface RenderedOffice {
   generatedAt: string;
   extractionMethod: "reopened-docx-xml-and-xlsx-cells";
   metadata:ExportProvenance;
+  filingReadiness?: FilingReadinessReport;
   documents: { kind: ArtifactKind; name: string; title: string; paragraphs: string[]; tables: RenderedTable[]; blocks: RenderedBlock[]; form?: FormProvenance }[];
   fields: RenderedField[];
   workbook: { name: string; rows: string[][] }[];
@@ -227,6 +229,9 @@ export async function writeOfficePackage(input: { data: CaseData; rules: RuleSet
   const html = renderedPrintableHtml(rendered);
   artifacts.push(await artifact("print_html", "09_printable.html", "text/html; charset=utf-8", strToU8(html)));
   rendered.artifacts = artifacts.map((a) => ({ kind: a.kind, name: a.name, sha256: a.sha256 }));
+  rendered.filingReadiness = assessDocumentFilingReadiness({mode,documents:rendered.documents.map(document=>({...document,sha256:artifacts.find(item=>item.name===document.name)?.sha256}))});
+  const arithmeticMismatch=rendered.filingReadiness.documents.find(document=>document.formulaStatus==="inconsistent");
+  if(arithmeticMismatch)throw new Error("OFFICIAL_FORM_ARITHMETIC_MISMATCH: "+arithmeticMismatch.name);
   artifacts.push(await artifact("rendered_json", "rendered.json", "application/json; charset=utf-8", serializeRenderedOffice(rendered)));
   const zip = zipSync(Object.fromEntries(artifacts.map((a) => [a.name, a.bytes])), { level: 6 });
   artifacts.push(await artifact("package_zip", "firmengine_court_package.zip", "application/zip", zip));

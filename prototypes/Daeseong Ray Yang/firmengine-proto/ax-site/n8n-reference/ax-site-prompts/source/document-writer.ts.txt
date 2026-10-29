@@ -14,6 +14,9 @@ export interface DocumentWriterReceipt {
   status:"ready"|"review_required";
   generatedAt:string;
   courtApprovalInferred:false;
+  outputPurpose:"review";
+  readyForElectronicFiling:false;
+  officialFormParity:"not_verified";
 }
 export interface PreparedDocumentWrite { execution:ExecutionSnapshot; receipt:DocumentWriterReceipt; }
 const digest=async(value:unknown)=>{
@@ -38,5 +41,5 @@ export async function prepareDocumentWrite(input:{data:CaseData;evaluation:Deriv
   if(!execution.assessment.generationGate.canGenerateDraft)throw new Error("DOCUMENT_DRAFT_GATE_BLOCKED");
   if(mode==="final"&&(!input.processingComplete||!execution.assessment.generationGate.canFinalize))throw new Error("DOCUMENT_FINAL_REVIEW_REQUIRED");
   const bindingsSha256=await digest({formBindings:execution.formBindings,documentPayloads:execution.documentPayloads});
-  return {execution,receipt:{schemaVersion:"document-writer-receipt/1",caseId:data.context.id,caseRevision:data.context.revision,inputSha256,requiredKinds:[...input.requiredKinds],bindingsSha256,referenceRelease,mode,status:mode==="final"?"ready":"review_required",generatedAt:input.now??new Date().toISOString(),courtApprovalInferred:false}};
+  return {execution,receipt:{schemaVersion:"document-writer-receipt/1",caseId:data.context.id,caseRevision:data.context.revision,inputSha256,requiredKinds:[...input.requiredKinds],bindingsSha256,referenceRelease,mode,status:mode==="final"?"ready":"review_required",generatedAt:input.now??new Date().toISOString(),courtApprovalInferred:false,outputPurpose:"review",readyForElectronicFiling:false,officialFormParity:"not_verified"}};
 }

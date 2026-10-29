@@ -3,19 +3,19 @@
   "release": {
     "id": "firmengine-reference-2026-10-29.1",
     "revision": 1,
-    "sha256": "f9d6506bad0d31bda5d6bd0416767bd4da99d499265c004f60ff58a2ca1e8c06",
+    "sha256": "347dbe44af48986386fb83c0438dd8ac8d42f2c725e505749f4375e88b9fe231",
     "baselineCommit": "df0ccfc011854d05117b335ce8474f065e8545f5",
     "additionalBaselineCommits": [
       "f56935395bd2a07e7f453e076b838bfa515e9f35",
       "683981f9449a7b6f427ea1e2d7672b4f8516927d"
     ],
-    "recordCount": 12795,
+    "recordCount": 13226,
     "byKind": {
       "agent_contract": 10,
       "application_policy": 5,
       "calculation": 18,
       "catalog_metadata": 39,
-      "code_criterion": 10657,
+      "code_criterion": 11088,
       "document_family": 96,
       "document_rule": 34,
       "exception": 46,
@@ -35,14 +35,14 @@
       "workflow": 46,
       "workflow_calculation": 46
     },
-    "sourceFileCount": 427,
+    "sourceFileCount": 525,
     "scope": "All tracked application source/catalog/prompt/criteria; private oracle, heldout, credentials and dependencies are not legal sources. AST criteria are indexed compiled guards, not editable legal parameters."
   },
   "files": [
     {
       "path": ".gitignore",
-      "sha256": "9b50c1d975c78f83d31bfaea756bfca3a9badfe1dc4376c7ccdf2200071a54c8",
-      "bytes": 636,
+      "sha256": "17f341bd5e86501ef493e33a0341827cc67c9b49830f85a990104502cf0fb3bc",
+      "bytes": 995,
       "disposition": "binary_asset",
       "inspection": "asset_hash",
       "criteria": 0
@@ -65,11 +65,27 @@
     },
     {
       "path": "README.md",
-      "sha256": "eb64a9668812ad94cdcdca696227c41e8e4b77ae93eb192bdd0047fd55baf343",
-      "bytes": 11877,
+      "sha256": "7c7a74c1fd39e971be1a4614b9e4c0f66ae9abc24264bab4148cf765536f275b",
+      "bytes": 12537,
       "disposition": "application_or_support",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
+    },
+    {
+      "path": "SOURCE_MANIFEST.json",
+      "sha256": "e42153a450e1f14847f2d81d7657d23a9a6fdb61a69d127d64894c92ac420b18",
+      "bytes": 67150,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "app/api/cases/[id]/analyses/route.ts",
+      "sha256": "ec7b984d51e862a70c7a87a4abc123ee2c1a43752fd40f267a5a00043447d91f",
+      "bytes": 1138,
+      "disposition": "application_or_support",
+      "inspection": "typescript_ast",
+      "criteria": 12
     },
     {
       "path": "app/api/cases/[id]/artifacts/[file]/route.ts",
@@ -113,11 +129,11 @@
     },
     {
       "path": "app/api/cases/[id]/export/route.ts",
-      "sha256": "d67b678f477e130b00f1c7541dcced4b7c63ee5e19e671580a3066fcc7d61a5f",
-      "bytes": 4602,
+      "sha256": "54938675ad003ecbe0c9d54f092669e8b3969aea31b5f6036caa5b37262002bf",
+      "bytes": 5717,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 10
+      "criteria": 12
     },
     {
       "path": "app/api/cases/[id]/process/route.ts",
@@ -153,11 +169,11 @@
     },
     {
       "path": "app/api/evaluation-cases/route.ts",
-      "sha256": "f1079161c59b7a11fe4d785dd1fa42d2e21b90ecfeeed21251151a04a7b32387",
-      "bytes": 5727,
+      "sha256": "2ca617093d4673419fc53e12cecf2ceeba5840138f6bd3a30ea9bb36ff133176",
+      "bytes": 6342,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 17
+      "criteria": 24
     },
     {
       "path": "app/api/intake-reference/route.ts",
@@ -937,11 +953,11 @@
     },
     {
       "path": "components/workspace.tsx",
-      "sha256": "938135aeeacf2b9fb107732103752190ffc2fe871971a61f81dfe9805da89812",
-      "bytes": 120759,
+      "sha256": "8e45d1623421e1b5c522184b4f448056901b4ccb99e091623846f32fb9392ea3",
+      "bytes": 121004,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 627
+      "criteria": 625
     },
     {
       "path": "db/index.ts",
@@ -1017,8 +1033,24 @@
     },
     {
       "path": "docs/audit-transport-reliability.md",
-      "sha256": "03b4fe1d250df8089dd024922b477c12d52e541d36c321b4305849b38c06a7e0",
-      "bytes": 4340,
+      "sha256": "35ef386c59614e4831378300380a2b3df95316d8f93a8b15cd6d5c0bbebee940",
+      "bytes": 4357,
+      "disposition": "documentation",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "docs/ax-v35-merge-manifest.json",
+      "sha256": "d677e79f2627d4200035935c42d2533594137d7276ef93691b48eea1e8d2fd70",
+      "bytes": 128551,
+      "disposition": "documentation",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "docs/ax-v35-merge.md",
+      "sha256": "6119d2f6449c2e281b89a75ba0361a99c0ec3c94790ebe624be713d749bb9b20",
+      "bytes": 7213,
       "disposition": "documentation",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -1027,6 +1059,14 @@
       "path": "docs/consultation-checklist.md",
       "sha256": "e665bebc7fe8a35edeb15cac7a02fc8bb1667f4e49d87c7a3ac1e4ae2ca8e8aa",
       "bytes": 13773,
+      "disposition": "documentation",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "docs/document-filing-readiness.md",
+      "sha256": "b95d6f54d5d753182f9b10e25ac2ebe2aead4319d881d5c108c8b1ccc206aa23",
+      "bytes": 3481,
       "disposition": "documentation",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -1265,11 +1305,11 @@
     },
     {
       "path": "lib/assessment.ts",
-      "sha256": "bcb16416ae4a0aa1c584c8ac18331f062859538c87dbbe5a98e49937ffa7d6f3",
-      "bytes": 78399,
+      "sha256": "458e7e6ea9e8297adfd00b892bb8c23f70555ebfbf2edc0aa22e113824737586",
+      "bytes": 85462,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 781
+      "criteria": 862
     },
     {
       "path": "lib/asset-resolution.ts",
@@ -1281,11 +1321,11 @@
     },
     {
       "path": "lib/calculator-tools.ts",
-      "sha256": "9172d229a7523f442e86cabc99cb7c0225d53210d0913a7c7034d0e8a2d8744b",
-      "bytes": 10879,
+      "sha256": "b627ed5fc5711b6bf8d393ae52b813180af0ee83f42ae06047b4256efb3fc73e",
+      "bytes": 11252,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 59
+      "criteria": 60
     },
     {
       "path": "lib/case-agent-contracts.ts",
@@ -1305,19 +1345,19 @@
     },
     {
       "path": "lib/case-execution.ts",
-      "sha256": "8eff998f6bded9a0aacca3bd628346ca5a6e66efa6f1ef48109249e7436d5b47",
-      "bytes": 8442,
+      "sha256": "d986039db46857e1dd97e98446e0f48d85e612ad0903f07ef9a60e2c7512b311",
+      "bytes": 13791,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 32
+      "criteria": 85
     },
     {
       "path": "lib/case-response.ts",
-      "sha256": "d7e1219158e333b735a79a28800fd281d8ccdd578ee2929329949f6061903ccd",
-      "bytes": 5166,
+      "sha256": "bf3a853726124c53f4969ca7de74a22c5d229dbb7ec0dd86f64c27fc843e98ed",
+      "bytes": 5249,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 31
+      "criteria": 32
     },
     {
       "path": "lib/category-contract.ts",
@@ -1440,6 +1480,14 @@
       "criteria": 197
     },
     {
+      "path": "lib/document-filing-readiness.ts",
+      "sha256": "fc42c0c06e83a0400476c2b3382fccb5668460a72e72f70173a91398994dad99",
+      "bytes": 6368,
+      "disposition": "application_or_support",
+      "inspection": "typescript_ast",
+      "criteria": 38
+    },
+    {
       "path": "lib/document-generation-metrics.ts",
       "sha256": "3d41d15751be930caf90f516d312d8cb45dcd53ed224bca9491198c84c7d71c9",
       "bytes": 9883,
@@ -1457,27 +1505,43 @@
     },
     {
       "path": "lib/document-writer.ts",
-      "sha256": "ca3f980584c7d6c5e39b29bf187e90618d37e719ce969faf06dbf54b17f8688b",
-      "bytes": 3011,
+      "sha256": "84e5528afbc1bb84d1664b12c1bb272594daf0d9cdc4ae01855e54fc617c076a",
+      "bytes": 3196,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 20
     },
     {
       "path": "lib/domain.ts",
-      "sha256": "365a2b7744d6b535fec7b86226f80a08b056c547bfefc5d1bab3ad8f688c30f0",
-      "bytes": 70945,
+      "sha256": "16d85111002ade4df2a7adc05da7b202e18281a92215044624fd8a4fa5123d66",
+      "bytes": 71573,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 597
+      "criteria": 598
+    },
+    {
+      "path": "lib/evaluation-inventory.ts",
+      "sha256": "91f992e20e7b7928f5e857f7cafa1def8f117f541526e75150c2730b7c3fb529",
+      "bytes": 958,
+      "disposition": "application_or_support",
+      "inspection": "typescript_ast",
+      "criteria": 11
     },
     {
       "path": "lib/execution-catalog.ts",
-      "sha256": "792855f6232d90ec59e4824042474dbf1971cc9c394e334af203e806eb04496f",
+      "sha256": "a90d306aa05f9c11f2720813fe3e11cadf6071060c07045fd850a13cff320293",
       "bytes": 2390,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 1
+    },
+    {
+      "path": "lib/export-artifact-transaction.ts",
+      "sha256": "be807e11391e88ce706b8a77d48cc27c9986965adf4fdd4fd6595de11ab1ee51",
+      "bytes": 4886,
+      "disposition": "application_or_support",
+      "inspection": "typescript_ast",
+      "criteria": 10
     },
     {
       "path": "lib/export-provenance.ts",
@@ -1521,8 +1585,8 @@
     },
     {
       "path": "lib/form-mapping.ts",
-      "sha256": "cb6f44f48cd00a648cfc1fd8f9f552253b03d546141ca5c24382c0b07b210d96",
-      "bytes": 26891,
+      "sha256": "abce148ad33cde77098c0878e8b33b115ec9d4ee4e1f7acd2f1ef05601e0cc70",
+      "bytes": 27319,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 170
@@ -1560,12 +1624,20 @@
       "criteria": 0
     },
     {
-      "path": "lib/intake-classifier.ts",
-      "sha256": "8499beda903aeb3081ef50081114c6e60ba7adecef394f5af9b013eec7d3e55c",
-      "bytes": 2854,
+      "path": "lib/intake-classifier-response.ts",
+      "sha256": "e59934a8d80675fb68392e19563928fa7d44f8c7c29f14fe83d063550a54dc32",
+      "bytes": 6582,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 8
+      "criteria": 46
+    },
+    {
+      "path": "lib/intake-classifier.ts",
+      "sha256": "35efce52c31b574d777072c23e1c62d5e785b2c15f8b497bf4058879bda4643f",
+      "bytes": 3986,
+      "disposition": "application_or_support",
+      "inspection": "typescript_ast",
+      "criteria": 12
     },
     {
       "path": "lib/intake-engine.ts",
@@ -1592,17 +1664,25 @@
       "criteria": 5
     },
     {
+      "path": "lib/intake-source-spans.ts",
+      "sha256": "014a636248ca6130280c6b1fcd27425b68cd48fad587ce58379de867e89bbc86",
+      "bytes": 10629,
+      "disposition": "application_or_support",
+      "inspection": "typescript_ast",
+      "criteria": 143
+    },
+    {
       "path": "lib/intake-store.ts",
-      "sha256": "c07121585614c014b1f769b55f40e846966cb71c049070ae85cc0fa105ad8ce9",
-      "bytes": 19484,
+      "sha256": "6406b51ec0eb07b87fab6a5fbb9dfce707dd8115a7e58fc8ed1b317304e67cc2",
+      "bytes": 20165,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 141
     },
     {
       "path": "lib/intake-types.ts",
-      "sha256": "4e65f62a3db4e1bf500cc35630e9924ccbaf29a48ca7708778be6139ffcead33",
-      "bytes": 4393,
+      "sha256": "22d8c4deb2254406584fa0aa092ac11afd17c633ef7185a8583f0d6b459dfbae",
+      "bytes": 4541,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 2
@@ -1681,11 +1761,11 @@
     },
     {
       "path": "lib/legal-review-packet.ts",
-      "sha256": "4388242833e4b311763bb417b2343dcc31fe2ef1e5fd49981b515c6b53b08a6f",
-      "bytes": 24438,
+      "sha256": "cf2e54d18e0c4fb3e1cd4f582c86ee32a7abefcfc0af6d0c58b56616b554b411",
+      "bytes": 25990,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 205
+      "criteria": 216
     },
     {
       "path": "lib/legal-rules.ts",
@@ -1705,8 +1785,8 @@
     },
     {
       "path": "lib/luna.ts",
-      "sha256": "bda00479889b63ee9574519e13bb4f1da0833d5d4e325a7365e1216f83e591bb",
-      "bytes": 4799,
+      "sha256": "ab13d708fc49cb22dffbf750ef96929fb22db567e9467ad9d6ecf1ae4efa2ef1",
+      "bytes": 4853,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 41
@@ -1737,11 +1817,11 @@
     },
     {
       "path": "lib/office-writer.ts",
-      "sha256": "30d89c2fced468dce5c1344ffdb640d923d4064e4e62e5f8191090fd2b72b447",
-      "bytes": 24515,
+      "sha256": "0f633d68dd07aeda242270ceaff799dc13abb7b467547a6250d745f783afde89",
+      "bytes": 25080,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 121
+      "criteria": 124
     },
     {
       "path": "lib/page-job-inspection.ts",
@@ -1769,11 +1849,11 @@
     },
     {
       "path": "lib/pipeline.ts",
-      "sha256": "fb72d5fd2c498e58af6d480fff1a81181bd89988ceedfa40bb0b7cce1112cb1b",
-      "bytes": 85293,
+      "sha256": "fb4d809e6ef82e2286c9c2678292d2a3c6304798260661533e94739abfe34613",
+      "bytes": 85806,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 534
+      "criteria": 532
     },
     {
       "path": "lib/process-job-scope.ts",
@@ -1873,8 +1953,8 @@
     },
     {
       "path": "lib/reference-prompt-policies.json",
-      "sha256": "ae5a5b5eb49813616917163d7ff389d765d770fced577aeefc7801a416919a85",
-      "bytes": 113614,
+      "sha256": "b8ce8f41b6e650580061da8b069223024c51eded1271e24ecc2a0406f90d5ab8",
+      "bytes": 120786,
       "disposition": "application_or_support",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -1945,11 +2025,11 @@
     },
     {
       "path": "lib/sample-manifest.ts",
-      "sha256": "9c4b285cfd3b89c2326793ed55762bf9e2c75f2043f6b025c8b6a0256862f46b",
-      "bytes": 2195,
+      "sha256": "38a9221f84709b40575ad64168920b189b5ef83853f8383f7c31bcbb635f6366",
+      "bytes": 811,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 67
+      "criteria": 1
     },
     {
       "path": "lib/scan-quality.ts",
@@ -1969,11 +2049,11 @@
     },
     {
       "path": "lib/server-store.ts",
-      "sha256": "4c88f2ae9f14c4f85b1c4560c32c646121ca130bef249f25a83461c5afc58a11",
-      "bytes": 20147,
+      "sha256": "ddfde31336f9d8ed8e7c74949cc5aec6a968d01103ce46c360a2ba35d132698d",
+      "bytes": 26303,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 108
+      "criteria": 167
     },
     {
       "path": "lib/site-calculator-mcp.ts",
@@ -2041,11 +2121,11 @@
     },
     {
       "path": "lib/structured-case-import.ts",
-      "sha256": "d8c123ee8b29e4e761e464b853686c3d95485d01d315402797995e9b4a2bd857",
-      "bytes": 10491,
+      "sha256": "3dbe7128ef5e467b7c6aeb1926580eab9353ffb5c823eb0b8a14c02532f9ae3d",
+      "bytes": 11938,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 114
+      "criteria": 131
     },
     {
       "path": "lib/transaction-review.ts",
@@ -2078,6 +2158,654 @@
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
       "criteria": 196
+    },
+    {
+      "path": "n8n-reference/AX_PROMPTS.md",
+      "sha256": "d1b9ac3649add77ae07c61044136765eea6985496abde95d6ed69981d7041323",
+      "bytes": 6668,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/NODE_MAP.md",
+      "sha256": "4c2ae3d987d16792ae8f89dfe9be4fa21d656863b06aa3fe0b1d6acbacc02910",
+      "bytes": 10673,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/README.md",
+      "sha256": "a6ffd88c2753f89e5247fc60518925bd1aca345cea6a48165b2977477d793c6e",
+      "bytes": 4337,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/01-classifier.md",
+      "sha256": "7a521a1fcca81644adc9900998e804c8f35daad34e8679b04b6f81c07970c41f",
+      "bytes": 7413,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/02-extractor.md",
+      "sha256": "45de4a57ab6d4e90a55a351f2a393f864724965615bc59c835c516152de8c286",
+      "bytes": 15292,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/03-verifier-and-repair.md",
+      "sha256": "7d96ff3bd1ae445dc45b203fcedee9aa5cf9ae0b84ece8c4bab1194fbf3c0986",
+      "bytes": 3027,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/04-legal-reviewer.md",
+      "sha256": "32a3602c2196b9962b9baeb967a6e9a3b6ca52bef5df552ab86485f6b8f67a49",
+      "bytes": 5441,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/05-consultation-classifier.md",
+      "sha256": "030bfba68eefe257fefdf2629fd41f060e559fa86dc2a0eedf813afa50a363fa",
+      "bytes": 9826,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/06-legal-monitor.md",
+      "sha256": "88fa1fe670ae51c1a58cc7373ddeca3221032ceb012eac49dfaad14c3b531217",
+      "bytes": 5484,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/07-policy-catalog.md",
+      "sha256": "7db68a36605fa04001965cc2ef4b788683f7c7142dc5a1fab65aa2dc9164f6cb",
+      "bytes": 70784,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/08-calculator-and-document-writer.md",
+      "sha256": "70c75a328af3cabcd176129e393364e727ef5bee4d1cc09b4d85b12d891e2aa8",
+      "bytes": 1165,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/shared-instructions.md",
+      "sha256": "b50f4ee358cf19071cee21e8eaf1fa5f388a761cb2736530959d9ab502ebc354",
+      "bytes": 15860,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/calculator-tools.ts.txt",
+      "sha256": "9172d229a7523f442e86cabc99cb7c0225d53210d0913a7c7034d0e8a2d8744b",
+      "bytes": 10879,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/case-agent-contracts.ts.txt",
+      "sha256": "221168067c110b24a93b3aae8fb34935395564056ce21b57cb825aaeea81639d",
+      "bytes": 1925,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/case-agent.ts.txt",
+      "sha256": "0869bb265c6bcfc767f354cfdc7a3d170e2dcdfbd11d5bde127ad992b2208075",
+      "bytes": 2022,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/case-execution.ts.txt",
+      "sha256": "8eff998f6bded9a0aacca3bd628346ca5a6e66efa6f1ef48109249e7436d5b47",
+      "bytes": 8442,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/category-contract.ts.txt",
+      "sha256": "710cf17b25aba3aab8d2092e889f7e5cd767a0100363247f6c02e41e4b00ac97",
+      "bytes": 2132,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/classification-recovery.ts.txt",
+      "sha256": "8bb340afaf383e2679c41cd51cb2520053d432c1989c10072dc3bab0f72de053",
+      "bytes": 6435,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/coverage-review.ts.txt",
+      "sha256": "228b9c14251ce67df724f8b711b25755e1aab92151f031653759d04bab203fdf",
+      "bytes": 3887,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/document-agent-field-contracts.json",
+      "sha256": "8c915b4920504fc88fe23946ae70e256569a454655d4626949d465b13cb7f9be",
+      "bytes": 931411,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/document-agent-registry.ts.txt",
+      "sha256": "d2a766639d31e67e3375dc5d750e9346f11cf5541b7a97db3d890e5e9cfaf7c8",
+      "bytes": 10929,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/document-routing.ts.txt",
+      "sha256": "01bb49bdd6eb1411e6f7a6e9a1d83ada1273bc70bdd0e1fa2b7defbf6ad96937",
+      "bytes": 7887,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/document-writer.ts.txt",
+      "sha256": "ca3f980584c7d6c5e39b29bf187e90618d37e719ce969faf06dbf54b17f8688b",
+      "bytes": 3011,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/domain.ts.txt",
+      "sha256": "365a2b7744d6b535fec7b86226f80a08b056c547bfefc5d1bab3ad8f688c30f0",
+      "bytes": 70945,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/execution-catalog.ts.txt",
+      "sha256": "792855f6232d90ec59e4824042474dbf1971cc9c394e334af203e806eb04496f",
+      "bytes": 2390,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/extraction.ts.txt",
+      "sha256": "706b7ac4556e5de343be43e97810d098b33481fb891349fecb0efce0345a109c",
+      "bytes": 51053,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/field-applicability-contracts.json",
+      "sha256": "1479a9e5406c9d019079874890e84690387709d65f8e2c2b59a073230cdf9967",
+      "bytes": 226446,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/field-observation.ts.txt",
+      "sha256": "70e9be6bbfcd055fd5d8aca6bb9e48b4e3f46587e2391a7cb93233df633dcfe0",
+      "bytes": 8816,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/intake-classifier.ts.txt",
+      "sha256": "8499beda903aeb3081ef50081114c6e60ba7adecef394f5af9b013eec7d3e55c",
+      "bytes": 2854,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/intake-engine.ts.txt",
+      "sha256": "4a8d288fe15aa75aa2f760bff082d5b01d0cc04ff6cefdda315ec2d6dd41daf7",
+      "bytes": 34512,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/intake-store.ts.txt",
+      "sha256": "8b03db0d2e001be805c1825ee7f0519c1594ffb8d3e8c277016247ed9b2b6575",
+      "bytes": 19711,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/intake-types.ts.txt",
+      "sha256": "4e65f62a3db4e1bf500cc35630e9924ccbaf29a48ca7708778be6139ffcead33",
+      "bytes": 4393,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/legal-monitor-provider.ts.txt",
+      "sha256": "313c30e63744ada90b58f37d57aed0eff184eda8a66c743d922ea115dea13a5a",
+      "bytes": 9949,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/legal-monitor-sources.ts.txt",
+      "sha256": "67ec8a61d839dbbd14c8522ec928c5ad5e7624dc7a2b233d0ad06bd2dda6f743",
+      "bytes": 9839,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/legal-review-packet.ts.txt",
+      "sha256": "4388242833e4b311763bb417b2343dcc31fe2ef1e5fd49981b515c6b53b08a6f",
+      "bytes": 24438,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/luna.ts.txt",
+      "sha256": "bda00479889b63ee9574519e13bb4f1da0833d5d4e325a7365e1216f83e591bb",
+      "bytes": 4799,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/pipeline.ts.txt",
+      "sha256": "fb72d5fd2c498e58af6d480fff1a81181bd89988ceedfa40bb0b7cce1112cb1b",
+      "bytes": 85293,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reactive-evaluation.ts.txt",
+      "sha256": "0d53168f2b08ea4fee9724b2055550ce3ea02d5a1312c27fcfea3f57c1b7e313",
+      "bytes": 2259,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reference-context.ts.txt",
+      "sha256": "6d20447aced83ea62e65c10719407923f23487025486823ba7feee716ae4d049",
+      "bytes": 2783,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reference-monitor-policies.json",
+      "sha256": "606b04ec91eb81811dac1cd47d4212862508084583447e1a7d8d4b9a8c35295a",
+      "bytes": 6891,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reference-prompt-policies.json",
+      "sha256": "ae5a5b5eb49813616917163d7ff389d765d770fced577aeefc7801a416919a85",
+      "bytes": 113614,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reference-prompts.ts.txt",
+      "sha256": "80540627ffda873dbe3623735f1cbfda3e58f0dbe5ac22ab5c0bb2027598536b",
+      "bytes": 3627,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reference-release.json",
+      "sha256": "268dacd724cdb2968d367f99e2a8bcbc6eca366bbeb9c302e971adbbeb1329be",
+      "bytes": 1186,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/reference-runtime.ts.txt",
+      "sha256": "407c31161686726ac4bef4f89b33fff931e3904e4ae738b2e66a58af2e1ec068",
+      "bytes": 2232,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/source-nature-context.ts.txt",
+      "sha256": "d2cc7abe70e1a9277210aca52fa8279827f2979643cf857703f848aeb117474f",
+      "bytes": 2543,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/ax-site-prompts/source/workflow-rules.ts.txt",
+      "sha256": "7068fe0d2cb78d22851fa781588b80bba6836936668a74277636f12f3e134d94",
+      "bytes": 23183,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/IO.md",
+      "sha256": "c29fde362e991727a6ebc9bfd7ea8bd18b76c4671d9235b5d7e815b47a7aef2e",
+      "bytes": 1993,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/body.md",
+      "sha256": "148375cd828a29e012451f1a5c9cfbd54aed6bb1089c5b8957526c80f5302e86",
+      "bytes": 1511,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/config.json",
+      "sha256": "fbea2ff2729f871d441e7b9db690083482b3d63c146dea58222301c199b16055",
+      "bytes": 528,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/input.example.json",
+      "sha256": "37093fff871e8fa9bf65abc5d98abdead85d2a4363dff83e3f61c337fd55f623",
+      "bytes": 405,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/input.schema.json",
+      "sha256": "9c3012554bb7e96c407a6bc61e4db22612819c24a00dd1ecceec64c9ad24744a",
+      "bytes": 908,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/output.example.json",
+      "sha256": "b1196681d139d73f9dc5df67e5df9da8220e58ffc74f7a1fea5e63be1dd87d13",
+      "bytes": 379,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/output.schema.json",
+      "sha256": "48a389d5be029fc81536085043afcb5b6e1ec321c81a0b97310e6ca9029045da",
+      "bytes": 1138,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/classify/system.md",
+      "sha256": "c1178ceccf7563f83fa0105c395ae93b66d4039c2e4b59534a9bb601395e4989",
+      "bytes": 262,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/IO.md",
+      "sha256": "1003aade860c2fa9d573d39083eedb53f1665bb33b8dda24c191d227c216a88a",
+      "bytes": 4076,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/RUNTIME.md",
+      "sha256": "05b21a44a7574b0e660fc0bec449c36264f859c3de70ed43ad4c62731c0859dc",
+      "bytes": 3312,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/body.md",
+      "sha256": "0837788db8b0ff22dd73f69b57b4537fe9605947e39f841cb9d865a4cd89b113",
+      "bytes": 8686,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/config.json",
+      "sha256": "a4a3a8ffa68dbd5358f2027eb52c0a0efe826fe217356934cfea2e9c44bf460f",
+      "bytes": 529,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/input.example.json",
+      "sha256": "fff2216970730cc70918fddacf8e759ec3a27313a19901a92d728fc341881c08",
+      "bytes": 439,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/input.schema.json",
+      "sha256": "835ba5b02021b9db5f24fad70403af0b90c894f5d95608334edc97f40c94886a",
+      "bytes": 1619,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/output.example.json",
+      "sha256": "40f8ea9ea8a0173ce979048b8d5b859c82bc34f9d94cceb7ee93e0a1c4cbdaed",
+      "bytes": 668,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/output.schema.json",
+      "sha256": "5cd7e61bfc3006e1642745e541c49d2897d212ef683c0d5375bf5bf6fb8d056c",
+      "bytes": 2590,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/extract/system.md",
+      "sha256": "974a34cb00fd9bc4ce3a86eade92341c4fa0300d376a0adbdea42150f4261c03",
+      "bytes": 470,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/body.md",
+      "sha256": "da8de449e457c1327d001c0a23b26a0a1e50b0d12c1b97fca0b461f97cf19758",
+      "bytes": 152,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/config.json",
+      "sha256": "d1ac9c467eee8ba9df4eb24d2c70258fd0e6571c4980f0354e0b835d2cdd5d8c",
+      "bytes": 237,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/input.example.json",
+      "sha256": "f0e7b3b2d72e83fecb9f5f715a3ddea6ecbcda5609e5006f33b14ec5e8dadcd3",
+      "bytes": 199,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/input.schema.json",
+      "sha256": "6368ba7c683949083980c3630965b6b4a1ab6a939858c6c54bf29e223463ed46",
+      "bytes": 873,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/output.example.json",
+      "sha256": "3dc9779872d43aecc1e06aa6b726453a2be4888da737f14241ae54ffdb40b63d",
+      "bytes": 231,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/output.schema.json",
+      "sha256": "64b82fd69885113007fc83f83a7fe3795c8cd9036d8e79e741889ab92232e783",
+      "bytes": 1318,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/judge/system.md",
+      "sha256": "71bdcd96e054db09d40ee743b4e52535c27925088cf670104d886101342dc957",
+      "bytes": 673,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/body.md",
+      "sha256": "f5865a3cdb6a3c3daa073a3d481c3dd130c5c4cb79ca3ed94f2803601b3ab1c0",
+      "bytes": 417,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/config.json",
+      "sha256": "2582cce9bf402866015095dc9ca973891e4e81522800cb289507d30759f7fcf8",
+      "bytes": 114,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/input.example.json",
+      "sha256": "6e7a6374cffc2392622dbdfc9d44b641ce3d6f26b15ddd39c847d28223362c4c",
+      "bytes": 246,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/input.schema.json",
+      "sha256": "db67fa47dd77107c2783c4169efe880894c178af089b021bc81b32449c27c627",
+      "bytes": 626,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/output.example.json",
+      "sha256": "f469b97499c2d90e08d2e326832373ce4bf091cd3ebdc25616831c53e90bd433",
+      "bytes": 279,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/output.schema.json",
+      "sha256": "f7038fbeb86a2fca4814e9438004601f6bdf4c8a8701c04d02a3b930df7fe3a5",
+      "bytes": 1394,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/legacy-prompts/law-watch/system.md",
+      "sha256": "ecd3a62e91a9f6ccafffd409d52bbf04f8d39cdecb67eeb7e1f55233c94d1612",
+      "bytes": 1177,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/manifest.json",
+      "sha256": "8a0abdc1c337c7d36a160bbc7265c851da1525199f0d6b33d9d8237ee6e0f030",
+      "bytes": 20626,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/refresh.py",
+      "sha256": "c9f3714671ef80cd288d8838254f4244796cc6655fa9f5df065e7193161df84f",
+      "bytes": 17922,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/workflows/firmengine-p0.json",
+      "sha256": "a60e14482852d52bb8da610ba4de5326663fb95badf23eeecdc614608b4ebbb2",
+      "bytes": 23736,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "n8n-reference/workflows/law-watch.json",
+      "sha256": "9089c389eb04c60b4370ddcf9979747987daf988961856cd1a516547c08e483a",
+      "bytes": 1487,
+      "disposition": "application_or_support",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
     },
     {
       "path": "next.config.ts",
@@ -2288,8 +3016,8 @@
     },
     {
       "path": "public/templates/README.md",
-      "sha256": "cc778349b2f9ef7f9f6ccfb92dbb56605967d94370ec77961dad82c0b046276a",
-      "bytes": 4436,
+      "sha256": "fae82c4439a3e76c1e5042a6b85b368d04b24f4d4f35dc24e0e7d1095434dc47",
+      "bytes": 4698,
       "disposition": "application_or_support",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -2584,8 +3312,8 @@
     },
     {
       "path": "scripts/export-reviewed-source.py",
-      "sha256": "0ab98bb07dd3c51159a4af963e9a252a3cef36f10cbc10610a89a43f3b321918",
-      "bytes": 25593,
+      "sha256": "2deefc263b66214c37515ab70c60ec55be71c0a703e3632c0e52971b877b4f35",
+      "bytes": 25911,
       "disposition": "application_or_support",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -2672,11 +3400,11 @@
     },
     {
       "path": "scripts/run-framework.mjs",
-      "sha256": "9bf9f41a29314cabe0238b8e9c540ec3f7b5a6adafc7c8fb6c3940722d061dca",
-      "bytes": 993,
+      "sha256": "65b25a921711266a792dbec3d6ae4fbf799fe76ed2322e17fb0e3b09d0972f43",
+      "bytes": 1303,
       "disposition": "application_or_support",
       "inspection": "typescript_ast",
-      "criteria": 10
+      "criteria": 11
     },
     {
       "path": "scripts/run-sample-evaluation.py",
@@ -2800,8 +3528,8 @@
     },
     {
       "path": "tests/calculation-audit.test.ts",
-      "sha256": "ee59377379a992fcdda84cdb8fcaeedef310201e322db5dbf6b707a7fd9f31fe",
-      "bytes": 21076,
+      "sha256": "31242d8afb3e336099a7590787678f4e6a7ffec46bf9717fa3ab3277797127b0",
+      "bytes": 21172,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -2871,6 +3599,22 @@
       "criteria": 0
     },
     {
+      "path": "tests/disposal-execution.test.ts",
+      "sha256": "cd600040ac581e334dfb8f70263d4cd1b3f8e430657b988243da6667fcb282ae",
+      "bytes": 7539,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "tests/document-filing-readiness.test.ts",
+      "sha256": "d0834e20e95868cf1195b3023af1be8bded0c2b920a3295e449b993e3f4955bd",
+      "bytes": 3347,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
       "path": "tests/document-generation-metrics.test.ts",
       "sha256": "a1ec7e6bff90baff35f352e1fe2fc1befb4df34be842d842e66b139c3b6e33ed",
       "bytes": 5747,
@@ -2887,17 +3631,41 @@
       "criteria": 0
     },
     {
+      "path": "tests/document-snapshot-isolation.test.ts",
+      "sha256": "883a99af0ee7c25e0626838d2a81eb224238a229c8c5faa38683176fdc460fbe",
+      "bytes": 4642,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
       "path": "tests/document-writer.test.ts",
-      "sha256": "e320d14bee4ea9dd23afce9f9245271224a14d16818aabcdbfc4febe474b5f55",
-      "bytes": 3851,
+      "sha256": "05015f0941170f90fb24e0d008b78623c20068a9a516bfbdb74d85b3f1a73ea0",
+      "bytes": 4397,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
     },
     {
       "path": "tests/domain.test.ts",
-      "sha256": "970022bd5a6ef9a0067e784c46b1012c3270cfc4721b90fdc39fe66d83107706",
-      "bytes": 34539,
+      "sha256": "f409975ca5b9abad0ddfa9a1ea621567a893da00c6bc9d053f74fd1bf3589d1f",
+      "bytes": 40877,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "tests/evaluation-inventory.test.ts",
+      "sha256": "b88f69fd52175f280cc4492cdea3a07647f689fa707031baf357603ca3f4e849",
+      "bytes": 801,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
+      "path": "tests/export-artifact-transaction.test.ts",
+      "sha256": "86ad25a32184222896d8d624ebd4f7ea46b08e266a478d946c7acf0fcb22c069",
+      "bytes": 7396,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -2967,17 +3735,25 @@
       "criteria": 0
     },
     {
+      "path": "tests/intake-classifier-response.test.ts",
+      "sha256": "6d748ecd87f63ce7cec97701519d5c91048419c8ca15a36bcf2450b1ced82e82",
+      "bytes": 6232,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
       "path": "tests/intake-engine.test.ts",
-      "sha256": "c5ac07f30fd9869ea03a777984c0f3b9edc4dff819abe24d29e00b85b0af9fd9",
-      "bytes": 37714,
+      "sha256": "de657b6f168eec916095db9e6b21d3155e4f533c37e34b8985f103da54946feb",
+      "bytes": 40040,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
     },
     {
       "path": "tests/intake-prompt.test.ts",
-      "sha256": "3ac2c6bb5f4ce2fbbc81e36a9279f0c1f7a4bda3be3f04e8cc327e92540ab721",
-      "bytes": 3121,
+      "sha256": "0874f133bc8c3319d83ae26e63ec91496baa8812511c37d3277874da3c4085a3",
+      "bytes": 4287,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -2991,9 +3767,17 @@
       "criteria": 0
     },
     {
+      "path": "tests/intake-source-spans.test.ts",
+      "sha256": "fb12c66416a5eccf279cddc6cc35b87ab5bfb5321d68311b2dc47a3f290aac0b",
+      "bytes": 5585,
+      "disposition": "test_evidence",
+      "inspection": "content_hash_and_catalog_or_manual_review",
+      "criteria": 0
+    },
+    {
       "path": "tests/intake-store.test.ts",
-      "sha256": "60668f76157ab3482264ebf7eabce3b686e7645b0d5c30674a949f82357141fb",
-      "bytes": 13145,
+      "sha256": "3750abc0611f6fb543ba52316c83bc5ac58089196bd50321f85df457511785f3",
+      "bytes": 16953,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3008,8 +3792,8 @@
     },
     {
       "path": "tests/large-storage.test.ts",
-      "sha256": "8285502440d56d3128168d2337fc6e7bb1aa065cfaf9e5d5094c74f46c759626",
-      "bytes": 6186,
+      "sha256": "4c39d6476a7c1d4a1bb482ecbb7f8bf672de670264b05d1a12c900707508f0e0",
+      "bytes": 6266,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3032,8 +3816,8 @@
     },
     {
       "path": "tests/legal-monitor-provider.test.ts",
-      "sha256": "97619101297a619679596c1801a89ebf7e9254cac44bb326d757ec0790d6f1e8",
-      "bytes": 12893,
+      "sha256": "52a54b1be80f94d1cdff5764757ebc94994071f3f7db50a902e53c95f04cf72e",
+      "bytes": 12845,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3064,16 +3848,16 @@
     },
     {
       "path": "tests/legal-review-packet.test.ts",
-      "sha256": "49b8b43eeee3a4e5c81e3cbfb4fd5d73f7adf388db0943094dcfccdc0e10d603",
-      "bytes": 12598,
+      "sha256": "6a726fd86832b859791784d82197768d8b944f20d8376cd292dc6cd21d70f6cd",
+      "bytes": 17026,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
     },
     {
       "path": "tests/luna-boundary.test.ts",
-      "sha256": "0dd5481f096601877d91ed7356d1d934ac6c8d9bd31ac12e357e8f92fdd1ef41",
-      "bytes": 2280,
+      "sha256": "967bd42cf9e09b41870c5c719fe58e32244e8c7a9e61566cae68c0b96ef47689",
+      "bytes": 2745,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3096,8 +3880,8 @@
     },
     {
       "path": "tests/office.test.ts",
-      "sha256": "4894fe0e89f323e36d34e7797d4a5d9f78d0f6920b6e04848eb46bee6dd89f7e",
-      "bytes": 21165,
+      "sha256": "cb0af194d82ad7b1f6fd210a8d4e39dd48da8cfe9a485838954a34e8ed8252cb",
+      "bytes": 21245,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3144,8 +3928,8 @@
     },
     {
       "path": "tests/pipeline-commit.test.ts",
-      "sha256": "2267ad0fd9087073ce5ddcb2cd29cf3ba39f55f8a012a59b78c8af5f0a86dfe6",
-      "bytes": 52702,
+      "sha256": "83bffe2d1e94935219613adb0f1a936bc9e37453ad70c9f882a11960ade716ad",
+      "bytes": 52830,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3184,8 +3968,8 @@
     },
     {
       "path": "tests/proposed-schedule.test.ts",
-      "sha256": "bff83e585d1a148bfd03b23d048cff7d7e3c9985ea8738a5186e27476f9cb179",
-      "bytes": 5036,
+      "sha256": "f715a9879708aaebcb188ae41fc102c15dca31f2fb33a6c8f5e4de9b9f14518a",
+      "bytes": 5135,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3216,8 +4000,8 @@
     },
     {
       "path": "tests/reference-parameters.test.ts",
-      "sha256": "d3fdd43cc7f64152a12b16d5bdf889e4999983df8702feefb1c9d05eea3c4f56",
-      "bytes": 11173,
+      "sha256": "3f44163cdfebb0226a2acd0ee0e100cbd4c7707aefd3b6b555cc027845bcd003",
+      "bytes": 11002,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3232,8 +4016,8 @@
     },
     {
       "path": "tests/reference-prompts.test.ts",
-      "sha256": "a30fba1f95ac5916ff2962c64768e1f2787ab5f416951b030fb989b659f394b5",
-      "bytes": 8160,
+      "sha256": "505726054bb06b7f9a46e03613f60026d76c0b6acd4a02f459a0803b0801c8af",
+      "bytes": 8036,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3288,8 +4072,8 @@
     },
     {
       "path": "tests/server-integrity.test.ts",
-      "sha256": "08044a5f7425b721bd43dfa6a2473b41c73f86e1f6f54db365c5b4196bcdff4a",
-      "bytes": 35317,
+      "sha256": "a6246a8f58ed95fa921a788ec43490c5a428dbac86d084d2c1b4f24fdbe6f3d5",
+      "bytes": 42704,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
@@ -3360,16 +4144,16 @@
     },
     {
       "path": "tests/test_export_receipt_projection.py",
-      "sha256": "6d71ecf81454a6c5bdd71629738b428f9044ab0748feb3f512de43ca17ed8dc5",
-      "bytes": 1824,
+      "sha256": "2b141dbb0fd3963438ea342c520988396d603df6e034311c12560773c6b5433f",
+      "bytes": 1840,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0
     },
     {
       "path": "tests/test_source_export.py",
-      "sha256": "b6c002adb785f1347b08a43e477fdda779edfcda4b47c6577ddd7fca5f52a5da",
-      "bytes": 3460,
+      "sha256": "4ed286b9ca61cdad8de138dff6fd12239006bb17755c9d84a6c87fa57ee20a24",
+      "bytes": 5040,
       "disposition": "test_evidence",
       "inspection": "content_hash_and_catalog_or_manual_review",
       "criteria": 0

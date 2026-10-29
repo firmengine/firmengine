@@ -1,6 +1,7 @@
 import type { CaseData } from "../../../lib/domain.ts";
 import { actor, db, errorResponse, event, getCase, now, requireSameOrigin, HttpError } from "../../../lib/server-store.ts";
 import { caseResponse } from "../../../lib/case-response.ts";
+import { parseEvaluationInventoryQuery } from "../../../lib/evaluation-inventory.ts";
 import { canonicalSha256, storedCaseMatchesImport, STRUCTURED_CASE_IMPORT_MAX_BYTES, structuredCaseCounts, validateStructuredCaseImport, type StructuredCaseImportBatch } from "../../../lib/structured-case-import.ts";
 
 export const runtime = "edge";
@@ -64,15 +65,19 @@ export async function POST(request: Request) {
 export async function GET(request: Request) {
   try {
     requireSameOrigin(request);
-    const rows = await db().prepare("SELECT id,revision,updated_at AS updatedAt FROM cases WHERE id LIKE 'synthetic-%' ORDER BY id LIMIT 100").all<{ id: string; revision: number; updatedAt: string }>();
-    const cases = (await Promise.all(rows.results.map(async row => {
+    let query: ReturnType<typeof parseEvaluationInventoryQuery>;
+    try { query = parseEvaluationInventoryQuery(new URL(request.url)); }
+    catch (error) { throw new HttpError(400, error instanceof Error ? error.message : "조회 조건이 올바르지 않습니다."); }
+    const rows = await db().prepare("SELECT id,revision,updated_at AS updatedAt FROM cases WHERE id LIKE ? AND id > ? ORDER BY id LIMIT ?").bind(`${query.prefix}%`, query.after, query.limit + 1).all<{ id: string; revision: number; updatedAt: string }>();
+    const page = rows.results.slice(0, query.limit);
+    const cases = (await Promise.all(page.map(async row => {
       try {
         const data = await getCase(row.id);
         const marker = data.structuredTest as (typeof data.structuredTest & { datasetManifestSha256?: string; caseDataSha256?: string }) | undefined;
         return marker?.mode === "assumed_extracted_synthetic" && marker.datasetManifestSha256 ? { caseId: row.id, revision: row.revision, scenarioId: marker.scenarioId ?? row.id, manifestSha256: marker.datasetManifestSha256, caseDataSha256: marker.caseDataSha256 ?? null, updatedAt: row.updatedAt } : null;
       } catch { return null; }
     }))).filter((item): item is NonNullable<typeof item> => item !== null);
-    return Response.json({ schemaVersion: "firmengine-structured-case-import-inventory/v1", cases }, { headers: { "Cache-Control": "no-store" } });
+    return Response.json({ schemaVersion: "firmengine-structured-case-import-inventory/v1", cases, prefix: query.prefix, limit: query.limit, hasMore: rows.results.length > query.limit, nextCursor: rows.results.length > query.limit ? page.at(-1)!.id : null }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     return errorResponse(error);
   }

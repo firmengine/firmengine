@@ -1,13 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createCase } from "../lib/domain.ts";
-import { buildLegalReviewPacket,gateLegalReviewChecks,LEGAL_REVIEW_BATCH_SIZE,LEGAL_REVIEW_PACKET_CHAR_BUDGET,type LegalReviewRisk } from "../lib/legal-review-packet.ts";
+import { createCase,factHasValidStructuredRefs } from "../lib/domain.ts";
+import { buildLegalReviewPacket,currentCompletedLegalCheckIds,gateLegalReviewChecks,LEGAL_REVIEW_BATCH_SIZE,LEGAL_REVIEW_PACKET_CHAR_BUDGET,type LegalReviewRisk } from "../lib/legal-review-packet.ts";
 import type { Fact } from "../lib/domain.ts";
 import type { Finding } from "../lib/assessment.ts";
 import { scanTransactions } from "../lib/transaction-review.ts";
 
 const risk=(id:string,feature:string):LegalReviewRisk=>({id,title:`Synthetic ${id}`,conditions:"Source-backed condition",features:[feature],request:"Synthetic evidence request",legalRuleIds:["rule-1"],manual:true});
 function fact(id:string,key:string,value:string,state:Fact["state"]="verified",recognition:Fact["recognition"]="accepted"):Fact{return {id,logicalId:id,version:1,subjectId:`subject-${id}`,key,value,state,recognition,refs:[{documentId:"doc",page:1,quote:`Synthetic quote ${id} `.repeat(20)}],validation:[]};}
+const gate=(input:Omit<Parameters<typeof gateLegalReviewChecks>[0],"eligibleFactIds">&{eligibleFactIds?:Set<string>})=>gateLegalReviewChecks({...input,eligibleFactIds:input.eligibleFactIds??new Set(input.providedFacts.map(item=>item.id))});
 
 test("data-only legal review keeps JSON source provenance and scenario assumptions visible",()=>{
   const data=createCase("Synthetic data-only review","synthetic-json-review","2026-10-29");
@@ -19,6 +20,22 @@ test("data-only legal review keeps JSON source provenance and scenario assumptio
   assert.equal(row.evidenceMode,"assumed_extracted_synthetic");assert.deepEqual(row.refs,[]);
   assert.deepEqual(row.structuredRefs,[{sourceRecordId:"hypothesis",jsonPointer:"/cost/value",recordType:"hypothetical_assumption"}]);
   assert.equal(row.recognition,"unreviewed");assert.equal(data.documents.length,0);
+});
+
+test("legal gating accepts only upstream validated structured citations and keeps review state as the clearance gate",()=>{
+  const data=createCase("Synthetic structured citation gate","structured-citation-gate","2026-10-29"),check=risk("living-cost", "household.recognized_living_cost");
+  const source=fact("json-cost",check.features[0],"1550000","reported","unreviewed");source.refs=[];source.structuredRefs=[{sourceRecordId:"row-1",jsonPointer:"/cost/value"}];
+  data.structuredTest={mode:"assumed_extracted_synthetic",sourceRecords:[{id:"row-1",recordType:"hypothetical_assumption",recordId:source.subjectId,data:{cost:{fieldId:source.key,presence:"present",value:source.value}}}]};
+  const packet=buildLegalReviewPacket({data,facts:[source],checks:[check],rules:[{id:"rule-1",title:"rule"}],guidance:[],findings:[],transactionReview:null});
+  const response=[{id:check.id,status:"pass",reason:"synthetic",factIds:[source.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],validCoverage=packet.coverage;
+  assert.equal(factHasValidStructuredRefs(data,source),true);
+  const validated=gateLegalReviewChecks({batch:[check],response,providedFacts:[source],eligibleFactIds:new Set(factHasValidStructuredRefs(data,source)?[source.id]:[]),validRuleIds:new Set(["rule-1"]),coverage:validCoverage})[0];
+  assert.deepEqual(validated.factIds,[source.id],"validated structured citation survives the citation gate");
+  assert.equal(validated.status,"missing","unreviewed synthetic facts cannot clear a check");
+  const invalid={...source,structuredRefs:[{sourceRecordId:"unknown",jsonPointer:"/cost/value"}]};
+  assert.equal(factHasValidStructuredRefs(data,invalid),false);
+  const rejected=gateLegalReviewChecks({batch:[check],response,providedFacts:[invalid],eligibleFactIds:new Set(factHasValidStructuredRefs(data,invalid)?[invalid.id]:[]),validRuleIds:new Set(["rule-1"]),coverage:validCoverage})[0];
+  assert.deepEqual(rejected.factIds,[]);
 });
 
 test("legal review packet bounds large advisory context and reports omitted coverage without mutating full case evidence",()=>{
@@ -50,6 +67,22 @@ test("legal review packet bounds large advisory context and reports omitted cove
   assert.deepEqual([data.facts.length,data.debts.length,findings.length],before,"packet building does not reduce full source facts, inventories, or deterministic findings");
 });
 
+test("only well-formed checks from the exact input, reference release, and engine contract suppress a paid review batch",()=>{
+  const receipt={inputSha256:"a".repeat(64),referenceSha256:"b".repeat(64),contractVersion:"1.1.0"},expected=new Set(["risk-current"]),check={id:"risk-current",status:"missing",reason:"reviewed",factIds:[],ruleIds:[],missingDocuments:[],nextAction:""};
+  const row=(calculatorExecution:unknown,checks:unknown=[check])=>({payload:JSON.stringify({calculatorExecution,checks})}),base={inputSha256:receipt.inputSha256,referenceRelease:{sha256:receipt.referenceSha256},contractVersion:receipt.contractVersion};
+  const completed=currentCompletedLegalCheckIds([
+    row({...base,referenceRelease:{sha256:"c".repeat(64)}}),
+    row({...base,contractVersion:"1.0.0"}),
+    {payload:"not-json"},
+    row(base,[{...check,id:"obsolete-risk"}]),
+    row(base,[{...check,status:"unexpected"}]),
+    row(base),
+  ],receipt,expected);
+  assert.deepEqual([...completed], ["risk-current"]);
+  const excludesOldReference=currentCompletedLegalCheckIds([row({...base,referenceRelease:{sha256:"c".repeat(64)}})],receipt,expected);
+  assert.equal(excludesOldReference.has("risk-current"),false,"same input hash cannot let an old-reference result suppress a fresh review");
+});
+
 test("exact required-feature facts outrank namespace fallback and fallback evidence never completes a feature",()=>{
   const data=createCase("Synthetic feature matching","synthetic-review-match","2026-10-27"),checks=[risk("priority","debt.priority")];
   const facts=[fact("classification","debt.classification","ordinary"),fact("contract","debt.contract_id","contract-1"),fact("priority","debt.priority","ordinary")];
@@ -60,13 +93,13 @@ test("exact required-feature facts outrank namespace fallback and fallback evide
   const fallback=buildLegalReviewPacket({data,facts:facts.filter(item=>item.id!=="priority"),checks,rules:[{id:"rule-1",title:"rule"}],guidance:[],findings:[],transactionReview:null});
   assert.equal(fallback.coverage.featureCounts["priority:debt.priority"].total,0);
   assert.equal(fallback.coverage.featureCounts["priority:debt.priority"].axisFallbackProvided,2);
-  const gated=gateLegalReviewChecks({batch:checks,response:[{id:"priority",status:"pass",reason:"fallback cannot prove priority",factIds:["classification"],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],providedFacts:facts.filter(item=>item.id==="classification"),validRuleIds:new Set(["rule-1"]),coverage:fallback.coverage});
+  const gated=gate({batch:checks,response:[{id:"priority",status:"pass",reason:"fallback cannot prove priority",factIds:["classification"],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],providedFacts:facts.filter(item=>item.id==="classification"),validRuleIds:new Set(["rule-1"]),coverage:fallback.coverage});
   assert.equal(gated[0].status,"missing");
 });
 
 test("plural inventory omission counts block a pass for the matching inventory scope",()=>{
   const check=risk("debt-inventory","debt.classification"),source=fact("debt-fact","debt.classification","ordinary");
-  const gated=gateLegalReviewChecks({batch:[check],response:[{id:check.id,status:"pass",reason:"synthetic",factIds:[source.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],providedFacts:[source],validRuleIds:new Set(["rule-1"]),coverage:{featureCounts:{[`${check.id}:debt.classification`]:{total:1,provided:1,omitted:0,axisFallbackProvided:0}},checkRules:{[check.id]:{total:1,provided:1,omitted:0}},checkGuidance:{[check.id]:{total:0,provided:0,omitted:0}},inventoryRowsOmitted:{incomes:0,debts:17,assets:0,transactions:0}}});
+  const gated=gate({batch:[check],response:[{id:check.id,status:"pass",reason:"synthetic",factIds:[source.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],providedFacts:[source],validRuleIds:new Set(["rule-1"]),coverage:{featureCounts:{[`${check.id}:debt.classification`]:{total:1,provided:1,omitted:0,axisFallbackProvided:0}},checkRules:{[check.id]:{total:1,provided:1,omitted:0}},checkGuidance:{[check.id]:{total:0,provided:0,omitted:0}},inventoryRowsOmitted:{incomes:0,debts:17,assets:0,transactions:0}}});
   assert.equal(gated[0].status,"missing");
 });
 
@@ -79,7 +112,7 @@ test("truncated fact and legal rule text cannot support pass, and boolean negati
   assert.ok(packet.coverage.truncatedRuleIdsByCheck[check.id].includes("rule-1"));
   assert.equal(packet.payload.providedFacts.find((item:any)=>item.id===noFact.id).value,false);
   assert.equal(packet.payload.providedFacts.find((item:any)=>item.id===nullFact.id).value,null);
-  const gated=gateLegalReviewChecks({batch:[check],response:[{id:check.id,status:"pass",reason:"synthetic",factIds:[longFact.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],providedFacts:[longFact],validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
+  const gated=gate({batch:[check],response:[{id:check.id,status:"pass",reason:"synthetic",factIds:[longFact.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}],providedFacts:[longFact],validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
   assert.equal(gated[0].status,"missing","truncated qualifications cannot satisfy a pass gate");
 });
 
@@ -89,11 +122,11 @@ test("omitted facts cannot clear a legal check or establish not-applicable",()=>
   const check=risk("risk-priority","debt.priority"),packet=buildLegalReviewPacket({data,facts,checks:[check],rules:[{id:"rule-1",title:"rule"}],guidance:[],findings:[],transactionReview:null});
   const omitted=facts.find(item=>!packet.providedFactIds.includes(item.id))!;
   const responses=[{id:check.id,status:"pass",reason:"synthetic response",factIds:[omitted.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}];
-  const gated=gateLegalReviewChecks({batch:[check],response:responses,providedFacts:facts.filter(item=>packet.providedFactIds.includes(item.id)),validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
+  const gated=gate({batch:[check],response:responses,providedFacts:facts.filter(item=>packet.providedFactIds.includes(item.id)),validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
   assert.equal(gated[0].status,"missing");assert.deepEqual(gated[0].factIds,[]);assert.deepEqual(gated[0].ruleIds,["rule-1"]);
-  const citedButIncomplete=gateLegalReviewChecks({batch:[check],response:[{...responses[0],factIds:[packet.providedFactIds[0]]}],providedFacts:facts.filter(item=>packet.providedFactIds.includes(item.id)),validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
+  const citedButIncomplete=gate({batch:[check],response:[{...responses[0],factIds:[packet.providedFactIds[0]]}],providedFacts:facts.filter(item=>packet.providedFactIds.includes(item.id)),validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
   assert.equal(citedButIncomplete[0].status,"missing","an included fact cannot override omitted facts for the same check");
-  const notApplicable=gateLegalReviewChecks({batch:[check],response:[{...responses[0],status:"not_applicable",factIds:[omitted.id]}],providedFacts:facts.filter(item=>packet.providedFactIds.includes(item.id)),validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
+  const notApplicable=gate({batch:[check],response:[{...responses[0],status:"not_applicable",factIds:[omitted.id]}],providedFacts:facts.filter(item=>packet.providedFactIds.includes(item.id)),validRuleIds:new Set(["rule-1"]),coverage:packet.coverage});
   assert.equal(notApplicable[0].status,"missing");assert.deepEqual(notApplicable[0].factIds,[]);
 });
 
@@ -102,11 +135,20 @@ test("zero observed required features cannot pass merely because zero items were
   source.refs[0].quote="Source explicitly states ordinary classification.";
   const response={id:check.id,status:"pass",reason:"synthetic",factIds:[source.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""};
   const base=buildLegalReviewPacket({data,facts:[source],checks:[check],rules:[{id:"rule-1",title:"rule"}],guidance:[],findings:[],transactionReview:null});
-  assert.equal(gateLegalReviewChecks({batch:[check],response:[response],providedFacts:[source],validRuleIds:new Set(["rule-1"]),coverage:base.coverage})[0].status,"pass");
+  assert.equal(gate({batch:[check],response:[response],providedFacts:[source],validRuleIds:new Set(["rule-1"]),coverage:base.coverage})[0].status,"pass");
   check.features.push("case.business_income");
   const missing=buildLegalReviewPacket({data,facts:[source],checks:[check],rules:[{id:"rule-1",title:"rule"}],guidance:[],findings:[],transactionReview:null});
   assert.equal(missing.coverage.featureCounts["required:case.business_income"].total,0);
-  assert.equal(gateLegalReviewChecks({batch:[check],response:[response],providedFacts:[source],validRuleIds:new Set(["rule-1"]),coverage:missing.coverage})[0].status,"missing");
+  assert.equal(gate({batch:[check],response:[response],providedFacts:[source],validRuleIds:new Set(["rule-1"]),coverage:missing.coverage})[0].status,"missing");
+});
+
+test("nonmanual auto-clear requires a cited clearable fact for each required feature",()=>{
+  const data=createCase("Synthetic citation completeness","citation-completeness","2026-10-29"),check={...risk("two-features","debt.classification"),features:["debt.classification","debt.priority"],manual:false};
+  const classification=fact("classification","debt.classification","ordinary"),priorityFact=fact("priority","debt.priority","ordinary");
+  const packet=buildLegalReviewPacket({data,facts:[classification,priorityFact],checks:[check],rules:[{id:"rule-1",title:"rule"}],guidance:[],findings:[],transactionReview:null});
+  const response=[{id:check.id,status:"pass",reason:"synthetic",factIds:[classification.id],ruleIds:["rule-1"],missingDocuments:[],nextAction:""}];
+  const gated=gate({batch:[check],response,providedFacts:[classification,priorityFact],validRuleIds:new Set(["rule-1"]),coverage:packet.coverage})[0];
+  assert.equal(gated.status,"missing","an unrelated citation cannot stand in for the priority feature");
 });
 
 test("a clipped secondary source reference remains explicit incomplete evidence",()=>{

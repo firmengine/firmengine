@@ -4,7 +4,7 @@ import { resolveDebtRows } from "./debt-resolution.ts";
 import { resolveIncomeRows } from "./income-resolution.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { createDebtSourceIntegrityResolver } from "./debt-source-integrity.ts";
-import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue } from "./domain.ts";
+import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, normalizeMoney } from "./domain.ts";
 import type { Asset, CaseData, CaseReadIndex, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
 import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-proposals.ts";
 
@@ -104,6 +104,52 @@ function invalidLineage(data: CaseData, ids: string[],index?:CaseReadIndex): str
 }
 function sourceChecked(data: CaseData, fact: { id: string; state: string; recognition?: string; validation: { severity: string }[] }): boolean {
   return fact.state === "verified" && fact.recognition === "accepted" && fact.validation.every((item) => item.severity !== "error") && factSourceLineageIssues(data, [fact.id]).length === 0;
+}
+
+export function sourceFactMoneyValue(fact: ReturnType<typeof currentFacts>[number]): bigint | null {
+  const parse=(raw:unknown,unit:string,currency:string):bigint|null=>typeof raw==="string"||typeof raw==="number"?moneyValue(normalizeMoney(raw,unit,currency)):null;
+  const equal=(values:(bigint|null)[])=>values.length>0&&values.every(value=>value!==null&&value===values[0])?values[0]!:null;
+  const parsedValue=(value:unknown,unit:string,currency:string):bigint|null=>{
+    if(typeof value==="string"||typeof value==="number")return parse(value,unit,currency);
+    if(!value||typeof value!=="object"||Array.isArray(value))return null;
+    const row=value as Record<string,unknown>,valueUnit=typeof row.unit==="string"?row.unit:unit,valueCurrency=typeof row.currency==="string"?row.currency:currency;
+    if(typeof row.unit==="string"&&row.unit!==unit||typeof row.currency==="string"&&row.currency.toUpperCase()!==currency.toUpperCase())return null;
+    const aliases:(bigint|null)[]=[];
+    // Each populated representation is independently checked. A valid alias cannot hide a conflicting one.
+    if(Object.hasOwn(row,"minorUnits"))aliases.push(parse(row.minorUnits,"KRW",valueCurrency));
+    if(Object.hasOwn(row,"amountWon"))aliases.push(parse(row.amountWon,"KRW",valueCurrency));
+    if(Object.hasOwn(row,"amount"))aliases.push(parse(row.amount,valueUnit,valueCurrency));
+    if(Object.hasOwn(row,"rawValue"))aliases.push(parse(row.rawValue,valueUnit,valueCurrency));
+    return equal(aliases);
+  };
+  if(fact.numeric){
+    const numericAmount=moneyValue(fact.numeric);
+    if(numericAmount===null||fact.sourceUnit!==undefined&&fact.sourceUnit!==null&&fact.sourceUnit!==fact.numeric.unit)return null;
+    if(fact.rawValue!==undefined&&parse(fact.rawValue,fact.numeric.unit,fact.numeric.currency)!==numericAmount)return null;
+    const valueAmount=parsedValue(fact.value,fact.numeric.unit,fact.numeric.currency);
+    return valueAmount===numericAmount?numericAmount:null;
+  }
+  const unit=fact.sourceUnit??"KRW",currency="KRW",valueAmount=parsedValue(fact.value,unit,currency);
+  if(valueAmount===null)return null;
+  if(fact.rawValue!==undefined&&parse(fact.rawValue,unit,currency)!==valueAmount)return null;
+  return valueAmount;
+}
+
+function sourceFactAmount(fact: ReturnType<typeof currentFacts>[number]): bigint | null { return sourceFactMoneyValue(fact); }
+
+/** Current source amounts may constrain typed calculation inputs, but never fill missing ones. */
+function objectMoneyFactConflict(data: CaseData, subjectId: string, typed: NumericInput | null | undefined, supportedKeys: string[], index?: CaseReadIndex): string[] {
+  const expected = moneyValue(typed);
+  if (expected === null) return [];
+  const keys = new Set(supportedKeys.map(key => key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()));
+  if(index&&index.owner!==data)throw new Error("source index belongs to a different case snapshot");
+  const candidates=index?index.bySubject.get(subjectId)??[]:currentFacts(data).filter(fact=>fact.subjectId===subjectId);
+  const facts = candidates.filter(fact => keys.has(fact.key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase()));
+  if (!facts.length) return [];
+  const values = facts.map(sourceFactAmount);
+  const invalidSource = facts.some((fact,i) => values[i] === null || factSourceLineageIssues(data,[fact.id],index).some(issue => ["STALE_OR_RETRACTED_FACT","DISPUTED_OR_REJECTED_FACT","SOURCE_REFERENCE_INVALID","SOURCE_VERIFICATION_RECEIPT_INVALID"].includes(issue)));
+  return invalidSource || new Set(values.map(value => value?.toString())).size > 1 || values.some(value => value !== expected)
+    ? ["OBJECT_FACT_MONEY_CONFLICT"] : [];
 }
 
 function monthIndex(value: string | undefined): number | null {
@@ -291,10 +337,15 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   for (const source of incomeResolution.rows) {
     const monthly = monthlyIncome(source);
     const lineage = invalidLineage(data, source.factIds,index);
+    const moneyConflict = [
+      ...objectMoneyFactConflict(data,source.id,source.net,["income.net","income.monthly_net"],index),
+      ...objectMoneyFactConflict(data,source.id,source.gross,["income.gross","income.monthly_gross","income.business_revenue"],index),
+      ...objectMoneyFactConflict(data,source.id,source.expenses,["income.expenses","income.necessary_cost"],index),
+    ].length > 0;
     const meta = source as IncomeSourceAudit;
     const reviewedDuplicate = meta.aggregationTreatment === "duplicate" && meta.aggregationReviewed === true && !!meta.aggregationReviewReason?.trim();
-    const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate ? null : monthly.value;
-    const reasons = [...monthly.reasons, ...lineage, ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : [])];
+    const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate || moneyConflict ? null : monthly.value;
+    const reasons = [...monthly.reasons, ...lineage, ...(moneyConflict ? ["INCOME_OBJECT_FACT_CONFLICT"] : []), ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : [])];
     if (reviewedDuplicate) duplicateIds.push(source.id);
     incomeRows.push({ id: source.id, label: source.label, monthlyWon: asMoney(value), reasons });
     incomeObservations.push({ source: meta, value, span: monthSpan(source.periodStart, source.periodEnd) });
@@ -320,11 +371,21 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     const sourceDebts=deduped.sourceGroups[rowIndex]??[debt];
     const sourceCalculations=sourceDebts.map(sourceDebt=>{
       const lineage=invalidLineage(data,sourceDebt.factIds,index);
-      const sourcePrincipal=lineage.length?null:nonnegative(sourceDebt.principal),sourceInterest=lineage.length?null:nonnegative(sourceDebt.interest);
-      return {lineage,integrity:resolveDebtIntegrity(sourceDebt,sourcePrincipal,sourceInterest)};
+      const subjectIds=[...new Set(sourceDebt.factIds.map(id=>index.byId.get(id)?.subjectId).filter((id):id is string=>!!id))];
+      if(!subjectIds.length)subjectIds.push(sourceDebt.id);
+      const subjectFacts=subjectIds.flatMap(id=>index.bySubject.get(id)??[]),canonical=(key:string)=>key.replace(/([a-z0-9])([A-Z])/g,"$1_$2").toLowerCase();
+      const hasCurrentPrincipal=subjectFacts.some(fact=>["debt.principal_balance","debt.outstanding_principal"].includes(canonical(fact.key)));
+      const principalKeys=hasCurrentPrincipal?["debt.principal_balance","debt.outstanding_principal"]:["debt.principal","creditor_principal"];
+      const principalConflict=subjectIds.some(subjectId=>objectMoneyFactConflict(data,subjectId,sourceDebt.principal,principalKeys,index).length>0);
+      const interestConflict=subjectIds.some(subjectId=>objectMoneyFactConflict(data,subjectId,sourceDebt.interest,["debt.interest","creditor_interest"],index).length>0);
+      const sourcePrincipal=lineage.length||principalConflict?null:nonnegative(sourceDebt.principal),sourceInterest=lineage.length||interestConflict?null:nonnegative(sourceDebt.interest);
+      const baseIntegrity=resolveDebtIntegrity(sourceDebt,sourcePrincipal,sourceInterest);
+      const conflicts=[...(principalConflict?["DEBT_OBJECT_FACT_CONFLICT:principal"]:[]),...(interestConflict?["DEBT_OBJECT_FACT_CONFLICT:interest"]:[])];
+      const integrity=conflicts.length?{...baseIntegrity,totalWon:null,blockers:[...new Set([...baseIntegrity.blockers,...conflicts])]}:baseIntegrity;
+      return {lineage,principalConflict,interestConflict,integrity};
     });
     const lineage=[...new Set(sourceCalculations.flatMap(source=>source.lineage))];
-    const principal = lineage.length ? null : nonnegative(debt.principal), interest = lineage.length ? null : nonnegative(debt.interest);
+    const principal = lineage.length || sourceCalculations.some(source=>source.principalConflict) ? null : nonnegative(debt.principal), interest = lineage.length || sourceCalculations.some(source=>source.interestConflict) ? null : nonnegative(debt.interest);
     const integrities=sourceCalculations.map(source=>source.integrity);
     const integrity={
       factIds:[...new Set(integrities.flatMap(source=>source.factIds))],
@@ -382,8 +443,14 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   const assetRows = assetResolution.rows.map((asset) => {
     const scopeKey="asset.secured_payoff_scope",scopeFact=asset.factIds.map(id=>index.byId.get(id)).find(fact=>fact?.subjectId===asset.id&&fact.key===scopeKey&&fact.value===asset.securedPayoffScope),scopeSourceLinked=!!scopeFact&&!invalidLineage(data,[scopeFact.id],index).length,scopeSourceReviewed=!!scopeFact&&scopeFact.state==="verified"&&scopeFact.recognition==="accepted";
     const contribution = liquidationContribution(asset,scopeSourceLinked,scopeSourceReviewed), lineage = invalidLineage(data, asset.factIds,index);
-    const value = lineage.length || asset.recognition === "rejected" || conflictedAssets.has(asset.id) ? null : contribution.value;
-    const reasons = [...contribution.reasons, ...(monthIndex(asset.asOf) !== null && asset.asOf !== data.context.asOf ? ["ASSET_AS_OF_RECONCILIATION_REQUIRED"] : []), ...lineage, ...(asset.recognition === "rejected" ? ["ASSET_RECOGNITION_REJECTED"] : []), ...(conflictedAssets.has(asset.id) ? ["ASSET_IDENTITY_CONFLICT_REQUIRES_REVIEW"] : [])];
+    const moneyConflict=[
+      ...objectMoneyFactConflict(data,asset.id,asset.grossValue,["asset.gross_value","asset.grossValue"],index),
+      ...objectMoneyFactConflict(data,asset.id,asset.securedPayoff,["asset.secured_payoff","asset.secured_claim_amount"],index),
+      ...objectMoneyFactConflict(data,asset.id,asset.disposalCosts,["asset.disposal_costs"],index),
+      ...objectMoneyFactConflict(data,asset.id,asset.protectedValue,["asset.protected_value"],index),
+    ].length>0;
+    const value = lineage.length || moneyConflict || asset.recognition === "rejected" || conflictedAssets.has(asset.id) ? null : contribution.value;
+    const reasons = [...contribution.reasons, ...(moneyConflict?["ASSET_OBJECT_FACT_CONFLICT"]:[]), ...(monthIndex(asset.asOf) !== null && asset.asOf !== data.context.asOf ? ["ASSET_AS_OF_RECONCILIATION_REQUIRED"] : []), ...lineage, ...(asset.recognition === "rejected" ? ["ASSET_RECOGNITION_REJECTED"] : []), ...(conflictedAssets.has(asset.id) ? ["ASSET_IDENTITY_CONFLICT_REQUIRES_REVIEW"] : [])];
     issues.push(...reasons.map((r) => r + ":" + asset.id));
     const scopeReview=reasons.includes("ASSET_SHARED_COLLATERAL_PAYOFF_SCOPE_REVIEW_REQUIRED")||reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED");
     traces.push({ id: "asset:" + asset.id, title: asset.label + " 청산가치 검토", formula: referenceFormula("asset_liquidation"), inputs: [{ label: "평가액", value: asset.grossValue?.amountWon ?? null, factIds: asset.factIds }, { label: `소유지분 (1/${shareBasisPoints().toLocaleString("en-US")})`, value: asset.ownershipBps?.toString() ?? null, factIds: asset.factIds }, { label: "담보상환액의 귀속 범위", value: asset.securedPayoffScope ?? null, factIds: scopeFact?[scopeFact.id]:[] }, { label: "담보상환액", value: asset.securedPayoff?.amountWon ?? null, factIds: asset.factIds }, { label: "처분비용", value: asset.disposalCosts?.amountWon ?? null, factIds: asset.factIds }, { label: "검토 면제액", value: asset.protectedValue?.amountWon ?? null, factIds: asset.factIds }], resultWon: asMoney(value), status: value === null ? "blocked" : scopeReview || reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED") || asset.recognition !== "accepted" || factSourceLineageIssues(data, asset.factIds,index).length ? "provisional" : "calculated", reasons });
@@ -494,8 +561,18 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
   }
   if (rulesCurrent && rules.term && data.context.planMonths) {
     const months = data.context.planMonths;
-    const allowed = months <= rules.term.ordinaryMonths || (data.context.exceptionalTermReviewed === true && !!rules.term.exceptionalMaxMonths && months <= rules.term.exceptionalMaxMonths);
-    add("plan_term", "eligibility", "변제기간 검토", `${months}개월 / 원칙 범위 ${rules.term.ordinaryMonths}개월, 특별사정 검토 시 ${rules.term.exceptionalMaxMonths ?? "미확인"}개월`, allowed ? "pass" : data.context.exceptionalTermReviewed === true ? "fail" : "review_required", allowed ? undefined : "연장 요건·특별사정·법원 판단이 필요한지 확인하세요.");
+    const exceptionalMax = rules.term.exceptionalMaxMonths;
+    const exceedsHardCap = exceptionalMax !== undefined && months > exceptionalMax;
+    const withinOrdinary = months <= rules.term.ordinaryMonths;
+    const withinExceptional = exceptionalMax !== undefined && months <= exceptionalMax;
+    const outcome: Finding["outcome"] = exceedsHardCap ? "fail"
+      : withinOrdinary ? "pass"
+      : !withinExceptional ? "review_required"
+      : data.context.exceptionalTermReviewed === true ? "pass" : "review_required";
+    const detail = `${months}개월 / 원칙 범위 ${rules.term.ordinaryMonths}개월, 특별사정 검토 시 최대 ${exceptionalMax ?? "미확인"}개월`;
+    add("plan_term", "eligibility", "변제기간 검토", detail, outcome,
+      outcome === "fail" ? "현재 규칙의 최대 변제기간을 초과합니다. 기간을 조정하고 적용 규칙을 확인하세요."
+        : outcome === "review_required" ? "원칙기간 초과에 필요한 특별사정 검토와 법원 판단을 확인하세요." : undefined);
     if (data.context.courtId === referenceParameter<string>("param.seoul.shortened_term.court_id") && data.context.applicationDate >= referenceParameter<string>("param.seoul.shortened_term.effective_from") && months < rules.term.ordinaryMonths) {
       const candidate = legalProposals.termCandidate;
       const review = data.context.shortenedTermReview;
@@ -525,7 +602,11 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
   add("liquidation", "eligibility", "청산가치 보장", calculation.liquidationComparison === "unknown" ? "현재가치 근거 또는 재산가액이 미확정입니다." : "변제액의 검토 현재가치와 청산가치를 대조했습니다.", calculation.liquidationComparison === "met" ? "pass" : calculation.liquidationComparison === "not_met" ? "fail" : "unknown", calculation.liquidationComparison === "met" ? undefined : "현재가치 산식·평가기준일·담보부족액·면제재산을 검토하세요.");
   for (const [key, title] of [["naturalPerson", "자연인 요건"], ["insolventOrRisk", "지급불능 또는 우려"], ["priorProceedingsReviewed", "과거 절차·면책 이력"]] as const) {
     const value = data.context.eligibility?.[key];
-    if (value !== "yes") add("eligibility_" + key, "legal_review", title, "이 요건의 사건별 확인이 남아 있습니다.", "review_required", "관련 진술·조회·결정문을 확인하세요.");
+    if (key !== "priorProceedingsReviewed" && value === "no") {
+      add("eligibility_" + key, "eligibility", title, "입력된 조건부 값이 ‘아니오’입니다. 이는 사전요건 미충족 표시이며 법원의 결정을 뜻하지 않습니다.", "fail", "조건부 입력과 적용 요건을 확인하고, 값이 잘못된 경우 근거를 검토해 정정하세요.");
+    } else if (value !== "yes") {
+      add("eligibility_" + key, "legal_review", title, "이 요건의 사건별 확인이 남아 있습니다.", "review_required", "관련 진술·조회·결정문을 확인하세요.");
+    }
   }
   const failures = findings.filter((f) => f.outcome === "fail" && f.category === "eligibility");
   const missing = findings.some((f) => f.outcome === "unknown");

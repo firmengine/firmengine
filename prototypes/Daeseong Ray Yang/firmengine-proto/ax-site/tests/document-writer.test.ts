@@ -33,3 +33,12 @@ test("writer rejects stale evaluation, synthetic final, and incomplete review ga
   await assert.rejects(prepareDocumentWrite({data,evaluation:blockedEvaluation,processingComplete:true,mode:"final",requiredKinds:[]}),/DOCUMENT_FINAL_REVIEW_REQUIRED/);
   await assert.rejects(prepareDocumentWrite({data,evaluation,processingComplete:false,mode:"final",requiredKinds:[]}),/DOCUMENT_FINAL_REVIEW_REQUIRED/);
 });
+
+test("final review generation does not certify e-form parity or filing readiness",async()=>{
+  const {data,execution}=fixture(),evaluation=await envelope(data,execution);
+  const prepared=await prepareDocumentWrite({data,evaluation,processingComplete:true,mode:"final",requiredKinds:["application"]});
+  assert.equal(prepared.receipt.status,"ready");
+  assert.equal(prepared.receipt.outputPurpose,"review");
+  assert.equal(prepared.receipt.readyForElectronicFiling,false);
+  assert.equal(prepared.receipt.officialFormParity,"not_verified");
+});

@@ -23,6 +23,7 @@ const inputSnapshot=z.object({
   assets:z.array(row.extend({kind:z.enum(["cash","deposit","insurance","vehicle","real_estate","lease_deposit","business","receivable","retirement","other"]),label:text,grossValue:optionalMoney,securedPayoff:optionalMoney,disposalCosts:optionalMoney,protectedValue:optionalMoney,ownershipBps:z.number().int().min(0).max(shareBasisPoints()).nullable().optional()})).max(10000),
   household:z.object({factIds:ids,recognizedLivingCost:optionalMoney,additionalLivingCost:optionalMoney,livingCostIncludesAdditional:z.boolean().optional()}).passthrough(),
   transactions:z.array(row.extend({date:text,kind:z.enum(["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"]),direction:z.enum(["in","out","unknown"]),amount:money})).max(30000),
+  disposalScenarios:z.array(row.extend({assetId:id,intent:z.enum(["proposed","unknown"]).optional(),saleAmount:optionalMoney,securedPayoff:optionalMoney,costs:optionalMoney,recognition})).max(1000).optional(),
 }).passthrough();
 const snapshotRequest=z.object({caseData:inputSnapshot,expectedRevision:z.number().int().positive(),ruleReleaseId:id}).strict();
 export const TOOL_INPUT_SCHEMAS={
@@ -65,11 +66,11 @@ function assertInputSize(value:unknown) {
 function assertSnapshot(data:CaseData,revision:number,ruleReleaseId:string,planning=false) {
   if(data.context.revision!==revision)throw new Error("CASE_REVISION_MISMATCH");
   if(ruleReleaseId!==CURRENT_RULESET.id || !planning && data.context.ruleReleaseId!==ruleReleaseId)throw new Error("RULE_VERSION_MISMATCH");
-  for(const rows of [data.facts,data.documents,data.incomes,data.debts,data.assets,data.transactions]){
+  for(const rows of [data.facts,data.documents,data.incomes,data.debts,data.assets,data.transactions,data.disposalScenarios??[]]){
     const values=rows.map(row=>row.id);if(new Set(values).size!==values.length)throw new Error("DUPLICATE_INPUT_ID");
   }
   const factIds=new Set(data.facts.map(f=>f.id));
-  if([...data.incomes,...data.debts,...data.assets,...data.transactions,data.household].some(row=>row.factIds.some(id=>!factIds.has(id))))throw new Error("UNKNOWN_SOURCE_FACT_ID");
+  if([...data.incomes,...data.debts,...data.assets,...data.transactions,...(data.disposalScenarios??[]),data.household].some(row=>row.factIds.some(id=>!factIds.has(id))))throw new Error("UNKNOWN_SOURCE_FACT_ID");
 }
 
 /** Transport-neutral read-only boundary. App routes and MCP invoke this exact function. */
@@ -83,7 +84,7 @@ export async function callCalculatorTool(name:CalculatorToolName,input:unknown) 
       const args=parsed.data as z.infer<typeof TOOL_INPUT_SCHEMAS.get_execution_catalog>,catalog=executionCatalog(),rows=catalog[args.section];
       return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},ruleReleaseId:CURRENT_RULESET.id,result:{section:args.section,total:rows.length,offset:args.offset,items:rows.slice(args.offset,args.offset+args.limit),nextOffset:args.offset+args.limit<rows.length?args.offset+args.limit:null}};
     }
-    if(name==="calculate_disposal")return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},inputSha256:await snapshotSha256(parsed.data),courtApprovalInferred:false,result:calculateDisposal(parsed.data as {saleAmount:NumericInput;securedPayoff:NumericInput;costs:NumericInput})};
+    if(name==="calculate_disposal")return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},inputSha256:await snapshotSha256(parsed.data),inputHashScheme:"canonical-json-sha256/v1" as const,courtApprovalInferred:false,result:calculateDisposal(parsed.data as {saleAmount:NumericInput;securedPayoff:NumericInput;costs:NumericInput})};
     const args=parsed.data as unknown as {caseData:CaseData;expectedRevision:number;ruleReleaseId:string};
     assertSnapshot(args.caseData,args.expectedRevision,args.ruleReleaseId,name==="plan_case");
     const execution=executeCaseNodes(args.caseData,{includeDocumentBindings:name==="build_document_payload"});
@@ -92,7 +93,7 @@ export async function callCalculatorTool(name:CalculatorToolName,input:unknown) 
     const finalization={canGenerateDraft:execution.assessment.generationGate.canGenerateDraft,canFinalize:false,reasons:[...execution.assessment.generationGate.reasons,"CALLER_SNAPSHOT_REQUIRES_TRUSTED_REVIEW"]};
     execution.assessment.generationGate=finalization;execution.plan.generationGate=finalization;
     const result=name==="plan_case"?execution.plan:execution;
-    return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},caseId:args.caseData.context.id,caseRevision:args.expectedRevision,ruleReleaseId:CURRENT_RULESET.id,inputSha256:await snapshotSha256(args.caseData),trust:"caller_supplied_snapshot" as const,courtApprovalInferred:false as const,result};
+    return {ok:true as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},caseId:args.caseData.context.id,caseRevision:args.expectedRevision,ruleReleaseId:CURRENT_RULESET.id,inputSha256:await snapshotSha256(args.caseData),inputHashScheme:"canonical-json-sha256/v1" as const,trust:"caller_supplied_snapshot" as const,courtApprovalInferred:false as const,result};
   } catch(error) {
     const code=error instanceof Error&&/^[A-Z_]+$/.test(error.message)?error.message:"CALCULATION_INPUT_REJECTED";
     return {ok:false as const,version:EXECUTION_CONTRACT_VERSION,referenceRelease:referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256},error:{code}};

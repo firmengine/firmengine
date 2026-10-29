@@ -171,7 +171,7 @@ test("공개 서식의 독립 진술서·반복 채권행·서명 공란과 출�
 test("원형 D5110 기본 가용소득 산식과 승인한 일반채권 변제액을 혼동하지 않는다",async()=>{
   const data=sourceCase();
   data.pages[0].text+="\nSynthetic income 30000 living 10000";
-  data.facts.push({...data.facts[0],id:"income-f",logicalId:"income-f",subjectId:"income",key:"income.net",refs:[{documentId:"proof",page:1,quote:"income 30000"}]});
+  data.facts.push({...data.facts[0],id:"income-f",logicalId:"income-f",subjectId:"income",key:"income.net",value:"30000",numeric:normalizeMoney("30000"),rawValue:"30000",sourceUnit:"KRW",refs:[{documentId:"proof",page:1,quote:"income 30000"}]});
   data.facts.push({...data.facts[0],id:"household-f",logicalId:"household-f",subjectId:"household",key:"household.living",refs:[{documentId:"proof",page:1,quote:"living 10000"}]});
   data.incomes=[{id:"income",kind:"wage",label:"합성 월소득",net:normalizeMoney("30000"),amountBasis:"monthly",recurring:"yes",recognition:"accepted",factIds:["income-f"]}];
   data.household={recognizedMembers:1,recognizedLivingCost:normalizeMoney("10000"),livingCostIncludesAdditional:true,recognition:"accepted",factIds:["household-f"]};

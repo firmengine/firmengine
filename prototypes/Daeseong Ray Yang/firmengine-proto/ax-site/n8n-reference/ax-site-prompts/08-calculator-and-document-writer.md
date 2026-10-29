@@ -8,4 +8,6 @@
 - [document-writer.ts](source/document-writer.ts.txt): 저장된 evaluation·출력 모드·기준 판본 검증.
 - [reactive-evaluation.ts](source/reactive-evaluation.ts.txt): 사건 변경과 계산 결과 갱신.
 
+v43의 문서작성은 저장된 계산·바인딩을 분리된 스냅샷으로 읽고, 실제 출력의 산식·제출 준비 상태를 [document-filing-readiness.ts](source/document-filing-readiness.ts.txt)로 검사합니다. 계산 일치와 공식 전자양식 일치는 별도이며 제출 준비 상태를 자동 승인하지 않습니다. [export-artifact-transaction.ts](source/export-artifact-transaction.ts.txt)는 manifest 저장 전 실패 시 해당 출력 요청이 만든 객체·행만 정리하고, 저장 완료 후 로그 실패로 정상 생성물을 삭제하지 않습니다.
+
 법적 체크 AI에 전달하는 executionContext는 [법적 검토 프롬프트](04-legal-reviewer.md)와 [legal-review-packet.ts](source/legal-review-packet.ts.txt)를 함께 확인하세요.

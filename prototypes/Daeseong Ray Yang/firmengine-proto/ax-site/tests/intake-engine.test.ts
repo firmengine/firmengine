@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { INTAKE_SCHEMA_VERSION, type ConsultationNote, type IntakeCatalog, type IntakeDocumentNeed, type IntakeFeature, type IntakeRule, type RawIntakeClaim } from "../lib/intake-types.ts";
-import { INTAKE_LIMITS, intakeSourceNotes, matchIntakeChecklist, validateIntakeCatalog, validateIntakeClaims } from "../lib/intake-engine.ts";
+import { INTAKE_LIMITS, INTAKE_NEGATIVE_SUBJECT_LABELS, intakeSourceNotes, matchIntakeChecklist, validateIntakeCatalog, validateIntakeClaims } from "../lib/intake-engine.ts";
 import { buildIntakeClassifierRequest, INTAKE_CLASSIFIER_INSTRUCTIONS } from "../lib/intake-classifier.ts";
 import { INTAKE_CATALOG_SEED } from "../lib/intake-catalog.ts";
 
@@ -353,6 +353,7 @@ test("explicit supersession excludes the old note without silently ignoring unre
   const request = buildIntakeClassifierRequest([old, correction], catalog());
   const packet = JSON.parse(request.input[0].content[0].text);
   assert.deepEqual(packet.notes.map((row: { id: string }) => row.id), ["note-2"]);
+  assert.ok(packet.sourceSpans.length > 0 && packet.sourceSpans.every((row: { noteId: string }) => row.noteId === "note-2"));
 });
 
 test("classifier request binds feature/note enums and keeps injection-like consultation text inside data", () => {
@@ -361,13 +362,31 @@ test("classifier request binds feature/note enums and keeps injection-like consu
   assert.equal(request.agent, "consultation_classifier");
   assert.equal(request.instructions, INTAKE_CLASSIFIER_INSTRUCTIONS); assert.ok(!request.instructions.includes("실제 상담: 저는 직장인입니다."));
   const packet = JSON.parse(request.input[0].content[0].text);
-  assert.equal(packet.notes[0].text, suspicious); assert.ok(!("documents" in packet)); assert.ok(!("rules" in packet));
-  const schema = request.schema as unknown as { properties: { claims: { items: { properties: { featureId: { enum: string[] }; subjectId: { pattern: string }; refs: { items: { properties: { noteId: { enum: string[] } } } } } } } } };
-  assert.deepEqual(schema.properties.claims.items.properties.featureId.enum, catalog().features.map(row => row.id));
-  assert.deepEqual(schema.properties.claims.items.properties.refs.items.properties.noteId.enum, ["note-1"]);
-  const subjectPattern = new RegExp(schema.properties.claims.items.properties.subjectId.pattern);
-  assert.ok(["case", "income:none", "debt:none", "asset:none", "income:business1"].every(value => subjectPattern.test(value)));
-  assert.equal(subjectPattern.test("scope:none"), false); assert.equal(subjectPattern.test("unknown:none"), false);
+  assert.equal(packet.sourceSpans.map((span: { text: string }) => span.text).join(""), suspicious); assert.ok(!("documents" in packet)); assert.ok(!("rules" in packet));
+  assert.ok(packet.sourceSpans.every((span: { start: number; end: number }) => span.end > span.start));
+  const schema = request.schema as unknown as { $defs: Record<string, { enum?: string[]; items?: { properties: { sourceSpanId: { $ref: string } } } }>; properties: { subjects: { items: { anyOf: { properties: { subjectId: { pattern?: string; enum?: string[] }; subjectLabel: { maxLength?: number; enum?: string[] }; claims: { items: { properties: { featureId: { $ref: string }; state: { $ref: string }; temporal: { $ref: string }; refs: { $ref: string } } } } } }[] } }; reviewedSourceSpanIds: { minItems: number; maxItems: number; items: { $ref: string } } } };
+  const alternatives = schema.properties.subjects.items.anyOf;
+  assert.equal(alternatives.length, new Set(catalog().features.map(row => row.scope)).size);
+  for (const alternative of alternatives) {
+    const scope = alternative.properties.subjectId.enum?.[0] === "case" ? "case" : alternative.properties.subjectId.pattern!.slice(1).split(":")[0];
+    const featureRef = alternative.properties.claims.items.properties.featureId.$ref;
+    assert.deepEqual(schema.$defs[featureRef.slice("#/$defs/".length)].enum, catalog().features.filter(row => row.scope === scope).map(row => row.id));
+    if (scope === "case") { assert.deepEqual(alternative.properties.subjectId.enum, ["case"]); assert.deepEqual(alternative.properties.subjectLabel.enum, [INTAKE_NEGATIVE_SUBJECT_LABELS.case]); }
+    else assert.equal(alternative.properties.subjectId.pattern, `^${scope}:[A-Za-z0-9][A-Za-z0-9_.:-]*$`);
+    assert.equal(alternative.properties.claims.items.properties.state.$ref, "#/$defs/intakeState");
+    assert.equal(alternative.properties.claims.items.properties.temporal.$ref, "#/$defs/intakeTemporal");
+    assert.equal(alternative.properties.claims.items.properties.refs.$ref, "#/$defs/sourceSpanRefs");
+  }
+  assert.equal(schema.$defs.sourceSpanRefs.items!.properties.sourceSpanId.$ref, "#/$defs/sourceSpanId");
+  assert.deepEqual(schema.$defs.sourceSpanId.enum, packet.sourceSpans.map((span: { id: string }) => span.id));
+  assert.equal(schema.properties.reviewedSourceSpanIds.minItems, packet.sourceSpans.length);
+  assert.equal(schema.properties.reviewedSourceSpanIds.maxItems, packet.sourceSpans.length);
+  assert.equal(schema.properties.reviewedSourceSpanIds.items.$ref, "#/$defs/sourceSpanId");
+  assert.equal(schema.$defs.coverageFeatureId, undefined);
+  assert.equal(request.reasoningEffort, "medium");
+  const idMatches = (value: string) => schema.properties.subjects.items.anyOf.some(branch => branch.properties.subjectId.enum?.includes(value) || (branch.properties.subjectId.pattern && new RegExp(branch.properties.subjectId.pattern).test(value)));
+  assert.ok(["case", "income:none", "debt:none", "asset:none", "income:business1"].every(idMatches));
+  assert.equal(idMatches("scope:none"), false); assert.equal(idMatches("unknown:none"), false);
   assert.ok(!request.instructions.includes("scope:none")); assert.match(request.instructions, /income:none/); assert.match(request.instructions, /debt:none/); assert.match(request.instructions, /asset:none/);
   assert.match(request.instructions, /배우자/); assert.match(request.instructions, /과거/); assert.match(request.instructions, /미언급은 absent가 아니다/);
   assert.throws(() => buildIntakeClassifierRequest([], catalog()), /INTAKE_NO_ACTIVE_NOTES/);

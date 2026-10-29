@@ -3,6 +3,7 @@ import referenceRelease from "./reference-release.json" with { type: "json" };
 import { env } from "cloudflare:workers";
 import { getChatGPTUser } from "../app/chatgpt-auth";
 import { AI_MODEL, type CaseData } from "./domain";
+import { RISK_CATALOG } from "./legal-rules";
 import { inspectProcessingReadiness,type StoredDocumentState,type StoredPageState } from "./processing-readiness";
 import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { snapshotSha256 } from "./calculator-tools.ts";
@@ -157,6 +158,30 @@ export async function getProcessingReadiness(data:CaseData){
   ]);
   return inspectProcessingReadiness(data,documents.results,pages.results);
 }
+const ANALYSIS_PAGE_MAX=100,ANALYSIS_PAGE_DEFAULT=50;
+export interface AnalysisPageOptions {revision:number;limit?:number;cursor?:string|null;includeHistorical?:boolean;inputSha256?:string}
+function analysisCursor(value:string|null|undefined):{at:string;id:string}|null{
+  if(!value)return null;try{const decoded=JSON.parse(atob(value.replace(/-/g,"+").replace(/_/g,"/").padEnd(Math.ceil(value.length/4)*4,"=")));if(!decoded||typeof decoded.at!=="string"||typeof decoded.id!=="string"||!decoded.id||decoded.at.length>64||decoded.id.length>100)throw new Error();return {at:decoded.at,id:decoded.id};}catch{throw new HttpError(400,"분석 페이지 cursor 형식이 올바르지 않습니다.");}
+}
+const encodeAnalysisCursor=(row:{at:string;id:string})=>btoa(JSON.stringify({at:row.at,id:row.id})).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/g,"");
+export async function readCaseAnalyses(data:CaseData,options:AnalysisPageOptions){
+  const {revision}=options;if(!Number.isSafeInteger(revision)||revision<1||revision>data.context.revision)throw new HttpError(400,"분석 판본을 확인하세요.");
+  if(options.inputSha256!==undefined&&!/^[a-f0-9]{64}$/i.test(options.inputSha256))throw new HttpError(400,"분석 입력 지문 형식이 올바르지 않습니다.");
+  const limit=options.limit??ANALYSIS_PAGE_DEFAULT;if(!Number.isSafeInteger(limit)||limit<1||limit>ANALYSIS_PAGE_MAX)throw new HttpError(400,`분석 페이지 크기는 1부터 ${ANALYSIS_PAGE_MAX}까지여야 합니다.`);
+  const cursor=analysisCursor(options.cursor),includeHistorical=options.includeHistorical===true;
+  const params:any[]=[data.context.id,revision];let sql="SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? AND type <> 'derived_evaluation'";
+  if(options.inputSha256){sql+=" AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ?";params.push(options.inputSha256);}
+  const currentHash=revision===data.context.revision?await snapshotSha256(data):null,currentReference=referenceIdentity()?.sha256??referenceRelease.sha256;
+  if(!includeHistorical){sql+=" AND (type <> 'legal_advisory' AND type <> 'legal_review' OR (json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ?))";params.push(currentHash??"",currentReference,EXECUTION_CONTRACT_VERSION);}
+  if(cursor){sql+=" AND (at < ? OR (at = ? AND id < ?))";params.push(cursor.at,cursor.at,cursor.id);}
+  sql+=" ORDER BY at DESC,id DESC LIMIT ?";params.push(limit+1);
+  const result=await db().prepare(sql).bind(...params).all<{id:string;revision:number;type:string;payload:string;at:string}>(),hasMore=result.results.length>limit,rows=result.results.slice(0,limit);
+  const analyses=rows.map(row=>{let payload:any,parseError=false;try{payload=JSON.parse(row.payload);}catch{payload=null;parseError=true;}const legal=row.type==="legal_advisory"||row.type==="legal_review";let current=revision===data.context.revision,staleReason:string|undefined;
+    if(parseError&&legal){current=false;staleReason="payload_invalid";}
+    if(legal&&!parseError){const receipt=payload?.calculatorExecution;if(revision!==data.context.revision)staleReason="case_revision_is_historical";else if(receipt?.inputSha256!==currentHash)staleReason="calculator_input_hash_mismatch";else if(receipt?.referenceRelease?.sha256!==currentReference)staleReason="reference_release_hash_mismatch";else if(receipt?.contractVersion!==EXECUTION_CONTRACT_VERSION)staleReason="engine_version_mismatch";current=!staleReason;}
+    return {...row,payload,...(parseError?{payloadParseError:true}:{}),...(legal?{current,staleReason:staleReason??null}: {})};});
+  const last=rows.at(-1);return {caseId:data.context.id,revision,inputSha256:options.inputSha256??(revision===data.context.revision?currentHash:undefined),includeHistorical,limit,analyses,complete:!hasMore,nextCursor:hasMore&&last?encodeAnalysisCursor(last):null};
+}
 export async function requireUploadedSource(data:CaseData,source:{documentId?:string;page?:number}|null|undefined){
   if(!source||typeof source.documentId!=="string"||!Number.isInteger(source.page))throw new HttpError(400,"원본 문서와 페이지가 필요합니다.");
   if(!data.documents.some(d=>d.id===source.documentId&&d.status==="active")||!data.pages.some(p=>p.documentId===source.documentId&&p.page===source.page&&p.role==="evidence"))throw new HttpError(409,"현재 생성용 증빙 페이지를 선택하세요.");
@@ -167,16 +192,21 @@ export async function caseExtras(data:CaseData){
   const id=data.context.id;
   const identity=caseSnapshots.get(data),inputSha256=await sha256(new TextEncoder().encode(JSON.stringify(data))),calculatorInputSha256=await snapshotSha256(data);
   const currentFiles=new Set((data.exportManifest?.files??[]).filter(f=>f.status==="current").map(f=>f.id));
-  const [j,a,e,processingReadiness,usage,derivedEvaluation]=await Promise.all([
+  const [j,a,otherAnalyses,legalAnalyses,processingReadiness,usage,derivedEvaluation]=await Promise.all([
     jobs(id),db().prepare("SELECT id,revision,name,kind,hash,mime FROM artifacts WHERE case_id = ? ORDER BY created_at DESC").bind(id).all(),
-    db().prepare("SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? AND type <> 'derived_evaluation' ORDER BY at DESC LIMIT 10").bind(id,data.context.revision).all<{id:string,revision:number,type:string,payload:string,at:string}>(),
+    db().prepare("SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? AND type NOT IN ('derived_evaluation','legal_advisory','legal_review') ORDER BY at DESC LIMIT 10").bind(id,data.context.revision).all<{id:string,revision:number,type:string,payload:string,at:string}>(),
+    db().prepare("SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? AND type IN ('legal_advisory','legal_review') AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? ORDER BY at DESC,id DESC LIMIT 101").bind(id,data.context.revision,calculatorInputSha256,referenceIdentity()?.sha256??referenceRelease.sha256,EXECUTION_CONTRACT_VERSION).all<{id:string,revision:number,type:string,payload:string,at:string}>(),
     getProcessingReadiness(data),
     db().prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(CAST(json_extract(detail,'$.inputTokens') AS INTEGER)),0) AS inputTokens,COALESCE(SUM(CAST(json_extract(detail,'$.outputTokens') AS INTEGER)),0) AS outputTokens,MIN(at) AS startedAt,MAX(at) AS completedAt FROM events WHERE case_id = ? AND type = 'model.call' AND json_extract(detail,'$.model') = ?").bind(id,AI_MODEL).first<{attempts:number,inputTokens:number,outputTokens:number,startedAt:string|null,completedAt:string|null}>(),
     readDerivedEvaluation(data,identity,inputSha256),
   ]);
   const execution:CaseData["execution"]=usage&&usage.attempts>0?{model:AI_MODEL,attempts:usage.attempts,inputTokens:usage.inputTokens,outputTokens:usage.outputTokens,...(usage.startedAt?{startedAt:usage.startedAt}:{}),...(usage.completedAt?{completedAt:usage.completedAt}:{})}:data.execution;
-  const analyses=e.results.flatMap(x=>{try{const payload=JSON.parse(x.payload);if(x.type==="legal_advisory"&&(payload?.calculatorExecution?.inputSha256!==calculatorInputSha256||payload?.calculatorExecution?.referenceRelease?.sha256!==(referenceIdentity()?.sha256??referenceRelease.sha256)))return [];return [{...x,payload}];}catch{return [];}});
-  return {referenceSnapshot:currentReferenceSnapshot(),jobs:j,processingReadiness,execution,derivedEvaluation,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
+  const legalPageHasMore=legalAnalyses.results.length>100,legalRows=legalAnalyses.results.slice(0,100).flatMap(x=>{try{return [{...x,payload:JSON.parse(x.payload)}];}catch{return [];}});
+  const analyses=[...otherAnalyses.results.flatMap(x=>{try{return [{...x,payload:JSON.parse(x.payload)}];}catch{return [];}}),...legalRows].sort((x,y)=>String(y.at).localeCompare(String(x.at)));
+  const expectedCheckIds=new Set(RISK_CATALOG.map(check=>check.id)),checkIds=new Set<string>(),checkStatuses=new Set(["pass","fail","missing","conflict","not_applicable","legal_review"]);for(const row of legalRows){const checks=(row.payload as any)?.checks;if(Array.isArray(checks))for(const check of checks)if(check&&typeof check.id==="string"&&expectedCheckIds.has(check.id)&&checkStatuses.has(check.status)&&typeof check.reason==="string"&&typeof check.nextAction==="string"&&[check.factIds,check.ruleIds,check.missingDocuments].every(values=>Array.isArray(values)&&values.every((value:unknown)=>typeof value==="string")))checkIds.add(check.id);}
+  const missingCheckIds=[...expectedCheckIds].filter(checkId=>!checkIds.has(checkId));
+  const legalReviewCoverage={currentAnalysisCount:legalRows.length,currentCheckCount:checkIds.size,expectedCheckCount:expectedCheckIds.size,missingCheckIds,complete:!legalPageHasMore&&missingCheckIds.length===0,truncated:legalPageHasMore,nextCursor:legalPageHasMore&&legalRows.length?encodeAnalysisCursor(legalRows.at(-1) as {at:string;id:string}):null};
+  return {referenceSnapshot:currentReferenceSnapshot(),jobs:j,processingReadiness,execution,derivedEvaluation,inputIdentity:{storageInputSha256:inputSha256,storageHashScheme:"json-stringify-sha256/v1",canonicalInputSha256:calculatorInputSha256,canonicalHashScheme:"canonical-json-sha256/v1"},legalReviewCoverage,files:a.results.filter(x=>currentFiles.has(String(x.id))).map(x=>({...x,url:`/api/cases/${id}/artifacts/${x.id}`})),analyses};
 }
 export function errorResponse(error:unknown){
   const status=error instanceof HttpError?error.status:500;

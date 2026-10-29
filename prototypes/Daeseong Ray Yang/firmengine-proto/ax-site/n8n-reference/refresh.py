@@ -166,13 +166,26 @@ def export_ax_prompts(manifest: dict) -> None:
     if len(labels) != 8:
         raise ValueError("Unexpected intake subject label contract")
     intake = render_policy("prompt.intake.classifier.instructions", negativeSubjectLabels=json.dumps(labels, ensure_ascii=False, separators=(",", ":")))
+    intake_version = quoted_constant("intake-types.ts", "INTAKE_PROMPT_VERSION")
     write(target / "05-consultation-classifier.md", "# 상담 분류 프롬프트\n\n"
-          "agent는 `consultation_classifier`, 버전은 `intake-types.ts`의 `INTAKE_PROMPT_VERSION`입니다. "
+          f"agent는 `consultation_classifier`, 현재 버전은 `{intake_version}`입니다. "
           "상담 원문은 client_report 후보 분류용이며 OCR 사실·법적 인정으로 자동 반영하지 않습니다. "
-          "아래는 seed 정책에 코드의 부재 대상 라벨만 넣은 instructions입니다. 실제 상담 데이터는 포함하지 않습니다.\n\n"
+          "요청은 `reasoningEffort: medium`, 출력 한도는 14,000 토큰입니다. 아래는 seed 정책에 코드의 부재 대상 라벨만 넣은 instructions입니다. 실제 상담 데이터는 포함하지 않습니다.\n\n"
           + intake + "\n\n## 사용자 입력·출력 계약 조합\n\n"
+          "활성 상담은 [intake-source-spans.ts](source/intake-source-spans.ts.txt)의 결정론적 원문 구간으로 나뉩니다. "
+          "본문에는 note 메타데이터와 각 구간의 ID·시작·끝·정확한 원문이 들어갑니다. "
+          "출력은 `reviewedSourceSpanIds`와 `subjects[].claims[]`이며, subject scope별로 허용 feature ID가 제한됩니다. "
+          "모델은 인용문을 새로 쓰는 대신 `sourceSpanId`로 원문 위치를 참조합니다.\n\n"
           + excerpt(manifest, "intake-classifier.ts", "export function intakeClassifierInstructions", "export const INTAKE_CLASSIFIER_INSTRUCTIONS")
-          + excerpt(manifest, "intake-classifier.ts", "export function buildIntakeClassifierRequest", None))
+          + excerpt(manifest, "intake-classifier.ts", "export function buildIntakeClassifierRequest", None)
+          + "\n## 응답 적응·원문 연결\n\n"
+          "[intake-classifier-response.ts](source/intake-classifier-response.ts.txt)의 `adaptIntakeClassifierResponse()`는 "
+          "전체 구간의 검토 ID가 누락·중복되지 않았는지, 대상 ID·scope·feature·참조 구간이 허용됐는지 검사합니다. "
+          "서버가 원문 구간을 정확한 인용으로 해석한 뒤 기존 claim 검증과 서류 매칭을 실행합니다. "
+          "`classifierReceipt`의 대상 목록·구간별 feature 연결·참조 없는 대상 목록은 구조 검증 이력이며 "
+          "모델이 원문 의미를 정확히 이해했다는 독립 정확도 증명은 아닙니다.\n\n"
+          "실제 호출·저장·재사용·실패 조건은 [intake-store.ts](source/intake-store.ts.txt), "
+          "원문 구간 경계·크기·연결 검증은 [intake-source-spans.ts](source/intake-source-spans.ts.txt)를 확인하세요.\n")
 
     monitor = json.loads(source("reference-monitor-policies.json"))
     write(target / "06-legal-monitor.md", "# 법령·법원 문서 감시 프롬프트\n\n"
@@ -205,11 +218,17 @@ def export_ax_prompts(manifest: dict) -> None:
           "- [calculator-tools.ts](source/calculator-tools.ts.txt): 읽기 전용 공통 계산 dispatcher.\n"
           "- [document-writer.ts](source/document-writer.ts.txt): 저장된 evaluation·출력 모드·기준 판본 검증.\n"
           "- [reactive-evaluation.ts](source/reactive-evaluation.ts.txt): 사건 변경과 계산 결과 갱신.\n\n"
+          "v43의 문서작성은 저장된 계산·바인딩을 분리된 스냅샷으로 읽고, 실제 출력의 산식·제출 준비 상태를 "
+          "[document-filing-readiness.ts](source/document-filing-readiness.ts.txt)로 검사합니다. "
+          "계산 일치와 공식 전자양식 일치는 별도이며 제출 준비 상태를 자동 승인하지 않습니다. "
+          "[export-artifact-transaction.ts](source/export-artifact-transaction.ts.txt)는 manifest 저장 전 실패 시 "
+          "해당 출력 요청이 만든 객체·행만 정리하고, 저장 완료 후 로그 실패로 정상 생성물을 삭제하지 않습니다.\n\n"
           "법적 체크 AI에 전달하는 executionContext는 [법적 검토 프롬프트](04-legal-reviewer.md)와 "
           "[legal-review-packet.ts](source/legal-review-packet.ts.txt)를 함께 확인하세요.\n")
     manifest["model"] = quoted_constant("domain.ts", "AI_MODEL")
     manifest["prompt_version"] = quoted_constant("category-contract.ts", "RECORD_CATEGORY_STATUS_PROMPT_VERSION")
     manifest["prompt_policy_count"] = len(policies())
+    manifest["intake_prompt_version"] = intake_version
     manifest["rendered_constants"] = {name: sha256(value.encode("utf-8")) for _file, name, value in shared}
     manifest["rendered_constants"]["EXTRACT_INSTRUCTIONS"] = sha256(extract.encode("utf-8"))
     for item in classifiers:
@@ -225,9 +244,9 @@ def main() -> None:
                   "field-applicability-contracts.json", "workflow-rules.ts", "legal-review-packet.ts", "luna.ts", "domain.ts",
                   "reference-prompt-policies.json", "reference-prompts.ts", "reference-runtime.ts", "reference-context.ts",
                   "reference-release.json", "reference-monitor-policies.json", "legal-monitor-provider.ts", "legal-monitor-sources.ts",
-                  "intake-classifier.ts", "intake-types.ts", "intake-engine.ts", "intake-store.ts",
+                  "intake-classifier.ts", "intake-classifier-response.ts", "intake-source-spans.ts", "intake-types.ts", "intake-engine.ts", "intake-store.ts",
                   "case-agent.ts", "case-agent-contracts.ts", "case-execution.ts", "execution-catalog.ts", "calculator-tools.ts",
-                  "document-writer.ts", "reactive-evaluation.ts")
+                  "document-writer.ts", "reactive-evaluation.ts", "document-filing-readiness.ts", "export-artifact-transaction.ts")
     copies = [(PROTO / "workflows" / name, Path("workflows") / name)
               for name in ("firmengine-p0.json", "law-watch.json")]
     copies += prompt_files(PROTO, ("classify", "extract", "judge", "law-watch"), "legacy-prompts")

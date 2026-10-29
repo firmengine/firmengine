@@ -63,9 +63,18 @@ export function buildLegalReviewPacket(input:LegalReviewPacketInput):LegalReview
 }
 
 export interface AdvisoryCheck {id:string;status:string;reason:string;factIds:string[];ruleIds:string[];missingDocuments:string[];nextAction:string}
-export function gateLegalReviewChecks(input:{batch:LegalReviewRisk[];response:AdvisoryCheck[];providedFacts:Fact[];validRuleIds:Set<string>;coverage:Record<string,any>}):AdvisoryCheck[]{
-  const ids=new Set(input.batch.map(check=>check.id)),providedIds=new Set(input.providedFacts.map(fact=>fact.id));
-  const validFacts=new Set(input.providedFacts.filter(fact=>providedIds.has(fact.id)&&fact.state!=="disputed"&&fact.state!=="retracted"&&fact.recognition!=="rejected"&&fact.refs.length).map(fact=>fact.id));
+export function currentCompletedLegalCheckIds(rows:Array<{payload:string}>,receipt:{inputSha256:string;referenceSha256:string;contractVersion:string},expectedIds:Set<string>):Set<string>{
+  const statuses=new Set(["pass","fail","missing","conflict","not_applicable","legal_review"]),completed=new Set<string>();
+  for(const row of rows){try{const payload=JSON.parse(row.payload),execution=payload?.calculatorExecution;if(execution?.inputSha256!==receipt.inputSha256||execution?.referenceRelease?.sha256!==receipt.referenceSha256||execution?.contractVersion!==receipt.contractVersion||!Array.isArray(payload.checks))continue;
+    for(const check of payload.checks)if(check&&expectedIds.has(check.id)&&statuses.has(check.status)&&Array.isArray(check.factIds)&&Array.isArray(check.ruleIds)&&Array.isArray(check.missingDocuments)&&typeof check.reason==="string"&&typeof check.nextAction==="string")completed.add(check.id);
+  }catch{/* malformed historical rows do not suppress a current review */}}
+  return completed;
+}
+export function gateLegalReviewChecks(input:{batch:LegalReviewRisk[];response:AdvisoryCheck[];providedFacts:Fact[];eligibleFactIds:Set<string>;validRuleIds:Set<string>;coverage:Record<string,any>}):AdvisoryCheck[]{
+  const ids=new Set(input.batch.map(check=>check.id));
+  // The caller derives this allowlist from source hash / structured-record and lineage validation.
+  // Never infer source eligibility from model-provided identifiers or a nonempty refs array here.
+  const validFacts=new Set(input.providedFacts.filter(fact=>input.eligibleFactIds.has(fact.id)&&fact.state!=="disputed"&&fact.state!=="retracted"&&fact.recognition!=="rejected").map(fact=>fact.id));
   const clearable=new Set(input.providedFacts.filter(fact=>validFacts.has(fact.id)&&fact.state==="verified"&&fact.recognition==="accepted"&&!fact.validation.some(v=>v.severity!=="info")).map(fact=>fact.id));
   const checked=Object.fromEntries(input.response.filter(check=>ids.has(check.id)).map(check=>[check.id,{...check}]));
   return input.batch.map(check=>{
@@ -81,7 +90,9 @@ export function gateLegalReviewChecks(input:{batch:LegalReviewRisk[];response:Ad
     const inventoryCoverageComplete=relevantInventoryKinds.every(kind=>(inventoryCoverage[inventoryKey[kind]]??0)===0);
     const transactionCoverage=input.coverage.transactionReview??{},transactionCoverageComplete=!axes.has("transaction")||((transactionCoverage.omittedItems??0)===0&&(transactionCoverage.omittedCandidates??0)===0&&transactionCoverage.completePeriodProven===true&&(transactionCoverage.unresolvedRowCount??1)===0&&(input.coverage.truncatedTransactionItemIds??[]).length===0&&(input.coverage.truncatedTransactionCandidateIds??[]).length===0);
     if(["pass","not_applicable"].includes(item.status)&&(!featureCoverageComplete||!ruleCoverageComplete||!guidanceCoverageComplete||!inventoryCoverageComplete||!transactionCoverageComplete||clippedFacts||clippedRules||clippedGuidance||clippedCheck)){item.status="missing";item.reason+=" / 이 체크의 관련 원문 사실·규칙·예외 가이드·목록 중 일부 생략 또는 문구 절단이 있어 통과·비해당으로 확정하지 않았습니다.";}
-    if(["pass","not_applicable"].includes(item.status)&&(!item.factIds.length||item.factIds.some(id=>!clearable.has(id)))){item.status="missing";item.reason+=" / 제공되고 검증·인정된 사실근거가 없어 해소하지 않았습니다.";}
+    const citedClearableFacts=input.providedFacts.filter(fact=>item.factIds.includes(fact.id)&&clearable.has(fact.id));
+    const missingFeatureCitation=!check.manual&&check.features.some(feature=>!citedClearableFacts.some(fact=>{const tier=featureMatchTier(feature,fact);return tier!==null&&tier<2;}));
+    if(["pass","not_applicable"].includes(item.status)&&(!item.factIds.length||item.factIds.some(id=>!clearable.has(id))||missingFeatureCitation)){item.status="missing";item.reason+=" / 제공되고 검증·인정된 사실근거가 없거나 각 필수 피처의 인용 근거가 빠져 해소하지 않았습니다.";}
     if(check.manual&&["pass","not_applicable"].includes(item.status))item.status="legal_review";
     if(item.status==="not_applicable"&&!input.providedFacts.some(fact=>item.factIds.includes(fact.id)&&[false,"no","없음"].includes(fact.value as string|boolean)&&check.features.some(key=>axis(key)===axis(fact.key)))){item.status="legal_review";item.reason+=" / 제공된 해당 조건의 명시적 음성 증거가 없어 비해당으로 처리하지 않았습니다.";}
     return item;

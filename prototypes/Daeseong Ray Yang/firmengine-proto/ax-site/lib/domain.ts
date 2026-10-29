@@ -191,6 +191,17 @@ export interface Transaction {
   relatedObjectId?: string;
   factIds: string[];
 }
+/** Explicit disposal assumptions. Amounts are never inferred from the asset valuation. */
+export interface DisposalScenario {
+  id: string;
+  assetId: string;
+  intent?: "proposed" | "unknown";
+  saleAmount?: NumericInput | null;
+  securedPayoff?: NumericInput | null;
+  costs?: NumericInput | null;
+  factIds: string[];
+  recognition: Recognition;
+}
 export interface CaseContext {
   id: string;
   caseName: string;
@@ -279,6 +290,7 @@ export interface CaseData {
   assets: Asset[];
   household: Household;
   transactions: Transaction[];
+  disposalScenarios?: DisposalScenario[];
   exportManifest?: ExportManifest;
   referenceTest?: ReferenceTestProvenance;
   structuredTest?: StructuredTestProvenance;
@@ -361,6 +373,7 @@ export interface CaseReadIndex {
   readonly owner: CaseData;
   readonly current: Fact[];
   readonly byId: Map<string, Fact>;
+  readonly bySubject: Map<string, Fact[]>;
   readonly documentsById: Map<string, EvidenceDocument>;
   readonly pagesByKey: Map<string, EvidencePage>;
   readonly canonicalPageTextByKey: Map<string, string | null>;
@@ -376,9 +389,10 @@ export function createCaseReadIndex(data:CaseData):CaseReadIndex {
     // Concurrent same-version candidates stay visible so downstream checks can block them.
     return items.filter((f) => f.version === version && f.state !== "retracted");
   });
+  const bySubject=new Map<string,Fact[]>();for(const fact of current){let rows=bySubject.get(fact.subjectId);if(!rows){rows=[];bySubject.set(fact.subjectId,rows);}rows.push(fact);}
   const pagesByKey=new Map(data.pages.map(page=>[pageKey(page.documentId,page.page),page]));
   const canonicalPageTextByKey=new Map([...pagesByKey].map(([key,page])=>[key,page.text?.trim()?page.text.normalize("NFKC").replace(/\s+/g,"").toLowerCase():null]));
-  return {owner:data,current,byId:new Map(current.map(fact=>[fact.id,fact])),documentsById:new Map(data.documents.map(document=>[document.id,document])),pagesByKey,canonicalPageTextByKey,validRefs:new WeakMap(),lineageById:new Map()};
+  return {owner:data,current,byId:new Map(current.map(fact=>[fact.id,fact])),bySubject,documentsById:new Map(data.documents.map(document=>[document.id,document])),pagesByKey,canonicalPageTextByKey,validRefs:new WeakMap(),lineageById:new Map()};
 }
 
 export function currentFacts(data: Pick<CaseData, "facts">, index?:CaseReadIndex): Fact[] {

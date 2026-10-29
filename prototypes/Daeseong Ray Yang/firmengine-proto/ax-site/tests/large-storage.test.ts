@@ -6,6 +6,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import ts from "typescript";
 import * as domain from "../lib/domain.ts";
+import * as legalRules from "../lib/legal-rules.ts";
 import * as readiness from "../lib/processing-readiness.ts";
 import * as reactiveEvaluation from "../lib/reactive-evaluation.ts";
 import { EXECUTION_CONTRACT_VERSION } from "../lib/execution-catalog.ts";
@@ -37,7 +38,7 @@ function setup(){
       }};
     },
   };
-  const store=load<{getCase(id:string):Promise<domain.CaseData>;saveCase(data:domain.CaseData,revision:number,previous:domain.CaseData):Promise<void>}> ("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>null},"./domain":domain,"./processing-readiness":readiness,"./execution-catalog.ts":{EXECUTION_CONTRACT_VERSION},"./reactive-evaluation.ts":reactiveEvaluation,"./calculator-tools.ts":{snapshotSha256}});
+  const store=load<{getCase(id:string):Promise<domain.CaseData>;saveCase(data:domain.CaseData,revision:number,previous:domain.CaseData):Promise<void>}> ("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>null},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":readiness,"./execution-catalog.ts":{EXECUTION_CONTRACT_VERSION},"./reactive-evaluation.ts":reactiveEvaluation,"./calculator-tools.ts":{snapshotSha256}});
   return {sqlite,data,objects,store};
 }
 const enlarged=(data:domain.CaseData,marker="z")=>({...data,syntheticAuditTrail:marker.repeat(2_100_000)}) as domain.CaseData;

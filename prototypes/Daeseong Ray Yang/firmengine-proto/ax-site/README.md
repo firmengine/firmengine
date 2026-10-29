@@ -8,7 +8,8 @@
 
 - 추출·검증 prompt `luna-evidence-3.21.0`은 기준자료의 프롬프트 정책을 렌더링하고 공통 record category 상태를 추출 및 독립 검증에 포함합니다. typed projection과 source receipt는 record 단위 category consensus가 지원될 때만 새 검증 경로에서 진행됩니다.
 - 페이지 재투영 계약은 `source-projection-2026-10-28.17`입니다.
-- `FirmEngine_AX_v35`의 로컬 병합 내용과 검증 결과는 [병합 기록](docs/ax-v35-merge.md), 현재 프롬프트와 기존 n8n 연결 관계는 [별도 정리](n8n-reference/README.md)에서 확인할 수 있습니다.
+- 현재 소스는 `FirmEngine_AX_v43_source_20261029/source/`의 배포 소스 커밋 `72b23f2c3faee5656caeeb1e6e6afce9a65de3cb`를 병합한 버전입니다. [v43 병합 기록](docs/ax-v43-merge.md)과 [원본 배포·파일 증빙](docs/releases/ax-v43/README.md)을 함께 보관합니다.
+- 이전 [v35 병합 기록](docs/ax-v35-merge.md)은 이력으로 유지합니다. 현재 프롬프트와 기존 n8n 연결 관계는 [별도 정리](n8n-reference/README.md)에서 확인할 수 있습니다.
 
 ## 현재 검증 범위
 

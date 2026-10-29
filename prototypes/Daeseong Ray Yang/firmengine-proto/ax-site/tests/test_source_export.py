@@ -12,6 +12,30 @@ spec.loader.exec_module(exporter)
 
 
 class SourceExportTests(unittest.TestCase):
+    def test_public_hosting_config_preserves_mcp_without_project_identifiers(self):
+        self.assertEqual(exporter.PUBLIC_HOSTING_CONFIG, {"d1": "DB", "r2": "BUCKET", "capabilities": ["mcp"]})
+        self.assertNotIn("project_id", exporter.PUBLIC_HOSTING_CONFIG)
+
+    def test_existing_ax_site_layout_is_required_inside_the_allowlisted_destination(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory); (repository / ".git").mkdir()
+            destination = repository / exporter.DESTINATION
+            (destination / "app").mkdir(parents=True)
+            self.assertEqual(exporter.validate_export_destination(repository), destination)
+
+            # An app directory beside ax-site must not authorize an unrelated
+            # or incomplete project root.
+            (destination / "app").rmdir()
+            (destination.parent / "app").mkdir()
+            with self.assertRaisesRegex(SystemExit, "existing prototype directory"):
+                exporter.validate_export_destination(repository)
+
+    def test_destination_validation_rejects_a_non_checkout_root(self):
+        with tempfile.TemporaryDirectory() as directory:
+            repository = Path(directory)
+            with self.assertRaisesRegex(SystemExit, "Git checkout"):
+                exporter.validate_export_destination(repository)
+
     def test_safe_source_paths_and_private_artifacts(self):
         for path in ("../outside", "/tmp/outside", "lib/../../outside", "lib//a.ts", "lib/./a.ts", "lib\\a.ts", "lib/uploads/facts.json", "docs/evaluation-private/gold.json", "scripts/run-sample-evaluation.py"):
             with self.subTest(path=path):

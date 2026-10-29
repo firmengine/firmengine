@@ -40,6 +40,7 @@ export const BENCHMARK = {
   note:"공개 소스에는 실제 의뢰인 자료·추출값·정답·평가 산출물을 포함하지 않습니다. 99%는 목표이며 이 배포판의 달성 수치가 아닙니다.",
 };
 '''
+PUBLIC_HOSTING_CONFIG = {"d1": "DB", "r2": "BUCKET", "capabilities": ["mcp"]}
 
 PUBLIC_README = '''# Firm Engine AX — 개인회생 사건 워크스페이스
 
@@ -237,6 +238,18 @@ def validate_package_pair(source):
         if package.get(key, {}) != root.get(key, {}):
             raise SystemExit(f"package.json and package-lock.json disagree on {key}")
 
+def validate_export_destination(repository):
+    """Require the exact existing ax-site checkout, without accepting siblings."""
+    if not (repository/".git").exists():
+        raise SystemExit("An existing Git checkout is required.")
+    destination=repository/DESTINATION
+    if destination.resolve()!=destination or not destination.is_relative_to(repository):
+        raise SystemExit("Refusing a symlink or out-of-scope destination.")
+    app=destination/"app"
+    if app.is_symlink() or not app.is_dir():
+        raise SystemExit("The user's existing prototype directory is missing.")
+    return destination
+
 def write_transaction(destination, files, manifest, owned):
     destination.mkdir(parents=True, exist_ok=True)
     if destination.is_symlink():
@@ -310,10 +323,7 @@ def main():
     parser.add_argument("--repository",required=True)
     parser.add_argument("--write",action="store_true")
     args=parser.parse_args()
-    source=Path(args.source).resolve(); repository=Path(args.repository).resolve(); destination=repository/DESTINATION
-    if not (repository/".git").exists(): raise SystemExit("An existing Git checkout is required.")
-    if destination.resolve()!=destination or not destination.is_relative_to(repository): raise SystemExit("Refusing a symlink or out-of-scope destination.")
-    if not (repository/DESTINATION.parent/"app").is_dir(): raise SystemExit("The user's existing prototype directory is missing.")
+    source=Path(args.source).resolve(); repository=Path(args.repository).resolve(); destination=validate_export_destination(repository)
     validate_package_pair(source)
     public_templates=template_hashes(source)
     private_metadata=(source/"lib/sample-manifest.ts").read_text()
@@ -344,7 +354,7 @@ def main():
         files[name]=data;modes[name]="100755" if path.stat().st_mode&stat.S_IXUSR else "100644"
     files["lib/sample-manifest.ts"]=PUBLIC_SAMPLE_CONFIG.encode();files["README.md"]=PUBLIC_README.encode()
     files[".gitignore"]=((source/".gitignore").read_text()+EXTRA_IGNORE).encode()
-    files[".openai/hosting.json"]=(json.dumps({"d1":"DB","r2":"BUCKET"},indent=2)+"\n").encode()
+    files[".openai/hosting.json"]=(json.dumps(PUBLIC_HOSTING_CONFIG,indent=2)+"\n").encode()
     manifest_path=destination/"SOURCE_MANIFEST.json"
     if destination.exists() and destination.is_symlink(): raise SystemExit("Refusing destination symlink")
     previous=validate_manifest(manifest_path,destination)

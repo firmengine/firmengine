@@ -1,5 +1,5 @@
 {
-  "source_commit": "2ee7f4d50a324173462c2b39d112ddb55517aba1",
+  "source_commit": "fa7061e975c0c0618267fd360926b7f62ec4c1ef",
   "scope": "allowlisted working-tree source snapshot; source_commit is the base HEAD, not a claim that copied bytes are committed; not a live n8n export",
   "files": [
     {

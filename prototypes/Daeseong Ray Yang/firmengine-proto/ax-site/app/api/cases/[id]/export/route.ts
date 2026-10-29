@@ -7,6 +7,7 @@ import { caseResponse } from "../../../../../lib/case-response";
 import { jsonResponse } from "../../../../../lib/json-response";
 import { prepareDocumentWrite } from "../../../../../lib/document-writer";
 import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
+import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),data=await getCase(id),extras=await caseExtras(data);
   const mode=body.mode==="final"?"final":"draft";
@@ -22,13 +23,24 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const pageReceipts=receiptRows.results.map(row=>({documentId:row.document_id,page:row.page,role:row.role,status:row.status,stage:row.stage,hasStoredRead:row.has_stored_read===1}));
   const generated=(await writeOfficePackage({data,rules:CURRENT_RULESET,mode,pageReceipts,preparedExecution:prepared.execution})).map(file=>({...file,id:crypto.randomUUID()}));
   if((await loadReferenceSnapshot(db())).sha256!==prepared.receipt.referenceRelease?.sha256)throw new HttpError(409,"문서 작성 중 적용 기준이 변경되었습니다. 최신 계산과 검토 상태를 확인하세요.");
-  const records=[];
-  for(const f of generated){
-    const key=`cases/${id}/artifacts/${f.id}`;await bucket().put(key,f.bytes,{httpMetadata:{contentType:f.mime}});
-    records.push(db().prepare("INSERT INTO artifacts (id,case_id,revision,name,kind,object_key,hash,mime,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(f.id,id,data.context.revision,f.name,f.kind,key,f.hash,f.mime,now()));
-  }
-  await db().batch(records);
-  data.exportManifest=newExportManifest(data.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),data,mode);
-  await saveCase(data,data.context.revision,data);await event(id,"document_writer.prepared",prepared.receipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt:prepared.receipt});
+  const staged=generated.map(file=>{
+    const objectKey=`cases/${id}/artifacts/${file.id}`;
+    return {objectKey,bytes:file.bytes,mime:file.mime,record:{id:file.id,name:file.name,kind:file.kind,hash:file.hash,mime:file.mime,objectKey}};
+  });
+  await commitExportArtifactTransaction({
+    artifacts:staged,
+    upload:(key,bytes,mime)=>bucket().put(key,bytes,{httpMetadata:{contentType:mime}}),
+    persistRecords:records=>db().batch(records.map(f=>db().prepare("INSERT INTO artifacts (id,case_id,revision,name,kind,object_key,hash,mime,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(f.id,id,data.context.revision,f.name,f.kind,f.objectKey,f.hash,f.mime,now()))),
+    commitManifest:async()=>{
+      // Uploads can outlast a reference update; check again at the save boundary.
+      if((await loadReferenceSnapshot(db())).sha256!==prepared.receipt.referenceRelease?.sha256)throw new HttpError(409,"문서 저장 중 적용 기준이 변경되었습니다. 최신 계산과 검토 상태를 확인하세요.");
+      data.exportManifest=newExportManifest(data.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),data,mode);
+      await saveCase(data,data.context.revision,data);
+    },
+    deleteRecords:records=>db().batch(records.map(f=>db().prepare("DELETE FROM artifacts WHERE id = ? AND case_id = ? AND object_key = ?").bind(f.id,id,f.objectKey))),
+    deleteObject:key=>bucket().delete(key),
+    onCleanupFailure:report=>event(id,"export.cleanup_failed",{artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,failureCount:report.cleanupErrors.length}),
+  });
+  await event(id,"document_writer.prepared",prepared.receipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt:prepared.receipt});
   return jsonResponse(await caseResponse(data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}

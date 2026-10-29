@@ -10,7 +10,7 @@
 
 이 단계는 n8n 노드가 아닌 `reviewLegal`의 직접 호출입니다. `legal-review-packet.ts`가 사건별 입력을 제한된 패킷으로 구성합니다.
 
-원본: `lib/pipeline.ts:510`
+원본: `lib/pipeline.ts:511`
 
 ```ts
 const obj=(properties:Record<string,unknown>)=>({type:"object",additionalProperties:false,properties,required:Object.keys(properties)});
@@ -19,8 +19,8 @@ type Advisory={checks:{id:string;status:string;reason:string;factIds:string[];ru
 export async function reviewLegal(caseId:string){
   const data=await getCase(caseId),sourceIndex=createCaseReadIndex(data),calculator=await runCaseCalculatorNode(data),execution=calculator.execution,assessment=execution.assessment,facts=currentFacts(data,sourceIndex);
   const catalog=RISK_CATALOG.map(r=>({id:r.id,title:r.title,conditions:r.conditions,features:r.required_features,request:r.evidence_request,legalRuleIds:r.current_rule_ids,manual:!r.implementation.may_auto_clear}));
-  const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory'").bind(caseId,data.context.revision).all<{payload:string}>();
-  const completed=new Set(old.results.flatMap(r=>{const prior=JSON.parse(r.payload) as Advisory&{calculatorExecution?:{inputSha256?:string}};return prior.calculatorExecution?.inputSha256===calculator.receipt.inputSha256?prior.checks.map(x=>x.id):[];}));
+  const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory' AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? ORDER BY at DESC LIMIT 1000").bind(caseId,data.context.revision,calculator.receipt.inputSha256,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION).all<{payload:string}>();
+  const completed=currentCompletedLegalCheckIds(old.results,{inputSha256:calculator.receipt.inputSha256,referenceSha256:calculator.receipt.referenceRelease.sha256,contractVersion:EXECUTION_CONTRACT_VERSION},new Set(catalog.map(item=>item.id)));
   const batch=catalog.filter(r=>!completed.has(r.id)).slice(0,LEGAL_REVIEW_BATCH_SIZE).map(r=>({id:r.id,title:r.title,conditions:r.conditions??"",features:r.features??[],request:r.request??"",legalRuleIds:r.legalRuleIds??[],manual:r.manual}));if(!batch.length)return {remaining:0,stage:"legal_complete"};
   const legalIds=new Set(batch.flatMap(r=>r.legalRuleIds));
   const rules=LEGAL_CATALOG.filter(r=>legalIds.has(r.id)).map(r=>({id:r.id,title:r.title,condition:r.condition,effect:r.effect,source_url:r.source_url,article:r.article,effective_date:r.effective_date,authority_scope:r.authority_scope}));

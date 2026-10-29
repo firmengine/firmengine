@@ -3,6 +3,8 @@ import { actor, connection, db, event, getCase, HttpError, now, sha256 } from ".
 import { callLuna } from "./luna.ts";
 import { INTAKE_CATALOG_SEED } from "./intake-catalog.ts";
 import { buildIntakeClassifierRequest } from "./intake-classifier.ts";
+import { adaptIntakeClassifierResponse } from "./intake-classifier-response.ts";
+import { resolveIntakeSourceSpanRefs } from "./intake-source-spans.ts";
 import { matchIntakeChecklist, validateIntakeCatalog, validateIntakeClaims } from "./intake-engine.ts";
 import { INTAKE_ACTIVE_MAX_CHARS, INTAKE_NOTE_MAX_CHARS, INTAKE_ENGINE_VERSION, INTAKE_PROMPT_VERSION, type ConsultationNote, type IntakeCatalog, type IntakeChecklistView, type IntakeRun } from "./intake-types.ts";
 
@@ -146,13 +148,15 @@ export async function analyzeConsultation(caseId:string,body:Record<string,unkno
       .bind(runId,caseId,fingerprint,expectedCase,snapshot.identity.token,expectedConsultation,expectedCatalog,leaseUntil,by,at,at).run();
   if(!acquired.meta.changes)throw new HttpError(409,"동일한 상담 분석이 이미 시작되었습니다. 잠시 후 새로 불러오세요.");
   try{
-    const response=await callLuna<unknown>(buildIntakeClassifierRequest(activeNotes,catalog.catalog));
+    const classifierRequest=buildIntakeClassifierRequest(activeNotes,catalog.catalog);
+    const response=await callLuna<unknown>(classifierRequest);
     // Usage contains no consultation text and is also retained in the run receipt.
     await event(caseId,"model.call",{agent:"consultation_classifier",runId,...response.usage}).catch(()=>{});
     let claims;
-    try{claims=validateIntakeClaims(response.value,activeNotes,catalog.catalog);}catch(error){throw new HttpError(422,`상담 분류의 근거를 확인하지 못했습니다. ${error instanceof Error?error.message:"원문을 검토해 주세요."}`);}
+    let classifierReceipt;
+    try{const normalized=adaptIntakeClassifierResponse(response.value,classifierRequest.sourceSpans,catalog.catalog);classifierReceipt=normalized.classifierReceipt;claims=validateIntakeClaims(resolveIntakeSourceSpanRefs({claims:normalized.claims},activeNotes),activeNotes,catalog.catalog);}catch(error){throw new HttpError(422,`상담 분류의 근거를 확인하지 못했습니다. ${error instanceof Error?error.message:"원문을 검토해 주세요."}`);}
     const result=matchIntakeChecklist({claims,catalog:catalog.catalog,courtId:snapshot.data.context.courtId,asOf:snapshot.data.context.asOf});
-    const run:IntakeRun={id:runId,caseId,caseRevision:expectedCase,caseStorageToken:snapshot.identity.token,caseInputSha256:snapshot.inputSha256,consultationRevision:expectedConsultation,consultationSha256:historyHash,catalogVersion:expectedCatalog,catalogSha256:catalog.sha256,catalogSnapshot:{features:catalog.catalog.features.map(({id,label})=>({id,label})),sources:catalog.catalog.sources,rules:catalog.catalog.rules.map(({id,title})=>({id,title}))},engineVersion:INTAKE_ENGINE_VERSION,promptVersion:INTAKE_PROMPT_VERSION,model:AI_MODEL,createdAt:now(),result,usage:{inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,durationMs:response.usage.durationMs}};
+    const run:IntakeRun={id:runId,caseId,caseRevision:expectedCase,caseStorageToken:snapshot.identity.token,caseInputSha256:snapshot.inputSha256,consultationRevision:expectedConsultation,consultationSha256:historyHash,catalogVersion:expectedCatalog,catalogSha256:catalog.sha256,catalogSnapshot:{features:catalog.catalog.features.map(({id,label})=>({id,label})),sources:catalog.catalog.sources,rules:catalog.catalog.rules.map(({id,title})=>({id,title}))},engineVersion:INTAKE_ENGINE_VERSION,promptVersion:INTAKE_PROMPT_VERSION,model:AI_MODEL,createdAt:now(),result,usage:{inputTokens:response.usage.inputTokens,outputTokens:response.usage.outputTokens,durationMs:response.usage.durationMs},classifierReceipt};
     const serializedRun=JSON.stringify(run),runHash=await textDigest(serializedRun);
     const saved=await db().batch([
       db().prepare("UPDATE consultation_runs SET status = 'complete',payload = ?,payload_sha256 = ?,lease_until = NULL,updated_at = ? WHERE id = ? AND status = 'pending' AND lease_until = ?").bind(serializedRun,runHash,now(),runId,leaseUntil),

@@ -89,6 +89,7 @@ function noHumanReview(data: CaseData): boolean {
   if (data.facts.some(fact => fact.state === "verified" || fact.recognition !== "unreviewed" || fact.reviewer !== undefined || fact.reviewReason !== undefined || fact.sourceVerification !== undefined || fact.refs.length !== 0)) return false;
   const allObjects: Record<string, unknown>[] = [...data.incomes, ...data.debts, ...data.assets, ...data.transactions] as unknown as Record<string, unknown>[];
   if (allObjects.some(item => (item.recognition !== undefined && item.recognition !== "unreviewed") || item.reviewer !== undefined || item.reviewReason !== undefined || (item.legalReview !== undefined && item.legalReview !== "unreviewed"))) return false;
+  if ((data.disposalScenarios ?? []).some(item => item.recognition !== "unreviewed" || (item as unknown as Record<string, unknown>).reviewer !== undefined || (item as unknown as Record<string, unknown>).reviewReason !== undefined)) return false;
   if (data.household.recognition !== undefined && data.household.recognition !== "unreviewed") return false;
   const household = data.household as unknown as Record<string, unknown>;
   if (household.reviewer !== undefined || household.reviewReason !== undefined) return false;
@@ -112,6 +113,10 @@ export async function validateStructuredCaseImport(input: unknown, headerBodySha
     const data = entry.caseData;
     if (!object(data) || !object(data.context) || data.context.id !== entry.scenarioId || data.context.revision !== 1 || typeof data.context.caseName !== "string" || !data.context.caseName.toLowerCase().includes("synthetic") || !Array.isArray(data.documents) || !Array.isArray(data.pages) || !Array.isArray(data.facts) || !Array.isArray(data.incomes) || !Array.isArray(data.debts) || !Array.isArray(data.assets) || !Array.isArray(data.transactions) || !object(data.household)) throw new Error(`Case shape is invalid for ${entry.scenarioId}.`);
     if (forbiddenExpectation(data) || !noHumanReview(data)) throw new Error(`Expected answers, documents, pages, or human review are forbidden for ${entry.scenarioId}.`);
+    if (data.disposalScenarios !== undefined && (!Array.isArray(data.disposalScenarios) || data.disposalScenarios.some((raw: unknown) => {
+      if (!object(raw) || typeof raw.id !== "string" || !raw.id.trim() || typeof raw.assetId !== "string" || !raw.assetId.trim() || !Array.isArray(raw.factIds) || raw.factIds.some((id: unknown) => typeof id !== "string") || !["unreviewed"].includes(String(raw.recognition)) || (raw.intent !== undefined && !["proposed", "unknown"].includes(String(raw.intent)))) return true;
+      return (["saleAmount", "securedPayoff", "costs"] as const).some(key => raw[key] !== undefined && raw[key] !== null && (!object(raw[key]) || typeof raw[key].amountWon !== "string" && raw[key].amountWon !== null));
+    }))) throw new Error(`Disposal scenarios are malformed or reviewed for ${entry.scenarioId}.`);
     if (data.structuredTest?.mode !== "assumed_extracted_synthetic" || data.structuredTest.scenarioId !== entry.scenarioId || !Array.isArray(data.structuredTest.sourceRecords) || data.structuredTest.sourceRecords.length < 1) throw new Error(`Synthetic source record binding is missing for ${entry.scenarioId}.`);
     const recordIds = new Set<string>();
     for (const record of data.structuredTest.sourceRecords) {
@@ -122,6 +127,9 @@ export async function validateStructuredCaseImport(input: unknown, headerBodySha
       if (!Array.isArray(fact.structuredRefs) || fact.structuredRefs.length === 0) throw new Error(`Unbound synthetic fact ${fact.id} in ${entry.scenarioId}.`);
       const wrappers = fact.structuredRefs.map(ref => sourceWrapper(data, fact, ref));
       if (wrappers.some(wrapper => wrapper === null) || (wrappers.every(wrapper => wrapper!.presence === "present") && !factHasValidStructuredRefs(data, fact))) throw new Error(`Unbound synthetic fact ${fact.id} in ${entry.scenarioId}.`);
+    }
+    for (const scenario of data.disposalScenarios ?? []) {
+      if (!data.assets.some((asset: unknown) => object(asset) && asset.id === scenario.assetId) || scenario.factIds.some((id: string) => !data.facts.some((fact: unknown) => object(fact) && fact.id === id))) throw new Error(`Disposal scenario references a missing asset or fact in ${entry.scenarioId}.`);
     }
     if (data.facts.length === 0) throw new Error(`Synthetic case ${entry.scenarioId} has no source-bound facts.`);
   }

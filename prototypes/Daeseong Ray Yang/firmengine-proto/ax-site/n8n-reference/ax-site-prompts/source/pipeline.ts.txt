@@ -21,7 +21,8 @@ import { canStartFreshPageRead,clearAutomatedPageReceipts,freshPageCheckpoint,ty
 import { PAGE_PROJECTION_VERSION } from "./reprojection";
 import legalExceptions from "./legal-exceptions.json";
 import { createPreservedOmissionReceipts,createSourceVerificationReceipts,sourceVerificationFieldLocation,sourceVerificationReceiptMatches,type ReviewPass,type SourceVerificationReceipt } from "./source-verification";
-import { buildLegalReviewPacket,gateLegalReviewChecks,LEGAL_REVIEW_BATCH_SIZE } from "./legal-review-packet";
+import { buildLegalReviewPacket,currentCompletedLegalCheckIds,gateLegalReviewChecks,LEGAL_REVIEW_BATCH_SIZE } from "./legal-review-packet";
+import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { reconcileApplicantContext } from "./applicant-identity";
 import { bindVerificationChecks,indexedVerificationRead } from "./verification-bindings";
 import { SOURCE_NATURE_HANDOFF_INSTRUCTIONS,sourceNatureDiagnosticContext } from "./source-nature-context";
@@ -513,8 +514,8 @@ type Advisory={checks:{id:string;status:string;reason:string;factIds:string[];ru
 export async function reviewLegal(caseId:string){
   const data=await getCase(caseId),sourceIndex=createCaseReadIndex(data),calculator=await runCaseCalculatorNode(data),execution=calculator.execution,assessment=execution.assessment,facts=currentFacts(data,sourceIndex);
   const catalog=RISK_CATALOG.map(r=>({id:r.id,title:r.title,conditions:r.conditions,features:r.required_features,request:r.evidence_request,legalRuleIds:r.current_rule_ids,manual:!r.implementation.may_auto_clear}));
-  const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory'").bind(caseId,data.context.revision).all<{payload:string}>();
-  const completed=new Set(old.results.flatMap(r=>{const prior=JSON.parse(r.payload) as Advisory&{calculatorExecution?:{inputSha256?:string}};return prior.calculatorExecution?.inputSha256===calculator.receipt.inputSha256?prior.checks.map(x=>x.id):[];}));
+  const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory' AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? ORDER BY at DESC LIMIT 1000").bind(caseId,data.context.revision,calculator.receipt.inputSha256,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION).all<{payload:string}>();
+  const completed=currentCompletedLegalCheckIds(old.results,{inputSha256:calculator.receipt.inputSha256,referenceSha256:calculator.receipt.referenceRelease.sha256,contractVersion:EXECUTION_CONTRACT_VERSION},new Set(catalog.map(item=>item.id)));
   const batch=catalog.filter(r=>!completed.has(r.id)).slice(0,LEGAL_REVIEW_BATCH_SIZE).map(r=>({id:r.id,title:r.title,conditions:r.conditions??"",features:r.features??[],request:r.request??"",legalRuleIds:r.legalRuleIds??[],manual:r.manual}));if(!batch.length)return {remaining:0,stage:"legal_complete"};
   const legalIds=new Set(batch.flatMap(r=>r.legalRuleIds));
   const rules=LEGAL_CATALOG.filter(r=>legalIds.has(r.id)).map(r=>({id:r.id,title:r.title,condition:r.condition,effect:r.effect,source_url:r.source_url,article:r.article,effective_date:r.effective_date,authority_scope:r.authority_scope}));
@@ -523,7 +524,7 @@ export async function reviewLegal(caseId:string){
   const {value,usage}=await callLuna<Advisory>({agent:"legal_checklist_reviewer",instructions:legalReviewInstructions(),input:[{role:"user",content:[{type:"input_text",text:packet.text}]}],schema:LEGAL_REVIEW_SCHEMA,maxOutput:9000});
   const validRuleIds=new Set<string>(packet.payload.rules.map((r:any)=>String(r.id)));
   const packetFactIds=new Set(packet.providedFactIds),providedFacts=facts.filter(f=>packetFactIds.has(f.id)&&f.state!=="disputed"&&f.state!=="retracted"&&f.recognition!=="rejected"&&(factHasValidStructuredRefs(data,f)||f.refs.length&&f.refs.every(ref=>validSourceRef(data,ref,sourceIndex)))&&!factSourceLineageIssues(data,[f.id],sourceIndex).some(issue=>["STALE_OR_RETRACTED_FACT","DISPUTED_OR_REJECTED_FACT","SOURCE_REFERENCE_INVALID","SOURCE_VERIFICATION_RECEIPT_INVALID"].includes(issue)));
-  const checks=gateLegalReviewChecks({batch,response:value.checks,providedFacts,validRuleIds,coverage:packet.coverage});
+  const checks=gateLegalReviewChecks({batch,response:value.checks,providedFacts,eligibleFactIds:new Set(providedFacts.map(f=>f.id)),validRuleIds,coverage:packet.coverage});
   // Usage is logged separately here to avoid moving the case revision between checklist batches.
   await event(caseId,"model.call",{agent:"legal_checklist",...usage});
   if(await snapshotSha256(await getCase(caseId))!==calculator.receipt.inputSha256){

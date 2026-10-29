@@ -11,7 +11,7 @@ import { applicantIdentityValue } from "./applicant-identity.ts";
 import { applicantStatementForForm } from "./statement-paragraphs.ts";
 import { PUBLIC_FORM_BASE64, PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
-export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.2";
+export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.3";
 export const MISSING_FORM_VALUE = "[확인 필요]";
 export const BASIC_FORM_CODES = documentPolicy.basicFormCodes as Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>>;
 export interface FormBindings {
@@ -205,12 +205,16 @@ export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseDa
   const archive = unzipSync(original), appendix = unzipSync(input.appendixDocx);
   let xml = strFromU8(archive["word/document.xml"]);
   if (code === "D5110") {
-    xml = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/g, (table) => ["approved_monthly_income", "recognized_living_cost", "monthly_disposable_income", "monthly_trustee_fee", "monthly_payment", "repayment_months", "total_repayment"].every((token) => table.includes("{{" + token + "}}")) ? table.replaceAll("{{monthly_disposable_income}}", "{{form_pre_fee_disposable}}").replaceAll("{{monthly_payment}}", "{{form_available_after_trustee}}").replaceAll("{{total_repayment}}", "{{form_total_available_after_trustee}}") + textParagraph("위 표는 ①−②−④의 기본 가용소득 산식입니다. 별도 우선·재단채권 변제와 검토된 일반채권 계획 월액·총액은 6항 및 계산 부록에서 구분하여 대조합니다.") : table);
+    xml = xml.replace(/<w:tbl(?:\s[^>]*)?>[\s\S]*?<\/w:tbl>/g, (table) => ["approved_monthly_income", "recognized_living_cost", "monthly_disposable_income", "monthly_trustee_fee", "monthly_payment", "repayment_months", "total_repayment"].every((token) => table.includes("{{" + token + "}}")) ? table.replaceAll("{{approved_monthly_income}}", "{{monthly_income}}").replaceAll("{{monthly_disposable_income}}", "{{form_pre_fee_disposable}}").replaceAll("{{monthly_payment}}", "{{form_available_after_trustee}}").replaceAll("{{total_repayment}}", "{{form_total_available_after_trustee}}") + textParagraph("위 표는 관측 월평균 수입을 사용한 ①−②−④의 기본 가용소득 계산입니다. 소득·생계비의 법적 인정은 별도 검토하며, 음수는 부족액을 뜻합니다. 별도 우선·재단채권 변제와 검토된 일반채권 계획 월액·총액은 6항 및 계산 부록에서 구분하여 대조합니다.") : table);
     xml = xml.replace(/월 평균\s*가용소득에서 월 회생위원 보수를 차감한 월 실제 가용소득을 안분하여/g, "검토한 일반채권 월 변제계획액을 안분하여");
   }
-  const bindings = input.bindings??buildFormBindings(input.data, input.calculation,input.sourceIndex), unresolved = new Set<string>();
-  bindings.scalars.review_status = input.mode === "final" ? "최종 검토본 · 서식 검토 대기" : "초안 · 서식 검토 대기";
-  bindings.scalars.revision = String(input.data.context.revision);
+  // Display-only labels belong to this render. The persisted snapshot and its
+  // receipt digest must remain unchanged when reused by another document/tool.
+  const sourceBindings = input.bindings??buildFormBindings(input.data, input.calculation,input.sourceIndex);
+  const bindings:FormBindings = {rows:sourceBindings.rows,scalars:{...sourceBindings.scalars,
+    review_status:input.mode === "final" ? "최종 검토본 · 서식 검토 대기" : "초안 · 서식 검토 대기",
+    revision:String(input.data.context.revision),
+  }}, unresolved = new Set<string>();
   const replace = (source: string, prefix?: string, row?: Record<string, string>): string => source.replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, (_, token: string) => {
     const value = prefix && token.startsWith(prefix + ".") ? row?.[token.slice(prefix.length + 1)] : bindings.scalars[token];
     if (value === undefined || value === MISSING_FORM_VALUE || value.startsWith("[불일치")) unresolved.add(token);

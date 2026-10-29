@@ -22,7 +22,7 @@ household: reported_members
 
 아래 코드는 family 계약·페이지별 목표·원문 성격 진단·누락 후보·영역 복구 조건을 추가합니다. 변수는 실제 요청마다 달라지며, 이 문서에는 사건 데이터를 넣지 않았습니다.
 
-원본: `lib/pipeline.ts:260`
+원본: `lib/pipeline.ts:261`
 
 ```ts
       const extractInstructions=EXTRACT_INSTRUCTIONS+renderPromptPolicy("prompt.pipeline.extract_instructions")+JSON.stringify({familyId:fieldContract?.family_id??null,canonicalType:fieldContract?.canonical_type??null,canonicalFields:compactFamilyFieldContract(fieldContract),specialFindings:fieldContract?.special_findings??null,fieldDefinition:sourceInstructions(j.document_type||"unknown"),caseRelevantTargets:documentGuide(j.document_type||"unknown"),rules:[renderPromptPolicy("prompt.pipeline.extract_instructions.rules"),renderPromptPolicy("prompt.pipeline.extract_instructions.rules.part_2"),renderPromptPolicy("prompt.pipeline.extract_instructions.rules.part_3"),renderPromptPolicy("prompt.pipeline.extract_instructions.rules.part_4"),renderPromptPolicy("prompt.pipeline.extract_instructions.rules.part_5"),renderPromptPolicy("prompt.pipeline.extract_instructions.rules.part_6")]})+"\n페이지별 목표(힌트): "+sourceInstructions(j.document_type||"unknown")+"\n실행 경로(힌트): "+documentGuide(j.document_type||"unknown")+"\n"+PAGE_COMPLETENESS_INSTRUCTIONS;

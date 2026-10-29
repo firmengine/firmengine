@@ -1,6 +1,6 @@
 # AX 기준 n8n·프롬프트 정리
 
-`ax-site`를 수정할 때 확인할 현재 프롬프트와, 기존 Python 프로토타입의 n8n 워크플로를 모았습니다. v35의 `luna-evidence-3.21.0` 및 정책 JSON 구조를 기준으로 갱신했습니다. 원본 경로와 현재 작업 파일의 SHA-256은 `manifest.json`에 있습니다. `source_commit`은 기준 HEAD이며 아직 커밋하지 않은 병합 파일도 사본에 포함됩니다.
+`ax-site`를 수정할 때 확인할 현재 프롬프트와, 기존 Python 프로토타입의 n8n 워크플로를 모았습니다. v43의 OCR `luna-evidence-3.21.0`, 상담 `intake-classifier-5.3` 및 정책 JSON 구조를 기준으로 갱신했습니다. 원본 경로와 현재 작업 파일의 SHA-256은 `manifest.json`에 있습니다. `source_commit`은 기준 HEAD이며 아직 커밋하지 않은 병합 파일도 사본에 포함됩니다.
 
 **현재 AX는 n8n을 호출하지 않습니다.** OCR은 `/api/cases/[id]/process` → `lib/pipeline.ts` → `lib/luna.ts`로 직접 실행합니다. 상담 분류와 법령 감시도 별도 TypeScript 경로에서 같은 모델 호출 함수를 사용합니다. 이 폴더의 n8n JSON 2개는 상위 `firmengine-proto` Python 앱의 참고본이며 AX용 실행 워크플로가 아닙니다.
 
@@ -29,7 +29,7 @@ n8n-reference/
     02-extractor.md            # 원문 추출
     03-verifier-and-repair.md   # 원문 대조 + 표적 재판독
     04-legal-reviewer.md        # 법적 체크 검토 보조
-    05-consultation-classifier.md # 상담 원문 후보 분류
+    05-consultation-classifier.md # 상담 원문 구간·대상별 후보 분류
     06-legal-monitor.md        # 공식 원문 검색·변경 분석
     07-policy-catalog.md       # 현재 seed 정책 전체와 자리표시자
     08-calculator-and-document-writer.md # AI 프롬프트 없는 계산·작성 경로

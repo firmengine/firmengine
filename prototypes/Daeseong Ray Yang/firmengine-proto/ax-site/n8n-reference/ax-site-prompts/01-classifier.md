@@ -16,7 +16,7 @@ catalog의 sourceFields는 각 family 계약에서 가져온 키/라벨 조합�
 
 ## 호출 조합
 
-원본: `lib/pipeline.ts:218`
+원본: `lib/pipeline.ts:219`
 
 ```ts
       const {value,usage}=await callLuna<ClassificationRead|ClassificationRecoveryRead>({agent:recovering?"document_classifier_recovery":"document_classifier",instructions:recovering?CLASSIFICATION_RECOVERY_INSTRUCTIONS:CLASSIFICATION_INSTRUCTIONS,input:[{role:"user",content:[{type:"input_text",text:renderPromptPolicy("prompt.pipeline.classification_input.text", {value1: JSON.stringify(CLASSIFICATION_FAMILY_CATALOG), value2: j.page, value3: recovering?renderPromptPolicy("prompt.pipeline.classification_input"):""})},img!,...(recovering?rescueImages.map(x=>x.content):[])]}],schema:recovering?CLASSIFICATION_RECOVERY_SCHEMA:CLASSIFICATION_SCHEMA,maxOutput:2200});

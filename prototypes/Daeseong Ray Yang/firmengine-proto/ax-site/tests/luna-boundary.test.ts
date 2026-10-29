@@ -14,13 +14,21 @@ function boundary(abort=false){
     return {ok:true,json:async()=>({status:"completed",output:[{content:[{type:"output_text",text:'{"ok":true}'}]}],usage:{input_tokens:1,output_tokens:1}})};
   };
   new Function("require","module","exports","fetch","AbortSignal",output)((name:string)=>{if(name in mocks)return mocks[name];throw new Error(name);},module,module.exports,fetcher,{timeout:(ms:number)=>{deadline=ms;return controller.signal;}});
-  return {call:()=>module.exports.callLuna({agent:"synthetic_boundary",instructions:"Synthetic",input:[],schema:{},maxOutput:100}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
+  return {call:(reasoningEffort?:"low"|"medium")=>module.exports.callLuna({agent:"synthetic_boundary",instructions:"Synthetic",input:[],schema:{},maxOutput:100,...(reasoningEffort?{reasoningEffort}:{})}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
 }
 
 test("Luna deadline leaves a checkpoint window before the observed hosting disconnect",async()=>{
   const f=boundary();assert.deepEqual((await f.call()).value,{ok:true});
   assert.ok(f.deadline>0&&f.deadline<=70_000,"leave at least 20 seconds for persistence before a 90-second proxy boundary");
   assert.equal(f.body.model,"gpt-6-luna");assert.equal(f.body.store,false);assert.equal(f.calls,1);
+  assert.equal(f.body.reasoning.effort,"low");
+});
+
+test("consultation classification can request medium effort without changing model or call bounds",async()=>{
+  const f=boundary();await f.call("medium");
+  assert.equal(f.body.reasoning.effort,"medium");
+  assert.equal(f.body.model,"gpt-6-luna");assert.equal(f.body.store,false);assert.equal(f.calls,1);
+  assert.equal(f.deadline,65_000);
 });
 
 test("deadline errors reach the durable pipeline without an unbounded retry or model fallback",async()=>{

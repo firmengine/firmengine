@@ -1,5 +1,5 @@
 {
-  "source_commit": "2ee7f4d50a324173462c2b39d112ddb55517aba1",
+  "source_commit": "fa7061e975c0c0618267fd360926b7f62ec4c1ef",
   "scope": "allowlisted working-tree source snapshot; source_commit is the base HEAD, not a claim that copied bytes are committed; not a live n8n export",
   "files": [
     {
@@ -170,7 +170,7 @@
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/pipeline.ts",
       "copy": "ax-site-prompts/source/pipeline.ts.txt",
-      "sha256": "fb72d5fd2c498e58af6d480fff1a81181bd89988ceedfa40bb0b7cce1112cb1b"
+      "sha256": "fb4d809e6ef82e2286c9c2678292d2a3c6304798260661533e94739abfe34613"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/extraction.ts",
@@ -230,22 +230,22 @@
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/legal-review-packet.ts",
       "copy": "ax-site-prompts/source/legal-review-packet.ts.txt",
-      "sha256": "86251762ada7ed5c23211aad6c885ca203a8f0596bc1c7c1d123d501d5889070"
+      "sha256": "cf2e54d18e0c4fb3e1cd4f582c86ee32a7abefcfc0af6d0c58b56616b554b411"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/luna.ts",
       "copy": "ax-site-prompts/source/luna.ts.txt",
-      "sha256": "4f2b291e351b3371092dbb673128c0ee292e9fa4ace80ea239e3765db1cc02d4"
+      "sha256": "ab13d708fc49cb22dffbf750ef96929fb22db567e9467ad9d6ecf1ae4efa2ef1"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/domain.ts",
       "copy": "ax-site-prompts/source/domain.ts.txt",
-      "sha256": "365a2b7744d6b535fec7b86226f80a08b056c547bfefc5d1bab3ad8f688c30f0"
+      "sha256": "16d85111002ade4df2a7adc05da7b202e18281a92215044624fd8a4fa5123d66"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/reference-prompt-policies.json",
       "copy": "ax-site-prompts/source/reference-prompt-policies.json",
-      "sha256": "1a009eef2e2246f905a0b7347e3eba583e9ed47b7e99d419e05221754cae5fc2"
+      "sha256": "b8ce8f41b6e650580061da8b069223024c51eded1271e24ecc2a0406f90d5ab8"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/reference-prompts.ts",
@@ -265,7 +265,7 @@
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/reference-release.json",
       "copy": "ax-site-prompts/source/reference-release.json",
-      "sha256": "ae509dedab7c1892530d233ab8d9f2a7a22d6778df21592f1d6ad34241ba7e62"
+      "sha256": "0da9db8fc152aa11073e4305c8afde7445f1e3132f3b32f3b5f9364782d44223"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/reference-monitor-policies.json",
@@ -285,12 +285,22 @@
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-classifier.ts",
       "copy": "ax-site-prompts/source/intake-classifier.ts.txt",
-      "sha256": "8499beda903aeb3081ef50081114c6e60ba7adecef394f5af9b013eec7d3e55c"
+      "sha256": "35efce52c31b574d777072c23e1c62d5e785b2c15f8b497bf4058879bda4643f"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-classifier-response.ts",
+      "copy": "ax-site-prompts/source/intake-classifier-response.ts.txt",
+      "sha256": "e59934a8d80675fb68392e19563928fa7d44f8c7c29f14fe83d063550a54dc32"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-source-spans.ts",
+      "copy": "ax-site-prompts/source/intake-source-spans.ts.txt",
+      "sha256": "014a636248ca6130280c6b1fcd27425b68cd48fad587ce58379de867e89bbc86"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-types.ts",
       "copy": "ax-site-prompts/source/intake-types.ts.txt",
-      "sha256": "4e65f62a3db4e1bf500cc35630e9924ccbaf29a48ca7708778be6139ffcead33"
+      "sha256": "22d8c4deb2254406584fa0aa092ac11afd17c633ef7185a8583f0d6b459dfbae"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-engine.ts",
@@ -300,7 +310,7 @@
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-store.ts",
       "copy": "ax-site-prompts/source/intake-store.ts.txt",
-      "sha256": "8b03db0d2e001be805c1825ee7f0519c1594ffb8d3e8c277016247ed9b2b6575"
+      "sha256": "6406b51ec0eb07b87fab6a5fbb9dfce707dd8115a7e58fc8ed1b317304e67cc2"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/case-agent.ts",
@@ -315,59 +325,69 @@
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/case-execution.ts",
       "copy": "ax-site-prompts/source/case-execution.ts.txt",
-      "sha256": "8eff998f6bded9a0aacca3bd628346ca5a6e66efa6f1ef48109249e7436d5b47"
+      "sha256": "d986039db46857e1dd97e98446e0f48d85e612ad0903f07ef9a60e2c7512b311"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/execution-catalog.ts",
       "copy": "ax-site-prompts/source/execution-catalog.ts.txt",
-      "sha256": "792855f6232d90ec59e4824042474dbf1971cc9c394e334af203e806eb04496f"
+      "sha256": "a90d306aa05f9c11f2720813fe3e11cadf6071060c07045fd850a13cff320293"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/calculator-tools.ts",
       "copy": "ax-site-prompts/source/calculator-tools.ts.txt",
-      "sha256": "9172d229a7523f442e86cabc99cb7c0225d53210d0913a7c7034d0e8a2d8744b"
+      "sha256": "b627ed5fc5711b6bf8d393ae52b813180af0ee83f42ae06047b4256efb3fc73e"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/document-writer.ts",
       "copy": "ax-site-prompts/source/document-writer.ts.txt",
-      "sha256": "ca3f980584c7d6c5e39b29bf187e90618d37e719ce969faf06dbf54b17f8688b"
+      "sha256": "84e5528afbc1bb84d1664b12c1bb272594daf0d9cdc4ae01855e54fc617c076a"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/reactive-evaluation.ts",
       "copy": "ax-site-prompts/source/reactive-evaluation.ts.txt",
       "sha256": "0d53168f2b08ea4fee9724b2055550ce3ea02d5a1312c27fcfea3f57c1b7e313"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/document-filing-readiness.ts",
+      "copy": "ax-site-prompts/source/document-filing-readiness.ts.txt",
+      "sha256": "fc42c0c06e83a0400476c2b3382fccb5668460a72e72f70173a91398994dad99"
+    },
+    {
+      "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/export-artifact-transaction.ts",
+      "copy": "ax-site-prompts/source/export-artifact-transaction.ts.txt",
+      "sha256": "be807e11391e88ce706b8a77d48cc27c9986965adf4fdd4fd6595de11ab1ee51"
     }
   ],
   "excerpts": [
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/pipeline.ts",
-      "start_line": 218,
+      "start_line": 219,
       "line_count": 1,
       "sha256_utf8": "2083c7a674983589a7f03fdf5314cfdfd1c419c93480cb4146ce446c6bb72466"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/pipeline.ts",
-      "start_line": 260,
+      "start_line": 261,
       "line_count": 14,
       "sha256_utf8": "c34e3a2a35a231367c15f442cb88bdb1a9686d0937fb3c460860db830229f02c"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/pipeline.ts",
-      "start_line": 290,
+      "start_line": 291,
       "line_count": 9,
       "sha256_utf8": "613ba15d7fe6199ac196d86edeeb41305b96764547191fd70f2358c6a4bed1fd"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/pipeline.ts",
-      "start_line": 309,
+      "start_line": 310,
       "line_count": 1,
       "sha256_utf8": "92696622a8ab8d6f555d7c3e00b0effd1a68b535e4422ab277dc0ae891624253"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/pipeline.ts",
-      "start_line": 510,
+      "start_line": 511,
       "line_count": 14,
-      "sha256_utf8": "b0ae81abae483b41d7522b50bbf0bdc6447ad5ee40931aafbf4dbb756284ffaa"
+      "sha256_utf8": "7c1582b7c902fdca4820a3411d0286f18eaf9db935f1492429030cef4ee38c18"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/category-contract.ts",
@@ -383,20 +403,21 @@
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-classifier.ts",
-      "start_line": 5,
+      "start_line": 6,
       "line_count": 3,
       "sha256_utf8": "4b1a977f0c43d0568f9c62073e1fd59e3fc936225f4379de18934b1541531c9f"
     },
     {
       "source": "prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/lib/intake-classifier.ts",
-      "start_line": 12,
-      "line_count": 20,
-      "sha256_utf8": "6102862f4a6974fff1654e44e981b5445520cc319f96f027c107972e6a5d6c0b"
+      "start_line": 13,
+      "line_count": 37,
+      "sha256_utf8": "f8c53ae5f7b8b7c5322ce7d5da1978409b435c8151cf9ce8a71ee18c98a66d1e"
     }
   ],
   "model": "gpt-6-luna",
   "prompt_version": "luna-evidence-3.21.0",
   "prompt_policy_count": 84,
+  "intake_prompt_version": "intake-classifier-5.3",
   "rendered_constants": {
     "SOURCE_BBOX_INSTRUCTIONS": "e7125de83c6a85b66feb37bd28838d8552038657484da541d0e8efdc2c9f3af7",
     "FIELD_OBSERVATION_INSTRUCTIONS": "30b2abcee5dc49f13722ae791f146f835a961e4293af44bca4c3f9f0694688f6",
@@ -407,6 +428,6 @@
     "EXTRACT_INSTRUCTIONS": "c0e81bdb000bbc3a4adb5d4b2cab7f93f65e66893f7f5a05f5ca9ab974c7e989",
     "CLASSIFICATION_INSTRUCTIONS": "e23f91152660c053cc9cb7f7dc357bec76ee0f2a5b72f2f5cb6abe569e7383f0",
     "CLASSIFICATION_RECOVERY_INSTRUCTIONS": "422bc7894224562d53cb68b27b7f1e5c50638d9aed2935e345052c1536dcec36",
-    "INTAKE_CLASSIFIER_INSTRUCTIONS": "466c4bd4f4ec38be83d09050115bbf8659c4a23e5a62614f7c11014326d2906d"
+    "INTAKE_CLASSIFIER_INSTRUCTIONS": "613eb63f0dda1007a8db190c03d51d4d6feb5eca63ced9074e7135c7dcf133db"
   }
 }

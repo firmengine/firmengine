@@ -1,7 +1,7 @@
 /** Consultation-only contracts. No value in this module grants evidentiary or legal acceptance. */
 export const INTAKE_SCHEMA_VERSION = "consultation-checklist-v1";
 export const INTAKE_ENGINE_VERSION = "intake-rules-3";
-export const INTAKE_PROMPT_VERSION = "intake-classifier-3";
+export const INTAKE_PROMPT_VERSION = "intake-classifier-5.3";
 export const INTAKE_NOTE_MAX_CHARS = 16_000;
 export const INTAKE_ACTIVE_MAX_CHARS = 40_000;
 export type IntakeScope = "case" | "income" | "debt" | "asset" | "household" | "expense" | "event" | "procedure";
@@ -20,5 +20,5 @@ export interface RawIntakeClaim { featureId:string; subjectId:string; subjectLab
 export interface IntakeQuestion { id:string; featureId:string|null; subjectId:string; question:string; reason:string; ruleIds:string[] }
 export interface IntakeRequirement { id:string; documentTypeId:string; documentName:string; subjectId:string; subjectLabel:string; period:string; requirement:IntakeDocumentNeed["requirement"]; status:"requested" | "qualification_needed" | "conflict" | "legal_review"; reason:string[]; matchedRuleIds:string[]; workflowIds:string[]; sourceClaimIds:string[]; sourceIds:string[]; alternatives:{id:string;name:string}[]; alternativePolicy:IntakeDocumentNeed["alternativePolicy"]; fields:string[]; issuer:string }
 export interface IntakeResult { claims:IntakeClaim[]; requirements:IntakeRequirement[]; questions:IntakeQuestion[]; warnings:string[]; matchedRuleIds:string[]; counts:{requested:number;qualificationNeeded:number;conflict:number;legalReview:number;questions:number} }
-export interface IntakeRun { id:string;caseId:string;caseRevision:number;caseStorageToken:string;caseInputSha256:string;consultationRevision:number;consultationSha256:string;catalogVersion:number;catalogSha256:string;catalogSnapshot:{features:Pick<IntakeFeature,"id"|"label">[];sources:IntakeSource[];rules:Pick<IntakeRule,"id"|"title">[]};engineVersion:string;promptVersion:string;model:string;createdAt:string;result:IntakeResult;usage:{inputTokens:number;outputTokens:number;durationMs:number};stale?:boolean;staleReasons?:string[] }
+export interface IntakeRun { id:string;caseId:string;caseRevision:number;caseStorageToken:string;caseInputSha256:string;consultationRevision:number;consultationSha256:string;catalogVersion:number;catalogSha256:string;catalogSnapshot:{features:Pick<IntakeFeature,"id"|"label">[];sources:IntakeSource[];rules:Pick<IntakeRule,"id"|"title">[]};engineVersion:string;promptVersion:string;model:string;createdAt:string;result:IntakeResult;usage:{inputTokens:number;outputTokens:number;durationMs:number};classifierReceipt?:{subjects:{subjectId:string;subjectLabel:string}[];sourceSpanCoverage:Record<string,string[]>;unreferencedSubjectIds:string[]};stale?:boolean;staleReasons?:string[] }
 export interface IntakeChecklistView { caseId:string;caseName:string;caseRevision:number;courtId:string;consultationRevision:number;notes:ConsultationNote[];run:IntakeRun|null;latestAttempt:{id:string;status:string;leaseUntil:string|null;error:string|null;updatedAt:string}|null;catalogVersion:number;model:string;apiKeyConfigured:boolean;readOnly:boolean }

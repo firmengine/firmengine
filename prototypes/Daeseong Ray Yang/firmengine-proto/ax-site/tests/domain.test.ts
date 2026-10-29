@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { AI_MODEL, applyExtraction, archiveExport, createCase, currentExportReviews, currentFacts, extractionCacheKey, manifestFingerprint, manifestIssues, moneyValue, normalizeMoney, REQUIRED_ARTIFACT_KINDS, retractDocument, reviewExport, reviewFact } from "../lib/domain.ts";
-import type { ArtifactKind, CaseData, Fact, RuleSet } from "../lib/domain.ts";
-import { allocateProRata, assessCase, calculateCase, calculateDisposal } from "../lib/assessment.ts";
+import type { ArtifactKind, CaseData, Fact, Json, RuleSet } from "../lib/domain.ts";
+import { allocateProRata, assessCase, calculateCase, calculateDisposal, sourceFactMoneyValue } from "../lib/assessment.ts";
 import { buildCourtPackage, newExportManifest, printableHtml } from "../lib/exports.ts";
 
 const rules: RuleSet = { id: "synthetic-reviewed-rules", status: "source_verified", effectiveFrom: "2026-01-01", effectiveTo: "2026-12-31", courtIds: ["seoul"], sources: [{ id: "synthetic", title: "Synthetic test rule", url: "https://example.invalid/synthetic" }], debtCaps: { unsecuredWon: "1000000000", securedWon: "1500000000", comparison: "lte" }, term: { ordinaryMonths: 36, exceptionalMaxMonths: 60 } };
@@ -44,6 +44,81 @@ test("근로·사업·임대 소득의 서로 다른 기간과 경비를 통합�
   assert.equal(result.disposableIncomeWon, "4000000");
   assert.equal(result.liquidationValueWon, "1000000");
   assert.equal(result.planTotalWon, "144000000");
+});
+
+test("hard term cap fails above 60 months even when exceptional review is absent", () => {
+  const data = fixture();
+  data.context.planMonths = 61;
+  data.context.exceptionalTermReviewed = false;
+  const finding = assessCase(data, rules).findings.find((item) => item.id === "plan_term");
+  assert.equal(finding?.outcome, "fail");
+  assert.match(finding?.detail ?? "", /61개월/);
+});
+
+test("exceptional term within hard cap remains review-required until reviewed", () => {
+  const data = fixture();
+  data.context.planMonths = 48;
+  data.context.exceptionalTermReviewed = false;
+  assert.equal(assessCase(data, rules).findings.find((item) => item.id === "plan_term")?.outcome, "review_required");
+  data.context.exceptionalTermReviewed = true;
+  assert.equal(assessCase(data, rules).findings.find((item) => item.id === "plan_term")?.outcome, "pass");
+});
+
+test("explicit negative eligibility conditions fail while unknown and prior-history review stay review-required", () => {
+  const data = fixture();
+  data.context.eligibility = { naturalPerson: "no", insolventOrRisk: "no", priorProceedingsReviewed: "no" };
+  const findings = assessCase(data, rules).findings;
+  assert.equal(findings.find((item) => item.id === "eligibility_naturalPerson")?.outcome, "fail");
+  assert.equal(findings.find((item) => item.id === "eligibility_insolventOrRisk")?.outcome, "fail");
+  const explicitNo = findings.find((item) => item.id === "eligibility_naturalPerson");
+  assert.match(explicitNo?.detail ?? "", /법원의 결정을 뜻하지 않습니다/);
+  assert.equal(findings.find((item) => item.id === "eligibility_priorProceedingsReviewed")?.outcome, "review_required");
+  delete data.context.eligibility;
+  assert.equal(assessCase(data, rules).findings.find((item) => item.id === "eligibility_naturalPerson")?.outcome, "review_required");
+});
+
+test("linked unreviewed structured money variants block income, debt, and asset arithmetic on source mismatch", () => {
+  const data = fixture();
+  data.structuredTest = { mode: "assumed_extracted_synthetic", scenarioId: data.context.id, sourceRecords: [] };
+  const addMoneyFact = (subjectId: string, key: string, amount: string) => {
+    const id = `synthetic-${key.replace(/[^a-z0-9]+/gi, "-")}-${data.facts.length}`;
+    const recordId = `record-${id}`;
+    const numeric = normalizeMoney(amount);
+    data.structuredTest!.sourceRecords.push({ id: recordId, recordType: "hypothetical_assumption", recordId: subjectId, data: { value: { fieldId: key, presence: "present", value: { currency: "KRW", minorUnits: amount, unit: "KRW" }, rawValue: amount, sourceUnit: "KRW", currency: "KRW", origin: "scenario_assumption" } } });
+    data.facts.push({ id, logicalId: id, version: 1, subjectId, key, value: { currency: "KRW", minorUnits: amount, unit: "KRW" }, numeric, rawValue: amount, sourceUnit: "KRW", state: "reported", recognition: "unreviewed", refs: [], structuredRefs: [{ sourceRecordId: recordId, jsonPointer: "/value/value" }], validation: [] });
+    return id;
+  };
+  const wage = data.incomes[0]; wage.gross=normalizeMoney("3100000");wage.expenses=normalizeMoney("100000");wage.factIds.push(addMoneyFact(wage.id, "income.net", "3000001"),addMoneyFact(wage.id,"income.gross","3100001"),addMoneyFact(wage.id,"income.expenses","100000"));
+  const debt = data.debts[0]; debt.factIds.push(addMoneyFact(debt.id, "debt.principal_balance", "100000001"),addMoneyFact(debt.id,"debt.interest","1000001"));
+  const asset = data.assets[0]; asset.factIds.push(addMoneyFact(asset.id, "asset.gross_value", "1000001"),addMoneyFact(asset.id,"asset.secured_payoff","1"),addMoneyFact(asset.id,"asset.disposal_costs","1"),addMoneyFact(asset.id,"asset.protected_value","1"));
+
+  const result = calculateCase(data, rules);
+  assert.equal(result.incomeRows.find(row => row.id === wage.id)?.monthlyWon, null);
+  assert.ok(result.traces.find(trace => trace.id === `income:${wage.id}`)?.reasons.includes("INCOME_OBJECT_FACT_CONFLICT"));
+  assert.equal(result.debtRows.find(row => row.id === debt.id)?.principalWon, null);
+  assert.equal(result.debtRows.find(row => row.id === debt.id)?.interestWon, null);
+  assert.equal(result.debtRows.find(row => row.id === debt.id)?.totalWon, null);
+  assert.equal(result.assetRows.find(row => row.id === asset.id)?.liquidationWon, null);
+  assert.ok(result.traces.find(trace => trace.id === `asset:${asset.id}`)?.reasons.includes("ASSET_OBJECT_FACT_CONFLICT"));
+});
+
+test("source money parser rejects every contradictory value, rawValue, and numeric alias", () => {
+  const data=createCase("Synthetic money aliases","synthetic-money-aliases","2026-10-29");
+  data.structuredTest={mode:"assumed_extracted_synthetic",scenarioId:data.context.id,sourceRecords:[]};
+  const structured=(id:string,value:Json,rawValue:string,numeric?:ReturnType<typeof normalizeMoney>)=>{
+    const subjectId=`subject-${id}`,recordId=`record-${id}`;
+    data.structuredTest!.sourceRecords.push({id:recordId,recordType:"hypothetical_assumption",recordId:subjectId,data:{amount:{fieldId:"income.net",presence:"present",value,rawValue,sourceUnit:"KRW",currency:"KRW",origin:"scenario_assumption"}}});
+    return {id,logicalId:id,version:1,subjectId,key:"income.net",value,numeric,rawValue,sourceUnit:"KRW",state:"reported" as const,recognition:"unreviewed" as const,refs:[],structuredRefs:[{sourceRecordId:recordId,jsonPointer:"/amount/value"}],validation:[]};
+  };
+  assert.equal(sourceFactMoneyValue(structured("raw-only-conflict","100","200")),null);
+  assert.equal(sourceFactMoneyValue(structured("amount-alias-conflict",{currency:"KRW",minorUnits:"100",amountWon:"200",unit:"KRW"},"100",normalizeMoney("100"))),null);
+  assert.equal(sourceFactMoneyValue(structured("nested-raw-conflict",{currency:"KRW",minorUnits:"100",rawValue:"200",unit:"KRW"},"100",normalizeMoney("100"))),null);
+
+  const uploaded={...structured("uploaded-raw-conflict",{currency:"KRW",minorUnits:"100",unit:"KRW"},"200",normalizeMoney("100")),refs:[{documentId:"doc",page:1,quote:"100원"}]};
+  data.documents=[{id:"doc",name:"Synthetic source",sha256:"a".repeat(64),status:"active",pages:[1]}];
+  data.pages=[{documentId:"doc",page:1,role:"evidence",text:"100원"}];
+  uploaded.numeric=normalizeMoney("200");uploaded.numeric.amountWon="100";
+  assert.equal(sourceFactMoneyValue(uploaded),null);
 });
 
 test("사업소득 분모와 완전한 월범위가 모두 없으면 월평균과 합계를 보류한다", () => {

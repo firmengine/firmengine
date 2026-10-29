@@ -10,7 +10,7 @@ function fixture():CaseData {
   const data=createCase("Synthetic schedule only","synthetic-schedule","2026-10-27");
   data.documents=[{id:"doc",name:"synthetic.pdf",sha256:"a".repeat(64),status:"active",pages:[1]}];
   data.pages=[{documentId:"doc",page:1,role:"evidence",text:"Quoted synthetic creditor claim principal interest"}];
-  const fact=(id:string,key:string)=>{data.facts.push({id,logicalId:id,version:1,subjectId:"debt-a",key,value:"quoted synthetic",state:"extracted",recognition:"unreviewed",refs:[{documentId:"doc",page:1,quote:"Quoted synthetic creditor claim principal interest"}],validation:[]});return id;};
+  const fact=(id:string,key:string)=>{const amount=key==="debt.principal"?"100":"20";data.facts.push({id,logicalId:id,version:1,subjectId:"debt-a",key,value:amount,numeric:normalizeMoney(amount),rawValue:amount,sourceUnit:"KRW",state:"extracted",recognition:"unreviewed",refs:[{documentId:"doc",page:1,quote:"Quoted synthetic creditor claim principal interest"}],validation:[]});return id;};
   data.debts=[{id:"debt-a",contractId:"contract-a",creditor:"Synthetic Creditor A",principal:normalizeMoney("100"),interest:normalizeMoney("20"),secured:"no",classification:"ordinary",priority:"ordinary",asOf:data.context.asOf,factIds:[fact("p","debt.principal"),fact("i","debt.interest")]}];
   data.context.inventoryComplete.debt="yes";
   data.context.planMonths=2;

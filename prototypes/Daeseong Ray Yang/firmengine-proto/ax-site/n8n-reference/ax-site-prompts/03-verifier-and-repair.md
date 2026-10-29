@@ -2,7 +2,7 @@
 
 `source_verifier`와 `targeted_rereader`는 같은 조합 코드에서 stage별 지시를 선택합니다. `repair`는 지정 좌표만, `region_verify`는 현재 영역의 좌표만 검증합니다. 포함되는 공통 지시문은 [shared-instructions.md](shared-instructions.md)에 있습니다.
 
-원본: `lib/pipeline.ts:290`
+원본: `lib/pipeline.ts:291`
 
 ```ts
     const verifiedRead=saved.read!;
@@ -18,7 +18,7 @@
 
 ## 호출
 
-원본: `lib/pipeline.ts:309`
+원본: `lib/pipeline.ts:310`
 
 ```ts
     const {value:reviewResult,usage}=await callLuna<VerifyResult>({agent:j.stage==="repair"?"targeted_rereader":"source_verifier",instructions:verifierInstructions,input:[{role:"user",content:[{type:"input_text",text:verifierPromptText},...(j.stage==="region_verify"?rescueImages.map(x=>x.content):[img!,...rescueImages.map(x=>x.content)])]}],schema:VERIFY_SCHEMA,maxOutput:j.stage==="region_verify"?8000:20000});

@@ -15,13 +15,15 @@ import * as scanQuality from "../lib/scan-quality.ts";
 import * as executionCatalog from "../lib/execution-catalog.ts";
 import * as reactiveEvaluation from "../lib/reactive-evaluation.ts";
 import * as calculatorTools from "../lib/calculator-tools.ts";
+import * as legalRules from "../lib/legal-rules.ts";
 import * as referenceRuntime from "../lib/reference-runtime.ts";
+import * as exportArtifactTransaction from "../lib/export-artifact-transaction.ts";
 import referenceRelease from "../lib/reference-release.json" with { type: "json" };
 import type { CaseData, ExportManifest } from "../lib/domain.ts";
 
 const root=fileURLToPath(new URL("../",import.meta.url));
 const load=<T>(path:string,mocks:Record<string,unknown>):T=>{
-  const dependencies:Record<string,unknown>={"./reference-runtime.ts":referenceRuntime,"./reference-release.json":{default:referenceRelease},"../../../../lib/reference-runtime.ts":referenceRuntime,...mocks};
+  const dependencies:Record<string,unknown>={"./reference-runtime.ts":referenceRuntime,"./reference-release.json":{default:referenceRelease},"../../../../lib/reference-runtime.ts":referenceRuntime,"../../../../../lib/export-artifact-transaction.ts":exportArtifactTransaction,...mocks};
   const output=ts.transpileModule(readFileSync(root+path,"utf8"),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
   const module={exports:{}};
   new Function("require","module","exports",output)((name:string)=>{if(Object.hasOwn(dependencies,name))return dependencies[name];throw new Error(`Unexpected dependency: ${name}`);},module,module.exports);
@@ -57,7 +59,7 @@ function setup(beforeDerivativeInsert?:(sqlite:DatabaseSync,params:SQLInputValue
     async all(){return {results:sqlite.prepare(sql).all(...params)};},
   };}};},async batch(commands:Array<{run():Promise<unknown>}>){const results=[];for(const command of commands)results.push(await command.run());return results;}};
   let authenticatedUser:{userId:string}|null={userId:"synthetic-owner"};
-  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":derivedHooks,"./calculator-tools.ts":calculatorTools});
+  const store=load<Store>("lib/server-store.ts",{"cloudflare:workers":{env:{DB:db,BUCKET:bucket}},"../app/chatgpt-auth":{getChatGPTUser:async()=>authenticatedUser},"./domain":domain,"./legal-rules":legalRules,"./processing-readiness":processingReadiness,"./execution-catalog.ts":executionCatalog,"./reactive-evaluation.ts":derivedHooks,"./calculator-tools.ts":calculatorTools});
   return {sqlite,data,objects,store,setAuthenticatedUser:(user:{userId:string}|null)=>{authenticatedUser=user;}};
 }
 
@@ -150,12 +152,38 @@ test("legal advisory analysis is current only when its calculator receipt matche
   const h=setup(),data=await h.store.getCase(h.data.context.id),currentHash=await calculatorTools.snapshotSha256(data);
   const insert=h.sqlite.prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)");
   insert.run("advisory-stale",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:"0".repeat(64),referenceRelease:{sha256:referenceRelease.sha256}}}),"2026-10-29T00:00:02Z");
-  insert.run("advisory-current",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:referenceRelease.sha256}}}),"2026-10-29T00:00:03Z");
+  for(let batch=0;batch<16;batch++){
+    const start=batch*6,count=batch===15?5:6,checks=legalRules.RISK_CATALOG.slice(start,start+count).map((risk:any)=>({id:risk.id,status:"missing",reason:"synthetic historical output",factIds:[],ruleIds:[],missingDocuments:[],nextAction:"review"}));
+    insert.run(`advisory-current-${batch}`,data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks,calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:referenceRelease.sha256},contractVersion:executionCatalog.EXECUTION_CONTRACT_VERSION}}),`2026-10-29T00:${String(batch).padStart(2,"0")}:03Z`);
+  }
+  insert.run("paid-clone-current",data.context.id,data.context.revision,"paid_clone",JSON.stringify({result:{name:"existing clone"}}),"2026-10-29T00:20:03Z");
+  insert.run("legacy-legal-review",data.context.id,data.context.revision,"legal_review",JSON.stringify({checks:[{id:"old-check"}],calculatorExecution:{inputSha256:currentHash}}),"2026-10-29T00:21:03Z");
+  insert.run("current-legal-review",data.context.id,data.context.revision,"legal_review",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:referenceRelease.sha256},contractVersion:executionCatalog.EXECUTION_CONTRACT_VERSION}}),"2026-10-29T00:22:03Z");
+  insert.run("engine-stale-legal-review",data.context.id,data.context.revision,"legal_review",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:referenceRelease.sha256},contractVersion:"1.0.0"}}),"2026-10-29T00:23:03Z");
   insert.run("advisory-legacy",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[]}),"2026-10-29T00:00:04Z");
   insert.run("advisory-reference-stale",data.context.id,data.context.revision,"legal_advisory",JSON.stringify({checks:[],calculatorExecution:{inputSha256:currentHash,referenceRelease:{sha256:"0".repeat(64)}}}),"2026-10-29T00:00:05Z");
   const extras=await (h.store as any).caseExtras(data);
-  assert.deepEqual(extras.analyses.filter((row:any)=>row.type==="legal_advisory").map((row:any)=>row.id),["advisory-current"]);
+  assert.equal(extras.inputIdentity.storageHashScheme,"json-stringify-sha256/v1");assert.equal(extras.inputIdentity.canonicalHashScheme,"canonical-json-sha256/v1");
+  assert.equal(extras.analyses.filter((row:any)=>row.type==="legal_advisory").length,16,"all 16 current batches remain visible even though other analysis output is bounded");
+  assert.equal(extras.legalReviewCoverage.currentCheckCount,95);
+  assert.equal(extras.legalReviewCoverage.expectedCheckCount,95);assert.equal(extras.legalReviewCoverage.complete,true);assert.deepEqual(extras.legalReviewCoverage.missingCheckIds,[]);
+  assert.deepEqual(extras.analyses.find((row:any)=>row.id==="paid-clone-current")?.payload,{result:{name:"existing clone"}});
+  assert.equal(extras.analyses.some((row:any)=>row.id==="legacy-legal-review"),false,"legacy legal_review without reference hash stays excluded from current case reads");
   assert.equal(extras.analyses.some((row:any)=>row.id==="advisory-reference-stale"),false,"a matching case input cannot reuse an advisory from a different reference release");
+  const api=load<{GET(request:Request,context:{params:Promise<{id:string}>}):Promise<Response>}>("app/api/cases/[id]/analyses/route.ts",{"../../../../../lib/server-store":h.store});
+  const context={params:Promise.resolve({id:data.context.id})},base=`https://synthetic.invalid/api/cases/${data.context.id}/analyses`;
+  const current=await (await api.GET(new Request(`${base}?limit=5`),context)).json() as any;
+  assert.equal(current.analyses.length,5);assert.equal(current.complete,false);assert.ok(current.nextCursor);
+  for(const limit of [0,-1,101])assert.equal((await api.GET(new Request(`${base}?limit=${limit}`),context)).status,400,`invalid analysis page size ${limit} is rejected`);
+  const history=await (await api.GET(new Request(`${base}?limit=50&includeHistorical=true`),context)).json() as any;
+  assert.equal(history.analyses.length,23);assert.equal(history.complete,true);
+  assert.equal(history.analyses.find((row:any)=>row.id==="advisory-stale").staleReason,"calculator_input_hash_mismatch");
+  assert.equal(history.analyses.find((row:any)=>row.id==="advisory-reference-stale").staleReason,"reference_release_hash_mismatch");
+  assert.equal(history.analyses.find((row:any)=>row.id==="advisory-current-0").current,true);
+  assert.equal(history.analyses.find((row:any)=>row.id==="legacy-legal-review").staleReason,"reference_release_hash_mismatch");
+  assert.equal(history.analyses.find((row:any)=>row.id==="current-legal-review").current,true);
+  assert.equal(history.analyses.find((row:any)=>row.id==="engine-stale-legal-review").staleReason,"engine_version_mismatch");
+  assert.deepEqual(history.analyses.find((row:any)=>row.id==="paid-clone-current").payload,{result:{name:"existing clone"}});
   h.sqlite.close();
 });
 
@@ -210,6 +238,45 @@ test("같은 내용의 반복 출력과 다른 사건 출력은 독립된 파일
   assert.equal(h.sqlite.prepare("SELECT COUNT(*) AS n FROM artifacts").get()!.n,3);
   assert.equal([...h.objects.keys()].filter(key=>key.includes("/artifacts/")).length,3);
   assert.equal((await h.store.getCase(h.data.context.id)).exportManifest!.reviews.caseworker,null);
+  h.sqlite.close();
+});
+
+test("내보내기 CAS 경합은 우승 manifest와 파일을 보존하고 실패 출력의 staging만 지운다",async()=>{
+  const h=setup(),caseId=h.data.context.id,prior=await h.store.getCase(caseId);
+  const winnerKey=`cases/${caseId}/artifacts/winner-file`,winnerBytes=new TextEncoder().encode("Synthetic winning export");
+  h.objects.set(winnerKey,{bytes:winnerBytes,mime:"application/octet-stream"});
+  h.sqlite.prepare("INSERT INTO artifacts (id,case_id,revision,name,kind,object_key,hash,mime,created_at) VALUES (?,?,?,?,?,?,?,?,?)")
+    .run("winner-file",caseId,prior.context.revision,"winner.docx","application",winnerKey,"winner-hash","application/octet-stream","synthetic");
+  const winner=manifest(prior.context.revision,"winner");
+  const save= h.store.saveCase.bind(h.store);
+  let raced=false;
+  const routeStore={...h.store,saveCase:async(data:CaseData,revision:number,previous:CaseData)=>{
+    if(!raced){
+      raced=true;
+      const concurrent=await h.store.getCase(caseId);
+      concurrent.exportManifest=winner;
+      await save(concurrent,concurrent.context.revision,concurrent);
+    }
+    return save(data,revision,previous);
+  }};
+  const route=load<{POST(request:Request,context:{params:Promise<{id:string}>}):Promise<Response> }>("app/api/cases/[id]/export/route.ts",{
+    "../../../../../lib/domain":domain,
+    "../../../../../lib/document-writer":{prepareDocumentWrite:async({data}:{data:CaseData})=>({execution:{caseId:data.context.id,caseRevision:data.context.revision},receipt:{caseId:data.context.id,caseRevision:data.context.revision,mode:"draft",status:"review_required",referenceRelease:{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256}}})},
+    "../../../../../lib/reference-context.ts":{loadReferenceSnapshot:async()=>({id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256,values:{}})},
+    "../../../../../lib/exports":{newExportManifest:(revision:number,files:ExportManifest["files"])=>({...manifest(revision,"loser"),files})},
+    "../../../../../lib/office-writer":{writeOfficePackage:async()=>[{id:"application-synthetic",kind:"application",name:"staged.docx",mime:"application/octet-stream",hash:"staged-hash",bytes:new TextEncoder().encode("Synthetic losing export")}]},
+    "../../../../../lib/legal-rules":{CURRENT_RULESET:{}},
+    "../../../../../lib/server-store":routeStore,
+    "../../../../../lib/case-response":{caseResponse:async(c:CaseData)=>({case:c})},
+    "../../../../../lib/json-response":jsonResponses,
+  });
+  const response=await route.POST(new Request(`https://synthetic.invalid/api/cases/${caseId}/export`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({mode:"draft"})}),{params:Promise.resolve({id:caseId})});
+  assert.equal(response.status,409);
+  const actual=await h.store.getCase(caseId);
+  assert.equal(actual.exportManifest!.files[0]!.id,"winner-application");
+  const artifactRows=h.sqlite.prepare("SELECT id,object_key FROM artifacts WHERE case_id = ? ORDER BY id").all(caseId) as {id:string;object_key:string}[];
+  assert.deepEqual(artifactRows.map(row=>({id:row.id,object_key:row.object_key})),[{id:"winner-file",object_key:winnerKey}]);
+  assert.deepEqual([...h.objects.keys()].filter(key=>key.includes("/artifacts/")).sort(),[winnerKey]);
   h.sqlite.close();
 });
 
