@@ -121,7 +121,7 @@ export default function ConsultationChecklist({ caseId }: { caseId: string }) {
   async function copyChecklist() {
     if (!view?.run || stale) return;
     const lines = [`${view.caseName} · 상담에 따른 서류 준비 안내`, "상담에서 확인한 내용을 바탕으로 한 1차 안내이며, 추가 상담과 담당자 검토에 따라 달라질 수 있습니다.", ""];
-    const staffAuthored = new Set(catalog?.documents.filter(document => document.ocr?.collectionMode === "generated_or_prior_form").map(document => document.id) ?? []);
+    const staffAuthored = new Set(["applicant_statement", "application_form_input", "plan_funding_statement", ...(catalog?.documents.filter(document => document.ocr?.collectionMode === "generated_or_prior_form").map(document => document.id) ?? [])]);
     for (const item of requirements) {
       // Client-facing clipboard must not request a new court form that staff author.
       if (staffAuthored.has(item.documentTypeId)) continue;
