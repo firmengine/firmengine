@@ -14,7 +14,7 @@ function boundary(abort=false){
     return {ok:true,json:async()=>({status:"completed",output:[{content:[{type:"output_text",text:'{"ok":true}'}]}],usage:{input_tokens:1,output_tokens:1}})};
   };
   new Function("require","module","exports","fetch","AbortSignal",output)((name:string)=>{if(name in mocks)return mocks[name];throw new Error(name);},module,module.exports,fetcher,{timeout:(ms:number)=>{deadline=ms;return controller.signal;}});
-  return {call:(reasoningEffort?:"low"|"medium")=>module.exports.callLuna({agent:"synthetic_boundary",instructions:"Synthetic",input:[],schema:{},maxOutput:100,...(reasoningEffort?{reasoningEffort}:{})}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
+  return {call:(reasoningEffort?:"low"|"medium")=>module.exports.callLuna({agent:"synthetic_boundary",instructions:"Synthetic",input:[],schema:{},maxOutput:100,...(reasoningEffort?{reasoningEffort}:{})}),callTerra:()=>module.exports.callLuna({model:"gpt-6.1-terra",agent:"synthetic_ocr",instructions:"Synthetic OCR",input:[],schema:{},maxOutput:100}),get deadline(){return deadline;},get calls(){return calls;},get body(){return body;}};
 }
 
 test("Luna deadline leaves a checkpoint window before the observed hosting disconnect",async()=>{
@@ -35,3 +35,6 @@ test("deadline errors reach the durable pipeline without an unbounded retry or m
   const f=boundary(true);await assert.rejects(f.call(),{name:"TimeoutError"});
   assert.equal(f.calls,1);assert.equal(f.body.model,"gpt-6-luna");
 });
+
+
+test("Terra OCR override is explicit, bounded, and recorded in usage",async()=>{const f=boundary();const r=await f.callTerra();assert.equal(f.body.model,"gpt-6.1-terra");assert.equal(r.usage.model,"gpt-6.1-terra");assert.equal(f.body.store,false);assert.equal(f.calls,1);assert.equal(f.deadline,65_000);});

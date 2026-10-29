@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AI_MODEL, applyExtraction, createCase, currentFacts, factLineageIssues, factSourceLineageIssues, normalizeMoney } from "../lib/domain.ts";
+import { AI_MODEL, OCR_MODEL, applyExtraction, createCase, currentFacts, factLineageIssues, factSourceLineageIssues, normalizeMoney } from "../lib/domain.ts";
 import { assessCase } from "../lib/assessment.ts";
 import { createPreservedOmissionReceipts,createSourceVerificationReceipts,sourceVerificationFieldLocation,sourceVerificationReceiptMatches } from "../lib/source-verification.ts";
 import type { Check, PageRead, ReviewPass } from "../lib/source-verification.ts";
@@ -256,3 +256,6 @@ test("assessment does not require legal acceptance for verified raw contact meta
   assert.ok(!result.findings.some(f=>f.id==="recognition_phone"));
   assert.ok(result.findings.some(f=>f.id==="verification_phone")); // active drafts still require source cross-read
 });
+
+
+test("Terra OCR receipt keeps its model identity, never relabels Luna",()=>{const read:PageRead={documentType:"debt_certificate",complete:true,records:[{category:"debt",fields:[field("principal","500","만원","원금 500만원")]}]};const terraPass:ReviewPass={...pass("verify",[check(0,0,"agrees","500","만원","원금 500만원")]),model:OCR_MODEL};const [receipt]=createSourceVerificationReceipts(sourceInput(read,[terraPass]));assert.ok(receipt);assert.equal(receipt.model,OCR_MODEL);assert.equal(receipt.proofReads[0].model,OCR_MODEL);assert.equal(sourceVerificationReceiptMatches(receipt,{documentId:docId,page:pageNum,sourceHash:hash,read}),true);const fake=structuredClone(receipt);fake.model=AI_MODEL;assert.equal(sourceVerificationReceiptMatches(fake,{documentId:docId,page:pageNum,sourceHash:hash,read}),false);});
