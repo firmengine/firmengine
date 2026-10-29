@@ -41,6 +41,8 @@ test("multiple month rows remain distinct and feed the same income calculation s
  assert.deepEqual(result.incomes.map(v=>v.net?.amountWon),["1800000","1750000"]);
  assert.equal(result.incomes[0].gross?.amountWon,"2000000");
  assert.deepEqual(result.incomes.map(v=>v.periodStart),["2026-09-01","2026-10-01"]);
+ assert.ok(result.facts?.some(x=>x.key==="income.net"));
+ assert.ok(result.facts?.some(x=>x.key==="income.gross"));
 });
 test("current debt principal and interest feed separate legal calculation amounts",()=>{
  const read:PageRead={documentType:"shared-document:debt_certificate@debt_certificate",complete:true,warnings:[],records:[{
@@ -55,6 +57,8 @@ test("current debt principal and interest feed separate legal calculation amount
  assert.equal(result.debts[0]?.principal?.amountWon,"15000000");
  assert.equal(result.debts[0]?.interest?.amountWon,"320000");
  assert.ok(result.facts?.some(x=>x.key==="debt.cause"));
+ assert.ok(result.facts?.some(x=>x.key==="debt.interest"));
+ assert.ok(result.facts?.some(x=>x.key==="debt.principal_balance"));
 });
 test("unknown typed amount ID remains only a raw observation",()=>{
  const read:PageRead={documentType:"shared-document:bank_statement@bank_transactions",complete:true,warnings:[],records:[{

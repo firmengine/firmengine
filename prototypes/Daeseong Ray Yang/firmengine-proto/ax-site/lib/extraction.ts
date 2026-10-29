@@ -351,7 +351,14 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const normalizedKey=canonicalKey(f.key),rawPrefix=namespaces.has(normalizedKey.split(".")[0])&&normalizedKey.includes(".")?normalizedKey.split(".")[0]:null,rawLocal=rawPrefix?normalizedKey.slice(rawPrefix.length+1):normalizedKey,factType=isCreditReport?"credit_report":isHealthArrears?"health_insurance_arrears":r.category;
       const leaseField=family==="lease"&&["tenant","landlord","applicant_role","applicant_is_tenant","applicant_is_landlord","property_address","property_reference","deposit","monthly_rent","secured_balance","arrears_deduction","use","start_date","end_date","period_start","period_end"].includes(key);
       const accountField=["bank_account","bank_transactions"].includes(family)&&r.category!=="transaction"&&["institution","owner","account_number","balance","active","as_of","encumbrance_status","seizure_status","pledge_status"].includes(key);
-      const factKey=isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
+      // The same exact canonical identifier defines the original source row,
+      // its normalized SQL projection, and the CaseData fact read by legal
+      // calculations/forms. PageRead still preserves the raw OCR key and quote.
+      const verifiedBinding=bindCanonicalSourceField(f,sourceContract);
+      const verifiedCaseKey=canonicalProjectionKey(sourceContract,verifiedBinding,r.category);
+      const factKey=verifiedCaseKey&&verifiedBinding.binding!=="unbound"
+        ? `${r.category}.${verifiedCaseKey}`
+        :isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
       const logicalId=`${id}:${key}${repeatableStatementText?`:paragraph:${statementTextIdentity.get(fi)}`:""}${fieldConflict?`:candidate:${fi}`:""}`;
       facts.push({id:fid,subjectId:id,logicalId,key:factKey,fieldObservation:observation,canonicalFieldId:observation.canonicalFieldId??undefined,value:f.value,rawValue:f.value??undefined,sourceUnit:f.unit,...(monetary?{numeric:sourceMoney(f)}:{}),periodStart:value("period_start"),periodEnd:value("period_end"),asOf:value("as_of"),refs:typeof f.quote==="string"&&f.quote.trim()?[{documentId,page,quote:f.quote,sourceHash:documentHash,...(isValidSourceBBox(f.bbox)?{bbox:f.bbox}:{})}]:[],validation});
     }
