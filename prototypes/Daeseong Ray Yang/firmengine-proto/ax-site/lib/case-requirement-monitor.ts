@@ -112,6 +112,8 @@ export async function caseRequirementMonitor(database:D1Database,caseData:CaseDa
   return {
     schemaVersion:CASE_REQUIREMENT_MONITOR_VERSION,caseId,caseRevision:caseData.context.revision,
     activeRunId:checklist.activeRunId,consultationChecklistMaterialized:!!checklist.activeRunId,
+    consultationStatus:checklist.activeRunId?"current":checklist.pendingReanalysis?"reanalysis_pending":"not_analyzed",
+    previousCompletedRunId:checklist.previousCompletedRunId,
     workflowAdopted,requirements,workflowRequests,workflowProjectionStatus:projectionError?"unavailable_fail_closed":"current",workflowProjectionError:projectionError,activeWorkflowRequestCount:workflowRequests.filter(row=>row.activeRequest).length,unclassifiedPageJobs:unclassifiedJobs,
     eventCursor:{dataVersion:changes.dataVersion,lastEventId:changes.lastEventId,isQuiet:changes.isQuiet,documentWorkEventId:workCursor?.id??0},
     legalSufficiencyInferred:false,autoApproval:false,
