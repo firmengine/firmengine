@@ -1,6 +1,6 @@
 import type { IntakeRequirement } from "./intake-types.ts";
 
-export type RequirementOverride = "automatic" | "add_manual" | "change_period" | "change_subject" | "select_alternative" | "review_mapping" | "waive_with_reason" | "declare_not_applicable" | "reopen" | "retire";
+export type RequirementOverride = "automatic" | "add_manual" | "change_period" | "change_subject" | "select_alternative" | "review_mapping" | "review_substitution" | "waive_with_reason" | "declare_not_applicable" | "reopen" | "retire";
 export interface RequirementFieldTarget { fieldId: string; targetPath: string }
 export interface RequirementCrosswalkReview {
   crosswalkId: string; familyId: string; version: string; requiredFieldGroups: string[][]; optionalFieldIds: string[];
@@ -102,7 +102,7 @@ export function applyRequirementMappingReview(requirement:CaseRequirement,input:
   const targetMap=new Map<string,string>();
   for(const target of input.typedTargets){if(!available.has(target.fieldId)||!isValidRequirementTarget(target.targetPath)||targetMap.has(target.fieldId))throw new Error("Typed target is invalid or duplicated.");targetMap.set(target.fieldId,target.targetPath);}
   if([...requiredIds].some(id=>!targetMap.has(id)))throw new Error("Every required field needs an explicit typed target or source_only mapping.");
-  return {...requirement,requiredFieldGroups:groups.map(g=>[...g]),optionalFieldIds:[...optional],typedTargets:input.typedTargets.map(t=>({...t})),mappingRequired:false,noRequiredFieldsApproved:input.noRequiredFields,override:"review_mapping",overrideReason:input.reason.trim(),overrideReviewer:input.reviewer.trim(),overrideBasisRefs:[],crosswalkReview:{crosswalkId:requirement.crosswalkId,familyId:requirement.familyId,version:requirement.crosswalkVersion,requiredFieldGroups:groups.map(g=>[...g]),optionalFieldIds:[...optional],typedTargets:input.typedTargets.map(t=>({...t})),subjectScope:input.subjectScope,periodPolicy:input.periodPolicy,noRequiredFields:input.noRequiredFields,reviewer:input.reviewer.trim(),reviewedAt:input.reviewedAt,reason:input.reason.trim()},originKey:requirementOriginKey({intakeDocumentTypeId:requirement.intakeDocumentTypeId,subjectLinkId:requirement.subjectLinkId,scopeKey:requirement.scopeKey,requiredPeriod:requirement.requiredPeriod,purposeCode:requirement.purposeCode,requiredFieldGroups:groups})};
+  return {...requirement,substitutionReview:undefined,requiredFieldGroups:groups.map(g=>[...g]),optionalFieldIds:[...optional],typedTargets:input.typedTargets.map(t=>({...t})),mappingRequired:false,noRequiredFieldsApproved:input.noRequiredFields,override:"review_mapping",overrideReason:input.reason.trim(),overrideReviewer:input.reviewer.trim(),overrideBasisRefs:[],crosswalkReview:{crosswalkId:requirement.crosswalkId,familyId:requirement.familyId,version:requirement.crosswalkVersion,requiredFieldGroups:groups.map(g=>[...g]),optionalFieldIds:[...optional],typedTargets:input.typedTargets.map(t=>({...t})),subjectScope:input.subjectScope,periodPolicy:input.periodPolicy,noRequiredFields:input.noRequiredFields,reviewer:input.reviewer.trim(),reviewedAt:input.reviewedAt,reason:input.reason.trim()},originKey:requirementOriginKey({intakeDocumentTypeId:requirement.intakeDocumentTypeId,subjectLinkId:requirement.subjectLinkId,scopeKey:requirement.scopeKey,requiredPeriod:requirement.requiredPeriod,purposeCode:requirement.purposeCode,requiredFieldGroups:groups})};
 }
 /** Merge only same-origin requirements with compatible obligation and alternative policy. */
 export function mergeRequirements(existing: readonly CaseRequirement[], incoming: readonly CaseRequirement[]): CaseRequirement[] {
@@ -118,6 +118,7 @@ export function mergeRequirements(existing: readonly CaseRequirement[], incoming
 }
 export function applyRequirementOverride(requirement: CaseRequirement, command: { operation: RequirementOverride; expectedId: string; reason?: string; period?: string; subjectLinkId?: string | null; alternativeId?: string; idFactory?: () => string; reviewer?: string; reviewedAt?: string; basisRefs?: string[]; waiverAllowed?: boolean; mappingReview?: {expectedCrosswalkId:string;expectedCrosswalkVersion:string;requiredFieldGroups:string[][];optionalFieldIds:string[];typedTargets:RequirementFieldTarget[];noRequiredFields:boolean;subjectScope:string;periodPolicy:string} }): CaseRequirement {
   if (command.expectedId !== requirement.requirementId || requirement.retired) throw new Error("Requirement identity is stale or retired.");
+  if (command.operation === "review_substitution") throw new Error("Substitution approval must use the authenticated case command reducer.");
   const needsReason = ["waive_with_reason", "declare_not_applicable", "retire", "change_period", "change_subject", "select_alternative","review_mapping"].includes(command.operation);
   if (needsReason && !command.reason?.trim()) throw new Error("A reason is required for this requirement override.");
   if (["waive_with_reason", "declare_not_applicable"].includes(command.operation) && (!command.reviewer?.trim() || !command.basisRefs?.length)) throw new Error("A reviewed override requires reviewer and evidence basis.");
@@ -128,6 +129,7 @@ export function applyRequirementOverride(requirement: CaseRequirement, command: 
   }
   const base = { ...requirement, override: command.operation, overrideReason: command.reason?.trim() ?? null,
     overrideReviewer: command.reviewer?.trim() ?? null, overrideBasisRefs: [...(command.basisRefs ?? [])] };
+  if (["change_period","change_subject","reopen","retire","automatic"].includes(command.operation)) base.substitutionReview = undefined;
   if (command.operation === "change_period") {
     if (!command.period?.trim()) throw new Error("A period is required.");
     base.requiredPeriod = command.period.trim();
