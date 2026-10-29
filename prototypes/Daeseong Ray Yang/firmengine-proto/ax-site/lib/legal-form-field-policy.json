@@ -1,0 +1,172 @@
+{
+  "version": "legal-form-field-policy/1",
+  "checkedAt": "2026-10-30",
+  "officialElectronicFormParity": "unverified",
+  "sources": [
+    {
+      "id": "KR-REHAB-589",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1018130103"
+    },
+    {
+      "id": "KR-REHAB-611",
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=267359"
+    },
+    {
+      "id": "KR-REHAB-614",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1024710759"
+    }
+  ],
+  "notice": "These are cited statute-level minimums and internal arithmetic checks, not certification of every official court e-form control.",
+  "forms": {
+    "D5100": {
+      "client_name": {
+        "requiredness": "required",
+        "basis": "statutory_minimum",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채무자의 성명"
+      },
+      "resident_id": {
+        "requiredness": "required",
+        "basis": "statutory_minimum",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채무자의 주민등록번호, 마스킹 값은 최종기재로 간주하지 않음"
+      },
+      "address": {
+        "requiredness": "required",
+        "basis": "statutory_minimum",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채무자의 주소"
+      }
+    },
+    "D5105": {
+      "statement": {
+        "requiredness": "required",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-589",
+        "reason": "진술서 본문 누락 검사; 전자서식 필수 컨트롤 검증은 별도"
+      }
+    },
+    "D5106": {
+      "creditor.entity": {
+        "requiredness": "conditional",
+        "basis": "statutory_minimum",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채권자 성명",
+        "when": "각 채권자 행"
+      },
+      "creditor.address": {
+        "requiredness": "conditional",
+        "basis": "statutory_minimum",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채권자 주소",
+        "when": "각 채권자 행"
+      },
+      "creditor.cause": {
+        "requiredness": "conditional",
+        "basis": "statutory_minimum",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채권의 원인",
+        "when": "각 채권자 행"
+      },
+      "creditor.principal": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-589",
+        "reason": "채권금액의 원금 구성요소 또는 0; 이자와 합계 대조",
+        "when": "각 채권자 행"
+      }
+    },
+    "D5101": {
+      "asset.entity": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-589",
+        "reason": "재산목록 반복행 식별",
+        "when": "재산이 있는 경우"
+      }
+    },
+    "D5103": {
+      "month.period": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-589",
+        "reason": "월별 소득 행의 기간 식별",
+        "when": "월별 수입행이 있는 경우"
+      }
+    },
+    "D5110": {
+      "monthly_payment": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-611",
+        "reason": "월 변제금의 산정·출처 확인",
+        "when": "정기 변제 재원이 있는 경우"
+      },
+      "repayment_months": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-611",
+        "reason": "변제기간 검증",
+        "when": "정기 변제 재원이 있는 경우"
+      },
+      "total_repayment": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-611",
+        "reason": "총 변제액 대조",
+        "when": "정기 변제 재원이 있는 경우"
+      },
+      "liquidation_value": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-614",
+        "reason": "청산가치 산정근거",
+        "when": "청산가치 비교 시"
+      },
+      "present_value": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-614",
+        "reason": "변제액 현재가치 산정근거",
+        "when": "청산가치 비교 시"
+      }
+    },
+    "D5111": {
+      "monthly_payment": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-611",
+        "reason": "월 변제금의 산정·출처 확인",
+        "when": "정기 변제 재원이 있는 경우"
+      },
+      "repayment_months": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-611",
+        "reason": "변제기간 검증",
+        "when": "정기 변제 재원이 있는 경우"
+      },
+      "total_repayment": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-611",
+        "reason": "총 변제액 대조",
+        "when": "정기 변제 재원이 있는 경우"
+      },
+      "liquidation_value": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-614",
+        "reason": "청산가치 산정근거",
+        "when": "청산가치 비교 시"
+      },
+      "present_value": {
+        "requiredness": "conditional",
+        "basis": "internal_integrity",
+        "sourceId": "KR-REHAB-614",
+        "reason": "변제액 현재가치 산정근거",
+        "when": "청산가치 비교 시"
+      }
+    }
+  }
+}
