@@ -88,11 +88,7 @@ export interface Fact {
   /** Server-authored independent OCR corroboration. Never implies legal acceptance or human review. */
   sourceVerification?: {
     method: "independent_luna_cross_read";
-<<<<<<< HEAD
     model: EvidenceModel;
-=======
-    model: SourceReadModel;
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
     promptVersion: string;
     verifiedAt: string;
     /** Missing means historical value/unit/quote corroboration only; never backfilled as field-semantic proof. */
@@ -103,13 +99,8 @@ export interface Fact {
     verificationQuotes: string[];
     fieldFingerprint: string;
     proofReadIndexes: { pass: "verify" | "repair"; recordIndex: number; fieldIndex: number }[];
-<<<<<<< HEAD
     proofReads: { pass: "verify" | "repair"; model: EvidenceModel; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; categoryStatus?: "supported"; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string; bbox?: SourceBBox }[];
     geometry?: { version: "bbox_corroboration_v1"; extractionBBox: SourceBBox | null; finalBBox: SourceBBox; verifierReads: {pass:"verify"|"repair";model:EvidenceModel;promptVersion:string;promptHash:string;verifiedAt:string;recordIndex:number;fieldIndex:number;categoryStatus?:"supported";meaningStatus:"supported";status:"agrees"|"corrected";value:string;unit:string|null;quote:string;bbox:SourceBBox}[] };
-=======
-    proofReads: { pass: "verify" | "repair"; model: SourceReadModel; promptVersion: string; promptHash: string; verifiedAt: string; recordIndex: number; fieldIndex: number; categoryStatus?: "supported"; meaningStatus?: string; status: "agrees" | "corrected"; value: string; unit: string | null; quote: string; bbox?: SourceBBox }[];
-    geometry?: { version: "bbox_corroboration_v1"; extractionBBox: SourceBBox | null; finalBBox: SourceBBox; verifierReads: {pass:"verify"|"repair";model:SourceReadModel;promptVersion:string;promptHash:string;verifiedAt:string;recordIndex:number;fieldIndex:number;categoryStatus?:"supported";meaningStatus:"supported";status:"agrees"|"corrected";value:string;unit:string|null;quote:string;bbox:SourceBBox}[] };
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
     recognition: "unreviewed";
     factBinding: { id: string; logicalId: string; version: number };
   };
@@ -352,18 +343,14 @@ export function requiredKindsForCase(data: Pick<CaseData, "documents" | "pages" 
   }
   return [...new Set(kinds)];
 }
-<<<<<<< HEAD
-export const AI_MODEL = "gpt-6.1-terra" as const;
-export const CONSULTATION_AI_MODEL = "gpt-6-luna" as const;
-export type EvidenceModel = typeof AI_MODEL | typeof CONSULTATION_AI_MODEL;
-/** Historical Luna receipts keep their original model; new OCR runs use Terra. */
-export function isEvidenceModel(model:unknown):model is EvidenceModel { return model===AI_MODEL||model===CONSULTATION_AI_MODEL; }
-=======
-export const AI_MODEL = "gpt-6-luna" as const;
 export const OCR_MODEL = "gpt-6.1-terra" as const;
-export type SourceReadModel = typeof AI_MODEL | typeof OCR_MODEL;
-export const isSourceReadModel = (model:unknown):model is SourceReadModel => model === AI_MODEL || model === OCR_MODEL;
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
+/** Legacy default remains Terra for evidence, Luna for consultation and monitors. */
+export const AI_MODEL = OCR_MODEL;
+export const CONSULTATION_AI_MODEL = "gpt-6-luna" as const;
+export type EvidenceModel = typeof OCR_MODEL | typeof CONSULTATION_AI_MODEL;
+export type SourceReadModel = EvidenceModel;
+export function isEvidenceModel(model:unknown):model is EvidenceModel { return model===OCR_MODEL||model===CONSULTATION_AI_MODEL; }
+export const isSourceReadModel = isEvidenceModel;
 export const DRAFT_RULESET: RuleSet = { id: "kr-rehabilitation-draft", status: "draft", sources: [] };
 const ZERO = BigInt(0);
 const ONE = BigInt(1);
@@ -614,11 +601,7 @@ export function factSourceLineageIssues(data: CaseData, ids: string[], index?:Ca
         validGeometry=geometryMarker&&validGeometryReads&&Array.isArray(geometry.verifierReads)&&passKinds.size===geometry.verifierReads.length&&geometryRefBound&&(!needsTwoReads||geometry.verifierReads.length>=2&&passKinds.size>=2);
       }
       const validFieldMeaning=proof.verificationScope==="field_meaning_v1"?fingerprintHasMeaningScope&&Array.isArray(proof.proofReads)&&proof.proofReads.length>0&&proof.proofReads.every(p=>p.meaningStatus==="supported"&&sourceQuotesOverlap(p.quote,proof.field?.quote))&&Array.isArray(proof.verificationQuotes)&&proof.verificationQuotes.length===proof.proofReads.length&&proof.proofReads.every((p,i)=>p.quote===proof.verificationQuotes[i]&&sourceQuotesOverlap(proof.verificationQuotes[i],proof.field?.quote))&&validLocator&&validGeometry:proof.verificationScope===undefined&&!fingerprintHasMeaningScope&&!hasMeaningReadMetadata&&!locator&&validLocator&&validGeometry;
-<<<<<<< HEAD
       if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || !isEvidenceModel(proof.model) || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || !validFieldMeaning || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
-=======
-      if (fact.state !== "verified" || proof.method !== "independent_luna_cross_read" || !isSourceReadModel(proof.model) || typeof proof.promptVersion !== "string" || !proof.promptVersion.trim() || !/^[a-f0-9]{64}$/i.test(sourceHash) || !Number.isFinite(Date.parse(proof.verifiedAt)) || proof.recognition !== "unreviewed" || !document || document.status!=="active" || document.sha256 !== sourceHash || !document.pages.includes(sourcePage) || !boundRef || !validBinding || !validProofReads || !validProofIndexBinding || !validNumeric || !validSourceUnit || !validFieldMeaning || raw === null || typeof proof.field?.value !== "string" || String(raw).normalize("NFKC").trim() !== proof.field.value.normalize("NFKC").trim() || typeof proof.extractionReading?.quote !== "string" || !proof.extractionReading.quote.trim() || typeof proof.extractionReading.value !== "string") factIssues.add("SOURCE_VERIFICATION_RECEIPT_INVALID");
->>>>>>> 0bd8e7efd6adea4c78d2840b85651760d12ade82
     }
     const normalized=[...factIssues];index?.lineageById.set(id,normalized);for(const issue of normalized)issues.add(issue);
   }
