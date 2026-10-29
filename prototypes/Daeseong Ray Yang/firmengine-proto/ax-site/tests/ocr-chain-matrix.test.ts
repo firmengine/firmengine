@@ -46,7 +46,7 @@ test("current debt principal and interest feed separate legal calculation amount
  const read:PageRead={documentType:"shared-document:debt_certificate@debt_certificate",complete:true,warnings:[],records:[{
   category:"debt",label:"Claim",fields:[
   source("creditor","debt_certificate::creditor","은행",null),
-  source("principal_balance","debt_certificate::principal_balance","15000000"),
+  {...source("principal_balance","debt_certificate::principal_balance","15000000"),quote:"현재 원금 잔액 15000000원"},
   source("interest_balance","debt_certificate::interest_balance","320000"),
   source("as_of_date","debt_certificate::as_of_date","2026-10-25",null),
   source("claim_cause","debt_certificate::claim_cause","대출계약",null)]
