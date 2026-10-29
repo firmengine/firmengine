@@ -67,6 +67,11 @@ function periodCovered(review:SubstitutionReview,matches:readonly DocumentMatch[
   }
   return false;
 }
+function explicitRequirementPeriod(text:string):{start:string;end:string}|null{
+  const dates=[...text.matchAll(/\d{4}-\d{2}-\d{2}/g)].map(m=>m[0]);
+  if(dates.length!==2||!validDate(dates[0])||!validDate(dates[1])||dates[0]>dates[1])return null;
+  return {start:dates[0],end:dates[1]};
+}
 function minimumMonths(start:string,end:string):number {
   if(!validDate(start)||!validDate(end)||end<start)return 0;
   const a=new Date(start+"T00:00:00Z"),b=new Date(end+"T00:00:00Z");
@@ -114,6 +119,9 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(r.mappingRequired||!r.crosswalkReview?.reviewer||!r.requiredFieldGroups.length||!r.crosswalkReview.requiredFieldGroups.length)problems.push("PRIMARY_FIELD_MAPPING_UNREVIEWED");
   if(!review.reviewer.trim()||!review.reason.trim()||!review.basisRefs.length||!validDate(review.reviewedAt.slice(0,10)))problems.push("HUMAN_REVIEW_INCOMPLETE");
   if(!input.courtId||review.courtId!==input.courtId||!validDate(input.asOf)||review.periodEnd>input.asOf)problems.push("COURT_OR_PERIOD_CHANGED");
+  const originalPeriod=explicitRequirementPeriod(r.requiredPeriod);
+  if(!originalPeriod)problems.push("ORIGINAL_REQUIRED_PERIOD_UNRESOLVED");
+  else if(review.periodStart>originalPeriod.start||review.periodEnd<originalPeriod.end)problems.push("ORIGINAL_PERIOD_NOT_FULLY_COVERED");
   if(input.catalogVersion===undefined||input.catalogVersion===null||review.catalogVersion!==input.catalogVersion||input.pendingCourtPolicyChange)problems.push("COURT_POLICY_RECHECK_REQUIRED");
   if(input.latestCourtPolicyAlertAt&&(!Number.isFinite(Date.parse(review.reviewedAt))||Date.parse(input.latestCourtPolicyAlertAt)>Date.parse(review.reviewedAt)))problems.push("COURT_POLICY_CHANGED_AFTER_APPROVAL");
   if(!allowedPublishedPath(r,review,input.courtId))problems.push("PUBLISHED_SUBSTITUTION_POLICY_NOT_CONFIRMED");
