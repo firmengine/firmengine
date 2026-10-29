@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS case_substitution_watch_heads (
   next_scan_at TEXT,
   scanned_at TEXT NOT NULL
 );
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS case_substitution_request_states (
   case_id TEXT NOT NULL REFERENCES cases(id),
   requirement_id TEXT NOT NULL,
@@ -27,7 +28,9 @@ CREATE TABLE IF NOT EXISTS case_substitution_request_states (
   evaluated_at TEXT NOT NULL,
   PRIMARY KEY (case_id, requirement_id)
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS case_substitution_request_states_active_idx ON case_substitution_request_states(case_id,active_request,decision_status);
+--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS case_substitution_transition_events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   case_id TEXT NOT NULL REFERENCES cases(id),
@@ -44,4 +47,5 @@ CREATE TABLE IF NOT EXISTS case_substitution_transition_events (
   occurred_at TEXT NOT NULL,
   UNIQUE(case_id,requirement_id,dependency_fingerprint,to_status,to_active_request)
 );
+--> statement-breakpoint
 CREATE INDEX IF NOT EXISTS case_substitution_transitions_case_idx ON case_substitution_transition_events(case_id,id);
