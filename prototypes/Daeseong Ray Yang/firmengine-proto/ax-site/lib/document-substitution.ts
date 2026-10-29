@@ -12,6 +12,7 @@ import type { CaseRequirement, SubstitutionReview } from "./case-requirements.ts
 import type { DocumentMatch } from "./document-fulfillment.ts";
 import type { EvidenceDocument, EvidencePage, Fact } from "./domain.ts";
 import type { IntakeCatalog } from "./intake-types.ts";
+import { substitutionFactFingerprint } from "./substitution-fingerprint.ts";
 
 export const DOCUMENT_SUBSTITUTION_VERSION = "document-substitution/1" as const;
 export type SubstitutionStatus = "original_required" | "review_required" | "partial" | "inactive_by_substitution" | "restored";
@@ -99,7 +100,7 @@ function base(requirement:CaseRequirement,reasonCodes:string[],status:Substituti
     coveredFields:[],missingFields:[...(requirement.sourceEvidenceFields??[])],reasonCodes:uniq(reasonCodes),
     supportDocumentIds:[],reviewedBy:requirement.substitutionReview?.reviewer??null};
 }
-export function reconcileDocumentSubstitution(input:SubstitutionContext):SubstitutionView {
+export async function reconcileDocumentSubstitution(input:SubstitutionContext):Promise<SubstitutionView> {
   const r=input.requirement,review=r.substitutionReview,fields=r.sourceEvidenceFields??[];
   if(!r.alternatives.length)return base(r,["NO_DECLARED_ALTERNATIVES"],"original_required");
   if(!review)return base(r,["REVIEW_NOT_RECORDED"],"review_required");
