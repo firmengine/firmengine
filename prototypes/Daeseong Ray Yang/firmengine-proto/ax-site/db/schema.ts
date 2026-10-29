@@ -307,3 +307,30 @@ export const caseLegalReviewHeads=sqliteTable("case_legal_review_heads",{
 export const caseAutomaticDocumentRuns=sqliteTable("case_automatic_document_runs",{
   id:text("id").primaryKey().notNull(),caseId:text("case_id").notNull(),legalReviewRunId:text("legal_review_run_id").notNull().unique(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),status:text("status").notNull(),artifactsJson:text("artifacts_json").notNull(),reason:text("reason"),createdAt:text("created_at").notNull(),updatedAt:text("updated_at").notNull(),
 });
+
+/** Reversible deterministic substitute monitoring. Original histories are immutable. */
+export const caseSubstitutionWatchHeads=sqliteTable("case_substitution_watch_heads",{
+  caseId:text("case_id").primaryKey().notNull().references(()=>cases.id),
+  caseRevision:integer("case_revision").notNull(),sourceDataVersion:integer("source_data_version").notNull(),
+  catalogVersion:integer("catalog_version").notNull(),policySignal:text("policy_signal").notNull(),
+  activeRequirementIdsJson:text("active_requirement_ids_json").notNull(),nextScanAt:text("next_scan_at"),
+  scannedAt:text("scanned_at").notNull(),
+});
+export const caseSubstitutionRequestStates=sqliteTable("case_substitution_request_states",{
+  caseId:text("case_id").notNull().references(()=>cases.id),requirementId:text("requirement_id").notNull(),
+  intakeRunId:text("intake_run_id").notNull(),originalDocumentTypeId:text("original_document_type_id").notNull(),
+  decisionStatus:text("decision_status").notNull(),activeRequest:integer("active_request").notNull(),
+  missingFieldsJson:text("missing_fields_json").notNull(),reasonCodesJson:text("reason_codes_json").notNull(),
+  supportDocumentIdsJson:text("support_document_ids_json").notNull(),evaluatedFingerprint:text("evaluated_fingerprint").notNull(),
+  caseRevision:integer("case_revision").notNull(),sourceDataVersion:integer("source_data_version").notNull(),
+  catalogVersion:integer("catalog_version").notNull(),evaluatedAt:text("evaluated_at").notNull(),
+},t=>[primaryKey({columns:[t.caseId,t.requirementId]}),index("case_substitution_request_states_active_idx").on(t.caseId,t.activeRequest,t.decisionStatus)]);
+export const caseSubstitutionTransitionEvents=sqliteTable("case_substitution_transition_events",{
+  id:integer("id").primaryKey({autoIncrement:true}),caseId:text("case_id").notNull().references(()=>cases.id),
+  requirementId:text("requirement_id").notNull(),originalDocumentTypeId:text("original_document_type_id").notNull(),
+  fromStatus:text("from_status"),toStatus:text("to_status").notNull(),fromActiveRequest:integer("from_active_request"),
+  toActiveRequest:integer("to_active_request").notNull(),caseRevision:integer("case_revision").notNull(),
+  sourceDataVersion:integer("source_data_version").notNull(),dependencyFingerprint:text("dependency_fingerprint").notNull(),
+  reasonCodesJson:text("reason_codes_json").notNull(),occurredAt:text("occurred_at").notNull(),
+},t=>[unique("case_substitution_transition_events_identity").on(t.caseId,t.requirementId,t.dependencyFingerprint,t.toStatus,t.toActiveRequest),
+ index("case_substitution_transitions_case_idx").on(t.caseId,t.id)]);
