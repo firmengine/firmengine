@@ -19,6 +19,8 @@ export function reviewLegalPlanArithmetic(formCode:string,input:{scalars:Record<
  if(income!==null&&living!==null&&available!==null&&income-living!==available)
    add("PLAN_DISPOSABLE_FORMULA_MISMATCH","blocker","월 인정소득−생계비와 월 가용소득의 산식이 불일치합니다.","KR-REHAB-611");
  const months=v("repayment_months");
+ if(months!==null&&months>36n&&months<=60n)
+   add("PLAN_OVER_THREE_YEARS_REQUIRES_SPECIAL_REVIEW","blocker","변제기간은 원칙적으로 3년 이하입니다. 3년 초과 시 제611조 제5항의 특별한 사정 및 법원 검토 근거가 필요합니다.","KR-REHAB-611");
  if(months!==null&&(months<=0n||months>60n))
    add("PLAN_DURATION_OUTSIDE_STATUTORY_LIMIT","blocker","변제기간은 양수이고 법 제611조 제5항의 5년을 초과하지 않아야 합니다.","KR-REHAB-611");
  const pv=v("present_value"),liquidation=v("liquidation_value");

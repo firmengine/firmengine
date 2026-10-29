@@ -30,5 +30,6 @@ test("liquidation safeguard uses independently supplied PV not undiscounted inst
  const good={...scalars,present_value:"11000000"};
  assert.ok(!reviewLegalPlanArithmetic("D5110",{scalars:good}).issues.some(x=>x.code==="PLAN_LIQUIDATION_EXCEPTION_REQUIRES_REVIEW"));
  assert.ok(reviewLegalPlanArithmetic("D5110",{scalars:{...good,monthly_disposable_income:"999999"}}).issues.some(x=>x.code==="PLAN_DISPOSABLE_FORMULA_MISMATCH"));
+ assert.ok(reviewLegalPlanArithmetic("D5110",{scalars:{...good,repayment_months:"48"}}).issues.some(x=>x.code==="PLAN_OVER_THREE_YEARS_REQUIRES_SPECIAL_REVIEW"));
  assert.ok(reviewLegalPlanArithmetic("D5110",{scalars:{...good,repayment_months:"61"}}).issues.some(x=>x.code==="PLAN_DURATION_OUTSIDE_STATUTORY_LIMIT"));
 });
