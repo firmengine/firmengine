@@ -7,109 +7,273 @@
 <!-- 스펙: docs/specs/임태훈-source-verify.md -->
 
 <style>
+/* ── 디자인 토큰: 색 · 간격 · 글자 크기 · 모양 */
 :root {
-  --bg: #f4f5f7; --panel: #fff; --line: #d9dde3; --text: #1d2330; --muted: #6b7280;
-  --err: #b42318; --errbg: #fdecea; --warn: #8a4b00; --warnbg: #fff1d6;
-  --hl: #ffe58a; --hlline: #d49b00; --chg: #c9f2da; --accent: #2457c5;
+  /* 색: 흰색·연회색 바탕, 강조색은 네이비 하나 */
+  --c-bg: #f5f7fa;
+  --c-surface: #ffffff;
+  --c-subtle: #f8fafc;
+  --c-muted-bg: #f1f4f8;
+  --c-border: #e3e8ef;
+  --c-border-strong: #cfd6e0;
+  --c-text: #0f1b2d;
+  --c-text-2: #475467;
+  --c-text-3: #8a94a6;
+  --c-accent: #1b2f5b;
+  --c-accent-hover: #142446;
+  --c-accent-tint: #edf1f8;
+  --c-accent-line: #c9d3e6;
+  --c-err: #b42318; --c-err-bg: #fef3f2; --c-err-line: #fecdca;
+  --c-warn: #b54708; --c-warn-bg: #fffaeb; --c-warn-line: #fedf89;
+  --c-ok: #067647; --c-ok-bg: #ecfdf3; --c-ok-line: #abefc6;
+  --c-hl: #ffef9e; --c-hl-line: #c98a00;   /* 강조 칸 (노랑) */
+  --c-chg: #d1fadf;                        /* 바뀐 값 (초록) */
+  --c-paper-bg: #eceff3;                   /* 서류 뷰어 바탕 (연회색) */
+  --c-paper-edge: #d5dbe3;                 /* 종이 가장자리 */
+  --c-paper-text: #0b1220;                 /* 종이 위 글자 */
+  /* 간격 */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 20px; --sp-6: 24px; --sp-8: 32px;
+  /* 글자 크기 */
+  --fs-xs: 11px; --fs-sm: 12px; --fs-md: 13px; --fs-lg: 15px; --fs-xl: 18px; --fs-2xl: 28px;
+  /* 모양 */
+  --radius: 12px; --radius-sm: 8px; --radius-pill: 999px;
+  --shadow: 0 1px 2px rgba(16, 24, 40, .04), 0 1px 3px rgba(16, 24, 40, .04);
+  --radius-paper: 6px;
+  --fs-paper: 14px;
+  /* 종이 그림자: 아래로 퍼지는 부드러운 두 겹. 마우스를 올리면 조금 커집니다. */
+  --shadow-paper: 0 2px 6px -1px rgba(16, 24, 40, .10), 0 14px 30px -8px rgba(16, 24, 40, .24);
+  --shadow-paper-hover: 0 4px 10px -2px rgba(16, 24, 40, .12), 0 22px 44px -10px rgba(16, 24, 40, .30);
+  --font: "Pretendard", "Pretendard Variable", system-ui, -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text);
-  font: 13px/1.45 system-ui, -apple-system, "Malgun Gothic", "Apple SD Gothic Neo", sans-serif; }
-button, input, select { font: inherit; }
-button { cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 3px 9px; }
-button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
-header h1 { font-size: 16px; margin: 0; flex: 1; }
-header .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; margin-left: 6px; font-weight: normal; }
-
-#flags { margin: 12px 16px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; max-height: 34vh; overflow: auto; }
-.flags-head { display: flex; gap: 14px; align-items: baseline; padding: 10px 12px 6px; position: sticky; top: 0; background: var(--panel); z-index: 1; flex-wrap: wrap; }
-.flags-head h2 { font-size: 14px; margin: 0; }
-.flags-head .hint { color: var(--muted); font-size: 12px; }
+[hidden] { display: none !important; }
+body { margin: 0; background: var(--c-bg); color: var(--c-text); font: var(--fs-md)/1.5 var(--font); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+h1, h2, h3, p { margin: 0; }
 table { border-collapse: collapse; width: 100%; }
-th, td { border-bottom: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
-th { font-weight: 600; color: var(--muted); font-size: 12px; white-space: nowrap; }
-.flag-table tr.flag { cursor: pointer; }
-.flag-table tr.flag:hover { background: #f7f9fc; }
-.flag-table tr.sel { background: #fff8db; }
-.flag-table tr.done { opacity: .5; }
-.flag-table td:last-child { white-space: nowrap; }
-.grade { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 12px; font-weight: 600; white-space: nowrap; }
-.g-err { background: var(--errbg); color: var(--err); }
-.g-warn { background: var(--warnbg); color: var(--warn); }
-.ai-note { display: block; color: var(--muted); font-size: 12px; }
-.done-tag { color: var(--muted); }
-tr.editor td { background: #f7f9fc; }
-.editor-box { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-.editor-box input { border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; }
-.editor-box .err { color: var(--err); }
-.muted { color: var(--muted); }
-.empty { padding: 8px 12px; color: var(--muted); }
 
-.panes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 0 16px 48px; }
-@media (max-width: 900px) { .panes { grid-template-columns: 1fr; } }
-.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; min-width: 0; }
-.pane-head { display: flex; gap: 4px; padding: 8px 8px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap; align-items: flex-end; }
-.pane-head .label { font-weight: 600; margin: 0 8px 6px 4px; }
-.tab { border: 1px solid transparent; border-bottom: none; border-radius: 6px 6px 0 0; background: none; padding: 5px 10px; color: var(--muted); }
-.tab.on { border-color: var(--line); background: var(--panel); color: var(--text); font-weight: 600; margin-bottom: -1px; }
-.pane-body { padding: 12px; overflow: auto; max-height: 62vh; }
-#right td, #right th { white-space: nowrap; }
+/* ── 버튼 · 입력 */
+button { cursor: pointer; border: 1px solid var(--c-border-strong); background: var(--c-surface); border-radius: var(--radius-sm);
+  padding: 5px 12px; font-size: var(--fs-sm); font-weight: 500; transition: background .12s, border-color .12s; }
+button:hover:not(:disabled) { background: var(--c-subtle); border-color: var(--c-text-3); }
+button:disabled { cursor: not-allowed; color: var(--c-text-3); background: var(--c-subtle); }
+button.primary { background: var(--c-accent); border-color: var(--c-accent); color: #fff; }
+button.primary:hover:not(:disabled) { background: var(--c-accent-hover); border-color: var(--c-accent-hover); }
+button.primary:disabled { background: var(--c-muted-bg); border-color: var(--c-border); color: var(--c-text-3); }
+button.ghost { border-color: transparent; background: transparent; color: var(--c-text-2); }
+button.ghost:hover:not(:disabled) { background: var(--c-muted-bg); border-color: transparent; }
+button.sm { padding: 3px 10px; font-size: var(--fs-xs); }
+button.lg { padding: 12px 28px; font-size: var(--fs-lg); font-weight: 700; border-radius: 10px; }
+select, input { border: 1px solid var(--c-border-strong); border-radius: var(--radius-sm); background: var(--c-surface); padding: 5px 8px; font-size: var(--fs-sm); }
+input:focus, select:focus, button:focus-visible { outline: 2px solid var(--c-accent-line); outline-offset: 1px; }
+
+/* ── 칩: 등급 · 상태 · 처리 구분 */
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 0 8px; border-radius: var(--radius-pill); border: 1px solid transparent;
+  font-size: var(--fs-xs); font-weight: 600; line-height: 20px; white-space: nowrap; vertical-align: middle; }
+.chip-err { background: var(--c-err-bg); color: var(--c-err); border-color: var(--c-err-line); }
+.chip-warn { background: var(--c-warn-bg); color: var(--c-warn); border-color: var(--c-warn-line); }
+.chip-ok { background: var(--c-ok-bg); color: var(--c-ok); border-color: var(--c-ok-line); }
+.chip-done { background: var(--c-muted-bg); color: var(--c-text-2); border-color: var(--c-border); }
+.chip-approve { background: var(--c-accent-tint); color: var(--c-accent); border-color: var(--c-accent-line); }
+.chip-keep { background: var(--c-surface); color: var(--c-text-2); border-color: var(--c-border-strong); border-style: dashed; }
+.chip-info { background: var(--c-muted-bg); color: var(--c-text-2); border-color: var(--c-border); font-weight: 500; }
+
+/* ── 앱 바 */
+.appbar { position: sticky; top: 0; z-index: 10; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--sp-4);
+  min-height: 60px; padding: var(--sp-2) var(--sp-6); background: var(--c-surface); border-bottom: 1px solid var(--c-border); }
+.brand { display: flex; align-items: center; gap: var(--sp-2); font-size: var(--fs-lg); font-weight: 700; white-space: nowrap; }
+.brand .mark { width: 28px; height: 28px; border-radius: 8px; background: var(--c-accent); color: #fff; display: grid; place-items: center; flex: none; }
+.brand .sep { color: var(--c-text-3); font-weight: 400; }
+.brand .sub { color: var(--c-text-2); font-weight: 600; }
+.steps { display: flex; align-items: center; gap: var(--sp-1); }
+.step { display: inline-flex; align-items: center; gap: 6px; border: none; background: none; padding: 6px 12px 6px 6px; border-radius: var(--radius-pill);
+  color: var(--c-text-3); font-size: var(--fs-sm); font-weight: 500; white-space: nowrap; }
+.step .no { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: var(--fs-xs); font-weight: 700; border: 1.5px solid currentColor; }
+.step.is-done { color: var(--c-text-2); }
+.step.is-done .no { background: var(--c-text-2); border-color: var(--c-text-2); color: #fff; }
+.step.is-current { color: var(--c-accent); background: var(--c-accent-tint); font-weight: 700; }
+.step.is-current .no { background: var(--c-accent); border-color: var(--c-accent); color: #fff; }
+button.step:disabled { background: none; color: var(--c-text-3); }
+.step-arrow { color: var(--c-border-strong); }
+.appbar-tools { display: flex; justify-content: flex-end; align-items: center; gap: var(--sp-2); }
+.appbar-tools label { display: flex; align-items: center; gap: 6px; color: var(--c-text-2); font-size: var(--fs-sm); }
+.appbar-tools label, .appbar-tools button { white-space: nowrap; }
+@media (max-width: 1080px) {
+  .appbar { grid-template-columns: 1fr auto; }
+  .steps { grid-column: 1 / -1; grid-row: 2; overflow-x: auto; }
+}
+@media (max-width: 560px) {
+  .appbar { grid-template-columns: 1fr; }
+  .appbar-tools { justify-content: flex-start; }
+}
+
+/* ── 페이지 · 카드 */
+.page { max-width: 1440px; margin: 0 auto; padding: var(--sp-6) var(--sp-6) 64px; }
+.page-head { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-5); }
+.page-head .titles { flex: 1; min-width: 220px; }
+.page-head h1 { font-size: var(--fs-xl); font-weight: 700; }
+.page-head .desc { margin-top: 2px; color: var(--c-text-2); font-size: var(--fs-sm); }
+.card { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--radius); box-shadow: var(--shadow); min-width: 0; }
+.card-head { display: flex; align-items: flex-start; gap: var(--sp-3); padding: var(--sp-5) var(--sp-5) var(--sp-4); flex-wrap: wrap; }
+.card-head .titles { flex: 1; min-width: 180px; }
+.card-title { font-size: var(--fs-lg); font-weight: 700; }
+.card-desc { margin-top: 2px; color: var(--c-text-2); font-size: var(--fs-sm); }
+.card-body { padding: 0 var(--sp-5) var(--sp-5); }
+.muted { color: var(--c-text-3); }
+.empty { padding: var(--sp-6); text-align: center; color: var(--c-text-3); }
+
+/* ── 초입 화면 */
+.intake { max-width: 1040px; margin: 0 auto; }
+.intake-grid { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: var(--sp-5); align-items: start; }
+@media (max-width: 860px) { .intake-grid { grid-template-columns: 1fr; } }
+.kv th, .kv td { text-align: left; padding: 10px 0; border-bottom: 1px solid var(--c-border); }
+.kv th { width: 96px; color: var(--c-text-2); font-weight: 500; }
+.kv td { font-weight: 600; }
+.kv tr:last-child th, .kv tr:last-child td { border-bottom: none; }
+.dropzone { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); padding: var(--sp-6) var(--sp-4);
+  border: 1.5px dashed var(--c-border-strong); border-radius: var(--radius-sm); background: var(--c-subtle); text-align: center; color: var(--c-text-2); }
+.dropzone .icon { width: 44px; height: 44px; border-radius: 50%; background: var(--c-accent-tint); color: var(--c-accent); display: grid; place-items: center; }
+.dropzone .hint { font-size: var(--fs-xs); color: var(--c-text-3); }
+.files { list-style: none; margin: var(--sp-4) 0 0; padding: 0; display: grid; gap: var(--sp-2); }
+.file { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3); border: 1px solid var(--c-border); border-radius: var(--radius-sm); }
+.ficon { width: 34px; height: 34px; border-radius: var(--radius-sm); background: var(--c-accent-tint); color: var(--c-accent); display: grid; place-items: center; flex: none; }
+.file .fname { flex: 1; font-weight: 600; }
+.file .fmeta { display: block; font-size: var(--fs-xs); color: var(--c-text-3); font-weight: 400; }
+
+/* ── 요약 카드 */
+.summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-4); margin-bottom: var(--sp-4); }
+@media (max-width: 760px) { .summary { grid-template-columns: 1fr; } }
+.stat { padding: var(--sp-5); }
+.stat-label { color: var(--c-text-2); font-size: var(--fs-sm); font-weight: 600; }
+.stat-value { margin-top: var(--sp-1); font-size: var(--fs-2xl); font-weight: 700; letter-spacing: -.02em; line-height: 1.2; }
+.stat-value small { margin-left: 2px; font-size: var(--fs-md); font-weight: 500; color: var(--c-text-2); }
+.stat-value.ok { color: var(--c-ok); }
+.stat-value.bad { color: var(--c-err); }
+.stat-foot { margin-top: var(--sp-2); display: flex; gap: var(--sp-1); flex-wrap: wrap; align-items: center; color: var(--c-text-2); font-size: var(--fs-sm); }
+
+/* ── 표 (지적 목록 · 출력 문서 · 이력) */
+.table-wrap { border: 1px solid var(--c-border); border-radius: var(--radius-sm); overflow: auto; }
+.data th, .data td { padding: 9px var(--sp-3); border-bottom: 1px solid var(--c-border); text-align: left; vertical-align: middle; }
+.data thead th { position: sticky; top: 0; z-index: 1; background: var(--c-subtle); color: var(--c-text-2); font-size: var(--fs-sm); font-weight: 600; white-space: nowrap; }
+.data tbody th { background: var(--c-subtle); color: var(--c-text-2); font-weight: 600; white-space: nowrap; }
+.data tbody tr:last-child td, .data tbody tr:last-child th { border-bottom: none; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-tr.sum td { background: #f7f8fa; font-weight: 600; }
+tr.sum td { background: var(--c-subtle); font-weight: 700; }
+#flags { margin-bottom: var(--sp-4); }
+.flags-wrap { max-height: 340px; }
+.flag-table tr.flag { cursor: pointer; }
+.flag-table tr.flag:hover td { background: var(--c-subtle); }
+.flag-table tr.sel td { background: var(--c-accent-tint); }
+.flag-table tr.done td:not(.actions) { opacity: .55; }
+.flag-table td.target { font-weight: 600; white-space: nowrap; }
+.flag-table td.src { color: var(--c-text-2); font-size: var(--fs-sm); }
+.flag-table .actions { text-align: right; white-space: nowrap; }
+.ai-note { display: block; margin-top: 2px; color: var(--c-text-3); font-size: var(--fs-xs); }
+tr.editor td { background: var(--c-subtle); cursor: default; }
+.editor-box { display: flex; gap: var(--sp-3); align-items: center; flex-wrap: wrap; }
+.editor-box label { display: flex; align-items: center; gap: 6px; color: var(--c-text-2); }
+.editor-box .err { color: var(--c-err); font-weight: 600; }
 
-.hl { background: var(--hl) !important; outline: 2px solid var(--hlline); outline-offset: -2px; }
-.chg { background: var(--chg); }
+/* ── 원본 뷰어 · 출력 문서 */
+.panes { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp-4); }
+@media (max-width: 1100px) { .panes { grid-template-columns: 1fr; } }
+.tabs { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--c-muted-bg); border-radius: 10px; }
+.tab { border: none; background: transparent; padding: 5px 12px; border-radius: 7px; color: var(--c-text-2); font-weight: 500; }
+.tab.on { background: var(--c-surface); color: var(--c-text); font-weight: 700; box-shadow: 0 1px 2px rgba(16, 24, 40, .1); }
+.viewer-bar { display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border: 1px solid var(--c-border); border-bottom: none;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0; background: var(--c-surface); font-size: var(--fs-sm); }
+.viewer-bar .ficon { width: 26px; height: 26px; }
+.out-body { max-height: 64vh; overflow: auto; }
+#right .data td, #right .data th { white-space: nowrap; }
+.doc-note { margin-bottom: var(--sp-3); color: var(--c-text-2); font-size: var(--fs-sm); }
+.hist-tools { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.hist-tools label { display: flex; align-items: center; gap: 6px; color: var(--c-text-2); }
 
-/* 원본 양식 3종: 구조와 모양을 서로 다르게 */
-.form { position: relative; padding: 18px; border: 1px solid #bbb; background: #fffefb; }
-.mock { position: absolute; top: 10px; right: 10px; border: 2px solid #c62828; color: #c62828; font-weight: 700; padding: 0 8px; transform: rotate(8deg); }
-.form .virtual { color: var(--muted); font-size: 11px; margin-top: 10px; }
-.form h3 { margin: 0 0 12px; }
-.form.card { border-top: 6px solid #2f5fb3; }
-.form.card h3 { color: #2f5fb3; }
-.form.card .meta { display: flex; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
-.form.card .meta span { padding: 1px 3px; }
-.form.card thead th { background: #e8eef9; color: #1d3b73; }
-.form.bank { border: 4px double #555; font-family: "Batang", "Nanum Myeongjo", serif; }
-.form.bank h3 { text-align: center; letter-spacing: 6px; font-size: 18px; }
-.form.bank table.kv { width: auto; margin-bottom: 12px; }
-.form.bank table.kv th { color: #333; }
-.form.bank table.grid th, .form.bank table.grid td { border: 1px solid #777; }
-.form.health { border-left: 6px solid #2e7d4f; }
-.form.health .org { color: #2e7d4f; font-weight: 700; display: inline-block; padding: 1px 3px; }
-.form.health h3 { margin-top: 6px; }
-.form.health .boxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 12px; }
-.form.health .box { border: 1px solid #b9d8c6; padding: 4px 8px; }
-.form.health .box b { display: block; font-size: 11px; color: #2e7d4f; }
-.form.health table th { background: #e7f4ec; color: #22573a; }
-.form.health .due { margin-top: 10px; border: 1px dashed #2e7d4f; padding: 6px 8px; display: inline-block; }
+/* 강조 칸(노랑)과 바뀐 값(초록). 강조가 이깁니다. */
+.chg { background: var(--c-chg) !important; }
+.hl { background: var(--c-hl) !important; outline: 2px solid var(--c-hl-line); outline-offset: -2px; }
 
-.proto { font-size: 10px; font-weight: 600; color: #8a4b00; background: var(--warnbg); border-radius: 8px; padding: 0 6px; margin-left: 4px; }
-.doc-note { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
-.hist-tools { margin-bottom: 8px; }
+/* ── 원본 양식 3종: 문서 모양을 유지하고, 구조와 모양을 서로 다르게 */
+/* ── 서류 뷰어: 연회색 바탕 위에 흰 종이를 올립니다 (원본 · 출력 공통) */
+.viewer { max-height: 66vh; overflow: auto; padding: 28px 20px 36px; background: var(--c-paper-bg); border: 1px solid var(--c-border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm); }
+.viewer.solo { border-radius: var(--radius-sm); }
+.sheet { position: relative; isolation: isolate; max-width: 640px; margin: 0 auto 10px; }
+.sheet.wide { max-width: none; }
+/* 종이 뒤에 겹친 두 장 */
+.sheet::before, .sheet::after { content: ''; position: absolute; inset: 0; background: #fff; border: 1px solid var(--c-paper-edge); border-radius: var(--radius-paper); }
+.sheet::before { z-index: -1; transform: translate(5px, 5px); box-shadow: 0 2px 6px rgba(16, 24, 40, .08); }
+.sheet::after { z-index: -2; transform: translate(10px, 10px); background: #f6f7f9; box-shadow: 0 3px 10px rgba(16, 24, 40, .10); }
+.sheet-lift { position: relative; transition: transform .18s ease; }
+.sheet-label { position: absolute; top: -11px; left: 20px; z-index: 1; padding: 2px 10px; border-radius: var(--radius-pill); background: var(--c-text-2);
+  color: #fff; font-size: var(--fs-xs); font-weight: 700; letter-spacing: .04em; box-shadow: 0 1px 3px rgba(16, 24, 40, .2); }
+.sheet-label.out { background: var(--c-accent); }
+.sheet:hover .sheet-lift { transform: translateY(-3px); }
+.sheet:hover .paper { box-shadow: var(--shadow-paper-hover); }
+@media (prefers-reduced-motion: reduce) { .sheet-lift, .paper { transition: none; } .sheet:hover .sheet-lift { transform: none; } }
+@media (max-width: 640px) { .viewer { padding: 24px 14px 30px; } .paper { padding: 28px 16px 20px; } }
 
-#tests { position: fixed; right: 10px; bottom: 8px; font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #e6f4ea; color: #1e6b3a; border: 1px solid #b7dfc3; }
-#tests.fail { background: var(--errbg); color: var(--err); border-color: #f0b9b3; }
+/* 종이: 글자는 진하고 크게. 표가 넓으면 종이 안에서 옆으로 스크롤되고, 종이 자체는 잘리지 않습니다. */
+.paper { position: relative; overflow-x: auto; padding: 32px 22px 26px; background: #fff; border: 1px solid var(--c-paper-edge); border-radius: var(--radius-paper);
+  box-shadow: var(--shadow-paper); color: var(--c-paper-text); font-size: var(--fs-paper); word-break: keep-all; transition: box-shadow .18s ease; }
+.paper h3 { font-size: 20px; font-weight: 800; margin-bottom: var(--sp-4); }
+.paper table th, .paper table td { padding: 8px 9px; border-bottom: 1px solid #e3e7ec; text-align: left; }
+.paper table th { font-size: 13px; font-weight: 700; color: #344054; }
+.paper .hl { box-shadow: 0 0 0 3px rgba(201, 138, 0, .18); }
+.out-doc h3 { margin-bottom: var(--sp-2); }
+.out-doc .table-wrap { border-color: #e3e7ec; }
+.paper table .num { text-align: right; }
+.paper p { margin-top: var(--sp-3); }
+.paper .virtual { margin-top: var(--sp-4); color: var(--c-text-3); font-size: var(--fs-xs); }
+.mock { position: absolute; top: 16px; right: 18px; padding: 0 8px; border: 2px solid #d92d20; border-radius: 4px; color: #d92d20;
+  font-size: var(--fs-sm); font-weight: 800; letter-spacing: .1em; transform: rotate(8deg); opacity: .85; }
+.form-card h3 { color: #2453a6; padding-bottom: var(--sp-2); border-bottom: 2px solid #2453a6; }
+.form-card .meta { display: flex; gap: var(--sp-5); flex-wrap: wrap; margin-bottom: var(--sp-3); }
+.form-card .meta .k { color: var(--c-text-3); margin-right: 4px; }
+.form-card .meta span[id] { padding: 1px 3px; }
+.form-card thead th { background: #eef3fb; color: #1d3b73; }
+.form-bank h3 { text-align: center; letter-spacing: .4em; }
+.form-bank table.kv-doc { width: auto; margin-bottom: var(--sp-3); }
+.form-bank table.kv-doc th { color: #374151; padding-right: var(--sp-5); }
+.form-bank table.grid th, .form-bank table.grid td { border: 1px solid #9aa3af; }
+.form-bank table.grid thead th { background: #f3f4f6; }
+.form-health .org { display: inline-block; padding: 1px 3px; color: #1f7a4d; font-weight: 700; }
+.form-health h3 { margin-top: var(--sp-2); }
+.form-health .boxes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); margin-bottom: var(--sp-3); }
+.form-health .box { padding: 6px 10px; border: 1px solid #c4e3d1; border-radius: 4px; }
+.form-health .box b { display: block; font-size: var(--fs-xs); color: #1f7a4d; }
+.form-health thead th { background: #eaf6ef; color: #22573a; }
+.form-health .due { display: inline-block; margin-top: var(--sp-3); padding: 6px 10px; border: 1px dashed #1f7a4d; border-radius: 4px; }
+
+/* ── 개발자 확인: 프로토 자체 검사 (대조 화면 맨 아래, 기본은 접힘) */
+.devcheck { margin-top: var(--sp-8); padding-top: var(--sp-4); border-top: 1px solid var(--c-border); }
+.dev-link { padding: 0; border: none; background: none; color: var(--c-text-3); font-size: var(--fs-xs); font-weight: 400;
+  text-decoration: underline; text-underline-offset: 2px; }
+.dev-link:hover:not(:disabled) { background: none; color: var(--c-text-2); }
+.dev-panel { max-width: 640px; margin-top: var(--sp-3); padding: var(--sp-3) var(--sp-4); background: var(--c-surface);
+  border: 1px dashed var(--c-border-strong); border-radius: var(--radius-sm); color: var(--c-text-2); font-size: var(--fs-sm); }
+.dev-panel ul { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-1); }
+.dev-panel .mark { display: inline-block; width: 18px; font-weight: 700; }
+.dev-sum { margin-top: var(--sp-3); padding-top: var(--sp-2); border-top: 1px solid var(--c-border); font-weight: 700; }
+.dev-panel .ok { color: var(--c-ok); }
+.dev-panel .bad { color: var(--c-err); }
 </style>
 </head>
 <body>
-<header>
-  <h1>원본 대조 검증 <span class="tag">P0 프로토 · mock AI</span></h1>
-  <label>처리자
-    <select id="processor">
-      <option>사무직원</option>
-      <option>변호사</option>
-    </select>
-  </label>
-  <button data-act="reset">초기화</button>
-</header>
-<section id="flags"></section>
-<div class="panes">
-  <section class="pane" id="left"></section>
-  <section class="pane" id="right"></section>
-</div>
-<div id="tests"></div>
+<header class="appbar" id="appbar"></header>
+<main class="page">
+  <section id="intake"></section>
+  <div id="review" hidden>
+    <div class="page-head" id="review-head"></div>
+    <div class="summary" id="summary"></div>
+    <section class="card" id="flags"></section>
+    <div class="panes">
+      <section class="card" id="left"></section>
+      <section class="card" id="right"></section>
+    </div>
+    <footer class="devcheck" id="devcheck"></footer>
+  </div>
+</main>
 
 <script>
 'use strict';
@@ -619,7 +783,10 @@ function selectFlag(key, scroll) {
   }
 }
 
-// ── 10. 그리기
+// ── 10. 그리기. 화면 모듈: 앱 바 · 초입 화면 · 요약 카드 · 지적 목록 · 원본 뷰어 · 출력 문서 · 이력
+// 화면 위치는 state 밖에 둡니다. 초기화해도 지금 화면에 머뭅니다.
+const ui = { screen: 'intake', started: false, devOpen: false };
+
 let ctx = { hl: new Set(), now: 0 };
 function cls(id, extra = '') {
   const c = [extra];
@@ -634,31 +801,146 @@ function render() {
   const sel = state.view.find(v => v.flag.key === state.selectedKey);
   ctx = { hl: new Set(), now: Date.now() };
   if (sel) { sel.flag.src.forEach(s => ctx.hl.add(srcId(s))); ctx.hl.add(outId(sel.flag.out)); }
+  $('#appbar').innerHTML = renderAppBar();
+  $('#intake').hidden = ui.screen !== 'intake';
+  $('#review').hidden = ui.screen !== 'review';
+  if (ui.screen === 'intake') { $('#intake').innerHTML = renderIntake(); return; }
+  $('#review-head').innerHTML = renderReviewHead();
+  $('#summary').innerHTML = renderSummary(state.view);
   $('#flags').innerHTML = renderFlags(state.view);
-  $('#left').innerHTML = renderLeft();
-  $('#right').innerHTML = renderRight();
+  $('#left').innerHTML = renderSourceViewer();
+  $('#right').innerHTML = renderOutput();
+  $('#devcheck').innerHTML = renderDevCheck();
 }
 
+// 초입 화면 ↔ 대조 화면. 대조 화면 상태는 그대로 둡니다.
+function showScreen(name) {
+  ui.screen = name;
+  if (name === 'review') ui.started = true;
+  render();
+  window.scrollTo(0, 0);
+}
+
+// 단계 표시: ① 초입 화면, ③ 대조 화면, ④ 대조 화면의 이력 탭. ②는 자동 단계라 누를 수 없습니다.
+function goStep(n) {
+  if (n === 1) return showScreen('intake');
+  if (n === 4) state.rightTab = 'history';
+  else if (state.rightTab === 'history') state.rightTab = 'list';
+  showScreen('review');
+}
+
+// 10-1. 공통 조각: 카드 · 칩 · 탭 · 아이콘
+function cardInner(title, desc, body, tools = '') {
+  return `<div class="card-head"><div class="titles"><h2 class="card-title">${title}</h2>${desc ? `<p class="card-desc">${desc}</p>` : ''}</div>${tools}</div>
+    <div class="card-body">${body}</div>`;
+}
+function chip(text, kind) { return `<span class="chip ${kind}">${esc(text)}</span>`; }
+const GRADE_CHIP = { 오류: 'chip-err', '확인 필요': 'chip-warn' };
+const ACTION_CHIP = { '수정 승인': 'chip-approve', '현행 유지': 'chip-keep' };
+
+function tabs(side, items, current) {
+  return `<div class="tabs" role="tablist">${items.map(([id, name]) =>
+    `<button class="tab ${id === current ? 'on' : ''}" role="tab" aria-selected="${id === current}" data-act="${side}" data-tab="${id}">${name}</button>`).join('')}</div>`;
+}
+
+const svg = (size, paths) => `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
+const ICON = {
+  file: svg(16, '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/>'),
+  upload: svg(20, '<path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M5 20h14"/>'),
+  check: svg(12, '<path d="m5 12 5 5 9-10"/>'),
+  verify: svg(16, '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="m9 14 2 2 4-4"/>'),
+};
+
+// 10-2. 앱 바
+const STEPS = [[1, '서류 업로드'], [2, '작성'], [3, '검토'], [4, '이력']];
+function currentStep() { return ui.screen === 'intake' ? 1 : state.rightTab === 'history' ? 4 : 3; }
+
+function renderAppBar() {
+  const cur = currentStep();
+  const steps = STEPS.map(([n, name]) => {
+    const st = n < cur ? 'is-done' : n === cur ? 'is-current' : '';
+    const inner = `<span class="no">${n < cur ? ICON.check : n}</span>${name}`;
+    const aria = n === cur ? 'aria-current="step"' : '';
+    if (n === 2) return `<span class="step ${st}" ${aria}>${inner}</span>`;
+    return `<button class="step ${st}" ${aria} data-act="step" data-step="${n}" ${n > 2 && !ui.started ? 'disabled' : ''}>${inner}</button>`;
+  }).join('<span class="step-arrow">→</span>');
+  return `<div class="brand"><span class="mark">${ICON.verify}</span>빚오프<span class="sep">·</span><span class="sub">원본 대조 검증</span></div>
+    <nav class="steps" aria-label="진행 단계">${steps}</nav>
+    <div class="appbar-tools">
+      <label>처리자 <select id="processor">${['사무직원', '변호사'].map(p =>
+        `<option ${p === state.processor ? 'selected' : ''}>${p}</option>`).join('')}</select></label>
+      <button data-act="reset">초기화</button>
+    </div>`;
+}
+
+// 10-3. 초입 화면: 업로드는 화면만 있고 실제 파일은 읽지 않습니다. 샘플 서류 3종이 올라간 상태로 시작합니다.
+const SAMPLE_UPLOADS = ['한빛카드 부채증명서', '새봄은행 부채잔액증명서', '누리건강보험공단 미납내역서'];
+
+function renderIntake() {
+  const customer = `<table class="kv"><tr><th>고객명</th><td>${esc(DEBTOR)}</td></tr>
+    <tr><th>서류 기준일</th><td>${esc(fmtSrc(BASE_DATE))}</td></tr></table>`;
+  const files = SAMPLE_UPLOADS.map(n => `<li class="file"><span class="ficon">${ICON.file}</span>
+    <span class="fname">${esc(n)}<span class="fmeta">샘플 서류</span></span>${chip('준비됨', 'chip-ok')}</li>`).join('');
+  const upload = `<div class="dropzone"><span class="icon">${ICON.upload}</span>
+      <div>파일을 여기에 끌어 놓거나 <button disabled>파일 선택</button></div>
+      <p class="hint">프로토: 업로드는 화면만 있고, 실제 파일은 읽지 않습니다.</p></div>
+    <ul class="files">${files}</ul>`;
+  // 시작 버튼은 업로드 카드 제목 줄에 둡니다. 서류가 준비되면 강조색, 아니면 비활성입니다.
+  const ready = SAMPLE_UPLOADS.length > 0;
+  const startButton = `<button class="primary lg" data-act="start" ${ready ? '' : 'disabled title="서류를 올리면 누를 수 있습니다."'}>작성 &amp; 검토하기</button>`;
+  return `<div class="intake">
+    <div class="page-head"><div class="titles"><h1>서류 업로드</h1><p class="desc">고객 서류를 올리고 작성과 검토를 시작합니다.</p></div>
+      ${chip('프로토: 샘플 서류로 진행', 'chip-info')}</div>
+    <div class="intake-grid">
+      <section class="card">${cardInner('고객 정보', '가상 고객입니다.', customer)}</section>
+      <section class="card">${cardInner('서류 업로드', `올라간 서류 ${SAMPLE_UPLOADS.length}건`, upload, startButton)}</section>
+    </div>
+  </div>`;
+}
+
+// 10-4. 대조 화면 머리와 요약 카드
+function renderReviewHead() {
+  return `<button class="ghost" data-act="intake">← 서류 업로드</button>
+    <div class="titles"><h1>검토</h1><p class="desc">${esc(DEBTOR)} · 서류 기준일 ${esc(fmtSrc(BASE_DATE))} · 원본 ${SAMPLE_UPLOADS.length}종</p></div>
+    ${chip('프로토: 샘플 서류 · mock AI', 'chip-info')}`;
+}
+
+function renderSummary(view) {
+  const open = view.filter(v => v.status === '열림'), done = view.filter(v => v.status === '처리됨');
+  const count = (arr, fn) => arr.filter(fn).length;
+  const D = state.docs;
+  // 표시용: 채권자목록 · 변제계획 · 개시신청서의 일반·우선권·총합계가 모두 같은지
+  const match = GROUPS.every(g => D.plan.sums[g].채권액 === D.list.sums[g].총채권액 && D.app.sums[g].채권액 === D.list.sums[g].총채권액);
+  const stat = (label, value, foot, tone = '') => `<section class="card stat"><p class="stat-label">${label}</p>
+    <div class="stat-value ${tone}">${value}</div><div class="stat-foot">${foot}</div></section>`;
+  return stat('열린 지적', `${open.length}<small>건</small>`,
+      `${chip(`오류 ${count(open, v => v.flag.grade === '오류')}`, 'chip-err')} ${chip(`확인 필요 ${count(open, v => v.flag.grade === '확인 필요')}`, 'chip-warn')}`)
+    + stat('처리됨', `${done.length}<small>건</small>`,
+      `${chip(`수정 승인 ${count(done, v => v.res.action === '수정 승인')}`, 'chip-approve')} ${chip(`현행 유지 ${count(done, v => v.res.action === '현행 유지')}`, 'chip-keep')}`)
+    + stat('문서 합계', match ? '일치' : '불일치',
+      `채권자목록 · 변제계획 · 개시신청서 · 총 채권액 ${esc(fmt(D.list.sums.총합계.총채권액))}원`, match ? 'ok' : 'bad');
+}
+
+// 10-5. 지적 목록
 function renderFlags(view) {
-  const open = view.filter(v => v.status === '열림').length;
-  let h = `<div class="flags-head"><h2>지적 목록</h2>
-    <span>열린 지적 <b>${open}</b>건 / 처리됨 <b>${view.length - open}</b>건</span>
-    <span class="hint">지적을 누르면 원본 칸과 출력 칸이 함께 강조됩니다.</span></div>`;
-  if (!view.length) return h + '<p class="empty">지적이 없습니다.</p>';
-  h += `<table class="flag-table"><thead><tr><th>등급</th><th>대상</th><th>내용</th><th>원본 위치</th><th>처리</th></tr></thead><tbody>`;
-  for (const v of view) {
-    const f = v.flag, done = v.status === '처리됨', k = esc(f.key);
-    h += `<tr class="flag ${done ? 'done' : ''} ${f.key === state.selectedKey ? 'sel' : ''}" data-act="select" data-key="${k}">
-      <td><span class="grade ${f.grade === '오류' ? 'g-err' : 'g-warn'}">${f.grade}</span></td>
-      <td>${esc(f.title)}</td>
-      <td>${esc(f.msg)}${aiNote(f)}</td>
-      <td>${esc(f.src.map(srcLabel).join(' + ') || '—')}</td>
-      <td>${done
-        ? `<span class="done-tag">처리됨 · ${esc(v.res.action)}</span>`
-        : allowedActions(f).map(a => `<button data-act="edit" data-action="${a}" data-key="${k}">${a}</button>`).join(' ')}</td></tr>`;
-    if (!done && state.editing && state.editing.key === f.key) h += renderEditor(f);
+  let body = '<p class="empty">지적이 없습니다.</p>';
+  if (view.length) {
+    let h = `<div class="table-wrap flags-wrap"><table class="data flag-table"><thead><tr><th>등급</th><th>대상</th><th>내용</th><th>원본 위치</th><th class="actions">상태 · 처리</th></tr></thead><tbody>`;
+    for (const v of view) {
+      const f = v.flag, done = v.status === '처리됨', k = esc(f.key);
+      h += `<tr class="flag ${done ? 'done' : ''} ${f.key === state.selectedKey ? 'sel' : ''}" data-act="select" data-key="${k}">
+        <td>${chip(f.grade, GRADE_CHIP[f.grade])}</td>
+        <td class="target">${esc(f.title)}</td>
+        <td>${esc(f.msg)}${aiNote(f)}</td>
+        <td class="src">${esc(f.src.map(srcLabel).join(' + ') || '—')}</td>
+        <td class="actions">${done
+          ? `${chip('처리됨', 'chip-done')} ${chip(v.res.action, ACTION_CHIP[v.res.action])}`
+          : allowedActions(f).map(a => `<button class="sm ${a === '수정 승인' ? 'primary' : ''}" data-act="edit" data-action="${a}" data-key="${k}">${a}</button>`).join(' ')}</td></tr>`;
+      if (!done && state.editing && state.editing.key === f.key) h += renderEditor(f);
+    }
+    body = h + '</tbody></table></div>';
   }
-  return h + '</tbody></table>';
+  return cardInner('지적 목록', '지적을 누르면 원본 칸과 출력 칸이 함께 강조됩니다.', body);
 }
 
 function aiNote(f) {
@@ -678,23 +960,28 @@ function renderEditor(f) {
   else valuePart = `<span>재계산 값 <b>${esc(fmt(f.expected))}</b>으로 반영합니다.</span>`;
   const reasonLabel = a === '현행 유지' ? '사유 (필수)' : '사유 (원본과 다른 값이면 필수)';
   return `<tr class="editor" data-act="noop"><td colspan="5"><div class="editor-box">
-    <b>${esc(a)}</b> ${valuePart}
+    ${chip(a, ACTION_CHIP[a])} ${valuePart}
     <label>${reasonLabel} <input data-draft="reason" value="${esc(state.draft.reason)}" size="28"></label>
-    <button class="primary" data-act="confirm">확인</button>
-    <button data-act="cancel">취소</button>
+    <button class="sm primary" data-act="confirm">확인</button>
+    <button class="sm ghost" data-act="cancel">취소</button>
     <span class="err">${esc(state.editError)}</span>
   </div></td></tr>`;
 }
 
-function tabs(side, items, current, label) {
-  return `<div class="pane-head"><span class="label">${label}</span>${items.map(([id, name]) =>
-    `<button class="tab ${id === current ? 'on' : ''}" data-act="${side}" data-tab="${id}">${name}</button>`).join('')}</div>`;
+// 10-6. 원본 뷰어: 문서 뷰어 프레임 안에 원본 양식을 그립니다.
+const SOURCE_TABS = [['card', '한빛카드'], ['bank', '새봄은행'], ['health', '건강보험료']];
+
+function renderSourceViewer() {
+  const id = state.leftTab;
+  const doc = { card: renderCard, bank: renderBank, health: renderHealth }[id]();
+  const bar = `<div class="viewer-bar"><span class="ficon">${ICON.file}</span><b>${esc(FORMS[id].이름)}</b>${chip('목업 원본', 'chip-info')}</div>`;
+  return cardInner('원본 서류', '증명서 원본입니다. 지적한 칸이 노랗게 강조됩니다.',
+    `${bar}<div class="viewer">${sheet('원본', 'src', doc)}</div>`, tabs('ltab', SOURCE_TABS, id));
 }
 
-function renderLeft() {
-  const body = { card: renderCard, bank: renderBank, health: renderHealth }[state.leftTab]();
-  return tabs('ltab', [['card', '한빛카드'], ['bank', '새봄은행'], ['health', '건강보험료']], state.leftTab, '원본')
-    + `<div class="pane-body">${body}</div>`;
+// 종이 한 장: 뒤에 겹친 종이, 위쪽 라벨("원본"/"출력"), 마우스를 올리면 살짝 떠오름
+function sheet(label, kind, paper, extra = '') {
+  return `<div class="sheet ${extra}"><div class="sheet-lift"><span class="sheet-label ${kind}">${label}</span>${paper}</div></div>`;
 }
 
 // 원본 칸: 칸ID로 강조할 수 있게 id를 붙입니다.
@@ -708,9 +995,9 @@ function renderCard() {
   const F = 'card', c = FORMS.card.cells;
   const row = r => `<tr>${sc(F, `${r}_kind`)}${sc(F, `${r}_date`)}${sc(F, `${r}_principal`, 'td', 'num')}
     ${sc(F, `${r}_interest`, 'td', 'num')}${sc(F, `${r}_fee`, 'td', 'num')}${sc(F, `${r}_total`, 'td', 'num')}</tr>`;
-  return `<div class="form card"><div class="mock">목업</div>
+  return `<div class="paper form-card"><div class="mock">목업</div>
     ${sc(F, 'title', 'h3')}
-    <div class="meta"><div>발급사 ${sc(F, 'issuer', 'span')}</div><div>채무자 ${esc(c.debtor)}</div><div>기준일 ${sc(F, 'base', 'span')}</div></div>
+    <div class="meta"><div><span class="k">발급사</span>${sc(F, 'issuer', 'span')}</div><div><span class="k">채무자</span>${esc(c.debtor)}</div><div><span class="k">기준일</span>${sc(F, 'base', 'span')}</div></div>
     <table><thead><tr><th>구분</th><th>이용(대출)일</th><th class="num">원금</th><th class="num">이자</th><th class="num">연회비</th><th class="num">합계</th></tr></thead>
     <tbody>${row('r1')}${row('r2')}
     <tr class="sum"><td colspan="5">합계</td>${sc(F, 'sum_total', 'td', 'num')}</tr></tbody></table>
@@ -721,9 +1008,9 @@ function renderBank() {
   const F = 'bank', c = FORMS.bank.cells;
   const row = r => `<tr><td>${esc(c[`${r}_acct`])}</td>${sc(F, `${r}_product`)}${sc(F, `${r}_open`)}${sc(F, `${r}_maturity`)}
     ${sc(F, `${r}_principal`, 'td', 'num')}${sc(F, `${r}_interest`, 'td', 'num')}</tr>`;
-  return `<div class="form bank"><div class="mock">목업</div>
+  return `<div class="paper form-bank"><div class="mock">목업</div>
     ${sc(F, 'title', 'h3')}
-    <table class="kv"><tr><th>은행명</th>${sc(F, 'issuer')}</tr><tr><th>고객명</th><td>${esc(c.debtor)}</td></tr><tr><th>기준일</th>${sc(F, 'base')}</tr></table>
+    <table class="kv-doc"><tr><th>은행명</th>${sc(F, 'issuer')}</tr><tr><th>고객명</th><td>${esc(c.debtor)}</td></tr><tr><th>기준일</th>${sc(F, 'base')}</tr></table>
     <table class="grid"><thead><tr><th>계좌번호</th><th>상품명</th><th>신규일자</th><th>만기일</th><th class="num">대출잔액</th><th class="num">미수이자</th></tr></thead>
     <tbody>${row('r1')}${row('r2')}
     <tr class="sum"><td colspan="4">합계</td><td class="num">${fmtSrc(c.sum_principal)}</td><td class="num">${fmtSrc(c.sum_interest)}</td></tr></tbody></table>
@@ -732,7 +1019,7 @@ function renderBank() {
 
 function renderHealth() {
   const F = 'health', c = FORMS.health.cells;
-  return `<div class="form health"><div class="mock">목업</div>
+  return `<div class="paper form-health"><div class="mock">목업</div>
     ${sc(F, 'issuer', 'span', 'org')}
     ${sc(F, 'title', 'h3')}
     <div class="boxes">
@@ -747,10 +1034,18 @@ function renderHealth() {
     ${VIRTUAL}</div>`;
 }
 
-function renderRight() {
-  const body = { list: renderList, plan: renderPlan, app: renderApp, history: renderHistory }[state.rightTab]();
-  return tabs('rtab', [['list', '채권자목록'], ['plan', '변제계획'], ['app', '개시신청서'], ['history', '이력']], state.rightTab, '출력')
-    + `<div class="pane-body">${body}</div>`;
+// 10-7. 출력 문서: 채권자목록 · 변제계획 · 개시신청서 · 이력
+const OUTPUT_TABS = [['list', '채권자목록'], ['plan', '변제계획'], ['app', '개시신청서'], ['history', '이력']];
+
+function renderOutput() {
+  const tab = state.rightTab;
+  const body = { list: renderList, plan: renderPlan, app: renderApp, history: renderHistory }[tab]();
+  // 이력은 서류가 아니라서 종이에 올리지 않습니다.
+  const content = tab === 'history'
+    ? `<div class="out-body">${body}</div>`
+    : `<div class="viewer solo">${sheet('출력', 'out', `<div class="paper out-doc"><h3>${DOC_NAME[tab]}</h3>${body}</div>`, tab === 'list' ? 'wide' : '')}</div>`;
+  return cardInner('출력 문서', '원본에서 자동 작성한 문서입니다. 바뀐 값은 잠시 초록색으로 보입니다.',
+    content, tabs('rtab', OUTPUT_TABS, tab));
 }
 
 // 출력 칸: (문서, 채권ID 또는 합계 구분, 필드) 고정 규칙으로 id를 정합니다.
@@ -761,8 +1056,8 @@ function oc(doc, kind, row, col, extra = '') {
 
 function renderList() {
   const d = 'list';
-  let h = `<table><thead><tr><th>번호</th><th>채권자명</th><th>채권종류</th><th>발생일</th><th class="num">원금</th><th class="num">이자</th>
-    <th class="num">연회비(참고)<span class="proto">프로토 전용</span></th><th class="num">총 채권액</th><th>구분</th><th>기준일</th></tr></thead><tbody>`;
+  let h = `<div class="table-wrap"><table class="data"><thead><tr><th>번호</th><th>채권자명</th><th>채권종류</th><th>발생일</th><th class="num">원금</th><th class="num">이자</th>
+    <th class="num">연회비(참고) ${chip('프로토 전용', 'chip-info')}</th><th class="num">총 채권액</th><th>구분</th><th>기준일</th></tr></thead><tbody>`;
   CLAIMS.forEach(({ id }, i) => {
     h += `<tr><td>${i + 1}</td>${oc(d, 'rows', id, '채권자명')}${oc(d, 'rows', id, '채권종류')}${oc(d, 'rows', id, '발생일')}
       ${oc(d, 'rows', id, '원금', 'num')}${oc(d, 'rows', id, '이자', 'num')}${oc(d, 'rows', id, '연회비', 'num')}
@@ -772,25 +1067,26 @@ function renderList() {
     h += `<tr class="sum"><td colspan="4">${g === '총합계' ? '총합계' : `${g} 채권 합계`}</td>
       ${oc(d, 'sums', g, '원금', 'num')}${oc(d, 'sums', g, '이자', 'num')}<td></td>${oc(d, 'sums', g, '총채권액', 'num')}<td colspan="2"></td></tr>`;
   }
-  return `<p class="doc-note">총 채권액 = 원금 + 이자. 연회비(참고)는 합계에 더하지 않습니다.</p>${h}</tbody></table>`;
+  return `<p class="doc-note">총 채권액 = 원금 + 이자. 연회비(참고)는 합계에 더하지 않습니다.</p>${h}</tbody></table></div>`;
 }
 
 function renderPlan() {
   const d = 'plan';
-  let h = `<table><thead><tr><th>채권자명</th><th>구분</th><th class="num">채권액</th></tr></thead><tbody>`;
+  let h = `<div class="table-wrap"><table class="data"><thead><tr><th>채권자명</th><th>구분</th><th class="num">채권액</th></tr></thead><tbody>`;
   for (const { id } of CLAIMS) h += `<tr>${oc(d, 'rows', id, '채권자명')}${oc(d, 'rows', id, '구분')}${oc(d, 'rows', id, '채권액', 'num')}</tr>`;
   for (const g of GROUPS) h += `<tr class="sum"><td colspan="2">${g === '총합계' ? '총합계' : `${g} 채권 합계`}</td>${oc(d, 'sums', g, '채권액', 'num')}</tr>`;
-  return `<p class="doc-note">변제계획 · 채권액</p>${h}</tbody></table>`;
+  return `<p class="doc-note">채권자별 채권액과 합계입니다.</p>${h}</tbody></table></div>`;
 }
 
 function renderApp() {
   const d = 'app';
   const label = { 일반: '일반 채권 총액', 우선권: '우선권 채권 총액', 총합계: '채권 총액' };
-  let h = `<table><tbody>`;
+  let h = `<div class="table-wrap"><table class="data"><tbody>`;
   for (const g of GROUPS) h += `<tr><th>${label[g]}</th>${oc(d, 'sums', g, '채권액', 'num')}</tr>`;
-  return `<p class="doc-note">개시신청서 · 채권액 관련 칸만 보여 줍니다.</p>${h}</tbody></table>`;
+  return `<p class="doc-note">채권액 관련 칸만 보여 줍니다.</p>${h}</tbody></table></div>`;
 }
 
+// 10-8. 이력
 function renderHistory() {
   const all = state.history.list();
   const keys = [...new Map(all.map(e => [e.필드키, `${e.문서} · ${e.필드}`])).entries()];
@@ -798,38 +1094,52 @@ function renderHistory() {
   let h = `<div class="hist-tools"><label>필드로 보기
     <select id="histFilter"><option value="">전체</option>${keys.map(([k, l]) =>
       `<option value="${esc(k)}" ${k === state.histFilter ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></label>
-    <span class="muted">· 이력은 추가만 됩니다.</span></div>`;
-  if (!rows.length) return h + '<p class="muted">아직 처리한 지적이 없습니다.</p>';
-  h += `<table><thead><tr><th>시각</th><th>처리자</th><th>문서·필드</th><th class="num">변경 전</th><th class="num">변경 후</th>
+    <span class="muted">이력은 추가만 됩니다.</span></div>`;
+  if (!rows.length) return h + '<p class="empty">아직 처리한 지적이 없습니다.</p>';
+  h += `<div class="table-wrap"><table class="data"><thead><tr><th>시각</th><th>처리자</th><th>문서·필드</th><th class="num">변경 전</th><th class="num">변경 후</th>
     <th>원본 위치</th><th>구분</th><th>사유</th><th>반영 문서</th></tr></thead><tbody>`;
   for (const e of rows) {
     h += `<tr><td>${esc(e.시각)}</td><td>${esc(e.처리자)}</td><td>${esc(e.문서)} · ${esc(e.필드)}</td>
       <td class="num">${esc(fmt(e.변경전))}</td><td class="num">${esc(fmt(e.변경후))}</td>
-      <td>${esc(e.원본위치.join(' + ') || '—')}</td><td>${esc(e.구분)}</td><td>${esc(e.사유 || '—')}</td><td>${esc(e.반영문서)}</td></tr>`;
+      <td>${esc(e.원본위치.join(' + ') || '—')}</td><td>${chip(e.구분, ACTION_CHIP[e.구분])}</td><td>${esc(e.사유 || '—')}</td><td>${esc(e.반영문서)}</td></tr>`;
   }
-  return h + '</tbody></table>';
+  return h + '</tbody></table></div>';
 }
 
-function renderTests() {
-  const results = runTests();
-  const pass = results.filter(r => r.ok).length;
-  const el = $('#tests');
-  el.textContent = `검사 테스트 ${pass}/${results.length} 통과`;
-  el.className = pass === results.length ? '' : 'fail';
-  el.title = results.map(r => `${r.ok ? '✓' : '✗'} ${r.name}`).join('\n');
+// 10-9. 개발자 확인: 프로토 자체 검사. 검사는 페이지가 열릴 때 한 번 실행하고, 결과는 여기서만 보여 줍니다.
+let testResults = [];
+
+function renderDevCheck() {
+  const pass = testResults.filter(r => r.ok).length;
+  let h = `<button class="dev-link" data-act="devcheck" aria-expanded="${ui.devOpen}">개발자 확인: 프로토 자체 검사 ${ui.devOpen ? '▴' : '▾'}</button>`;
+  if (ui.devOpen) {
+    h += `<div class="dev-panel"><ul>${testResults.map(r =>
+      `<li><span class="mark ${r.ok ? 'ok' : 'bad'}">${r.ok ? '✓' : '✗'}</span>${esc(r.name)}</li>`).join('')}</ul>
+      <p class="dev-sum ${pass === testResults.length ? 'ok' : 'bad'}">${pass}/${testResults.length} 통과</p></div>`;
+  }
+  return h;
 }
 
 // ── 11. 이벤트
 function init() {
   state = initialState();
   reverify();
+  testResults = runTests();
   render();
-  renderTests();
 
   document.addEventListener('click', e => {
     const el = e.target.closest('[data-act]');
     if (!el) return;
     const { act, key } = el.dataset;
+    if (act === 'start') return showScreen('review');
+    if (act === 'intake') return showScreen('intake');
+    if (act === 'step') return goStep(Number(el.dataset.step));
+    if (act === 'devcheck') {
+      ui.devOpen = !ui.devOpen;
+      render();
+      if (ui.devOpen) $('#devcheck').scrollIntoView({ block: 'end', behavior: 'smooth' });
+      return;
+    }
     if (act === 'select') return selectFlag(key, true);
     if (act === 'edit') {
       const f = state.view.find(v => v.flag.key === key).flag;
