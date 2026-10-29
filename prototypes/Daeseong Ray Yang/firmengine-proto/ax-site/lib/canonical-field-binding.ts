@@ -6,6 +6,7 @@ export const CANONICAL_SOURCE_BINDING_VERSION = "canonical-source-binding/1" as 
 export interface CanonicalSourceDefinition {
   global_field_id:string;local_id:string;
   datatype:string;canonical_unit:string;
+  subject_role?:string;temporal_role?:string;
 }
 export interface CanonicalSourceContract {
   family_id:string;fields:readonly CanonicalSourceDefinition[];

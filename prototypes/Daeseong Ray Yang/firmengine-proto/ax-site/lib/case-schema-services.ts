@@ -6,6 +6,8 @@ import { listCaseCalculationFeatures } from "./case-calculation-feature-store.ts
 import { listCaseLawgraphReview } from "./case-lawgraph-store.ts";
 import { processCaseAgentUpdates } from "./case-agent-scheduler.ts";
 import { caseRequirementMonitor, listCaseDocumentWorkEvents } from "./case-requirement-monitor.ts";
+import { buildOcrChainMatrix } from "./ocr-chain-matrix.ts";
+import { getIntakeCatalog } from "./intake-store.ts";
 
 export const CASE_SCHEMA_CONTRACT={
   version:"case-feature-storage/1",databaseBinding:"DB",databaseEngine:"Cloudflare D1 / SQLite",
@@ -42,6 +44,10 @@ export async function readCaseSchemaData(caseId:string,input:{view?:string;docum
    if(view==="requirement_events")return listCaseDocumentWorkEvents(db(),{caseId,afterEventId:input.afterEventId,limit:input.limit});
   if(view==="extractions")return services.caseExtractions({caseId,...input});
   if(view==="coverage")return services.caseCoverage({caseId,...input});
+  if(view==="field_matrix"){
+    const active=await getIntakeCatalog();
+    return buildOcrChainMatrix(active.catalog,active.sha256,{documentTypeId:input.documentTypeId,limit:input.limit,offset:input.offset});
+  }
   if(view==="calculations")return services.caseCalculations({caseId,limit:input.limit,offset:input.offset});
   if(view==="legal")return listCaseLawgraphReview(db(),{caseId,limit:input.limit,offset:input.offset});
   if(view==="updates")return services.caseUpdates({caseId,afterEventId:input.afterEventId,limit:input.limit});
