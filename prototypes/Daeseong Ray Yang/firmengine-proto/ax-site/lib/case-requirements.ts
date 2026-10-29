@@ -11,6 +11,22 @@ export interface RequirementStaffDisposition {
   state: "confirmed" | "rejected"; dependencyFingerprint: string; reviewer: string;
   role: "caseworker_review" | "lawyer_review"; reason: string; basisRefs: string[];
 }
+export interface SubstitutionProof { requiredField: string; factIds: string[] }
+export interface SubstitutionReview {
+  originalDocumentTypeId: string;
+  alternativeDocumentTypeIds: string[];
+  proofs: SubstitutionProof[];
+  periodStart: string;
+  periodEnd: string;
+  courtId: string;
+  catalogVersion: number;
+  exceptionReason: string;
+  employerSigned: boolean;
+  reviewer: string;
+  reviewedAt: string;
+  reason: string;
+  basisRefs: string[];
+}
 export interface CaseRequirement {
   requirementId: string; originKey: string; intakeRunId: string; intakeDocumentTypeId: string;
   subjectLinkId: string | null; scopeKey: string; requiredPeriod: string; purposeCode: string;
@@ -24,6 +40,12 @@ export interface CaseRequirement {
   workflowIds: string[]; alternatives: IntakeRequirement["alternatives"]; override: RequirementOverride;
   overrideReason: string | null; waivedByReview: boolean; notApplicableConfirmed: boolean; retired: boolean;
   overrideReviewer: string | null; overrideBasisRefs: string[];
+  /** Primary document proof slots from the immutable intake catalogue. */
+  sourceEvidenceFields?: string[];
+  /** Candidate only. The primary type ID never changes on alternative selection. */
+  selectedAlternativeId?: string | null;
+  /** Human-approved proposal, revalidated against live source evidence on every read. */
+  substitutionReview?: SubstitutionReview;
   staffDisposition?: RequirementStaffDisposition;
   supersedesId?: string; splitFrom?: string;
 }
@@ -63,6 +85,7 @@ export function makeCaseRequirement(input: { source: IntakeRequirement; intakeRu
     noRequiredFieldsApproved:input.crosswalk?.coveragePolicy==="no_required_fields",
     availableFieldIds:[...(input.availableFieldIds??[])],typedTargets:(input.crosswalk?.typedTargets??[]).map(t=>({...t})),
     sourceClaimIds: [...input.source.sourceClaimIds], sourceIds: [...input.source.sourceIds], workflowIds: [...input.source.workflowIds],
+    sourceEvidenceFields:[...input.source.fields],selectedAlternativeId:null,
     alternatives: input.source.alternatives.map(a => ({ ...a })), override: "automatic", overrideReason: null,
     waivedByReview: false, notApplicableConfirmed: false, retired: false, overrideReviewer: null, overrideBasisRefs: [] };
 }
@@ -112,7 +135,10 @@ export function applyRequirementOverride(requirement: CaseRequirement, command: 
     base.subjectLinkId = command.subjectLinkId ?? null;
   } else if (command.operation === "select_alternative") {
     if (!command.alternativeId || !requirement.alternatives.some(a => a.id === command.alternativeId)) throw new Error("Alternative is not in the requirement catalog.");
-    base.intakeDocumentTypeId = command.alternativeId;
+    // Selecting a candidate never changes the primary obligation or its verified crosswalk.
+    // Any pending substitution receipt is invalidated and a new explicit review is required.
+    base.selectedAlternativeId = command.alternativeId;
+    base.substitutionReview = undefined;
   } else if (command.operation === "waive_with_reason") base.waivedByReview = true;
   else if (command.operation === "declare_not_applicable") base.notApplicableConfirmed = true;
   else if (command.operation === "reopen") { base.waivedByReview = false; base.notApplicableConfirmed = false; }
