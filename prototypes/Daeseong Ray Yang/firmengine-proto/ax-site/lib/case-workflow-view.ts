@@ -109,7 +109,7 @@ export async function buildCaseWorkflowView(data:CaseData,options: {catalogVersi
       engineFulfillment="complete";requirementStatus="satisfied";
     }else if(requirement.substitutionReview||requirement.selectedAlternativeId){
       // A selected or previously-approved substitute cannot bypass fresh proof validation.
-      if(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation"||requirementStatus==="complete"){
+      if(requirementStatus==="satisfied"||requirementStatus==="eligible_for_confirmation"){
         engineFulfillment="mapping_required";requirementStatus="legal_review";
       }
     }else if(requirement.alternatives.length&&accepted.some(match=>{
