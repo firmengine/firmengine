@@ -258,3 +258,13 @@ test("unchanged fact readings still refresh stale derived objects under new proj
   assert.equal(result.retainedReceipts,f.receipts.length);
   assert.ok(currentFacts(result.data).filter(f=>f.sourceVerification).every(f=>factSourceLineageIssues(result.data,[f.id]).length===0));
 });
+
+test("Terra snapshot reprojects when extraction metadata is Terra-bound, without altering historical Luna proof",()=>{
+  const f=fixture();
+  f.job.cacheKey=JSON.stringify(["doc-1",hash,[1],"income","historical-prompt-1.0","gpt-6.1-terra","rules-previous"]);
+  f.saved.extractionPasses=[{model:"gpt-6.1-terra",promptVersion:"historical-prompt-1.0",promptHash:"a".repeat(64),sourceHash:hash,baseImageHash:imageHash,verifiedAt:"2026-10-27T00:00:00.000Z"}];
+  assert.equal(hasBoundExtractionProvenance(f.saved,f.job,f.prepare().provenance),true);
+  assert.equal(f.prepare().provenance.model,"gpt-6.1-terra");
+  f.saved.extractionPasses=[{...f.saved.extractionPasses[0],model:"gpt-6-luna"}];
+  assert.equal(hasBoundExtractionProvenance(f.saved,f.job,f.prepare().provenance),false);
+});
