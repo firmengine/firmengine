@@ -24,3 +24,5 @@
 개발 검토가 필요한 경우에만 `release-acceptance.json`, `feature-inventory.json`, `eform-parity-matrix.json`을 확인하세요. 파일이 존재한다는 이유만으로 기능이 검증된 것으로 표시하지 않습니다.
 
 - [공개 사례 자료 정리](public-data-cleanup.md): 삭제 범위와 재유입 방지.
+
+- [상담 기반 사건별 서류·필수 확인항목·OCR 상태](consultation-case-field-plans.md) — 저장 구조, 조회, 운영 적용 조건.
