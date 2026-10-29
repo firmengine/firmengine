@@ -6,7 +6,7 @@ import { buildSharedDocumentCatalog,sharedDocumentFieldContract } from "./shared
 import { bindCanonicalSourceField,canonicalProjectionKey } from "./canonical-field-binding.ts";
 export const OCR_CHAIN_MATRIX_VERSION="ocr-db-form-calculation-matrix/1" as const;
 const categories=["person","income","debt","asset","transaction","household","business","statement","other"] as const;
-const targets:Record<string,{forms:string[];calculation:string|null}>={
+export const OCR_DECLARED_FORM_TARGETS:Record<string,{forms:string[];calculation:string|null}>={
  "identity_residence_record::identity.name":{forms:["D5100.client_name"],calculation:null},
  "identity_residence_record::identity.address":{forms:["D5100.address"],calculation:null},
  "identity_residence_record::identity.registration_id":{forms:["D5100.resident_id"],calculation:null},
@@ -37,7 +37,7 @@ export function buildOcrChainMatrix(catalog:IntakeCatalog,sha256:string,input:{d
          const projectionKey=canonicalProjectionKey(contract,bound,category);
          return projectionKey?[{recordCategory:category,projectionKey,caseDataPath:category+"."+projectionKey}]:[];
        });
-       const target=targets[f.global_field_id]??{forms:[],calculation:null};
+       const target=OCR_DECLARED_FORM_TARGETS[f.global_field_id]??{forms:[],calculation:null};
        return {canonicalFieldId:f.global_field_id,ocrKey:f.local_id,dbColumn:"extracted_features.canonical_field_id",
          rawValueColumn:"extracted_features.raw_value_json",sourceStateColumn:"extracted_features.source_state",
          datatype:f.datatype,unit:f.canonical_unit,temporalRole:f.temporal_role,

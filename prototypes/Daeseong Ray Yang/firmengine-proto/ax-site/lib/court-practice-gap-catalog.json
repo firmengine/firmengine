@@ -1,0 +1,326 @@
+{
+  "schemaVersion": "court-practice-gap-catalog/1",
+  "asOf": "2026-10-30",
+  "sources": [
+    {
+      "id": "KR-ACT-579",
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1023719023",
+      "edition": "2026-10-02"
+    },
+    {
+      "id": "KR-ACT-589",
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=267359",
+      "edition": "verify_current"
+    },
+    {
+      "id": "KR-ACT-611",
+      "url": "https://www.law.go.kr/LSW/lsInfoP.do?lsiSeq=267359",
+      "edition": "verify_current"
+    },
+    {
+      "id": "KR-ACT-614",
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1024710759",
+      "edition": "2026-10-02"
+    },
+    {
+      "id": "KR-RULE-79",
+      "url": "https://www.law.go.kr/LSW/LsiJoLinkP.do?docType=JO&joNo=009400000&languageType=KO&lsNm=채무자%20회생%20및%20파산에%20관한%20규칙&paras=1",
+      "edition": "2026-03-01"
+    },
+    {
+      "id": "KR-GUIDELINE-1958",
+      "url": "https://www.law.go.kr/LSW/admRulInfoP.do?admRulSeq=2200000108651&chrClsCd=010201",
+      "edition": "2026-07-01"
+    },
+    {
+      "id": "SEOUL-402",
+      "url": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf?v=20260407",
+      "edition": "2026-04-source; current applicability review"
+    },
+    {
+      "id": "SEOUL-2026-10",
+      "url": "https://slb.scourt.go.kr/dcboard/new/DcNewsListAction.work?gubun=172",
+      "edition": "2026-10-01 practice reform notice"
+    }
+  ],
+  "gaps": [
+    {
+      "id": "GAP-01",
+      "severity": "P0",
+      "condition": "wage_income",
+      "candidates": [
+        "salary_withholding",
+        "salary_statement",
+        "salary_bank_statement"
+      ],
+      "issue": "Six-month bank-pay alternative and employer signature not jointly checked",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-02",
+      "severity": "P0",
+      "condition": "business_income",
+      "candidates": [
+        "business_income_report",
+        "vat_certificate",
+        "operating_expenses"
+      ],
+      "issue": "Last 12 months monthly gross/cost/net reconciliation absent as one required series",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-03",
+      "severity": "P0",
+      "condition": "current_creditor",
+      "candidates": [
+        "debt_certificate",
+        "assignment_notice",
+        "security_register"
+      ],
+      "issue": "Current claimant, contract, cause, principal, interest and assignee/secured duplication require reviewed identity",
+      "sourceIds": [
+        "KR-ACT-589"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-04",
+      "severity": "P0",
+      "condition": "insurance_owned",
+      "candidates": [
+        "insurance_surrender_statement",
+        "insurance_loan_statement"
+      ],
+      "issue": "Surrender value with loan net basis not equivalent to total premiums or coverage",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-05",
+      "severity": "P0",
+      "condition": "property_owned",
+      "candidates": [
+        "real_estate_register",
+        "real_estate_valuation",
+        "property_ownership_search"
+      ],
+      "issue": "Registered lien maximum not actual payoff; ownership share and as-of value needed",
+      "sourceIds": [
+        "KR-RULE-79"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-06",
+      "severity": "P0",
+      "condition": "vehicle_owned",
+      "candidates": [
+        "vehicle_registration",
+        "vehicle_valuation"
+      ],
+      "issue": "One vehicle ID, registered owner, lien and market value need source-based merge",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-07",
+      "severity": "P0",
+      "condition": "lease",
+      "candidates": [
+        "lease_contract",
+        "deposit_rights"
+      ],
+      "issue": "Lease person/role, deposit rights, returnability and valuation not automatic",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-08",
+      "severity": "P1",
+      "condition": "prior_proceedings",
+      "candidates": [
+        "prior_case_records",
+        "prior_creditor_list"
+      ],
+      "issue": "Ten-year prior cases need coverage as well as court/case/disposition dates",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-09",
+      "severity": "P1",
+      "condition": "government_certification",
+      "candidates": [
+        "resident_registration",
+        "local_tax_assessment",
+        "income_amount_certificate"
+      ],
+      "issue": "Generally certificates issued within two months before filing, absent special circumstances",
+      "sourceIds": [
+        "KR-GUIDELINE-1958"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-10",
+      "severity": "P1",
+      "condition": "dependents",
+      "candidates": [
+        "family_relation",
+        "dependent_evidence",
+        "household_expense_ledger"
+      ],
+      "issue": "Per-person dependent/other income/support evidence missing from shared period check",
+      "sourceIds": [
+        "KR-ACT-579"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-11",
+      "severity": "P1",
+      "condition": "asset_transfers",
+      "candidates": [
+        "disposal_records",
+        "selective_payment_records",
+        "bank_statement"
+      ],
+      "issue": "Proceeds, recipient, related asset, as-of and source trace must reconcile",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-12",
+      "severity": "P1",
+      "condition": "private_debt_adjustment",
+      "candidates": [
+        "private_adjustment_records"
+      ],
+      "issue": "Previous noncourt adjustment attempt conditional proof not current legal fact",
+      "sourceIds": [
+        "KR-RULE-79"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-13",
+      "severity": "P1",
+      "condition": "securities_crypto",
+      "candidates": [
+        "securities_balance",
+        "crypto_balance",
+        "crypto_transactions"
+      ],
+      "issue": "Units, valuation dates and stock/crypto loss criteria require Seoul practice version review",
+      "sourceIds": [
+        "SEOUL-402"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-14",
+      "severity": "P1",
+      "condition": "plan_objections",
+      "candidates": [
+        "creditor_request_copy",
+        "court_correction_order"
+      ],
+      "issue": "Objecting-creditor individual liquidation share and all disposable income are not fully automated",
+      "sourceIds": [
+        "KR-ACT-614"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-15",
+      "severity": "P1",
+      "condition": "reduced_term",
+      "candidates": [
+        "income_household_change_evidence",
+        "dependent_evidence"
+      ],
+      "issue": "Seoul 424 amended 2026-10-01; 2026-04 PDF alone not current-version proof",
+      "sourceIds": [
+        "SEOUL-2026-10"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-16",
+      "severity": "P1",
+      "condition": "simplified_forms",
+      "candidates": [
+        "D5102",
+        "D5104",
+        "D5107",
+        "D5112"
+      ],
+      "issue": "Official simplified form variants lack reviewed renderer and parity",
+      "sourceIds": [
+        "KR-GUIDELINE-1958"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-17",
+      "severity": "P1",
+      "condition": "income_alternative_forms",
+      "candidates": [
+        "D5115",
+        "D5116",
+        "D5117"
+      ],
+      "issue": "Official income proof/statement and confirmer forms not registered",
+      "sourceIds": [
+        "KR-GUIDELINE-1958"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-18",
+      "severity": "P1",
+      "condition": "procedure_forms",
+      "candidates": [
+        "D5118",
+        "D5119",
+        "D5123"
+      ],
+      "issue": "Information request and creditor bank-account forms not registered",
+      "sourceIds": [
+        "KR-GUIDELINE-1958"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    },
+    {
+      "id": "GAP-19",
+      "severity": "P1",
+      "condition": "case_conditional_forms",
+      "candidates": [
+        "D5124",
+        "D5125",
+        "D5128"
+      ],
+      "issue": "Creditor-dispute or property-search forms not in current writer registry",
+      "sourceIds": [
+        "KR-GUIDELINE-1958"
+      ],
+      "disposition": "case_and_court_review_required_not_automatically_mandatory"
+    }
+  ]
+}

@@ -26,3 +26,5 @@
 - [공개 사례 자료 정리](public-data-cleanup.md): 삭제 범위와 재유입 방지.
 
 - [상담 기반 사건별 서류·필수 확인항목·OCR 상태](consultation-case-field-plans.md) — 저장 구조, 조회, 운영 적용 조건.
+
+- [OCR 693개 피처 및 법령·실무준칙 연계 감사](feature-lineage-audit-v45.md)
