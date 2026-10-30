@@ -515,7 +515,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   // finalized payment/plan amount while the ordinary budget is unresolved.
   // A proposed payment exceeding the budget remains a reviewable context input.
   const approvedExceedsBudget=approvedPayment!==null&&ordinaryBudget!==null&&approvedPayment>ordinaryBudget;
-  const payment = ordinaryBudget===null || ordinaryBudget<ZERO || approvedExceedsBudget ? null
+  const payment = income===null || ordinaryBudget===null || ordinaryBudget<ZERO || approvedExceedsBudget ? null
     : hasApprovedPayment ? approvedPayment : ordinaryBudget>ZERO ? ordinaryBudget : null;
   if (hasApprovedPayment && approvedPayment === null) issues.push("APPROVED_PAYMENT_INVALID");
   if (approvedExceedsBudget) issues.push("PAYMENT_EXCEEDS_DISPOSABLE_INCOME");
