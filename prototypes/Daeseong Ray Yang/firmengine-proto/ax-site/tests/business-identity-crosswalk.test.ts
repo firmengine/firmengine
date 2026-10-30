@@ -66,3 +66,59 @@ test("two separate business registrations stay separate even if labels match",()
  assert.equal(result.businessSourceRows.length,1);
  assert.equal(result.businessSourceRows[0].registrationFactId,null);
 });
+
+// A3 #121-140: audited source identity and provenance negative cases.
+// These assert read-only review boundaries; no calculation or legal approval.
+test("changed registration ID without matching source raw value is not verified",()=>{
+ const {d,add}=fixture();
+ const row=add("business-id","reg-row","registration-doc",reg+"business_id","123-45-67890");
+ row.rawValue="987-65-43210";
+ const result=businessIdentityCrosswalk(d);
+ assert.equal(result.registrationRows.length,1);
+ assert.equal(result.registrationRows[0].verifiedSource,false);
+ assert.equal(result.registrationRows[0].reviewOnly,true);
+ assert.equal(result.automaticIdentityApproval,false);
+});
+test("registration status, joint operator and dates survive when its ID was not observed",()=>{
+ const {d,add}=fixture();
+ add("status","reg-row","registration-doc",reg+"status","closed");
+ add("joint","reg-row","registration-doc",reg+"joint_operators","Partner A");
+ add("opening","reg-row","registration-doc",reg+"opening_date","2025-01-01");
+ const result=businessIdentityCrosswalk(d);
+ assert.equal(result.registrationRows.length,1);
+ assert.equal(result.registrationRows[0].registrationFactId,"");
+ assert.equal(result.registrationRows[0].businessIdObserved,null);
+ assert.deepEqual(result.registrationRows[0].contextFactIds,["joint","opening","status"]);
+ assert.equal(result.registrationRows[0].verifiedSource,false);
+ assert.equal(result.automaticIdentityApproval,false);
+});
+test("same document-local row ID in VAT and cost documents remains two separate staff crosswalk candidates",()=>{
+ const {d,add}=fixture(),same="local-row-1";
+ add("vat-name",same,"vat-doc",VAT+"business_entity","VAT synthetic");
+ add("vat-amount",same,"vat-doc",VAT+"gross_sales","3000000",true);
+ add("cost-name",same,"cost-doc",cost+"business_entity","Cost synthetic");
+ add("cost-amount",same,"cost-doc",cost+"gross_amount","1000000",true);
+ const result=businessIdentityCrosswalk(d);
+ assert.equal(result.requiredHumanCrosswalkRows,2);
+ assert.equal(result.businessSourceRows.length,2);
+ const vat=result.businessSourceRows.find(row=>row.family==="business_sales_vat")!;
+ const expense=result.businessSourceRows.find(row=>row.family==="business_costs_and_ledgers")!;
+ assert.deepEqual(vat.amountFactIds,["vat-amount"]);
+ assert.deepEqual(expense.amountFactIds,["cost-amount"]);
+ assert.deepEqual(vat.ownerFactIds,["vat-name"]);
+ assert.deepEqual(expense.ownerFactIds,["cost-name"]);
+ assert.ok(result.businessSourceRows.every(row=>row.registrationFactId===null));
+ assert.equal(result.automaticIdentityApproval,false);
+});
+test("accepted owner name with mismatching raw source cannot be marked verified",()=>{
+ const {d,add}=fixture();
+ const owner=add("owner","vat-record","vat-doc",VAT+"business_entity","New normalized name");
+ owner.rawValue="Different original OCR name";
+ add("gross","vat-record","vat-doc",VAT+"gross_sales","1200000",true);
+ const result=businessIdentityCrosswalk(d);
+ assert.equal(result.businessSourceRows.length,1);
+ assert.deepEqual(result.businessSourceRows[0].ownerFactIds,["owner"]);
+ assert.equal(result.businessSourceRows[0].ownerEvidenceVerified,false);
+ assert.equal(result.businessSourceRows[0].ownerNameObserved,null);
+ assert.equal(result.businessSourceRows[0].identityStatus,"unverified_cross_document_identity");
+});
