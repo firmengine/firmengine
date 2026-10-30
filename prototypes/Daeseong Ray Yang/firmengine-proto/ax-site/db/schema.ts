@@ -4,6 +4,7 @@ export const cases = sqliteTable("cases", {
   id: text("id").primaryKey(), name: text("name").notNull(),
   owner: text("owner").notNull(), revision: integer("revision").notNull(),
   storageToken: text("storage_token").notNull().default(""),
+  mutationCategory: text("mutation_category").notNull().default("source"),
   payload: text("payload").notNull(), createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
