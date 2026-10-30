@@ -116,7 +116,7 @@
 - [ ] **A1-IT-005** 상담기록 변경이 요구서류·원문판본에 실제 전달되는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-006** 85문서 업로드/반려/철회/재업로드의 저장 상태 전이. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-007** 한 PDF 다중 유형/한 유형 다중 PDF/암호·손상 파일 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-IT-008** R2 파일 성공 뒤 D1 실패 시 유령 파일·이중저장 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-IT-008** R2 파일 성공 뒤 D1 실패 시 유령 파일·이중저장 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 4차 부분검증: 일반 Export/자동초안 `commitManifest` 후 D1 ACK 유실 시 이미 참조된 SQL artifact row/R2 객체를 catch가 삭제하는 P0 재현. 수정 [Draft PR #24](https://github.com/firmengine/firmengine/pull/24) V8 7/7 격리 통과, Node/실 D1/R2 미인증. [영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).**
 - [ ] **A1-IT-009** D1 성공 뒤 파일 저장 실패 시 성공으로 위장 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-010** 동시 브라우저 두 개의 동일 사건 CAS 저장 안전성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 기존 SQL CAS 4개 격리 SQLite 정상·리뷰-only 동일 revision 토큰 경합 정상. 실제 브라우저/D1 미인증. [영수증](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 - [ ] **A1-IT-011** 기존 사건 구판본 JSON·null 필드의 역호환 읽기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -165,7 +165,7 @@
 - [ ] **A1-CALC-012** 36/48/60개월 및 특례 기간의 회차 생성 확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-013** 총 변제액·채권별 배분·현재가치·청산가치 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-014** 직원이 수정한 금액은 제안/출처/승인 단계 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-CALC-015** 계산 sourceVersion·referenceSHA 변경 때 stale 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-CALC-015** 계산 sourceVersion·referenceSHA 변경 때 stale 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 4차 P0 반례: 같은 case revision/dataVersion에서 오래된 reference SHA의 계산 run이 현행 head를 overwrite하는 SQL 가능성 격리 SQLite로 재현(changed=1). 진짜 원본 version/revision 변화 시 차단 2건 확인. 법률/산식 수정은 검토 전 보류, 운영 E2E 미인증. [영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).**
 - [ ] **A1-CALC-016** 공식 서식 입력값과 저장 계산 결과 원단위 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-017** 계산 오류에서 문서 생성과 법률 AI 조기 시작 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-018** 영업소득 변호사 승인 뒤 기존 법률 검토 재평가. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: business.net.adopt→touchCase→resetReviews 정적 연결 확인, 도메인 실제 함수 V8 변환 합성 5조건 정상. 영업소득 채택 전체 DB/법률·서식 E2E 미인증. [증빙](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
@@ -228,7 +228,7 @@
 - [ ] **A1-AX-012** 모델 timeout/retry에 중복 과금·사건 오염 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-013** 증빙 누락 시 서류요청과 사람 역질문 연계. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-014** 법률/계산 미확정 시 자동초안 writer 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 마지막 자동초안 완료 batch의 구판본 sourceVersion/worker lease 미검증 결함을 격리 SQL로 재현(기대 완료0/실제완료1). [수정 Draft PR #17](https://github.com/firmengine/firmengine/pull/17), 새 9건 합성 SQLite 9/9; 미병합·D1/R2/전체 CI 미인증. [증빙](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
-- [ ] **A1-AX-015** 자동초안 artifact→직원편집→변호사검수 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-AX-015** 자동초안 artifact→직원편집→변호사검수 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 4차 부분검증: 자동초안 staff handoff 원본 계약 함수 V8 8/8, 참조/소득/법률/기존 최종본/미적용 편집 차단 확인. PR #17/#24 미병합·실제 Word/직원·변호사 E2E 미인증. [영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).**
 - [ ] **A1-AX-016** 실제 n8n 참조 문서와 배포 실행 모듈 구분. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-017** 운영 오류 원인·영향·복구 조치 직원에게 명료 표시. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-018** 기존 프롬프트 사본과 활성 프롬프트 중복 통합. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -844,3 +844,12 @@
 - 역할: IT(`A4-IT-005/006`), 데이터(`A4-DATA-013`), 교차 `X-047`. **최종 합격 0개**, 개별 체크 [ ] 유지. [로컬 실제 실행/PR #23/미인증 단계 영수증](release-audit-runs/A4/20261030-round03-original-upload-lost-ack.md).
 - P0 재현: D1의 `documents.original_key` COMMIT 후 응답유실시 기존 `finally`가 실제 참조 R2 원본을 삭제(합성 SQL ready=1, R2 없음). 수정: D1 pointer readback 일치면 객체 보존, 조회 자체 실패면 보수적 보존/503. helper 원본 Git blob·테스트 SHA 동일, **Node 9/9 + tsc 대상 helper 0 진단**, 전체 저장소 CI/staging D1/R2·실제 PDF 미인증.
 - [Draft PR #23](https://github.com/firmengine/firmengine/pull/23) **미병합**; 별도 export manifest 후 event 실패에 따른 중복 산출 위험은 **정적 의심·미실행**으로 다음 회차. 외부 법률·법원 제출 검증과 무관.
+
+
+### 2026-10-30 A1 4차 — manifest ACK 유실 뒤 live artifact 삭제·구 기준정보 계산 head 재승격
+
+- 역할 순환: **IT(A1-IT-008) / AX(A1-AX-015) / 계산사무장(A1-CALC-015)**. 전체 합격 0, [A1 4차 상세 영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).
+- **P0-1**: main `lib/export-artifact-transaction.ts`의 실제 본문 V8 격리에서 manifest는 committed인데 `catch`가 SQL artifact row+R2 live bytes를 삭제함. **[Draft PR #24](https://github.com/firmengine/firmengine/pull/24)**에서 manifest commit 시도 이후 반환 불확실한 경우 원본 유지·reconciliation 기록, 수정된 브랜치 함수 V8 **7/7 기대 일치**. 미병합이며 실제 Node/Cloudflare D1·R2/Word 인수 미실행. A4 PR #23(원본 업로드 포인터)과 수정대상 다름. 정상 conflict도 일시적 고아 파일이 남는 의도된 보수적 위험을 PR에 기록.
+- **A1-AX-015**: main 자동초안 handoff 순수 계약 함수 V8 **8/8**, 법률·계산·참조 변경과 기존 최종 파일/편집으로 직원 인계가 차단됨. 실제 R2 byte 검증→문안 수정→변호사 결재 E2E는 미인증.
+- **P0-2**: `case_calculation_heads` 기존 SQL이 같은 case revision/dataVersion의 **오래된 reference SHA** 계산에 head 덮어쓰기를 허용하는 것을 격리 SQLite 재현(성공 1건, source/revision 변경 차단 2건). 새 기준정보 릴리스와 같은 트랜잭션의 guard 설계가 필요; 법률·계산 의미 변경이므로 **무검증 main 수정 보류**.
+- [ ] 상태 유지. 다음 역할 순환: `A1-DOC-016`, `A1-LAW-018`, `A1-DATA-016`. 이 회차의 **V8 합성 15/15 및 SQLite 3건은 제품 전체 CI/법원 서식/운영 DB/변호사 검증이 아니다**.
