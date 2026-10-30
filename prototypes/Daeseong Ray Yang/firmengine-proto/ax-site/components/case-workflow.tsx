@@ -256,25 +256,27 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
            {data.legalAutomation.status==="draft_ready"&&data.legalAutomation.reviewRunId&&data.legalAutomation.documentRunId&&
              data.roles.includes("case_editor")&&data.roles.includes("caseworker_review")&&
              !data.legalAutomation.outcome!.drafts!.every(file=>data.artifacts.some(active=>active.id===file.id))&&(
-             <div className="workflow-form">
-               <p className="workflow-muted">현재 자동초안의 원래 파일 ID와 해시를 유지하면서 직원 검토 목록에 명시적으로 연결합니다. 이 작업은 법적 승인이나 최종 제출이 아닙니다.</p>
-               <button className="button button-outline" disabled={busy} onClick={async()=>{
-                 setBusy(true);setError("");setNotice(null);
-                 try{
-                   const response=await fetch("/api/cases/"+encodeURIComponent(caseId)+"/automatic-draft/adopt",{
-                     method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
-                     body:JSON.stringify({expectedRevision:data.revision,
-                       expectedDataVersion:data.legalAutomation!.currentDataVersion,
-                       legalReviewRunId:data.legalAutomation!.reviewRunId,
-                       documentRunId:data.legalAutomation!.documentRunId})});
-                   const output=await response.json().catch(()=>({})) as {error?:string;message?:string};
-                   if(!response.ok)throw new Error(output.error||output.message||"자동초안 검토 연결 실패");
-                   await load();
-                   setNotice({kind:"success",text:"원본 파일 ID/해시를 유지해 검토용 문서 목록에 연결했습니다. 문안 검토 후 최종본을 별도로 생성해야 합니다."});
-                 }catch(cause){setError(cause instanceof Error?cause.message:"자동초안 검토 연결 실패");}
-                 finally{setBusy(false);}
-               }}>자동초안을 직원 검토 목록으로 가져오기</button>
-             </div>)}
+             <form className="workflow-form" onSubmit={async(event:FormEvent<HTMLFormElement>)=>{
+               event.preventDefault();
+               const reason=String(new FormData(event.currentTarget).get("reason")??"").trim();
+               if(reason.length<10){setError("검토용 초안 연결 사유를 10자 이상 기록하세요.");return;}
+               setBusy(true);setError("");setNotice(null);
+               try{
+                 const response=await fetch("/api/cases/"+encodeURIComponent(caseId)+"/automatic-draft-handoff",{
+                   method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+                   body:JSON.stringify({runId:data.legalAutomation!.documentRunId,expectedRevision:data.revision,
+                     expectedStateFingerprint:data.stateFingerprint,reason})});
+                 const output=await response.json().catch(()=>({})) as {error?:string;message?:string};
+                 if(!response.ok)throw new Error(output.error||output.message||"자동초안 검토 연결 실패");
+                 await load();
+                 setNotice({kind:"success",text:"검증된 동일 원본 파일 ID·해시로 직원 검토 목록에 연결했습니다. 최종본은 별도 생성·승인해야 합니다."});
+               }catch(cause){setError(cause instanceof Error?cause.message:"자동초안 검토 연결 실패");}
+               finally{setBusy(false);}
+             }}>
+               <p className="workflow-muted">실제 R2 파일 내용·SHA-256·원천·계산·법률 판본과 사건 상태 지문을 확인한 뒤 기존 서류 검수 목록에 연결합니다. 법적 승인이나 제출은 아닙니다.</p>
+               <FormField label="초안 연결 사유"><textarea name="reason" required minLength={10} maxLength={4000} placeholder="원본 초안을 확인했고 직원 문안 검토에 연결하는 이유를 적으세요." /></FormField>
+               <button className="button button-outline" type="submit" disabled={busy}>자동초안을 직원 검토 목록으로 가져오기</button>
+             </form>)}
            </div>}
        </Panel>
       <Panel title="법률·서류 확인 기록" icon={ShieldCheck}>
