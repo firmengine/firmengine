@@ -3,6 +3,8 @@
 목적: 다음 주 n8n/백엔드/DB/직원 UI/Google Workspace 연동 이동에서 기존 기능 간 충돌과 재실행 오류를 발견한다. 개인정보를 포함하지 않는 합성 사건으로 시험한다.
 상위 설계: docs/ax-n8n-refactor-blueprint-20261030.md
 
+> 이 매트릭스는 **n8n으로 이동할 때의 장래 인수시험 정의**다. F01/F02/F03/F04의 사이트 내 코드 수정이 완료됐다고 해당 n8n 스테이지가 구현된 것은 아니다. 최신 미해결 목록은 [교차 감사](current-unresolved-and-synthetic-audit-20261030.md)를 참조한다.
+
 ## 1. 실행 이벤트 계약
 
 모든 도메인 실행은 (tenant_id, case_id, case_source_revision, stage, approved_bundle_sha, idempotency_key) 단위로 격리한다.
@@ -67,8 +69,8 @@
 | E06 | 원본 서류 미제출/기간 불충분 | Intake plan→RequirementMonitor→LawGraph | 필요한 서류/대상/기간 요청 task, AI 전 preflight hold | 모든 관련 요구 누락 차단 |
 | E07 | 갈음 확인 후 원본/법원 기준 변경 | Substitution→RequirementMonitor | 현재 증명 fingerprint 불일치 시 restored | 이전 approved substitute 자동인정 금지 |
 | E08 | 10분 중 추가 OCR·상담 수정 | Watch→Scheduler | due_at 마지막 source event 기준 10분 재설정 | 마지막 599999ms 시점에 calc 미실행 |
-| E09 | 직원 task 담당자만 변경 | Staff→DB→Watch | workflow revision만 증가; source quiet 재시작 없음 | 현재 구현 F01 회귀 실패 항목 |
-| E10 | 상담이 이미 미분석 상태에서 새 note 추가 | Intake→Source Watch | consultation_revision은 반드시 이벤트화; intake reanalysis pending | 현재 트리거 누락 가능성 F02 재현 |
+| E09 | 직원 task 담당자만 변경 | Staff→DB→Watch | workflow 변경만으로 source quiet 재시작 없음 | 0021 및 변경분류 코드 반영됨; staging D1·R2·사람검수 통합시험 미인증 |
+| E10 | 상담이 이미 미분석 상태에서 새 note 추가 | Intake→Source Watch | consultation_revision은 이벤트화, intake reanalysis pending | 0019 `consultation_changed` 구현 확인; 재분류 자동배치/운영 실행은 별도 |
 | E11 | 계산 요청 중 원천 버전 변경 | Calc→DB CAS | 결과 이력 보존, active calc head 승격 금지, superseded | 새 source revision만 current |
 | E12 | AI 검토 5/16 배치 중 원천 변경 | LawGraph→Orchestrator | 현재 체크 버리거나 이력화, 신규 bundle/원천으로 재시작 | 과거 판본의 check 현재 판단 사용 0 |
 | E13 | AI가 동일 체크 ID 중복·누락 응답 | LawGraph response validator | exact ID coverage 차단, partial 보존 | 95 unique ID, 6/check batch |
