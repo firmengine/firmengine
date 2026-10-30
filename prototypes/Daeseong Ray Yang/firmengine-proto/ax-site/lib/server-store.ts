@@ -155,13 +155,14 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   const receiptGuard=receipt?(
     " AND EXISTS (SELECT 1 FROM case_export_request_receipts rr WHERE rr.case_id=? AND rr.request_id=? "+
     "AND rr.request_hash=? AND rr.claim_token=? AND rr.status='claimed' "+
-    "AND rr.case_revision=? AND rr.source_data_version=? AND rr.reference_sha256=?)"+
+    "AND rr.case_revision=? AND rr.source_data_version=? AND rr.reference_sha256=? AND rr.artifact_ids_json=?)"+
     " AND NOT EXISTS(SELECT 1 FROM json_each(?) ids WHERE NOT EXISTS(SELECT 1 FROM artifacts a "+
     "WHERE a.id=ids.value AND a.case_id=? AND a.revision=?))"
   ):"";
   const receiptGuardParams=receipt?[receipt.claim.caseId,receipt.claim.requestId,receipt.claim.requestHash,
     receipt.claim.claimToken,receipt.claim.caseRevision,receipt.claim.sourceDataVersion,
-    receipt.claim.referenceSha256,JSON.stringify(receipt.artifactIds),data.context.id,expected]:[];
+    receipt.claim.referenceSha256,JSON.stringify(receipt.artifactIds),
+    JSON.stringify(receipt.artifactIds),data.context.id,expected]:[];
   const batch:D1PreparedStatement[]=[
     db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard+exportSourceGuard+receiptGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams,...sourceCASParams,...receiptGuardParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),

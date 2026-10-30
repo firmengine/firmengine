@@ -46,6 +46,27 @@ export function claimExportRequest(input: ExportClaim) {
     input.referenceSha256,input.claimToken,input.at,input.at,
     input.caseId,input.caseRevision,input.storageToken,input.sourceDataVersion] as const};
 }
+/** Reserve exact generated artifact IDs BEFORE any R2 PUT. This is an intent
+ * record for lost-ACK/manual recovery, not proof that SQL or R2 bytes exist.
+ */
+export const RESERVE_EXPORT_ARTIFACTS_SQL = `
+UPDATE case_export_request_receipts
+SET artifact_ids_json=?,updated_at=?
+WHERE case_id=? AND request_id=? AND request_hash=? AND claim_token=?
+AND status='claimed' AND artifact_ids_json IS NULL
+AND case_revision=? AND source_data_version=? AND reference_sha256=?
+AND EXISTS(SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id
+ WHERE c.id=? AND c.revision=? AND c.storage_token=? AND s.data_version=?)`;
+export function reserveExportArtifacts(input:ExportClaim & {artifactIds:readonly string[]}) {
+  assertExportClaim(input);
+  if(!input.artifactIds.length || new Set(input.artifactIds).size!==input.artifactIds.length
+    || input.artifactIds.some(id=>!token.test(id)))
+    throw new Error('EXPORT_REQUEST_RECEIPT_INVALID_ARTIFACT_PLAN');
+  return {sql:RESERVE_EXPORT_ARTIFACTS_SQL,args:[JSON.stringify(input.artifactIds),input.at,
+    input.caseId,input.requestId,input.requestHash,input.claimToken,
+    input.caseRevision,input.sourceDataVersion,input.referenceSha256,
+    input.caseId,input.caseRevision,input.storageToken,input.sourceDataVersion] as const};
+}
 /** MUST be inserted into the *same* D1 batch as the manifest+audit CAS.
  * The storageToken is the NEW storage token after the guarded case UPDATE.
  * A standalone execution of this statement is forbidden by the caller contract.
@@ -58,6 +79,7 @@ UPDATE case_export_request_receipts
 SET status='committed',artifact_ids_json=?,manifest_fingerprint=?,committed_at=?,updated_at=?
 WHERE case_id=? AND request_id=? AND request_hash=? AND claim_token=?
 AND status='claimed' AND case_revision=? AND source_data_version=? AND reference_sha256=?
+AND artifact_ids_json=?
 AND EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id
  WHERE c.id=? AND c.revision=? AND c.storage_token=? AND s.data_version=?)
 AND NOT EXISTS (SELECT 1 FROM json_each(?) input_artifact
@@ -72,7 +94,7 @@ export function commitExportRequest(input: ExportClaim & {newStorageToken:string
   return {sql:COMMIT_EXPORT_REQUEST_SQL,args:[JSON.stringify(input.artifactIds),
     input.manifestFingerprint,input.at,input.at,input.caseId,input.requestId,
     input.requestHash,input.claimToken,input.caseRevision,input.sourceDataVersion,
-    input.referenceSha256,input.caseId,input.caseRevision,input.newStorageToken,
+    input.referenceSha256,JSON.stringify(input.artifactIds),input.caseId,input.caseRevision,input.newStorageToken,
     input.sourceDataVersion,JSON.stringify(input.artifactIds),input.caseId,
     input.caseRevision] as const};
 }

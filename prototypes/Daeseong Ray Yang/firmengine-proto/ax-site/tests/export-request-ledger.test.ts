@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {DatabaseSync} from 'node:sqlite';
-import {claimExportRequest,commitExportRequest,markExportUncertain,inspectExportReceipt} from '../lib/export-request-ledger.ts';
+import {claimExportRequest,reserveExportArtifacts,commitExportRequest,markExportUncertain,inspectExportReceipt} from '../lib/export-request-ledger.ts';
 const schema=readFileSync(new URL('../drizzle/0023_case_export_request_receipts.sql',import.meta.url),'utf8')
   .replaceAll('--> statement-breakpoint','');
 const hash='a'.repeat(64),ref='b'.repeat(64);
@@ -46,7 +46,7 @@ test('failed argument validation rejects missing and ambiguous identity',()=>{
     assert.throws(()=>claimExportRequest({...base,...change}));
 });
 test('only same case+claim token+new storage head may commit',()=>{
-  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  const db=setup();assert.equal(run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001"]})),1),1);
   const commit=(x={})=>commitExportRequest({...base,newStorageToken:'new-token',
     artifactIds:['artifact-0001'],manifestFingerprint:'fingerprint-0001',...x});
   assert.equal(run(db,commit()),0,'case not committed yet');
@@ -57,13 +57,13 @@ test('only same case+claim token+new storage head may commit',()=>{
   assert.equal(lookup(db).status,'committed');db.close();
 });
 test('source version changes between claim and manifest batch abort commit',()=>{
-  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  const db=setup();assert.equal(run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001"]})),1),1);
   db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic';UPDATE case_data_change_state SET data_version=5 WHERE case_id='synthetic'");
   assert.equal(run(db,commitExportRequest({...base,newStorageToken:'new-token',artifactIds:['artifact-0001'],manifestFingerprint:'f'})),0);
   assert.equal(lookup(db).status,'claimed');db.close();
 });
 test('manifest and ledger commit roll back together on audit failure',()=>{
-  const db=setup();run(db,claimExportRequest(base));
+  const db=setup();run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001"]})),1);
   db.exec('CREATE TABLE events(id TEXT PRIMARY KEY)');
   db.exec("INSERT INTO events VALUES('event-1')");
   assert.throws(()=>{
@@ -77,13 +77,13 @@ test('manifest and ledger commit roll back together on audit failure',()=>{
   assert.equal(db.prepare("SELECT storage_token AS token FROM cases WHERE id='synthetic'").get()!.token,'token-2');db.close();
 });
 test('ambiguous response never reclaims claimed/uncertain request',()=>{
-  const db=setup();run(db,claimExportRequest(base));
+  const db=setup();run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001"]})),1);
   assert.equal(run(db,markExportUncertain(base)),1);
   assert.equal(run(db,claimExportRequest(base)),0);
   assert.equal(inspectExportReceipt(lookup(db),{...base,manifestFingerprint:null}),'manual_reconciliation_required');db.close();
 });
 test('committed A after B remains historical, never new/current',()=>{
-  const db=setup();run(db,claimExportRequest(base));
+  const db=setup();run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001"]})),1);
   db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
   run(db,commitExportRequest({...base,newStorageToken:'new-token',artifactIds:['artifact-0001'],manifestFingerprint:'fingerprint-A'}));
   assert.equal(inspectExportReceipt(lookup(db),{...base,manifestFingerprint:'fingerprint-A'}),'verify_sql_and_r2_before_reuse');
@@ -104,7 +104,7 @@ test('bad artifact list cannot be committed',()=>{
 
 
 test('receipt commit rejects missing SQL artifact despite case CAS and valid input',()=>{
-  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  const db=setup();assert.equal(run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["missing-artifact"]})),1),1);
   db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
   const commit=commitExportRequest({...base,newStorageToken:'new-token',
     artifactIds:['missing-artifact'],manifestFingerprint:'fp-current'});
@@ -112,18 +112,19 @@ test('receipt commit rejects missing SQL artifact despite case CAS and valid inp
   assert.equal(lookup(db).status,'claimed');db.close();
 });
 test('receipt commit rejects artifact belonging to a different case or revision',()=>{
-  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
-  db.exec(`INSERT INTO artifacts VALUES('foreign-artifact','other',2,'cases/other/artifacts/foreign-artifact','h');
-    INSERT INTO artifacts VALUES('old-artifact','synthetic',1,'cases/synthetic/artifacts/old-artifact','h');
-    UPDATE cases SET storage_token='new-token' WHERE id='synthetic';`);
-  for (const id of ['foreign-artifact','old-artifact']) {
+  for(const id of ['foreign-artifact','old-artifact']) {
+    const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+    assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:[id]})),1);
+    db.exec(`INSERT INTO artifacts VALUES('foreign-artifact','other',2,'cases/other/artifacts/foreign-artifact','h');
+      INSERT INTO artifacts VALUES('old-artifact','synthetic',1,'cases/synthetic/artifacts/old-artifact','h');
+      UPDATE cases SET storage_token='new-token' WHERE id='synthetic';`);
     assert.equal(run(db,commitExportRequest({...base,newStorageToken:'new-token',
       artifactIds:[id],manifestFingerprint:'fp-current'})),0,`should block ${id}`);
+    assert.equal(lookup(db).status,'claimed');db.close();
   }
-  assert.equal(lookup(db).status,'claimed');db.close();
 });
 test('multi-artifact commit requires every row, not just the first',()=>{
-  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  const db=setup();assert.equal(run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001","missing-artifact"]})),1),1);
   db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
   const input={...base,newStorageToken:'new-token',
     artifactIds:['artifact-0001','missing-artifact'],manifestFingerprint:'fp-current'};
@@ -133,9 +134,48 @@ test('multi-artifact commit requires every row, not just the first',()=>{
   assert.equal(lookup(db).status,'committed');db.close();
 });
 test('deleting an artifact before commit fails closed even with unchanged source',()=>{
-  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  const db=setup();assert.equal(run(db,claimExportRequest(base));assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:["artifact-0001"]})),1),1);
   db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'; DELETE FROM artifacts WHERE id='artifact-0001'");
   assert.equal(run(db,commitExportRequest({...base,newStorageToken:'new-token',
     artifactIds:['artifact-0001'],manifestFingerprint:'fp'})),0);
   assert.equal(lookup(db).status,'claimed');db.close();
+});
+
+
+test('intent plan binds artifact IDs before external uploads and prevents overwrite',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:['artifact-0001']})),1);
+  const row=db.prepare('SELECT artifact_ids_json AS ids FROM case_export_request_receipts WHERE case_id=? AND request_id=?')
+    .get(base.caseId,base.requestId) as {ids:string};
+  assert.deepEqual(JSON.parse(row.ids),['artifact-0001']);
+  assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:['artifact-0001']})),0);db.close();
+});
+test('source/head/token mismatch blocks intent plan',()=>{
+  for(const change of [{sourceDataVersion:3},{storageToken:'stale'},{claimToken:'other-claim'}]) {
+    const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+    assert.equal(run(db,reserveExportArtifacts({...base,...change,artifactIds:['artifact-0001']})),0);db.close();
+  }
+});
+test('uncertain retains planned IDs but cannot reclaim or re-reserve',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:['artifact-0001']})),1);
+  assert.equal(run(db,markExportUncertain(base)),1);
+  assert.equal(run(db,reserveExportArtifacts({...base,artifactIds:['artifact-0001']})),0);
+  const row=db.prepare('SELECT status,artifact_ids_json AS ids FROM case_export_request_receipts WHERE case_id=? AND request_id=?')
+    .get(base.caseId,base.requestId) as {status:string;ids:string};
+  assert.equal(row.status,'uncertain');assert.deepEqual(JSON.parse(row.ids),['artifact-0001']);db.close();
+});
+test('receipt commit requires the same pre-reserved plan, not a replacement',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
+  assert.equal(run(db,commitExportRequest({...base,newStorageToken:'new-token',artifactIds:['artifact-0001'],manifestFingerprint:'fp'})),0);
+  db.close();
+  const other=setup();assert.equal(run(other,claimExportRequest(base)),1);
+  assert.equal(run(other,reserveExportArtifacts({...base,artifactIds:['artifact-0001']})),1);
+  other.exec("INSERT INTO artifacts VALUES('artifact-0002','synthetic',2,'cases/synthetic/artifacts/artifact-0002','hash'); UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
+  assert.equal(run(other,commitExportRequest({...base,newStorageToken:'new-token',artifactIds:['artifact-0002'],manifestFingerprint:'fp'})),0);other.close();
+});
+test('empty, duplicate or malformed artifact plans are rejected',()=>{
+  for(const ids of [[],['artifact-0001','artifact-0001'],['x']])
+    assert.throws(()=>reserveExportArtifacts({...base,artifactIds:ids}));
 });

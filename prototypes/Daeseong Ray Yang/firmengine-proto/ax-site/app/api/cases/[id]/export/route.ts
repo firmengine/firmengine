@@ -9,7 +9,7 @@ import { finalizeDocumentWriterReceipt, prepareDocumentWrite } from "../../../..
 import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
 import { parseExportRequestId, inspectExportRequestReplay } from "../../../../../lib/export-request-replay.ts";
-import { claimExportRequest, inspectExportReceipt, markExportUncertain, type ExportClaim, type ExportReceiptRow } from "../../../../../lib/export-request-ledger.ts";
+import { claimExportRequest, reserveExportArtifacts, inspectExportReceipt, markExportUncertain, type ExportClaim, type ExportReceiptRow } from "../../../../../lib/export-request-ledger.ts";
 import {buildCurrentCaseWorkflowView} from "../../../../../lib/case-workflow-context.ts";
 import { finalWorkflowBlockers } from "../../../../../lib/document-workflow-gate.ts";
 import { getIntakeCatalog } from "../../../../../lib/intake-store.ts";
@@ -181,6 +181,13 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   });
   let savedCase:typeof data|undefined;
   try {
+    // Link this request to the exact artifact IDs before any R2 upload.
+    // A failed or lost R2/D1 acknowledgement otherwise leaves NULL IDs.
+    const plan=reserveExportArtifacts({...claim,artifactIds:staged.map(item=>item.record.id),at:now()});
+    const reserved=await db().prepare(plan.sql).bind(...plan.args).run()
+      .catch(()=>{throw new HttpError(503,"예정 생성물 등록 결과가 불확실합니다. 수동 증빙 대조가 필요합니다.");});
+    if(!reserved.meta.changes)
+      throw new HttpError(409,"예정 생성물 원장이 충돌하거나 원본 판본이 변경됐습니다.");
     await commitExportArtifactTransaction({
     artifacts:staged,
     // Durable intent is already claimed. An R2/SQL ACK can be lost before
