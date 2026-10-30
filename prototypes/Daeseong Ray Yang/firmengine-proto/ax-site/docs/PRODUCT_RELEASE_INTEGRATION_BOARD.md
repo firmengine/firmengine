@@ -579,7 +579,7 @@
 - [ ] **A4-DOC-007** 실제 보정기한·직원 내부 업무기한 구분. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **A4 2차 부분검증: 법원기한 Fact는 source-bound이고 기한 null 시 임의 날짜를 만들지 않는 코드 확인, 원문 인용의 실제 page span 일치 검증 공백 발견(P1). [A4 2차 영수증](release-audit-runs/A4/20261030-round02-court-response-identity.md). 법원 PDF·기한 알림 E2E 미인증.**
 - [ ] **A4-DOC-008** 갈음 철회 후 원본 증빙 다시 요청. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DOC-009** 부족한 사실의 상담 역질문과 응답 후 재분석. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
-- [ ] **A4-DOC-010** 암호 PDF/스캔 품질 불량에서 사람 확인 요청. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
+- [ ] **A4-DOC-010** 암호 PDF/스캔 품질 불량에서 사람 확인 요청. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **A4 4차 부분검증:** 일반 페이지의 0바이트 PNG를 R2/DB pending에 넣는 계약 공백 발견. [Draft PR #27](https://github.com/firmengine/firmengine/pull/27) helper Node 3/3, 실제 업로드·픽셀 디코딩은 미검증. [4차 증빙](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
 - [ ] **A4-DOC-011** 문안 편집 중 새로운 초안 생성 경합. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DOC-012** 직원/변호사 독립 검수 순차 인계. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DOC-013** 새 증빙 뒤 이전 문서 검수 무효화. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
@@ -606,7 +606,7 @@
 - [ ] **A4-CALC-011** 저장 계산과 실제 재실행 formula/value 일치. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-CALC-012** 0/음수/누락 입력의 복구 가능한 상태. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-CALC-013** 수기 제안액의 출처/검토/승인/재평가 기록. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
-- [ ] **A4-CALC-014** 새 원본에 따른 변제계획·청산가치 재검토. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
+- [ ] **A4-CALC-014** 새 원본에 따른 변제계획·청산가치 재검토. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **A4 4차 정적 부분확인:** `touchCase`의 current export 무효화와 `prepareDocumentWrite`의 저장 평가 input/reference/revision 가드를 코드에서 확인. 실제 계산 갱신/Word 재생성 E2E 미실행. [4차 증빙](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
 - [ ] **A4-CALC-015** 기간 단축 조건 변경과 PV/월납/회차 변경. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-CALC-016** 동시계산의 구판본 승격·이중 writer 방지. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-CALC-017** 총액·현재가치·서식 원단위 배분 대조. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
@@ -628,7 +628,7 @@
 - [ ] **A4-LAW-010** 서울 전용 준칙을 타 관할에 자동 적용 금지. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-LAW-011** 공식 준칙 개정→관리 기준정보 제안→변호사 승인. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-LAW-012** 법률 결론/판례 인용과 최종 문안 토큰 대응. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
-- [ ] **A4-LAW-013** Word 문안 재생성된 최종 바이트 검수·승인. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
+- [ ] **A4-LAW-013** Word 문안 재생성된 최종 바이트 검수·승인. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **A4 4차 정적 부분확인:** `currentExportReviews`는 final/manifest fingerprint/직원 선행 검수를 요구. HTTP postcommit 실패 후 재생성은 검수 이력 갱신 필요; 실제 Word 바이트·변호사 승인 미실행. [4차 증빙](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
 - [ ] **A4-LAW-014** 전자제출 권한·법원 실제 제출 영수증 분리. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-LAW-015** 불확실 법률 재량을 단정적 인가율로 표시 금지. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-LAW-016** 새로운 누락 피처 등장 시 법률 승인 보류. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
@@ -658,7 +658,7 @@
 - [ ] **A4-DATA-017** D1 migration checksum/버전별 스키마 로그. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-018** 최종 서식의 입력 source SHA와 calc run 일치. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-019** 법원 기한과 내부 예정일을 같은 상태로 합치지 않기. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
-- [ ] **A4-DATA-020** 같은 artifact 중복 생성/삭제/복구 이력. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
+- [ ] **A4-DATA-020** 같은 artifact 중복 생성/삭제/복구 이력. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **A4 4차 P1 재현:** export manifest 확정 후 event INSERT 오류, 동일 POST 재시도 시 새로운 artifact ID/SQL/R2 생성(격리 Node 1/1 결함 재현). durable idempotency/outbox 미구현, [재현 코드](release-audit-runs/A4/20261030-round04-export-retry-repro.test.ts). [4차 증빙](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
 - [ ] **A4-DATA-021** 원천정정 후 아래 소비처 재검증 이벤트 발생. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-022** 워크플로 단계별 provenance 손실 감지. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-023** 직원에게 보이는 상태와 DB 상태 동등성. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
@@ -722,7 +722,7 @@
 - [ ] **X-026** 원문금액 0/빈칸/null/미관찰/비해당/오인식/상충. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-027** 한 원문 금액 두 개의 typed 대상에 중복 연결. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-028** 한 PDF에 여러 종류/여러 PDF로 한 서류 구성. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
-- [ ] **X-029** 암호 PDF/스캔품질 저하/페이지 교체·철회. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
+- [ ] **X-029** 암호 PDF/스캔품질 저하/페이지 교체·철회. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 4차 부분검증:** 0바이트 페이지가 일반 PUT에서 허용되는 결함, PR #27 수정 후보 helper 3/3. 암호 PDF/실제 이미지 디코딩·원본 저장 E2E 미인증. [4차 증빙](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
 - [ ] **X-030** 원문행 2,200개 이상 대량 OCR 조회/잘림. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-031** 계산행 5,001개 이상 초과·명시적 실패. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-032** 상담 A→B 변경 후 요구서류·갈음 철회/복원. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
@@ -734,7 +734,7 @@
 - [ ] **X-038** 법률 AI 진행 중 새로운 sourceVersion의 결과 폐기. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-039** 법률 필드 투영 0건/잘못된 서식 token. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 부분재현: D5106 동일 row의 creditor principal을 다른 subject로 바꿨을 때 기존 eligible=true, PR #15 후 격리 시험 eligible=false. 실제 서식 E2E 미인증. [증빙](release-audit-runs/A4/20261030-round01-poll-race-and-draft-subject.md).**
 - [ ] **X-040** 자동초안 SHA와 직원·변호사 검수 원장 동일성. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
-- [ ] **X-041** Word 수정·재생성·기존 검수 무효화. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
+- [ ] **X-041** Word 수정·재생성·기존 검수 무효화. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 4차 부분검증:** export 후 감사 이벤트 오류→재시도에서 새 manifest/파일 ID 및 검수 리셋 가능. 정상 원본변경의 리뷰 무효화 가드는 정적 확인, 실제 Word/법률 승인 E2E 미실행. [4차 증빙](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
 - [ ] **X-042** 실제 법원 보정명령 원본 PDF/항목/기한/답변/접수증. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 2차 부분검증: 원본 법원명령·답변·접수증의 개별 명령 연결 위험 P0, Draft PR #19 및 원문 인용 검증 P1. 실제 PDF/법원 영수증 검증 미실행. [A4 2차 영수증](release-audit-runs/A4/20261030-round02-court-response-identity.md).**
 - [ ] **X-043** 내부 예상 보완 권고와 실제 법원 명령 구분. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-044** 기한 확인자료 철회 후 과거 보정항목 stale. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 2차 정적 확인: 기한 Fact 철회 시 기존 read 상태 stale 가드·테스트 존재. 이번 회차 원본 Node/D1 실제 실행하지 않았으므로 완료 아님. [A4 2차 영수증](release-audit-runs/A4/20261030-round02-court-response-identity.md).**
@@ -868,3 +868,10 @@
 - GitHub 원본 인덱스·48패밀리·85문서·보강 JSON의 실제 V8 조인 **693 canonical / 1,808 슬롯**, 이번 **20필드·164슬롯**. 잔액증명서 5필드 5슬롯 + 은행거래 12필드 156슬롯(13문서) + 사업 자산명세 3필드 3슬롯. 등록 중복·고아 0. 정확 typed 후보 **5건** (`transaction.account_id/amount/counterparty/direction/date`), 직접 공식 서식 토큰 0, 법률 승인 seed 0(운영 DB 미조회).
 - **발견 결함(감사 경고/소비처 누락)**: 실제 `case-execution.scanTransactions` 검토 모듈이 있지만 `feature-lineage-audit.calculatedFrom`은 transaction 범주를 누락하여 정확 5 typed 필드의 거래검토 소비처 후보가 0건으로 표시됨. 실제 main 함수 본문/수정안의 독립 V8 격리 **9/9 기대 일치**, 수정+Node 테스트 작성 [Draft PR #26](https://github.com/firmengine/firmengine/pull/26) **미병합**. `bank_account_balance::balance` / `bank_transactions::post_balance` / `business_asset_inventory::book_value`는 **source-only 유지**하여 자동 잔액·월소득·청산가치 산입 금지. 과거 [Draft PR #22](https://github.com/firmengine/firmengine/pull/22) 감사파일 수정과 병합 검증 필요.
 - **인증 경계**: 정적 원천·함수 후보 실행/신규 테스트 코드 존재 ≠ 신규 Node 테스트 실행·전체 CI·D1/R2/Cron·공식서식·변호사승인·운영배포. 모두 미인증. **다음 #081~100** 사업재산·채권·영업비용 피처 순차감사.
+
+### 2026-10-30 A4 4차 — 이미지 0바이트/서식 POST 사후 감사실패 재시도
+
+- 4역할 부분검증: `A4-DOC-010`, `A4-CALC-014`, `A4-LAW-013`, `A4-DATA-020`; 교차 `X-029`, `X-041`. **전부 [ ] 유지**, 완제품 인수 완료 0건. [상세 영수증](release-audit-runs/A4/20261030-round04-page-empty-export-postcommit-retry.md).
+- **P1 수정 제안**: 일반 `PUT page`가 빈 바이트를 받아 R2·D1 pending으로 보낼 수 있는 문제. [Draft PR #27](https://github.com/firmengine/firmengine/pull/27), 페이지/재판독 크기 guard 통일, Node helper 회귀 3/3·TS 검사 0. main 미병합 및 실제 D1/R2 미실행. 기존 같은 라우트 수정 PR #23과 충돌 검토 필요.
+- **P1 추가 결함 재현**: 성공한 export manifest 뒤 독립 event 로그 INSERT 실패가 API 오류를 반환하고, 같은 POST 재시도는 새 UUID/SQL/R2 artifact를 만든다. 실제 main `export-artifact-transaction.ts`의 Git blob 동일 복사본과 합성 라우트 제어흐름 Node **1/1**(결함 재현), [독립 실행 fixture](release-audit-runs/A4/20261030-round04-export-retry-repro.test.ts). A1 Draft PR #24의 **manifest ACK 보호**와는 별개이며 무검증 event 무시 patch 금지; durable receipt/idempotency/outbox·staging fault injection이 필요하다.
+- 실제 전체 CI/빌드, Cloudflare D1/R2/Cron, Word 출력·법원서식·변호사 검토·사이트 배포 **미실행**. 다음 A4는 계산 source-version 무효화, 동일 Export 재시도 영수증, 실제 페이지 업로드 불능/동시 실패를 확인.
