@@ -403,7 +403,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
         const periodTotalFamily=["payroll_payslip","current_nonwage_income","tax_income"].includes(sourceFamily??"");
         const hasSourcePeriod=!!field("period_start")&&!!field("period_end");
         const basis=declaredBasis!=="unknown"?declaredBasis:
-          periodTotalFamily&&hasSourcePeriod&&!!field("net")?"period_total":"unknown";
+          periodTotalFamily&&hasSourcePeriod&&(!!field("net")||!!field("gross")&&!!field("expenses"))?"period_total":"unknown";
         if(basis==="unknown"&&!!field("net"))
           warnings.push(`${id}: 금액의 월액/기간합계 기준을 확정할 근거가 없어 계산 분모를 보류했습니다.`);
         const label=value("label")||value("employer")||rawKind||r.label;

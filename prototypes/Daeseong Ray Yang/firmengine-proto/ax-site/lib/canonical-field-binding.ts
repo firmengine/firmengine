@@ -57,7 +57,7 @@ export function bindCanonicalSourceField(field:CanonicalSourceInput,contract:Can
 const projections:Readonly<Record<string,Readonly<Record<string,Readonly<Record<string,string>>>>>>={
   identity_residence_record:{person:{"identity.name":"name","identity.address":"address","identity.registration_id":"resident_id_masked"}},
   payroll_payslip:{income:{
-    "income.payroll.employer":"employer","income.payroll.net_pay":"net","gross_total":"gross",
+    "income.payroll.employer":"employer","income.payroll.net_pay":"net","gross_total":"gross","total_deductions":"expenses",
     "income.payroll.pay_period_start":"period_start","income.payroll.pay_period_end":"period_end"
   }},
   current_nonwage_income:{income:{

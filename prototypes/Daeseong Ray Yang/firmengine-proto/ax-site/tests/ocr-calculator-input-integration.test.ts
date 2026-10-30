@@ -206,3 +206,35 @@ test("independent exact monetary formulas preserve conservation and missing-valu
  assert.equal(liquidationContribution(asset,true,true).value,390000n);
  assert.equal(calculateDisposal({saleAmount:normalizeMoney("1000000"),securedPayoff:normalizeMoney("1100000"),costs:normalizeMoney("100000")}).shortfallWon,"200000");
 });
+
+test("source gross total, total deductions and net are reconciled in the real calculator",()=>{
+ const good=read("shared-document:salary_statement@payroll_payslip","income",[[
+  field("gross_total","salary_statement::gross_total","2000000"),
+  field("total_deductions","salary_statement::total_deductions","200000"),
+  field("income.payroll.net_pay","payroll_payslip::income.payroll.net_pay","1800000"),
+  field("income.payroll.pay_period_start","payroll_payslip::income.payroll.pay_period_start","2026-09-01",null),
+  field("income.payroll.pay_period_end","payroll_payslip::income.payroll.pay_period_end","2026-09-30",null)
+ ]]);
+ const first=projectPage(good,"doc",1,hash);
+ assert.equal(first.incomes[0].gross?.amountWon,"2000000");
+ assert.equal(first.incomes[0].expenses?.amountWon,"200000");
+ assert.equal(monthlyIncome(first.incomes[0]).value?.toString(),"1800000");
+ const changed=structuredClone(good);changed.records[0].fields[1].value="300000";
+ changed.records[0].fields[1].quote="total_deductions 300000";
+ const result=projectPage(changed,"doc",1,hash);
+ assert.equal(monthlyIncome(result.incomes[0]).value,null);
+ assert.ok(monthlyIncome(result.incomes[0]).reasons.includes("INCOME_NET_GROSS_EXPENSE_CONFLICT"));
+});
+test("verified gross and total deductions can form an observed net without a net-pay source",()=>{
+ const readResult=read("shared-document:salary_statement@payroll_payslip","income",[[
+  field("gross_total","salary_statement::gross_total","2000000"),
+  field("total_deductions","salary_statement::total_deductions","200000"),
+  field("income.payroll.pay_period_start","payroll_payslip::income.payroll.pay_period_start","2026-09-01",null),
+  field("income.payroll.pay_period_end","payroll_payslip::income.payroll.pay_period_end","2026-09-30",null)
+ ]]);
+ const projected=projectPage(readResult,"doc",1,hash);
+ assert.equal(projected.incomes.length,1);
+ assert.equal(projected.incomes[0].amountBasis,"period_total");
+ assert.equal(projected.incomes[0].net,null);
+ assert.equal(monthlyIncome(projected.incomes[0]).value?.toString(),"1800000");
+});
