@@ -4,7 +4,7 @@
  */
 import {FORM_CONTRACTS} from "./form-contracts.ts";
 import {BASIC_FORM_CODES,type FormBindings} from "./form-mapping.ts";
-import {currentFacts,requiredKindsForCase,type CaseData} from "./domain.ts";
+import {currentFacts,factSourceLineageIssues,requiredKindsForCase,type CaseData} from "./domain.ts";
 import type {StoredDocumentField} from "./case-lawgraph-store.ts";
 export const LAWGRAPH_DOCUMENT_FIELD_VERSION="legal-review-form-field-lineage/1" as const;
 export interface CalculationFieldRow{
@@ -38,7 +38,9 @@ const contextByToken:Record<string,string>={
 };
 const missing=(x:unknown)=>x===undefined||x===null||String(x).trim()===""||/^\[(?:확인|누락|상충|판독|미확정|검토|불일치)/.test(String(x));
 export function projectLawgraphDocumentFields(input:DocumentBindingInput):StoredDocumentField[]{
- const {data,bindings,calculationRows}=input,facts=currentFacts(data);
+ const {data,bindings,calculationRows}=input;
+ const facts=currentFacts(data).filter(f=>f.state==="verified"&&f.recognition==="accepted"
+   &&!f.validation.some(x=>x.severity==="error")&&!factSourceLineageIssues(data,[f.id]).length);
  const subjectIds:Record<string,string[]>={
   creditor:input.calculation.debtRows.map(r=>r.id),
   asset:input.calculation.assetRows.map(r=>r.id),
@@ -72,8 +74,17 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
       :field.kind==="source"?facts.filter(f=>(f.key===token||f.key===canonical)&&sameValue(f.numeric?.amountWon??f.value,value)):[];
     const sourceIds=[...new Set([...(calcFeature?.sourceFactIds??[]),...matchingFacts.map(f=>f.id)])];
     const contextPath=ordinal===null?contextByToken[token]:undefined;
-    const status=calcFeature?"linked_calculation":matchingFacts.length===1?"exact_source_fact":contextPath?"case_context":
-      missing(value)?"missing_value":"lineage_review_required";
+    const contextReady=!!contextPath&&!missing(value)&&(
+      token==="client_name"?value===data.context.applicant?.name:
+      token==="address"?value===data.context.applicant?.address:
+      token==="court_name"?data.context.courtId==="seoul"&&value==="서울회생법원":
+      token==="application_date"?value===data.context.applicationDate:
+      token==="debt_as_of"?value===data.context.asOf:
+      token==="repayment_months"?String(value)===String(data.context.planMonths):
+      token==="present_value_basis"?value===data.context.presentValueBasis:
+      token==="monthly_trustee_fee"?sameValue(value,data.context.monthlyTrusteeFee?.amountWon):false);
+    const status=missing(value)?"missing_value":calcFeature?"linked_calculation":
+      matchingFacts.length===1?"exact_source_fact":contextReady?"case_context":"lineage_review_required";
     result.push({formCode:code,artifactKind:kind,token,subjectId,rowOrdinal:ordinal,
      value:value??null,valueKind:field.kind,sourceFactIds:sourceIds,
      calcFeatureRefs:calcFeature?[calcFeature.id]:[],
