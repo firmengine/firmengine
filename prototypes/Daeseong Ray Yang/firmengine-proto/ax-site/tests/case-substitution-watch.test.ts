@@ -16,14 +16,14 @@ function harness(){
  CREATE TABLE document_instances (source_document_id TEXT NOT NULL,page INTEGER NOT NULL,shared_document_type_id TEXT,case_id TEXT NOT NULL);
  CREATE TABLE legal_monitor_alerts (id TEXT PRIMARY KEY,created_at TEXT NOT NULL,acknowledged_at TEXT);
  CREATE TABLE consultation_heads(case_id TEXT PRIMARY KEY,active_run_id TEXT);
- CREATE TABLE consultation_runs(id TEXT PRIMARY KEY,status TEXT NOT NULL,catalog_version INTEGER NOT NULL);
+ CREATE TABLE consultation_runs(id TEXT PRIMARY KEY,case_id TEXT NOT NULL,status TEXT NOT NULL,catalog_version INTEGER NOT NULL);
  CREATE TABLE intake_catalog_head (id TEXT PRIMARY KEY,version INTEGER NOT NULL);
  `);
  sql.exec(readFileSync(new URL("../drizzle/0014_case_substitution_watch.sql",import.meta.url),"utf8"));
  sql.prepare("INSERT INTO cases VALUES ('case1',1,'2026-10-30T00:00:00.000Z')").run();
  sql.prepare("INSERT INTO case_data_change_state VALUES ('case1',1)").run();
  sql.prepare("INSERT INTO consultation_heads VALUES ('case1','run1')").run();
- sql.prepare("INSERT INTO consultation_runs VALUES ('run1','complete',3)").run();
+ sql.prepare("INSERT INTO consultation_runs VALUES ('run1','case1','complete',3)").run();
  sql.prepare("INSERT INTO intake_catalog_head VALUES ('default',3)").run();
  const database={
   prepare(statement:string){
