@@ -121,7 +121,7 @@
 - [ ] **A1-IT-010** 동시 브라우저 두 개의 동일 사건 CAS 저장 안전성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 기존 SQL CAS 4개 격리 SQLite 정상·리뷰-only 동일 revision 토큰 경합 정상. 실제 브라우저/D1 미인증. [영수증](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 - [ ] **A1-IT-011** 기존 사건 구판본 JSON·null 필드의 역호환 읽기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-012** 마이그레이션 0000~0022 중 누락·순서·불일치 검증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-IT-013** OCR/법률/문서 페이지네이션이 대량행을 자르지 않는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-IT-013** OCR/법률/문서 페이지네이션이 대량행을 자르지 않는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 10차 P1:** 계산 피처 페이지 조회 중 같은 case/source dataVersion에서 다른 계산 run이 active head가 되어도 기존 함수는 `headStale=false` 반환(원본함수 V8 반례 1건, 독립 SQLite 1건). [Draft PR #49](https://github.com/firmengine/firmengine/pull/49)에서 조회 직전·후 run ID 비교 및 API expectedRunId/expectedDataVersion 전달, 수정 함수 V8 7/7 기대일치. 실제 OCR 2,200·계산 5,001건 전체 Node/D1/브라우저 E2E 미인증, [ ] 유지. [10차 영수증](release-audit-runs/A1/20261030-round10-calculation-head-pagination.md).
 - [ ] **A1-IT-014** 문서 생성 취소·timeout·재시도와 기존 artifact 보존. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-015** API 정상/실패 응답이 UI 타입·상태와 일치하는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 6차 일부**: 명령 API 4xx/5xx/2xx 미커밋 응답을 UI가 구분하지 않던 P1 결함 재현. 명시적 커밋 영수증 기반 3상태 처리 [Draft PR #32](https://github.com/firmengine/firmengine/pull/32); GitHub 함수 V8 10/10·로컬 복사본 Node 1/1, 전체 UI/CI/D1/R2 미실행. [영수증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
 - [ ] **A1-IT-016** 최신 HEAD의 TypeScript·lint·빌드·회귀 실행 영수증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 8차 부분**: package Node>=22.13/scripts 확인·GitHub main Actions 0건, 전체 npm ci/type/lint/build/회귀 미실행. 독립 helper Node22.16 격리 3/3은 제품 CI 아님. [8차 영수증](release-audit-runs/A1/20261030-round08-model-usage-and-won-preflight.md). **[ ] 유지**.
@@ -160,7 +160,7 @@
 - [ ] **A1-CALC-007** 동일 채무/자산의 한 factId 다중 계산 중복 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-008** 재산 보증금/보험/퇴직금/지분·면제재산 분기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-009** 상충 가구원 수/부양증빙에 생계비 확정 보류. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-CALC-010** 0원과 미관찰·음수/과소수입을 다른 상태로 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-CALC-010** 0원과 미관찰·음수/과소수입을 다른 상태로 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 10차 부분:** 현재 main의 `statusOf` 실제 함수 본문 V8에서 0/미관찰(null)/unknown/blocked/음수(-12)/상충/비해당 7/7 기대일치. 계산·영업소득·채권/서식 원단위 전체 실행과 음수 금액의 법적 인정 검증은 미실행, [ ] 유지. [10차 영수증](release-audit-runs/A1/20261030-round10-calculation-head-pagination.md).
 - [ ] **A1-CALC-011** 월 변제가능액·보수·우선/재단 비용 누락 시 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-012** 36/48/60개월 및 특례 기간의 회차 생성 확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-013** 총 변제액·채권별 배분·현재가치·청산가치 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -223,7 +223,7 @@
 - [ ] **A1-AX-007** 모델 연산 대신 결정론 계산 결과 사용. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-008** 법률 의견 반론/근거/미해결 쟁점 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-009** 한 원본의 다수 행을 잘못 병합하는 프롬프트 점검. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-AX-010** 모델/프롬프트·기준정보·원본 hash 버전 고정. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-AX-010** 모델/프롬프트·기준정보·원본 hash 버전 고정. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 10차 부분:** `pipeline.ts` OCR 캐시의 원본/모델/프롬프트/규칙 SHA, `case-data-recompute.ts`의 reference SHA/sourceDataVersion 보호 정적 확인. 그러나 계산 피처 조회 중 run head 교체가 동일 사건 revision에서 누락됨을 V8 재현; [Draft PR #49](https://github.com/firmengine/firmengine/pull/49) 읽기 계약 강화. 모델 실행·승인 기준정보 운영 적용·D1 E2E 미인증, [ ] 유지. [10차 영수증](release-audit-runs/A1/20261030-round10-calculation-head-pagination.md).
 - [ ] **A1-AX-011** 사람 승인이 필요한 객체 자동 채택 우회 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 6차 일부**: 최종 검수 서버 거절에도 이유가 즉시 삭제되는 실제 main 원본문 V8 결함 재현. [Draft PR #32](https://github.com/firmengine/firmengine/pull/32)에서 거절·미확정 시 사유 보존, 명령 커밋 시에만 삭제; 수정 본문 V8 3/3. 실제 브라우저/변호사 법률승인 미실행, [ ] 유지. [영수증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
 - [ ] **A1-AX-012** 모델 timeout/retry에 중복 과금·사건 오염 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 8차 P1**: `pipeline.reviewLegal` 모델 응답 후 `model.call` SQL 이벤트 실패→동일버전 모델 재호출 2회/자문행 1회 V8 재현. [Draft PR #42](https://github.com/firmengine/firmengine/pull/42) 보조 이벤트 실패 경고를 `analyses.usage`와 보존; 수정 브랜치 함수본문 실패/정상 V8 기대일치·독립 Node helper 3/3. API ACK/분석 INSERT 실패·동시 lease 비용보장은 별도 미검증. [8차 영수증](release-audit-runs/A1/20261030-round08-model-usage-and-won-preflight.md). **[ ] 유지**.
 - [ ] **A1-AX-013** 증빙 누락 시 서류요청과 사람 역질문 연계. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
