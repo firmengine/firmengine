@@ -3,7 +3,7 @@
  * No legal expense recognition, VAT adjustment, cross-document business
  * identity match, or arithmetic aggregation occurs in this read-only audit.
  */
-import {createCaseReadIndex,currentFacts,moneyValue,type CaseData,type CaseReadIndex,type Fact} from "./domain.ts";
+import {createCaseReadIndex,currentFacts,moneyValue,validSourceRef,factSourceLineageIssues,type CaseData,type CaseReadIndex,type Fact} from "./domain.ts";
 
 export type BusinessMoneyRole =
   "turnover_total"|"turnover_component"|"returns_refunds"|"vat_collected"|
@@ -74,8 +74,9 @@ export function auditBusinessSourceEvidence(
  const window=data.context.filingPeriod;
  const validWindow=!!window&&exactDate(window.start)&&exactDate(window.end)&&window.start<=window.end;
  const bySubject=index.bySubject;
- const candidates=data.incomes.filter(source=>source.kind==="business" && source.recognition!=="rejected" &&
-   source.sourceCalculationRole!=="gross_turnover_only" &&
+ const candidates=data.incomes.filter(source=>source.kind==="business" && source.recognition==="accepted" &&
+   source.sourceCalculationRole!=="gross_turnover_only" && source.factIds.length>0 &&
+   factSourceLineageIssues(data,source.factIds,index).length===0 &&
    (moneyValue(source.net)!==null || moneyValue(source.gross)!==null&&moneyValue(source.expenses)!==null));
  const links=new Map<string,string[]>();
  for(const income of data.incomes)if(income.kind==="business")
@@ -84,9 +85,20 @@ export function auditBusinessSourceEvidence(
   const id=canonicalId(fact),family=id.split("::")[0];
   const row=bySubject.get(fact.subjectId)??[];
   const slots=rowPeriods[family];
-  const fieldValue=(key:string)=>row.find(item=>canonicalId(item)===key)?.value;
-  const start=slots&&exactDate(fieldValue(slots[0]))?fieldValue(slots[0]) as string:null;
-  const end=slots&&exactDate(fieldValue(slots[1]))?fieldValue(slots[1]) as string:null;
+  // A single valid date is required. "First matching field wins" can classify
+  // a conflicting or unverified period as historical and incorrectly suppress
+  // a live financial-source blocker.
+  const fieldDate=(key:string):string|null=>{
+    const matches=row.filter(item=>canonicalId(item)===key);
+    if(matches.length!==1)return null;
+    const dateFact=matches[0];
+    return dateFact.state==="verified"&&dateFact.recognition==="accepted"&&
+      dateFact.validation.every(check=>check.severity!=="error")&&
+      dateFact.refs.length>0&&dateFact.refs.every(ref=>validSourceRef(data,ref,index))&&
+      exactDate(dateFact.value)?dateFact.value:null;
+  };
+  const start=slots?fieldDate(slots[0]):null;
+  const end=slots?fieldDate(slots[1]):null;
   const scope:PeriodOverlap= !validWindow||!start||!end||end<start ? "unknown" :
     end<window!.start||start>window!.end ? "outside" :
     start<window!.start||end>window!.end ? "partly_outside":"inside";
