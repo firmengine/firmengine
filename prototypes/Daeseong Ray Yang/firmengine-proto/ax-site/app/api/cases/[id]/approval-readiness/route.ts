@@ -4,13 +4,15 @@ import {createCaseReadIndex,currentFacts,factSourceLineageIssues} from "../../..
 import {executeCaseNodes} from "../../../../../lib/case-execution.ts";
 import {caseRequirementMonitor} from "../../../../../lib/case-requirement-monitor.ts";
 import {AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,listCaseLawgraphReview} from "../../../../../lib/case-lawgraph-store.ts";
-import {RISK_CATALOG} from "../../../../../lib/legal-rules.ts";
+import {LEGAL_CATALOG,RISK_CATALOG} from "../../../../../lib/legal-rules.ts";
 import {legalEvidenceInventory} from "../../../../../lib/legal-evidence-criteria.ts";
 import {getCalculationSpecs} from "../../../../../lib/execution-catalog.ts";
 import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.ts";
 import {auditFivePreapprovalStages,type StoredCalcFeature} from "../../../../../lib/preapproval-stage-audit.ts";
 import {inspectPreapprovalOcrStorage} from "../../../../../lib/preapproval-ocr-storage-audit.ts";
 import {auditStoredCalculationReplay} from "../../../../../lib/preapproval-calculation-replay.ts";
+import {auditPreapprovalLegalCatalog} from "../../../../../lib/preapproval-legal-coverage-audit.ts";
+import {readCourtCorrectionItems} from "../../../../../lib/preapproval-correction-item-store.ts";
 import legalExceptions from "../../../../../lib/legal-exceptions.json" with {type:"json"};
 import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
 import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
@@ -106,6 +108,16 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     ?auditStoredCalculationReplay({execution,rows:persistedFeatures,currentFactIds:new Set(facts.map(f=>f.id))})
     :null;
   if(storedCalculationReplay&&!storedCalculationReplay.valid)calculationCurrent=false;
+  const legalCatalogCoverage=auditPreapprovalLegalCatalog({
+    caseData:data,facts,sourceValidatedAcceptedFactIds:acceptedFactIds,
+    rules:LEGAL_CATALOG,exceptions:legalExceptions.scenarios,
+  });
+  const correctionItems=await readCourtCorrectionItems(database,data)
+    .catch(error=>({status:"unavailable_fail_closed" as const,
+      reason:error instanceof Error?error.message:"CORRECTION_ITEM_LEDGER_UNAVAILABLE",
+      items:[],count:0,courtApprovalInferred:false as const}));
+  const actualCorrectionEvents=(data.workflowState?.procedureEvents??[])
+    .filter(event=>event.state==="correction_requested");
   const after=await database.prepare(headSql).bind(id).first<Head>();
   if(!after||JSON.stringify(after)!==JSON.stringify(before))
    throw new HttpError(409,"검토 중 원본 또는 계산판본이 변경되었습니다. 재조회하세요.");
@@ -122,6 +134,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
     ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[]),
     ...calculationReplayIssues,
+    ...(actualCorrectionEvents.length&&("status" in correctionItems)?["COURT_CORRECTION_ITEM_LEDGER_UNAVAILABLE"]:[]),
     ...(!storedCalculationReplay?.valid&&storedCalculationReplay?["CALCULATION_ALL_STORED_ROWS_REPLAY_MISMATCH"]:[]),
     ...(!featureReadComplete?["FULL_CALCULATION_FEATURE_READ_INCOMPLETE"]:[]),
     ...(physicalOcr.status==="unavailable_fail_closed"?["CURRENT_OCR_COVERAGE_STORAGE_UNAVAILABLE"]:
@@ -147,6 +160,6 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     documents:requirements.status==="fulfilled"?requirements.value:null,
     validSourceFactIds:acceptedFactIds,
   });
-  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,storedCalculationReplay,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,storedCalculationReplay,legalCatalogCoverage,correctionItems,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
 }
