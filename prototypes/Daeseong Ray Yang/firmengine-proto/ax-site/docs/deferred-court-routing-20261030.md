@@ -6,7 +6,7 @@
 - `lib/domain.ts`의 `CaseContext.courtId`는 이미 사건 단위 관할 식별자이다.
 - `lib/intake-types.ts`의 `IntakeRun.semanticContext.courtId`, `IntakeChecklistView.courtId`, `lib/intake-store.ts`의 상담 입력 fingerprint 및 stale check에도 사건 관할이 들어간다.
 - 다만 `ConsultationNote` 및 SQL `consultation_notes`에는 상담 당시 **관할 선택·확인 상태·근거·변경 이력에 대한 독립적인 구조화 필드**가 없다. 따라서 기존 `courtId`가 있다고 상담 시작 시점부터 법원별 기준 판본을 독립적으로 재현하는 이력이 완성된 것은 아니다.
-- `lib/case-legal-automation.ts`, `lib/case-substitution-watch.ts`, `lib/case-workflow-server.ts`의 전역 법령/법원 알림 COUNT 경로는 현재 보존한다. **타 법원 경보가 서울 사건까지 보류시키는 보수적 과차단 위험은 남지만**, 이를 임의로 완화해 무검토 통과시키지 않는다.
+- **동시 작업 중 코드 상태 변화 (2026-10-30):** 다른 작업자가 `lib/case-policy-alert-scope.ts`를 추가해 공식 출처의 **관할이 명확한 알림만** 해당 사건에 적용하도록 제한했고, `case-legal-automation.ts`, `case-substitution-watch.ts`, `case-workflow-context.ts`에 연결했다. 관할이 없거나 불명확한 알림은 여전히 보수적으로 차단한다. **이는 상담 이력·법원별 정책/서식 전체 분리의 완료가 아니다**. 사용자가 보류한 것은 전체 P1 관할 분기 구축이며, 그 작업은 계속 보류한다.
 
 ## 후속 수정 시에만 적용할 요구 계약 (현재 미구현)
 
@@ -18,7 +18,7 @@
 6. **인수시험:** 서울 사건 / 타 관할 사건 / 미확정 사건 / 상담 중 관할 변경 / 다른 법원 공고만 발생 / 관할·시행일이 겹치는 개정 / 같은 원문서류의 법원별 필수성 차이를 격리 사건으로 테스트.
 
 ## 이번 턴의 변경 범위
-- **코드·DB 마이그레이션·법령 필터 변경 없음.**
+- **이번 보류 결정 자체로 상담 관할 이력 스키마·관할별 기준정보 전체 분기·DB 마이그레이션을 새로 만들지 않는다.** 위의 제한적 알림 범위 조정은 다른 작업자의 별도 코드 변경 이력이다.
 - P1 관할 분기를 **보류**로 표시하고 구조만 후속 계약으로 남긴다.
 - 현재 진행 중인 기능 디버깅은 **C01 (LawGraph→초안 차단)** 검증 → **C02 (자동초안→직원 편집/검수 원장)** → **C04 (갈음서류 공통 판단 입력)** 순서로 진행한다. C03 관할 알림 범위 분리는 이 후속 작업에 포함하지 않는다.
 
