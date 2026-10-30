@@ -183,7 +183,7 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   }
   let exportReceiptResultIndex=-1;
   if(receipt){
-    const statement=commitExportRequest({...receipt.claim,newStorageToken:token,
+    const statement=commitExportRequest({...receipt.claim,at,newStorageToken:token,
       artifactIds:receipt.artifactIds,manifestFingerprint:receipt.manifestFingerprint});
     exportReceiptResultIndex=batch.length;
     batch.push(db().prepare(statement.sql).bind(...statement.args));

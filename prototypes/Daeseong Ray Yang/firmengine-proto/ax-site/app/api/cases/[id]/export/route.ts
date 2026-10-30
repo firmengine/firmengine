@@ -234,7 +234,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     onCommitUncertain:async report=>{
       // The case, audits and receipt may already have committed without ACK.
       // Never delete R2/SQL on this path. Change only a still-claimed receipt.
-      const uncertain=markExportUncertain(claim);
+      const uncertain=markExportUncertain({...claim,at:now()});
       await db().prepare(uncertain.sql).bind(...uncertain.args).run().catch(()=>{});
       await event(id,"export.manifest_commit_unconfirmed",{
         artifactIds:report.records.map(f=>f.id),reconciliationRequired:true}).catch(()=>{});
