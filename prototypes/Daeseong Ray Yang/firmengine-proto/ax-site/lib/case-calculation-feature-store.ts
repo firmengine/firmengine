@@ -19,6 +19,15 @@ const json=(v:unknown)=>JSON.stringify(v);
 const sha=async(value:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)))].map(v=>v.toString(16).padStart(2,"0")).join("");
 const stable=(v:unknown):string=>v===null||typeof v!=="object"?JSON.stringify(v)??"null":Array.isArray(v)?`[${v.map(stable).join(",")}]`:`{${Object.keys(v).sort().filter(k=>(v as Record<string,unknown>)[k]!==undefined).map(k=>`${JSON.stringify(k)}:${stable((v as Record<string,unknown>)[k])}`).join(",")}}`;
 const error=(code:string)=>Object.assign(new Error(code),{code});
+/** Two JSON columns share one D1 row; individual limits alone can exceed its 2 MB row cap.
+ * Reserve 100 KB for row metadata and keep existing per-column limits. */
+export function assertCalculationRunPayloadSize(rawResultJson:string,sourceHeadsJson:string){
+ const rawBytes=new TextEncoder().encode(rawResultJson).length;
+ const sourceBytes=new TextEncoder().encode(sourceHeadsJson).length;
+ if(rawBytes>1_900_000||sourceBytes>1_000_000||rawBytes+sourceBytes>1_900_000)
+  throw error("CALCULATION_FEATURE_RESULT_SIZE_LIMIT");
+}
+
 const conflict=(reasons:string[])=>reasons.some(r=>/CONFLICT|DISPUTED|AMBIGUOUS/.test(r));
 function statusOf(value:unknown,engineStatus:string|undefined,reasons:string[]=[]):CalculationFeatureStatus{
   if(engineStatus==="not_applicable")return "not_applicable";
@@ -113,7 +122,7 @@ export async function persistCaseCalculationFeatures(db:D1Database,input:Persist
   const reference=input.referenceRelease??referenceIdentity()??{id:referenceRelease.id,revision:referenceRelease.revision,sha256:referenceRelease.sha256};
   const contractVersion=e.version??EXECUTION_CONTRACT_VERSION,sourceHeadsJson=json(input.sourceHeads??null),sourceHeadsSha=await sha(sourceHeadsJson);
   const rawResultJson=json({calculation:e.assessment.calculation,proposals:e.proposals,courtApprovalInferred:e.courtApprovalInferred});
-  if(new TextEncoder().encode(rawResultJson).length>1_900_000||new TextEncoder().encode(sourceHeadsJson).length>1_000_000)throw error("CALCULATION_FEATURE_RESULT_SIZE_LIMIT");
+  assertCalculationRunPayloadSize(rawResultJson,sourceHeadsJson);
   const rows=calculationFeatureRows(e);
   if(rows.length>5000)throw error("CALCULATION_FEATURE_COUNT_LIMIT");
   const missing=rows.filter(f=>["missing","blocked","conflict"].includes(f.status)).map(f=>({calculationId:f.calculationId,outputName:f.outputName,outputPath:f.outputPath,subjectId:f.subjectId,status:f.status,reasons:f.reasons}));
