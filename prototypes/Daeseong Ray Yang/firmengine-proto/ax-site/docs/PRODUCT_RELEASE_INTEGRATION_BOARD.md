@@ -904,3 +904,12 @@
 - [Draft PR #33](https://github.com/firmengine/firmengine/pull/33)은 `preapproval-calculation-replay.ts`, `approval-readiness/route.ts`, 테스트 3파일만 변경하여 0행/예상 output 누락을 준비도 불일치로 분리 표시. 사용자가 법원에 제출한 사실·법률 승인·D1/R2/Word/D5110 출력 변경 없음.
 - 18 계산·91 선언입력(78고유)·42 이종 `resultPaths`를 실제 카탈로그에서 재계산했으며, 이를 SQL 42개 필드 합격으로 간주하지 않는다. [6차 상세 기록](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
 - 다음: PR #33 정식 Node 테스트 및 5,000/5,001행 D1 round-trip; 계산 모듈별 42 resultPaths 실제 API 실행; PR #25/#29 중복파일 병합 검증; 공식 법원 Word/D5110·법률 전문가 인수.
+
+
+## 2026-10-30 A3 6차 — canonical #101~120 사업경비·현재수입 원천과 false-positive 검증
+
+- **5개 담당자 순환/부분검증 [ ] 유지:** `A3-LAW-009`, `A3-DATA-012`, `A3-AX-006`, `A3-CALC-019`, `A3-DOC-019`. [20개 필드·80원천라우트·격리 실행 및 코드 개선 영수증](release-audit-runs/A3/20261030-1823-canonical-101-120.md). **전체 [x] 0건**.
+- **정적 기준정보 독립 조인:** 693 canonical, 85서류, 48패밀리, 1,808 문서×패밀리×필드 슬롯. 중복 family 라우트를 제외한 문서×필드 쌍은 1,751(57개 복수 family 라우트), 등록 ID 누락 아닌 라우트 다중성. 이번 #101~120 20 ID·80 슬롯, 직접 canonical typed/공식 token 0, 정적 95 위험/50 법률규칙/46 예외의 exact canonical 문자열 계약 0. 동적 DB·사람 법률승인은 미확인.
+- **P1 발견**: `business-source-evidence.ts::auditBusinessSourceEvidence`에서 raw Fact/typed/unit/관측 상태 불일치인데도 `verifiedAndAcceptedSource=true`, 오래된 `amountWon` 출력. 실제 main 함수본문 타입 제거 V8 격리 **기존 false-positive 6조건 → [Draft PR #34](https://github.com/firmengine/firmengine/pull/34) 후보 함수 10/10 독립 기대 일치**. 기존 소스 인정/세무·법률 산식 무수정, source-only 유지. 신규 실제-import Node 테스트 2블록 추가했으나 **Native Node CI·빌드 미실행**, PR은 미병합.
+- **검토 연결**: #101 장부비용, #107 매입 VAT, #108 총계경비, #111 미수 청구액, #113 수령 현금, #118 원천징수의 금액 역할이 다르며 무승인 합산 금지. #102·103 지급일/지급상태, #106 공급자, #109 계약종료, #110 계약ID, #115 지급자는 독립 증거이나 정확한 비용 승인 소비처와 실무판정은 미확인. 신청/관할/법원 원문 대조와 실제 D1/R2/법원 서식·변호사 승인 미인증.
+- **다음 A3 시작: canonical #121~140** 사업자등록 공동대표·사업상태·개업기간 및 부가세 신고 매출/환급/원천 기간 검증. PR #14/#22/#26/#30과 자동 병합·사용자 자료 유출·운영배포/전자제출 금지.
