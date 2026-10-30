@@ -62,6 +62,16 @@ test("invalid numeric input returns a blocked receipt instead of throwing BigInt
     expectBlocked(data,calculation);
   }
 });
+test("numeric normalized value tampered away from preserved raw source is blocked",()=>{
+  const {data,calculation}=fixture();
+  data.debts[0]!.principal={...normalizeMoney("2"),amountWon:"9"};
+  expectBlocked(data,calculation);
+});
+test("negative claim balance is blocked rather than used as a payable debt",()=>{
+  const {data,calculation}=fixture();
+  data.debts[0]!.interest=normalizeMoney("-1");
+  expectBlocked(data,calculation);
+});
 test("generated plan 36/48/60 months remains fail-closed on an absent component",()=>{
   for(const months of [36,48,60]){
     for(const field of ["principal","interest"] as const){
