@@ -58,6 +58,12 @@ function rowUnique(data:CaseData,index:CaseReadIndex,subjectId:string,id:string)
  return sourceFact(data,index,rows[0].id,id);
 }
 function money(fact:Fact):bigint{
+ // OCR raw value, typed money and the current Fact must all describe the same
+ // source cell. Normalizing a stale numeric after correcting the raw Fact is
+ // not permission to retain the prior amount.
+ if(typeof fact.value!=="string"||fact.rawValue!==fact.value||
+    fact.numeric?.rawValue!==fact.value||fact.sourceUnit!==fact.numeric?.unit)
+   throw Error("BUSINESS_RAW_NUMERIC_SOURCE_MISMATCH:"+fact.id);
  const n=moneyValue(fact.numeric);
  if(n===null||n<0n)throw Error("BUSINESS_MONEY_NOT_EXACT_NONNEGATIVE:"+fact.id);
  return n;
