@@ -123,7 +123,7 @@
 - [ ] **A1-IT-012** 마이그레이션 0000~0022 중 누락·순서·불일치 검증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-013** OCR/법률/문서 페이지네이션이 대량행을 자르지 않는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-014** 문서 생성 취소·timeout·재시도와 기존 artifact 보존. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-IT-015** API 정상/실패 응답이 UI 타입·상태와 일치하는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-IT-015** API 정상/실패 응답이 UI 타입·상태와 일치하는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 6차 일부**: 명령 API 4xx/5xx/2xx 미커밋 응답을 UI가 구분하지 않던 P1 결함 재현. 명시적 커밋 영수증 기반 3상태 처리 [Draft PR #32](https://github.com/firmengine/firmengine/pull/32); GitHub 함수 V8 10/10·로컬 복사본 Node 1/1, 전체 UI/CI/D1/R2 미실행. [영수증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
 - [ ] **A1-IT-016** 최신 HEAD의 TypeScript·lint·빌드·회귀 실행 영수증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-017** Git main과 배포 소스·스키마·reference release SHA 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-018** 비밀키/개인정보/테스트 사실값이 public bundle에 없는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -166,7 +166,7 @@
 - [ ] **A1-CALC-013** 총 변제액·채권별 배분·현재가치·청산가치 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-014** 직원이 수정한 금액은 제안/출처/승인 단계 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-015** 계산 sourceVersion·referenceSHA 변경 때 stale 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 4차 P0 반례: 같은 case revision/dataVersion에서 오래된 reference SHA의 계산 run이 현행 head를 overwrite하는 SQL 가능성 격리 SQLite로 재현(changed=1). 진짜 원본 version/revision 변화 시 차단 2건 확인. 법률/산식 수정은 검토 전 보류, 운영 E2E 미인증. [영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).**
-- [ ] **A1-CALC-016** 공식 서식 입력값과 저장 계산 결과 원단위 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-CALC-016** 공식 서식 입력값과 저장 계산 결과 원단위 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 6차 코드경로 일부**: `form-mapping.ts`의 계산 scalar/채권자 반복행 매핑 및 `document-preflight.ts` 반복행 합계 가드 확인. D5103/D5110 Word·원문 금액 동등성 실제 계산 미실행, 관련 PR #21/#25/#29 별도 진행. [ ] 유지. [영수증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
 - [ ] **A1-CALC-017** 계산 오류에서 문서 생성과 법률 AI 조기 시작 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-018** 영업소득 변호사 승인 뒤 기존 법률 검토 재평가. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: business.net.adopt→touchCase→resetReviews 정적 연결 확인, 도메인 실제 함수 V8 변환 합성 5조건 정상. 영업소득 채택 전체 DB/법률·서식 E2E 미인증. [증빙](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 
@@ -224,7 +224,7 @@
 - [ ] **A1-AX-008** 법률 의견 반론/근거/미해결 쟁점 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-009** 한 원본의 다수 행을 잘못 병합하는 프롬프트 점검. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-010** 모델/프롬프트·기준정보·원본 hash 버전 고정. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-AX-011** 사람 승인이 필요한 객체 자동 채택 우회 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-AX-011** 사람 승인이 필요한 객체 자동 채택 우회 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 6차 일부**: 최종 검수 서버 거절에도 이유가 즉시 삭제되는 실제 main 원본문 V8 결함 재현. [Draft PR #32](https://github.com/firmengine/firmengine/pull/32)에서 거절·미확정 시 사유 보존, 명령 커밋 시에만 삭제; 수정 본문 V8 3/3. 실제 브라우저/변호사 법률승인 미실행, [ ] 유지. [영수증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
 - [ ] **A1-AX-012** 모델 timeout/retry에 중복 과금·사건 오염 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-013** 증빙 누락 시 서류요청과 사람 역질문 연계. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-014** 법률/계산 미확정 시 자동초안 writer 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 마지막 자동초안 완료 batch의 구판본 sourceVersion/worker lease 미검증 결함을 격리 SQL로 재현(기대 완료0/실제완료1). [수정 Draft PR #17](https://github.com/firmengine/firmengine/pull/17), 새 9건 합성 SQLite 9/9; 미병합·D1/R2/전체 CI 미인증. [증빙](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
@@ -890,3 +890,10 @@
 - **핵심 발견**: #089 `business_assets_liabilities::gross_value`는 계산 소스 게이트의 context-only, #099 `business_costs_and_ledgers::income.business_cost.business_entity`와 #100 `...expense_category`는 사업자 식별/월별 비용 `preflightBusinessNet`에 정확 검토 경로가 있지만 기존 A3 감사에는 단순 typed/form=0처럼 표시. #097 `accounting_basis` 및 #098 `business_continuity_flag`는 현재 정확 비용 preflight 조건에 미연결; 회계·법률 검토 필요.
 - **개선**: `sourceReviewConsumers`를 별도 read-only 검토 소비처로 분리한 [Draft PR #30](https://github.com/firmengine/firmengine/pull/30). 실제 작성한 테스트 TS 5개는 **Node 미실행**, 원본에서 추출한 수정 함수 V8 기대/실제 **8/8** 및 정적 경계 검사에 한해 확인. **법률 승인·금액 인정·법원 판정·서식 변경 없음.** PR #22/#26과 중첩 파일을 병합할 때 최신 전체 회귀 필요.
 - **체크 ID 5개 부분, 완료 [x] 0개**: `A3-AX-019`/`A3-IT-002`/`A3-DOC-007`/`A3-CALC-007`/`A3-DATA-010`. 다음 **canonical #101~120**에서 원문 비용총액/지급일·상태/매입 VAT/기간·사업자와 승인형 사업 순소득 검토 분기를 실행. 다음 회차는 변호사 관점부터 순환.
+
+
+### 2026-10-30 A1 6차 — 명령 저장 ACK와 검수 UI 오류 분리
+
+- 담당 관점 **IT(A1-IT-015), AX(A1-AX-011), 계산사무장(A1-CALC-016)**. 3개 모두 `[ ]` 유지·제품 전체 인수 완료 0건. 실제 함수본문 V8 10/10·3/3, 정적 경계 7/7, 로컬 복사본 Node 1/1; 앱 CI·타입·브라우저·실 D1/R2·법원 서식/변호사 미인증.
+- P1: `case-workflow.tsx::send`가 4xx/네트워크/무명시 커밋을 결과 없이 반환해 `DocumentReviewFinalization::approve`가 저장 거절에도 검토사유를 제거. [Draft PR #32](https://github.com/firmengine/firmengine/pull/32) (미병합)는 명시적 `committed/rejected/uncertain` 및 기존 명령 ID 재시도, 검토사유/문서 편집 보존을 제안. [6차 상세 검증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
+- 다음 역할 순환: **서류/변호사/데이터** — A1-DOC-018, A1-LAW-017, A1-DATA-018. PR #28 사람 검수 분리, PR #32 명령 상태와 결합한 UI/HTTP 중복 처리 인수는 별도.
