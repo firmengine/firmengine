@@ -8,7 +8,7 @@ const MONEY_FIELDS=["household.additionalLivingCost","context.monthlyTrusteeFee"
 const MONTH_FIELD="context.planMonths" as const;
 export type ScenarioPath=typeof MONEY_FIELDS[number]|typeof MONTH_FIELD;
 export type ScenarioEdit={path:ScenarioPath;candidateWon?:string;candidateMonths?:number;basisFactIds:readonly string[];reason:string};
-export interface SimulatedExecution{assessment:{calculation:Record<string,unknown>};courtApprovalInferred:false}
+export interface SimulatedExecution{assessment:{calculation:object};courtApprovalInferred:false}
 const won=(value:unknown):value is string=>typeof value==="string"&&/^\d{1,16}$/.test(value);
 export function simulatePreapprovalCase<T extends SimulatedExecution>(data:CaseData,edits:readonly ScenarioEdit[],runExistingCalculator:(data:CaseData)=>T){
  if(!edits.length||edits.length>5||new Set(edits.map(e=>e.path)).size!==edits.length)throw Error("INVALID_SCENARIO_EDIT_SET");
@@ -32,14 +32,15 @@ export function simulatePreapprovalCase<T extends SimulatedExecution>(data:CaseD
  const original=runExistingCalculator(data);
  const hypothetical=runExistingCalculator(cloned);
  if(original.courtApprovalInferred!==false||hypothetical.courtApprovalInferred!==false)throw Error("SIMULATION_CALCULATOR_SCOPE_VIOLATION");
+ const baseValues=original.assessment.calculation as Record<string,unknown>,scenarioValues=hypothetical.assessment.calculation as Record<string,unknown>;
  const outputNames=["monthlyIncomeWon","recognizedLivingCostWon","disposableIncomeWon","ordinaryRepaymentBudgetWon","monthlyPaymentWon","planTotalWon","liquidationValueWon","presentValueWon","liquidationComparison"];
- const differences=outputNames.map(name=>({outputName:name,original:original.assessment.calculation[name]??null,
-   hypothetical:hypothetical.assessment.calculation[name]??null})).filter(x=>JSON.stringify(x.original)!==JSON.stringify(x.hypothetical));
+ const differences=outputNames.map(name=>({outputName:name,original:baseValues[name]??null,
+   hypothetical:scenarioValues[name]??null})).filter(x=>JSON.stringify(x.original)!==JSON.stringify(x.hypothetical));
  return {schemaVersion:PREAPPROVAL_SIMULATION_VERSION,caseId:data.context.id,sourceRevision:data.context.revision,
    assumptionOnly:true as const,sourceMutationPerformed:false as const,humanLegalAcceptanceGranted:false as const,
    legallyRecognizedAmounts:false as const,courtApprovalInferred:false as const,approvalProbability:null,
    edits:edits.map(e=>({...e,basisFactIds:[...e.basisFactIds]})),differences,
-   baseCalculatorIssues:[...((original.assessment.calculation.issues??[]) as string[])],
-   hypotheticalCalculatorIssues:[...((hypothetical.assessment.calculation.issues??[]) as string[])],
+   baseCalculatorIssues:[...((baseValues.issues??[]) as string[])],
+   hypotheticalCalculatorIssues:[...((scenarioValues.issues??[]) as string[])],
    note:"기존 계산기를 복제 입력으로 재실행한 산술 시뮬레이션. 법령상 비용 인정/인가결정/실제 문서 값 아님"};
 }
