@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type
 import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, FileCheck2, FileText, Loader2, RefreshCw, ShieldCheck, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { CaseCommand, CommandType } from "@/lib/case-command-contract";
+import { hasCommittedCommandReceipt, type CommandSubmitOutcome } from "@/lib/command-submit-outcome";
 import CaseReviewActions, { type ReviewArtifact,type ReviewFieldBase,type CurrentLegalRun } from "./case-review-actions";
 import DocumentReviewFinalization,{type ExportReviewView} from "./document-review-finalization";
 import BusinessMonthlyReview from "./business-monthly-review";
@@ -104,9 +105,9 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
     return ()=>{mounted=false;clearInterval(timer);};
   },[caseId,load,data?.revision]);
 
-  const send = async (draft: CommandDraft, retry = false) => {
-    if (!data || busy) return;
-    if (!retry && pendingRef.current) { setError("저장 결과가 확인되지 않은 명령이 있습니다. 먼저 같은 명령을 재시도해 주세요."); return; }
+  const send = async (draft: CommandDraft, retry = false): Promise<CommandSubmitOutcome> => {
+    if (!data || busy) return "uncertain";
+    if (!retry && pendingRef.current) { setError("저장 결과가 확인되지 않은 명령이 있습니다. 먼저 같은 명령을 재시도해 주세요."); return "uncertain"; }
     let command = retry ? pendingRef.current : null;
     if (!command) {
       command = { ...draft, commandId: crypto.randomUUID(), payloadVersion: 1, expectedRevision: data.revision, expectedStateFingerprint: data.stateFingerprint };
@@ -115,7 +116,7 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
     setBusy(true); setNotice(null); setError("");
     try {
       const response = await fetch(`/api/cases/${encodeURIComponent(caseId)}/commands`, { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json" }, body: JSON.stringify(command) });
-      const body = await response.json().catch(() => ({})) as { error?: string; message?: string; receipt?: unknown };
+      const body = await response.json().catch(() => ({})) as { error?: string; message?: string; receipt?: unknown; committed?: unknown };
       if (!response.ok) {
         const message = body.error || body.message || `요청을 저장하지 못했습니다. (${response.status})`;
         if (response.status < 500) {
@@ -123,19 +124,24 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
           await load();
           setError(message);
           setNotice({ kind: "error", text: "서버가 명령을 반영하지 않았습니다. 최신 상태를 불러왔으니 내용을 확인해 주세요." });
-          return;
+          return "rejected";
         }
         throw new Error(message);
       }
+      // A successful HTTP response alone is not an authoritative case mutation receipt.
+      // The server may return a committed 202 while evaluation is still pending.
+      if (!hasCommittedCommandReceipt(body)) throw new Error("서버 저장 결과 확인이 불완전합니다. 기존 명령 식별자로 다시 확인하세요.");
       updatePending(null);
       const receipt = body.receipt && typeof body.receipt === "object" ? body.receipt as Record<string, unknown> : null;
       const receiptStatus = typeof receipt?.status === "string" ? label(receipt.status) : body.receipt ? "기록 접수됨" : "응답 확인됨";
       const replayed = receipt?.replayed === true ? " · 기존 처리 결과" : "";
       setNotice({ kind: "success", text: `서버 기록 ${receiptStatus}${replayed}. 최신 상태를 다시 불러옵니다.` });
       try { await load(); } catch { /* load owns its visible error state */ }
+      return "committed";
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "저장 결과를 확인하지 못했습니다.");
       setNotice({ kind: "error", text: "저장 결과가 불분명할 수 있습니다. 상태를 새로고침하거나 같은 명령을 다시 시도해 주세요." });
+      return "uncertain";
     } finally { setBusy(false); }
   };
 
