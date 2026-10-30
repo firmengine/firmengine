@@ -124,6 +124,7 @@ test("approved official-rule, explicit source amounts, two expense categories an
  assert.equal(c.planTotalWon,"36000000");
  const form=buildFormBindings(d,c);
  assert.equal(form.scalars.monthly_business_income,"1,500,000");
+ assert.equal(form.scalars.approved_monthly_income,"1,500,000","Source-only VAT evidence must not masquerade as a second missing reviewed net row");
  assert.equal(form.scalars.monthly_income,"1,500,000");
  assert.equal(form.scalars.monthly_payment,"1,000,000");
  assert.equal(form.rows.month.length,1);
