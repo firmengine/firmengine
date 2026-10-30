@@ -56,3 +56,36 @@ test("D5111 disposal scalar proposed amounts use the same numeric integrity gate
   assert.ok(result.blockers.some(x=>x.code==="PLAN_SCALAR_NUMERIC_INVALID"&&x.token===token));
  }
 });
+
+test("D5110/D5111 final creditor-row malformed amount fails closed",async()=>{
+ for(const code of ["D5110","D5111"] as const)for(const field of ["principal","monthly_payment","total_payment"] as const){
+  const data=fixture(code);data.bindings.rows.creditor[0][field]="BAD";
+  const result=await evaluateDocumentPreflight({formCode:code,mode:"final",...data});
+  assert.equal(result.status,"blocked",code+"."+field);
+  assert.ok(result.blockers.some(x=>x.code==="PLAN_CREDITOR_ROW_NUMERIC_INVALID"&&x.token==="creditor."+field+"[0]"));
+ }
+});
+test("money text enforces thousands separators; legitimate grouping and zero remain valid",async()=>{
+ for(const raw of ["1,00,0000","1원000000","1 000 000","1,,000"]){
+  const res=await check("D5110","final",{monthly_payment:raw});
+  assert.equal(res.status,"blocked",raw);
+  assert.ok(res.blockers.some(x=>x.code==="PLAN_SCALAR_NUMERIC_INVALID"&&x.token==="monthly_payment"));
+ }
+ for(const raw of ["1,000,000","₩1,000,000원","1000000"]){
+  const res=await check("D5110","final",{monthly_payment:raw});
+  assert.equal(res.blockers.some(x=>x.code==="PLAN_SCALAR_NUMERIC_INVALID"),false,raw);
+ }
+ const data=fixture("D5110");data.bindings.rows.creditor[0].principal="0";
+ const zero=await evaluateDocumentPreflight({formCode:"D5110",mode:"final",...data});
+ assert.equal(zero.blockers.some(x=>x.code==="PLAN_CREDITOR_ROW_NUMERIC_INVALID"),false);
+});
+test("unresolved principal stays unresolved; draft invalid creditor row warns",async()=>{
+ const data=fixture("D5110");data.bindings.rows.creditor[0].principal="[확인 필요]";
+ const pending=await evaluateDocumentPreflight({formCode:"D5110",mode:"final",...data});
+ assert.ok(pending.blockers.some(x=>x.code==="FIELD_UNRESOLVED"));
+ assert.equal(pending.blockers.some(x=>x.code==="PLAN_CREDITOR_ROW_NUMERIC_INVALID"),false);
+ const d=fixture("D5110");d.bindings.rows.creditor[0].monthly_payment="BAD";
+ const draft=await evaluateDocumentPreflight({formCode:"D5110",mode:"draft",...d});
+ assert.ok(draft.warnings.some(x=>x.code==="PLAN_CREDITOR_ROW_NUMERIC_INVALID"));
+ assert.equal(draft.blockers.some(x=>x.code==="PLAN_CREDITOR_ROW_NUMERIC_INVALID"),false);
+});
