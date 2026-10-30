@@ -95,3 +95,21 @@ test("missing monitor and raw storage cause explicit unknown rather than pass",(
  assert.equal(a.stages[3].currentRiskCount,0);
  assert.equal(a.coverage.unresolvedDocuments,null);
 });
+
+test("existing persisted proposal outputs use physical proposals.* field names without losing their module link",()=>{
+ const d=sample();
+ d.calculationSpecs=[
+  {id:"living_cost_proposal",inputs:["household.recognizedLivingCost"],outputs:["livingCost"],dependsOn:[]},
+  {id:"objection_minimum",inputs:["context.courtObjection"],outputs:["objectionMinimum"],dependsOn:[]},
+  {id:"seoul_short_term",inputs:["context.planMonths"],outputs:["termCandidate"],dependsOn:[]},
+ ];
+ d.selectedCalculationIds=d.calculationSpecs.map(x=>x.id);
+ d.persistedCalculationFeatures=[
+  {calculationId:"living_cost_proposal",outputName:"proposals.livingCost.status",outputPath:"/proposals/livingCost/status",valueJson:'"proposal"',status:"provisional"},
+  {calculationId:"objection_minimum",outputName:"proposals.objectionMinimum.status",outputPath:"/proposals/objectionMinimum/status",valueJson:'"unknown"',status:"provisional"},
+  {calculationId:"seoul_short_term",outputName:"proposals.termCandidate.status",outputPath:"/proposals/termCandidate/status",valueJson:'"unknown"',status:"provisional"},
+ ];
+ const output=auditFivePreapprovalStages(d);
+ assert.deepEqual(output.stages[2].missingSelectedModuleIds,[]);
+ assert.ok(output.stages[2].allModules.every(x=>x.declaredOutputs[0].storedRows.length===1));
+});
