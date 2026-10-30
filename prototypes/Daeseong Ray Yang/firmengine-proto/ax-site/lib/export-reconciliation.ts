@@ -34,7 +34,8 @@ export type ExportEvidenceIssueCode =
   | "R2_BYTES_HASH_MISMATCH" | "UNCERTAIN_COMMIT_PRESERVE"
   | "CLAIMED_REQUEST_PRESERVE" | "UNREFERENCED_SQL_PRESERVE"
   | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY" | "OBJECT_KEY_SCOPE_MISMATCH"
-  | "R2_PROOF_CONFLICT" | "R2_UNTRACKED_OBJECT_PRESERVE" | "R2_UNTRACKED_PROOF_UNKNOWN";
+  | "R2_PROOF_CONFLICT" | "R2_UNTRACKED_OBJECT_PRESERVE" | "R2_UNTRACKED_PROOF_UNKNOWN"
+  | "ARTIFACT_EVIDENCE_CONFLICT";
 export interface ExportEvidenceIssue {
   code: ExportEvidenceIssueCode;
   artifactId?: string;
@@ -61,6 +62,20 @@ export function reconcileExportEvidence(input: {
     issues.push({ code, ...(artifactId ? { artifactId } : {}), ...(requestId ? { requestId } : {}), autoDeleteAllowed: false });
   };
   const rows = new Map(input.artifactRows.map(row => [row.id, row]));
+  // A caller may compose SQL, historical receipts and retry snapshots in an
+  // arbitrary order. The final Map entry alone cannot prove an artifact ID:
+  // conflicting evidence with the same ID must block current verification.
+  const firstRows = new Map<string, ExportArtifactEvidence>();
+  const conflictingRowIds = new Set<string>();
+  for (const row of input.artifactRows) {
+    const first = firstRows.get(row.id);
+    if (first && (first.caseId !== row.caseId || first.revision !== row.revision ||
+      first.objectKey !== row.objectKey || first.hash !== row.hash)) {
+      conflictingRowIds.add(row.id);
+    } else if (!first) {
+      firstRows.set(row.id, row);
+    }
+  }
   // Multiple probes may race with a retry or a partial R2 failure. Never let
   // the last element in an unordered response silently win over a contradiction.
   const proofs = new Map<string, ExportObjectEvidence>();
@@ -78,6 +93,15 @@ export function reconcileExportEvidence(input: {
   const referenced = new Set(input.manifest.map(file => file.id));
   let currentArtifactsVerified = current.length > 0;
   if (!current.length) add("CURRENT_MANIFEST_EMPTY");
+  const currentIds = new Set(current.map(file => file.id));
+  for (const id of conflictingRowIds) {
+    // Report only IDs belonging to the requested case or its provided receipts;
+    // unrelated foreign-case evidence must not be disclosed by the diagnostic.
+    if (referenced.has(id) || input.artifactRows.some(row => row.id === id && row.caseId === input.caseId)) {
+      add("ARTIFACT_EVIDENCE_CONFLICT", id);
+    }
+    if (currentIds.has(id)) currentArtifactsVerified = false;
+  }
   for (const file of current) {
     const row = rows.get(file.id);
     if (!row) { add("CURRENT_SQL_MISSING", file.id); currentArtifactsVerified = false; continue; }
