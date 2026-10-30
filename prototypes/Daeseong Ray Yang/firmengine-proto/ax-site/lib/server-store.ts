@@ -116,6 +116,8 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   for(const snapshot of [previous,data])if(snapshot.workflowState&&(snapshot.workflowState.schema!=="case-workflow/1"||snapshot.workflowState.version!==undefined&&(!Number.isSafeInteger(snapshot.workflowState.version)||snapshot.workflowState.version<1)))throw new HttpError(409,"지원하지 않는 사건 업무 스키마입니다. 호환 판본에서 확인하세요.");
   if(data.workflowState&&data.workflowState.version===undefined)throw new HttpError(409,"사건 업무 형식 전환을 먼저 완료하세요.");
   const snapshot=caseSnapshots.get(previous);
+  if(receipt&&snapshot&&snapshot.token!==receipt.claim.storageToken)
+    throw new HttpError(409,"EXPORT_CLAIM_TOKEN_STALE");
   if(!snapshot||snapshot.id!==data.context.id||snapshot.revision!==expected||!Number.isSafeInteger(data.context.revision)||data.context.revision<expected)throw new HttpError(409,"원래 불러온 사건 버전이 필요합니다. 최신 내용을 불러온 뒤 다시 시도하세요.");
   // Response-only identity must never become part of the persisted input.
   if(Object.hasOwn(data,"clientStateFingerprint"))throw new HttpError(400,"응답용 지문을 저장할 수 없습니다.");
