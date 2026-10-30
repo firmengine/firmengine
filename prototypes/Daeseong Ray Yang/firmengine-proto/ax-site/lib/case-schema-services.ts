@@ -14,6 +14,8 @@ import { buildCalculationInputAudit } from "./calculation-input-audit.ts";
 import {auditBusinessSourceEvidence} from "./business-source-evidence.ts";
 import {buildBusinessMonthlyWorkbench} from "./business-monthly-workbench.ts";
 import {businessIdentityCrosswalk} from "./business-identity-crosswalk.ts";
+import {validBusinessNetReview} from "./business-net-reconciliation.ts";
+import {approvedBusinessIncomeRule} from "./business-income-policy.ts";
 import {businessSchemaIntegrityAudit} from "./business-schema-integrity.ts";
 
 export const CASE_SCHEMA_CONTRACT={
@@ -62,6 +64,19 @@ export async function readCaseSchemaData(caseId:string,input:{view?:string;docum
     return evaluateCaseFieldLineage(data,all.fields,{limit:input.limit,offset:input.offset});
   }
   if(view==="business_schema_integrity")return businessSchemaIntegrityAudit();
+  if(view==="business_net_review_status"){
+    const policy=approvedBusinessIncomeRule(data.context.courtId,data.context.applicationDate);
+    const receipts=(data.workflowState?.businessNetReviews??[]).map(review=>({
+      id:review.id,month:review.month,incomeId:review.incomeId,
+      status:review.status,sourceFactIds:review.sourceFactIds,
+      proposedBy:review.proposer,reviewer:review.reviewer??null,
+      current:review.status==="approved"&&validBusinessNetReview(data,review)
+    }));
+    return {schemaVersion:"business-net-review-status/1",caseRevision:data.context.revision,
+      officialPolicyApproved:!!policy,policyRuleId:policy?.rule.id??null,
+      receipts,approvedCurrent:receipts.filter(row=>row.current).length,
+      automaticLegalApproval:false};
+  }
   if(view==="business_identity_crosswalk")return businessIdentityCrosswalk(data);
   if(view==="business_monthly_workbench")return buildBusinessMonthlyWorkbench(data);
   if(view==="business_source_audit")
