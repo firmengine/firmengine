@@ -180,7 +180,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     return {objectKey,bytes:file.bytes,mime:file.mime,record:{id:file.id,name:file.name,kind:file.kind,hash:file.hash,mime:file.mime,objectKey}};
   });
   let savedCase:typeof data|undefined;
-  await commitExportArtifactTransaction({
+  try {
+    await commitExportArtifactTransaction({
     artifacts:staged,
     upload:(key,bytes,mime)=>bucket().put(key,bytes,{httpMetadata:{contentType:mime}}),
     persistRecords:records=>db().batch(records.map(f=>db().prepare("INSERT INTO artifacts (id,case_id,revision,name,kind,object_key,hash,mime,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(f.id,id,data.context.revision,f.name,f.kind,f.objectKey,f.hash,f.mime,now()))),
@@ -227,7 +228,23 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       await event(id,"export.manifest_commit_unconfirmed",{
         artifactIds:report.records.map(f=>f.id),reconciliationRequired:true}).catch(()=>{});
     },
-  });
+    });
+  } catch (error) {
+    // A failed R2 PUT or artifact-row persistence happens AFTER the durable
+    // request claim but BEFORE the manifest commit. Without this guarded
+    // transition the receipt stays 'claimed' indefinitely. Mark it uncertain,
+    // never automatically reclaim/retry or delete an ambiguous R2 object.
+    // If the manifest actually committed and its ACK was lost, the conditional
+    // SQL only updates 'claimed' and cannot downgrade 'committed'.
+    try {
+      const uncertainty = markExportUncertain({...claim,at:now()});
+      await db().prepare(uncertainty.sql).bind(...uncertainty.args).run();
+    } catch {
+      // The original failure remains authoritative. A missing update ACK is
+      // not evidence that a retry or destructive cleanup is safe.
+    }
+    throw error;
+  }
   // Durable audits and the completed request receipt were committed with the manifest.
   return jsonResponse(await caseResponse(savedCase??data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}
