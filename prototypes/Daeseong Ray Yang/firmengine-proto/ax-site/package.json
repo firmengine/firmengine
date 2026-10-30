@@ -16,7 +16,8 @@
     "mcp:calculator": "node --experimental-strip-types scripts/calculator-mcp.ts",
     "check:source": "node scripts/verify-source-tree.mjs",
     "test:intake-pipeline": "node --experimental-strip-types --test tests/case-requirement-field-plan.test.ts tests/case-document-work-events.test.ts tests/intake-store.test.ts",
-    "test:legal-auto": "node --experimental-strip-types --test tests/case-legal-automation-policy.test.ts tests/case-legal-automation-flow.test.ts tests/case-lawgraph-store.test.ts tests/case-data-recompute.test.ts tests/extraction-row-store.test.ts"
+    "test:legal-auto": "node --experimental-strip-types --test tests/case-legal-automation-policy.test.ts tests/case-legal-automation-flow.test.ts tests/case-lawgraph-store.test.ts tests/case-data-recompute.test.ts tests/extraction-row-store.test.ts",
+    "check:product": "node scripts/audit-product-contracts.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",

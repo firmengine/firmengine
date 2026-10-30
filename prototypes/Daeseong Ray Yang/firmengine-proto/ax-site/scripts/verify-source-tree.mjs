@@ -1,7 +1,7 @@
 /** Fail build before bundling if an unresolved Git merge marker was committed. */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-const roots=["app","lib","components","db","hooks","scripts","worker","tests"];
+const roots=["app","lib","components","db","hooks","scripts","worker","tests","drizzle","n8n-reference"];
 const exts=/\.(?:ts|tsx|mts|mjs|js|json|sql)$/i;
 const marker=/^(?:<<<<<<< .+|=======|>>>>>>> .+)$/m;
 const failures=[];
