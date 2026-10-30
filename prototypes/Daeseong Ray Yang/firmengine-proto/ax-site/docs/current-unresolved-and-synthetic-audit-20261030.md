@@ -21,7 +21,7 @@
 | C01 / P0 | LawGraph 문서 필드 생성 실패가 자동초안 허용 판단에 연결되지 않음 | `case-legal-automation.ts`는 `documentFieldProjectionError`를 결과에 저장하지만 `automatedDraftEligibility`의 `explicitFailures`에 전달하지 않는다. 가상 T15에서 **문서 필드 0개/투영 실패인데 eligible=true**. 최종 서류 게이트는 별도로 차단하므로 결함은 *자동 검토용 초안 후보와 진단 불일치*에 관한 것 | 투영 오류/0필드→초안 후보 차단, LawGraph 판정 저장 보존, 재생성 복구 |
 | C02 / P0 | 자동 생성 초안과 직원 문서 검토 경로 분리 | `automatic-review-draft.ts`는 `case_automatic_document_runs`·`artifacts`에 기록. `case-workflow-server.ts`의 편집·검수 `artifacts`는 `data.exportManifest.files`에서 읽는다. 자동초안 목록은 `legalAutomation.outcome.drafts`에 별도 노출될 수 있지만 동일 편집/검수 원장으로는 이어지지 않음 | 초안→동일 파일ID/해시 검수큐→문안 수정→재생성→직원/변호사 검토 |
 | C03 / P1 | 법원 A 사건이 법원 B의 법령변경 알림으로 막힘 | `case-legal-automation.ts`, `case-substitution-watch.ts`, `case-workflow-server.ts`에서 미확인 알림 **전역 COUNT**를 사용. 가상 DB10/11에서 관계없는 경보 1개가 전체 사건의 초안과 갈음평가에 전파 | 관할/시행일/법령/서식 단위 영향 정책으로 조건부 차단 |
-| C04 / P1 | 서류 충족/갈음 판단이 실행 경로마다 다른 입력 사용 | 직원 화면은 `buildCaseWorkflowView(data,{catalogVersion,pendingCourtPolicyChange,activeIntakeRunId,pageTypes,...})`, 법률 자동판단은 `buildCaseWorkflowView(data)` 호출. 선택 갈음·구 상담 차단이 자동/화면에서 달라질 수 있음 | 같은 가상 사건에서 양 경로 비교; 공통 사건별 판단 컨텍스트 강제 |
+| C04 / P1 | 서류 충족/갈음 판단이 실행 경로마다 다른 입력 사용 | 직원 화면은 `buildCaseWorkflowView(data,{catalogVersion,pendingCourtPolicyChange,activeIntakeRunId,pageTypes,...})`, 법률 자동판단과 **최종 export 경로**는 `buildCaseWorkflowView(data)`를 옵션 없이 호출. 선택 갈음·구 상담 차단이 자동/화면에서 달라질 수 있음 | 같은 가상 사건에서 양 경로 비교; 공통 사건별 판단 컨텍스트 강제 |
 | C05 / P1 | OCR 출처 사전검증 통과 후 계산 `missing/provisional`인데도 95개 AI 배치 호출 가능 | `sourceReadiness`는 원본·상담·정규화 완료를 검사하지만 법률 AI 시작 전에 계산 산식별 준비상태를 전부 검사하지 않는다. `finalizeReview`의 수치 게이트는 호출 후 실행 | 계산 필수 출력/근거 사전 검사→불필요한 법률 AI 호출 0회 |
 | C06 / P0 | LawGraph 95 위험 중 명시 피처 계약 미정의 88개 | `risk-catalog.json`의 기본 계약 갭; 승인 가능한 새 법률 증거 계약은 구현됐어도 88개 전문가 검토·승인은 별개. 자동 종결 차단을 유지해야 함 | 위험별 관할·시행일·source/계산·필수/OR 피처 전수 승인 |
 | C07 / P1 | 상담 revision과 active_run_id를 동시에 바꾸면 비활성화 종류가 별도로 기록되지 않음 | `0019`의 변경 이벤트는 `consultation_changed` 하나만 생성. 가상 DB07은 이를 재현. version은 증가하므로 무감지는 해결됐으나, 이벤트 종류별 구독자가 있다면 검증 필요 | `requirements_deactivated` 수신 의존 모듈 확인/원자적 중복 없는 이벤트 의미 정의 |
@@ -29,11 +29,11 @@
 | C09 / P1 | n8n/Sheets/Drive/NAS 운영 이관은 설계 수준 | `n8n-reference`는 신규 95 판단 단계가 실행되는 배포 워크플로라는 증거가 아니다. 사이트 중심 모듈이 현재 기준 | stage API·idempotency·사건 격리·권한·Outbox·오류 복구 구현 후 검증 |
 
 ## C. 가상입력 실행 결과
-- **43개 시나리오 관찰이 예상 동작과 일치**했다. 이는 합격 43건을 의미하지 않는다. 문제가 발생하는 입력에서 **오류를 실제로 관측한 사례도 포함**한다.
-- **함수 본문 추출 실행 19개**: 원본 증거 준비도 T01–T07(7), 최종 LawGraph의 현행성/승인 T08–T13(6), 자동초안 허용 T14–T19(6). TypeScript 타입 선언만 제거하고 현재 `main` 함수 본문을 가상 입력으로 호출함.
+- **46개 시나리오 관찰이 예상 동작과 일치**했다. 이는 합격 43건을 의미하지 않는다. 문제가 발생하는 입력에서 **오류를 실제로 관측한 사례도 포함**한다.
+- **함수 본문 추출 실행 22개**: 원본 증거 준비도 T01–T07(7), 최종 LawGraph의 현행성/승인 T08–T13(6), 자동초안 허용 T14–T19(6), 갈음 상담 실행판본의 조건부 복원 분기 X01–X03(3). TypeScript 타입 선언만 제거하고 현재 `main` 함수 본문을 가상 입력으로 호출함.
 - **실제 함수의 비원천 변경 검증 8개**: M01–M08. 법률 의견/문안/manifest만 변경하는 것은 허용, 금액/원본이나 revision 혼입은 명시적으로 차단됨.
 - **격리 SQLite 16개**: DB01–DB12는 이전 트리거, 상담 변경, 계산 Poll, 전역 법령 경보의 동작을 확인; DB13–DB16은 신규 `0021`에 의한 비원천 변경 제외와 실제 원천 변경 감지 보존을 확인.
-- **발견**: T15는 `documentFieldProjectionError` 미전달에 따른 미차단을 실제 순수 함수에서 관측. DB10/DB11은 관할 불일치 전역 알림을 실제 SQL 조건으로 재현. DB07은 상담 비활성화 이벤트 분기 불일치를 재현.
+- **발견**: T15는 `documentFieldProjectionError` 미전달에 따른 미차단을 실제 순수 함수에서 관측. DB10/DB11은 관할 불일치 전역 알림을 실제 SQL 조건으로 재현. DB07은 상담 비활성화 이벤트 분기 불일치를 재현. X01–X03에서는 **동일하게 오래된 갈음 승인**이 화면에서는 원본요청 복원, 자동판단·최종 export의 옵션 생략 시 복원 조건 미실행으로 갈릴 수 있음을 해당 코드 분기에서 관측.
 - **수정 상태**: 위 세 충돌은 **아직 코드 수정/운영 인증하지 않았다**. 미확정 값을 0/법적 충족으로 바꾸지 않는다.
 
 ## D. 다음 작업 시 검증 순서
