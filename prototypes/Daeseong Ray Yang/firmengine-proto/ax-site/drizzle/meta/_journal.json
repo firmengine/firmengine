@@ -162,6 +162,13 @@
       "when": 1793343600000,
       "tag": "0022_preapproval_court_correction_items",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1793347200000,
+      "tag": "0023_case_export_request_receipts",
+      "breakpoints": true
     }
   ]
 }
