@@ -646,6 +646,7 @@ export function assessCase(data: CaseData, rules: RuleSet,sourceIndex:CaseReadIn
 
 function issueTitle(code: string): string {
   if (code.startsWith("DEBT_PRIORITY_TREATMENT_REQUIRED:")) return "채권별 우선·재단 처리 분류";
+  if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "동일 OCR 원문 금액의 복수 계산행 중복 연결";
   if (code.startsWith("DEBT_SOURCE_TOTAL")) return "채권 원문 총액과 원금·이자 대조";
   if (code.startsWith("DEBT_SEPARATE_COST")) return "별도 채권 비용 확인";
   if (code.startsWith("DEBT_SOURCE_ROW_IDENTITY")) return "채무 원문 행 연결 확인";
@@ -678,6 +679,7 @@ function issueTitle(code: string): string {
   return "입력·산식 대조";
 }
 function issueExplanation(code: string): string {
+  if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "하나의 원문 금액 피처를 둘 이상의 계산 객체에 동일하게 연결했습니다. 두 행이 별개 소득·채무·재산이라는 원문 근거와 배분 기준 없이 중복 합산할 수 없습니다.";
   if(code.includes("DEBT_SOURCE_TOTAL_CONFLICT"))return "같은 채무 원문 행의 별도 총액이 계산한 원금+이자와 다릅니다. 비용이나 미분류 금액을 원금·이자에 자동 섞지 않고 행 총액·구성 근거를 대조합니다.";
   if(code.includes("DEBT_SOURCE_TOTAL_INVALID"))return "같은 행에 총액 필드가 있으나 단위·값·인용·검증 상태가 유효하지 않거나 상충합니다. 해당 슬롯을 누락으로 취급하지 않고 총액 계산을 보류합니다.";
   if(code.includes("DEBT_SOURCE_TOTAL_RECONCILIATION_UNAVAILABLE"))return "원문 총액은 관측되었지만 원금이나 이자가 계산 가능하지 않아 원문 합계와 대조할 수 없습니다.";
@@ -715,6 +717,7 @@ function issueExplanation(code: string): string {
   return "미확인 값·분류·목록 완전성을 0 또는 비해당으로 대체하지 않았습니다. 확인 항목: " + code.split(":")[0];
 }
 function issueAction(code: string): string {
+  if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "연결된 각 계산행의 문서 ID·페이지·원문 행·계약 또는 자산 식별자를 대조하고, 동일 행 복제는 제거하거나 별도 금액 배분을 문서 근거와 담당자 검토로 등록하세요.";
   if(code.includes("DEBT_SOURCE_TOTAL"))return "같은 원문 행의 현재 원금, 이자, 채권 총액, 별도 비용과 각각의 단위·기준일을 대조하고, 총액 근거를 확인하세요. 비용을 원금·이자로 재분류하지 마세요.";
   if(code.includes("DEBT_SEPARATE_COST"))return "별도 법률·추심·집행·기타 비용의 현재성·단위·채권자 청구와 원문 포함 범위를 검토하고, 채무 구성·분류를 별도로 결정하세요.";
   if(code.includes("DEBT_SOURCE_ROW_IDENTITY"))return "같은 증명서 행의 원금·이자·총액·비용을 현재 source row로 연결하거나, 연결이 불가능하면 수동 검토를 기록하세요.";
