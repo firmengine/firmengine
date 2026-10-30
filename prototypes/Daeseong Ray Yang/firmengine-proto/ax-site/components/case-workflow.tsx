@@ -77,6 +77,27 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
     finally { setLoading(false); }
   }, [caseId]);
   useEffect(() => { void load(); }, [load]);
+  // Only the lightweight derived status is polled. No model or calculation call
+  // is started by opening this view or leaving the screen visible.
+  useEffect(()=>{
+    let mounted=true;
+    const refresh=async()=>{
+      if(typeof document!=="undefined"&&document.hidden)return;
+      try{
+        const response=await fetch("/api/cases/"+encodeURIComponent(caseId)+"/data?view=automation",
+          {credentials:"same-origin",cache:"no-store"});
+        if(!response.ok)return;
+        const result=await response.json() as NonNullable<WorkflowResponse["legalAutomation"]>&{currentRevision?:number};
+        if(!mounted)return;
+        if(result.currentRevision!==undefined&&data?.revision!==undefined&&result.currentRevision!==data.revision){
+          void load();return;
+        }
+        setData(previous=>previous?{...previous,legalAutomation:result}:previous);
+      }catch{/* Network failure never mutates the legal review. */}
+    };
+    const timer=setInterval(()=>void refresh(),30_000);
+    return ()=>{mounted=false;clearInterval(timer);};
+  },[caseId,load,data?.revision]);
 
   const send = async (draft: CommandDraft, retry = false) => {
     if (!data || busy) return;
