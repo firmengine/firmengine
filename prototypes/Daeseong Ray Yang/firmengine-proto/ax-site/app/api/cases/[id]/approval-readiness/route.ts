@@ -3,14 +3,14 @@ import {db,errorResponse,getCase,HttpError,requireSameOrigin} from "../../../../
 import {createCaseReadIndex,currentFacts,factSourceLineageIssues} from "../../../../../lib/domain.ts";
 import {executeCaseNodes} from "../../../../../lib/case-execution.ts";
 import {caseRequirementMonitor} from "../../../../../lib/case-requirement-monitor.ts";
-import {listCaseLawgraphReview} from "../../../../../lib/case-lawgraph-store.ts";
+import {AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,listCaseLawgraphReview} from "../../../../../lib/case-lawgraph-store.ts";
 import {RISK_CATALOG} from "../../../../../lib/legal-rules.ts";
 import {legalEvidenceInventory} from "../../../../../lib/legal-evidence-criteria.ts";
 import {getCalculationSpecs} from "../../../../../lib/execution-catalog.ts";
 import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.ts";
 import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
 import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
-import {buildPreApprovalReadiness} from "../../../../../lib/approval-readiness.ts";
+import {buildPreApprovalReadiness,verifyStoredApprovalCalculationOutputs} from "../../../../../lib/approval-readiness.ts";
 
 export const runtime="edge";
 type Head={
@@ -41,7 +41,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   if(!before||before.caseRevision!==data.context.revision)
    throw new HttpError(409,"계산/원본 스냅샷이 바뀌었습니다.");
   const activeReference=referenceIdentity()?.sha256??referenceRelease.sha256;
-  const calculationCurrent=!!before.calculationRunId
+  let calculationCurrent=!!before.calculationRunId
    &&before.sourceDataVersion!==null
    &&before.calcCaseRevision===data.context.revision
    &&before.runCaseRevision===data.context.revision
@@ -56,6 +56,23 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     listCaseLawgraphReview(database,{caseId:id,limit:1})
   ]);
   const assessment=executeCaseNodes(data).assessment;
+  // Extra read-only integrity check: current persisted calculator feature values
+  // must reproduce the active deterministic engine on this exact case revision.
+  const calculationOutputNames=[...AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,"liquidationComparison"];
+  let calculationReplayIssues:string[]=[];
+  if(calculationCurrent&&before.calculationRunId){
+    try{
+      const marks=calculationOutputNames.map(()=>"?").join(",");
+      const stored=(await database.prepare("SELECT output_name AS outputName,value_json AS valueJson,status FROM case_calculation_features WHERE run_id=? AND output_name IN ("+marks+")")
+        .bind(before.calculationRunId,...calculationOutputNames).all<{outputName:string;valueJson:string;status:string}>()).results??[];
+      const verification=verifyStoredApprovalCalculationOutputs(assessment.calculation,stored,calculationOutputNames);
+      calculationCurrent=verification.current;
+      calculationReplayIssues=verification.issues;
+    }catch{
+      calculationCurrent=false;
+      calculationReplayIssues=["CALCULATION_FEATURE_STORE_UNAVAILABLE"];
+    }
+  }
   const sourceIndex=createCaseReadIndex(data),facts=currentFacts(data,sourceIndex);
   // Source state alone does not establish a valid original document or legal recognition.
   const acceptedFactIds=new Set(facts.filter(fact=>fact.state==="verified"&&fact.recognition==="accepted"
@@ -74,7 +91,8 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   });
   const failures=[
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
-    ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[])
+    ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[]),
+    ...calculationReplayIssues
   ];
   const graph=buildApprovalIssueGraph({
     risks:RISK_CATALOG,
