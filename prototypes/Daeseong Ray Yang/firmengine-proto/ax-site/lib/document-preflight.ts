@@ -37,7 +37,13 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     const issue={code:"FIELD_UNRESOLVED",token:field.token,message:reason,severity:(input.mode==="final"&&needsValue?"blocker":"warning") as "blocker"|"warning"};
     if(input.mode==="final"&&needsValue) blockers.push(issue); else warnings.push(issue);
   }
-  const numeric = (value:unknown):bigint|null => { const text=String(value??"").replace(/[\s,₩원]/g,""); return /^-?\d+$/.test(text)?BigInt(text):null; };
+  // Preserve grouping boundaries: punctuation embedded inside amount is not a valid integer.
+  const numeric = (value:unknown):bigint|null => {
+    if(typeof value!=="string")return null;
+    const s=value.normalize("NFKC").trim().replace(/^₩\s*/,"").replace(/\s*원$/,"").trim();
+    if(!/^-?(?:\d+|[1-9]\d{0,2}(?:,\d{3})+)$/.test(s))return null;
+    return BigInt(s.replaceAll(",",""));
+  };
   // D5103 is a month-by-month form view; rendering an annual total in one
   // month row is a monetary misstatement even when the total is numerically valid.
   // This is FirmEngine's own final-review integrity gate, not official portal certification.
@@ -50,7 +56,36 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
       }
     }
   }
+  // Internal form numeric integrity only; legal recognition and official form parity remain separate.
+  // Unlike an unresolved marker, a present but malformed value must not bypass arithmetic checks.
+  if(input.formCode==="D5110"||input.formCode==="D5111"){
+    for(const token of ["approved_monthly_income","recognized_living_cost",
+      "monthly_disposable_income","monthly_payment","monthly_trustee_fee",
+      "repayment_months","total_repayment","liquidation_value","present_value",
+      "disposal_payment_total","disposal_present_value"]){
+      const raw=input.bindings.scalars[token];
+      if(absent(raw))continue; // Existing requiredness gate handles missing/unknown separately.
+      if(numeric(raw)===null){
+        const issue:PreflightIssue={code:"PLAN_SCALAR_NUMERIC_INVALID",token,
+          message:"금액·회차 토큰에 원단위 정수가 아닌 값이 있어 독립 검토가 필요합니다.",
+          severity:input.mode==="final"?"blocker":"warning"};
+        if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+      }
+    }
+  }
   const creditorRows=input.bindings.rows.creditor??[];
+  // Validate explicit creditor-row money before any totals or legal-review projection.
+  if(input.formCode==="D5110"||input.formCode==="D5111"){
+    for(const [index,row]of creditorRows.entries()){
+      for(const field of ["principal","monthly_payment","total_payment"]){
+        const raw=row[field];
+        if(raw===undefined||raw===null||absent(raw)||numeric(raw)!==null)continue;
+        const issue:PreflightIssue={code:"PLAN_CREDITOR_ROW_NUMERIC_INVALID",token:`creditor.${field}[${index}]`,message:"채권자 원금·월변제액·총변제액에 정수원으로 해석할 수 없는 표시가 있습니다.",severity:input.mode==="final"?"blocker":"warning"};
+        if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+      }
+    }
+  }
+
   for(const [rowField,totalField] of [["principal","total_principal"],["interest","total_interest"]] as const) {
     const rowValues=creditorRows.map(row=>numeric(row[rowField])); const total=numeric(input.bindings.scalars[totalField]);
     if(rowValues.length&&total!==null&&rowValues.every(value=>value!==null)) {
