@@ -21,8 +21,7 @@ test("empty type is not silently certified as a matching primary proof",()=>{
 });
 function mockDB(input:{runId:string|null;catalogVersion:number|null;alertCount:number;pageTypes:{documentId:string;page:number;documentTypeId:string|null}[]}){
  return {prepare(sql:string){
-  let args:unknown[]=[];
-  const query={bind(...values:unknown[]){args=values;return query;},async all<T>(){
+  const query={bind(..._values:unknown[]){return query;},async all<T>(){
     if(sql.includes("document_instances"))return {results:input.pageTypes as T[]};
     throw new Error("unexpected query "+sql);
   },async first<T>(){
