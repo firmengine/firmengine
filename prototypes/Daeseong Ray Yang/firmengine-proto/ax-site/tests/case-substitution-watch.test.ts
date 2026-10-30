@@ -115,4 +115,41 @@ test("new policy alert triggers a conservative rescan without changing source da
   const after=(h.sql.prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id='case1'").get() as {version:number}).version;
   assert.equal(after,before);
  }finally{h.close();}
+});\n
+test("court policy alert arriving after policy read is rescheduled, not hidden until periodic scan",async()=>{
+ const h=harness();try{
+  let injected=false,alertAt:string|null=null;
+  const hooked={
+   ...h.database,
+   prepare(query:string){
+    const stmt=h.database.prepare(query);
+    // After currentCaseWorkflowContext has already read policy signals but
+    // before scanCaseSubstitutions persists its head watermark.
+    if(!query.includes("FROM case_substitution_request_states WHERE case_id=?"))return stmt;
+    const wrapped={
+     bind(...args:SQLInputValue[]){stmt.bind(...args);return wrapped;},
+     async all<T>(){
+      const result=await stmt.all<T>();
+      if(!injected){
+       injected=true;
+       await new Promise(resolve=>setTimeout(resolve,25));
+       alertAt=new Date().toISOString();
+       h.sql.prepare("INSERT INTO legal_monitor_alerts (id,created_at,acknowledged_at) VALUES (?,?,NULL)")
+        .run("alert-during-scan",alertAt);
+       await new Promise(resolve=>setTimeout(resolve,25));
+      }
+      return result;
+     }
+    };
+    return wrapped as unknown as D1PreparedStatement;
+   }
+  } as D1Database;
+  const first=await scanCaseSubstitutions(hooked,{caseId:"case1",source:h.dbSource});
+  assert.equal(first.status,"scanned");
+  assert.ok(injected&&alertAt);
+  const head=h.sql.prepare("SELECT scanned_at AS scannedAt FROM case_substitution_watch_heads WHERE case_id=?").get("case1") as {scannedAt:string};
+  assert.ok(alertAt>head.scannedAt,"an in-flight alert must be newer than the persisted policy-read watermark");
+  const followUp=await drainCaseSubstitutionWatch(h.database,{caseId:"case1",limit:1,source:h.dbSource});
+  assert.equal(followUp.scanned,1,"the alert must trigger an immediate eligible rescan on the next drain");
+ }finally{h.close();}
 });
