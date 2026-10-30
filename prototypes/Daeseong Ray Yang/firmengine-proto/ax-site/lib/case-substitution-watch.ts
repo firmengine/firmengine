@@ -5,12 +5,11 @@
  */
 import type { CaseData } from "./domain.ts";
 import { buildCaseWorkflowView } from "./case-workflow-view.ts";
-import {readCasePolicyAlerts} from "./case-policy-alert-scope.ts";
+import {currentCaseWorkflowContext} from "./case-workflow-context.ts";
 import type { SubstitutionView } from "./document-substitution.ts";
 
 export const CASE_SUBSTITUTION_WATCH_VERSION="case-substitution-watch/1" as const;
 type Snapshot={caseRevision:number;dataVersion:number};
-type DocumentTypeRow={documentId:string;page:number;documentTypeId:string|null};
 type StateRow={requirementId:string;decisionStatus:string;activeRequest:number;intakeRunId:string};
 type Source={getCase:(id:string)=>Promise<CaseData>;getCatalogVersion:()=>Promise<number>};
 const digest=async(value:unknown)=>{
@@ -23,41 +22,20 @@ async function snapshot(database:D1Database,caseId:string):Promise<Snapshot>{
  if(!result)throw new Error("CASE_SUBSTITUTION_CASE_NOT_FOUND");
  return result;
 }
-async function pageTypes(database:D1Database,caseId:string){
- const rows=(await database.prepare("SELECT source_document_id AS documentId,page,shared_document_type_id AS documentTypeId FROM document_instances WHERE case_id=?").bind(caseId).all<DocumentTypeRow>()).results;
- const grouped=new Map<string,Set<string>>();
- for(const row of rows){
-   const key=row.documentId+":"+row.page,values=grouped.get(key)??new Set<string>();
-   if(row.documentTypeId)values.add(row.documentTypeId);grouped.set(key,values);
- }
- return [...grouped].map(([key,values])=>({
-   documentId:key.slice(0,key.lastIndexOf(":")),
-   page:Number(key.slice(key.lastIndexOf(":")+1)),
-   documentTypeId:values.size===1?[...values][0]:null
- }));
-}
-async function policy(database:D1Database,courtId:string){
- const scoped=await readCasePolicyAlerts(database,courtId);
- return {pending:scoped.pending,latest:scoped.latest,signal:scoped.signal};
-}
-async function activeIntake(database:D1Database,caseId:string){
- const row=await database.prepare("SELECT h.active_run_id AS runId,r.catalog_version AS catalogVersion FROM consultation_heads AS h LEFT JOIN consultation_runs AS r ON r.id=h.active_run_id AND r.status='complete' WHERE h.case_id=?").bind(caseId).first<{runId:string|null;catalogVersion:number|null}>();
- return row??{runId:null,catalogVersion:null};
-}
 export async function scanCaseSubstitutions(database:D1Database,input:{caseId:string;source:Source}){
  const {caseId}=input;
  if(typeof caseId!=="string"||!caseId.trim()||caseId.length>300)throw new Error("INVALID_CASE_SUBSTITUTION_CASE");
  const before=await snapshot(database,caseId);
- const [data,catalogVersion,typed,active]=await Promise.all([
-   input.source.getCase(caseId),input.source.getCatalogVersion(),pageTypes(database,caseId),activeIntake(database,caseId)
+ const [data,catalogVersion]=await Promise.all([
+   input.source.getCase(caseId),input.source.getCatalogVersion()
  ]);
- const courtPolicy=await policy(database,String(data.context.courtId??""));
  if(data.context.id!==caseId||data.context.revision!==before.caseRevision) return {caseId,status:"superseded" as const};
- const projected=await buildCaseWorkflowView(data,{
-   catalogVersion,pendingCourtPolicyChange:courtPolicy.pending,pageTypes:typed,
-   latestCourtPolicyAlertAt:courtPolicy.latest,activeIntakeRunId:active.runId,
-   activeIntakeCatalogVersion:active.catalogVersion
- });
+ // The watcher uses exactly the same consultation run, page type and legal
+ // alert context as the staff UI, legal AI and final export. No second, local
+ // implementation can silently suppress an older substitute.
+ const currentContext=await currentCaseWorkflowContext(database,caseId,catalogVersion,
+   String(data.context.courtId??""));
+ const projected=await buildCaseWorkflowView(data,currentContext);
  const requirementIds=new Set((data.workflowState?.requirements??[]).map(r=>r.requirementId));
  if(projected.requirementStates.length!==requirementIds.size||projected.requirementStates.some(item=>!requirementIds.has(item.requirementId)))throw new Error("CASE_SUBSTITUTION_PROJECTION_INCOMPLETE");
  const previous=(await database.prepare("SELECT requirement_id AS requirementId,decision_status AS decisionStatus,active_request AS activeRequest,intake_run_id AS intakeRunId FROM case_substitution_request_states WHERE case_id=?").bind(caseId).all<StateRow>()).results;
@@ -76,7 +54,7 @@ export async function scanCaseSubstitutions(database:D1Database,input:{caseId:st
    const status=requirement.retired?"original_required":view.status;
    const reasons=requirement.retired?["RETIRED_BY_HUMAN"]:view.reasonCodes;
    const fingerprint=await digest({v:CASE_SUBSTITUTION_WATCH_VERSION,caseId,caseRevision:before.caseRevision,dataVersion:before.dataVersion,
-     catalogVersion,policySignal:courtPolicy.signal,requirementId:state.requirementId,
+     catalogVersion,policySignal:currentContext.policySignal,requirementId:state.requirementId,
      intakeRunId:requirement.intakeRunId,originalId:view.originalDocumentTypeId,status,activeRequest,reasons,
      proofs:view.supportDocumentIds,missingFields:view.missingFields});
    const old=prior.get(state.requirementId);
@@ -105,7 +83,7 @@ export async function scanCaseSubstitutions(database:D1Database,input:{caseId:st
  prepared.push(database.prepare(`INSERT INTO case_substitution_watch_heads(case_id,case_revision,source_data_version,catalog_version,policy_signal,active_requirement_ids_json,next_scan_at,scanned_at)
    SELECT ?,?,?,?,?,?,NULL,? WHERE ${caseGuard}
    ON CONFLICT(case_id) DO UPDATE SET case_revision=excluded.case_revision,source_data_version=excluded.source_data_version,catalog_version=excluded.catalog_version,policy_signal=excluded.policy_signal,active_requirement_ids_json=excluded.active_requirement_ids_json,scanned_at=excluded.scanned_at`)
-   .bind(caseId,before.caseRevision,before.dataVersion,catalogVersion,courtPolicy.signal,JSON.stringify(sorted),now,caseId,before.caseRevision,before.dataVersion));
+   .bind(caseId,before.caseRevision,before.dataVersion,catalogVersion,currentContext.policySignal,JSON.stringify(sorted),now,caseId,before.caseRevision,before.dataVersion));
  await database.batch(prepared);
  const current=await snapshot(database,caseId);
  if(current.caseRevision!==before.caseRevision||current.dataVersion!==before.dataVersion)return {caseId,status:"superseded" as const};
