@@ -76,6 +76,7 @@ export function automaticDraftHandoffDecision(input:{
     &&input.existingMode==="draft"
     &&input.existingCurrentFiles.length===input.artifacts.length
     &&input.artifacts.every(a=>input.existingCurrentFiles.some(f=>f.id===a.id&&f.hash===a.hash));
+  if(!linked&&input.existingMode==="final")errors.push("AUTODRAFT_PREVIOUS_FINAL_MANIFEST");
   if(!linked&&input.existingCurrentFiles.length)errors.push("AUTODRAFT_EXISTING_CURRENT_DOCUMENTS");
   if(!linked&&input.pendingEdits)errors.push("AUTODRAFT_UNAPPLIED_DOCUMENT_EDITS");
   return {eligible:errors.length===0,alreadyLinked:linked&&errors.length===0,
