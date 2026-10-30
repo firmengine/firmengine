@@ -23,7 +23,7 @@
 - **신규** `lib/preapproval-correction-item-store.ts`: 실제 `correction_requested` 사건 이벤트와 *동일 사건의 활성 법원 원본 파일 SHA*, 페이지, 직원이 확인한 원문 문구, 항목번호, 필요한 canonical 필드/관리서류 목록, 필요기간, 근거를 함께 보존한다.
 - 보정기한은 **그 법원 원본 PDF에 연결된 현재 `verified+accepted` Fact**를 명시적으로 지정할 때만 입력 허용. 입력 없는 기한은 미확정이며 임의 날짜를 생성하지 않는다.
 - 보완답변·접수증은 동일 사건의 별도 `submitted/received/amended` 이벤트를 명시적으로 결합해야만 증거 **후보**로 인정한다. 원본/보정기한·첨부서류·응답 이벤트 삭제/변경/판본 불일치 시 이전 항목은 `stale_source_or_invalid_item`으로 다시 보류한다.
-- **API**: `GET /api/cases/:id/correction-items`, `POST /api/cases/:id/correction-items` (`action=upsert_correction_item`, `draft.expectedCaseRevision`, `draft.expectedHeadId`). POST는 인증된 `caseworker_review` 권한 필수, 활성 기준정보 서류 ID만 입력, 원본·계산·법적 인정은 수정하지 않음.
+- **API**: `GET /api/cases/:id/correction-items`, `POST /api/cases/:id/correction-items` (`action=upsert_correction_item`, `draft.expectedCaseRevision`, `draft.expectedSourceDataVersion`, `draft.expectedHeadId`). POST는 인증된 `caseworker_review` 권한 필수, 활성 기준정보 서류 ID만 입력, 원본·계산·법적 인정은 수정하지 않음.
 - **진단 연결:** `approval-readiness`의 `correctionItems`에 실제 법원 보정 이벤트 중 항목화되지 않은 목록과 오래된 항목/기한·답변 연결 여부 표시. 신규 DB 마이그레이션 미반영 시 `unavailable_fail_closed`; 과거 일반 법률 검토 경로는 유지.
 - **사람/법원 경계:** 어느 상태에서도 `courtOrderSatisfied=true`를 자동 기록하지 않음. 첨부자료가 있다는 것과 법원이 해당 보정명령 이행을 인정한 것은 다름.
 - **테스트 추가:** `tests/preapproval-correction-item-store.test.ts`에 Node `node:sqlite` in-memory D1 스타일 테스트(append-only, 버전 CAS, 출처해시, 날짜, 응답/접수증, stale, 비인간 actor 차단). **GitHub 전체 실행은 아직 미검증.**
