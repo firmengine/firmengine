@@ -133,6 +133,8 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   requiredCalculationFields:needed,allowHumanReviewPendingForDraft:true,
   explicitFailures:[...(unresolvedRequired.length?["REQUIRED_DOCUMENTS_UNRESOLVED"]:[]),
     ...(projectionBlockers?["SOURCE_PROJECTION_BLOCKED"]:[]),
+    ...(documentFieldProjectionError?["LAWGRAPH_FORM_FIELD_PROJECTION_FAILED"]:[]),
+    ...(!documentFields.length?["LAWGRAPH_FORM_FIELD_PROJECTION_EMPTY"]:[]),
     ...materialGaps]});
  const report=summarizeAutomaticLegalReview({
   checks:collected.checks,expectedCount:checkIds.length,draftEligibility:eligible,
@@ -157,6 +159,18 @@ async function processDraft(database:D1Database,job:Job,lease:string,service:Leg
  const head=await database.prepare("SELECT review_run_id AS runId,data_version AS dataVersion,case_revision AS caseRevision,calculation_run_id AS calculationRunId FROM case_legal_review_heads WHERE case_id=?")
   .bind(job.caseId).first<{runId:string;dataVersion:number;caseRevision:number;calculationRunId:string}>();
  if(!head||head.runId!==job.legalReviewRunId||head.dataVersion!==job.dataVersion||head.caseRevision!==job.caseRevision||head.calculationRunId!==job.calculationRunId)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
+ // Recheck stored form-field coverage for pre-fix draft_pending jobs as well.
+ // Keep useful legal findings, but never run the writer for an empty or failed projection.
+ const fields=await database.prepare("SELECT COUNT(*) AS n FROM case_document_field_values WHERE review_run_id=?")
+  .bind(job.legalReviewRunId).first<{n:number}>();
+ const previous=decode<Record<string,unknown>>(job.outcomeJson,{});
+ if(!fields?.n||previous.documentFieldProjectionError){
+  const blockers=[...new Set([...(Array.isArray(previous.blockers)?previous.blockers:[]),"LAWGRAPH_FORM_FIELD_PROJECTION_REQUIRED"])];
+  await transition(database,job,lease,"review_required",{outcome:{...previous,draftCandidate:false,
+    disposition:"review_required",documentFieldCount:fields?.n??0,blockers,
+    humanReviewRequired:true,canFinalize:false,courtApprovalInferred:false}});
+  return {caseId:job.caseId,status:"review_required",blockers};
+ }
  const generated=await service.generateDraft({caseId:job.caseId,dataVersion:job.dataVersion,
   caseRevision:job.caseRevision,calculationRunId:job.calculationRunId,legalReviewRunId:job.legalReviewRunId,jobId:job.id,leaseToken:lease});
  await assertCurrent(database,job);
