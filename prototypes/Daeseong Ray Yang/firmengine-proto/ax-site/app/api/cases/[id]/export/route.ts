@@ -8,6 +8,7 @@ import { jsonResponse } from "../../../../../lib/json-response";
 import { finalizeDocumentWriterReceipt, prepareDocumentWrite } from "../../../../../lib/document-writer";
 import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
+import { inspectExportRequestReplay, parseExportRequestId } from "../../../../../lib/export-request-replay.ts";
 import {buildCurrentCaseWorkflowView} from "../../../../../lib/case-workflow-context.ts";
 import { finalWorkflowBlockers } from "../../../../../lib/document-workflow-gate.ts";
 import { getIntakeCatalog } from "../../../../../lib/intake-store.ts";
@@ -52,6 +53,8 @@ async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getC
 }
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),data=await getCase(id),extras=await caseExtras(data);
+  let requestId:string|null;
+  try{requestId=parseExportRequestId(body.requestId);}catch{throw new HttpError(400,"문서 생성 요청 식별자가 올바르지 않습니다.");}
   const mode=body.mode==="final"?"final":"draft";
   let finalLegalReceipt:Awaited<ReturnType<typeof inspectCurrentFinalLawgraph>>|null=null;
   if(mode==="final"&&data.workflowState){
@@ -77,6 +80,23 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       if(!legal.readyForFinalReviewCopy)throw new HttpError(422,"현재 법률 검토 95개 항목 또는 법률 담당자 승인 조건을 충족하지 못했습니다: "+legal.blockers.slice(0,6).join(", "));
       finalLegalReceipt=legal;
     }
+  }
+  // An HTTP acknowledgement or a post-commit audit event can fail AFTER D1
+  // has made a manifest current. Reuse only the exact, still-current request.
+  const sourceDataVersion=(await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(id).first<{version:number}>())?.version??null;
+  const replay=inspectExportRequestReplay({requestId,manifest:data.exportManifest,
+    caseRevision:data.context.revision,mode,sourceDataVersion,referenceSha256:extras.referenceSnapshot?.sha256});
+  if(replay==="conflict")throw new HttpError(409,"이 문서 생성 요청의 원본·서식·법률 기준 또는 생성본이 변경되었습니다. 사건을 다시 확인한 뒤 새 요청으로 생성하세요.");
+  if(replay==="reuse"){
+    // Do not return success for manifest rows whose SQL proof or R2 bytes are missing.
+    for(const file of data.exportManifest!.files){
+      const row=await db().prepare("SELECT hash,object_key AS objectKey FROM artifacts WHERE case_id=? AND id=?")
+        .bind(id,file.id).first<{hash:string;objectKey:string}>();
+      if(!row||row.hash!==file.hash||!row.objectKey.startsWith(`cases/${id}/artifacts/`)||!(await bucket().head(row.objectKey)))
+        throw new HttpError(409,"이전 생성본의 파일 저장 상태를 확인할 수 없습니다. 기존 생성물을 점검한 뒤 다시 작성하세요.");
+    }
+    return jsonResponse(await caseResponse(data),request,{headers:{"Cache-Control":"no-store"}});
   }
   let prepared;
   try{prepared=await prepareDocumentWrite({data,evaluation:extras.derivedEvaluation,processingComplete:extras.processingReadiness.complete,mode,requiredKinds:requiredKindsForCase(data),now:now()});}
@@ -121,10 +141,16 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       // Use a fresh pre-mutation CAS snapshot, never the already-mutated
       // rendering object as both "before" and "after".
       const current=await getCase(id);
+      if(requestId){
+        const latestVersion=(await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+          .bind(id).first<{version:number}>())?.version??null;
+        if(latestVersion!==sourceDataVersion)throw new HttpError(409,"문서 생성 중 원문 데이터 버전이 변경되었습니다. 새 자료를 검토한 뒤 다시 작성하세요.");
+      }
       if(await snapshotSha256(current)!==await snapshotSha256(data))
         throw new HttpError(409,"문서 작성 중 사건 상태가 변경되었습니다. 현재 판본으로 다시 생성하세요.");
       const next=structuredClone(current);
-      next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),documentWriter:writerReceipt} as typeof next.exportManifest;
+      next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),
+        ...(requestId?{exportRequestId:requestId,sourceDataVersionAtExport:sourceDataVersion}:{}),documentWriter:writerReceipt} as typeof next.exportManifest;
       await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only"});
       savedCase=next;
     },
@@ -132,6 +158,6 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     deleteObject:key=>bucket().delete(key),
     onCleanupFailure:report=>event(id,"export.cleanup_failed",{artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,failureCount:report.cleanupErrors.length}),
   });
-  await event(id,"document_writer.prepared",writerReceipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt});
+  await event(id,"document_writer.prepared",writerReceipt);await event(id,"export.generated",{revision:data.context.revision,mode,requestId,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt});
   return jsonResponse(await caseResponse(savedCase??data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}
