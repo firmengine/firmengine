@@ -147,7 +147,7 @@
 - [ ] **A1-DOC-015** 서류 검수·문안 편집·재생성 이력과 재확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 결함 재현 / PR #12 수정 제안 / Word·D1 E2E 미검증** **A1 3차 추가 확인**: 문안 편집 이력 불변성 관련 기존 [Draft PR #12](https://github.com/firmengine/firmengine/pull/12)는 여전히 미병합. source/main 정적 확인만 추가했으며 Word·Node·D1 E2E 미인증. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
 - [ ] **A1-DOC-016** 직원 검수만으로 최종 변호사/법원 상태 승격 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 5차 부분검증**: 동일 actor가 직원검수+변호사검수를 연속 등록할 수 있고 과거 같은 actor도 current로 노출되는 P0 후보를 실제 함수 V8에서 재현(7조건 중 2 결함). [Draft PR #28](https://github.com/firmengine/firmengine/pull/28) 수정 본문 V8 7/7, 신규 Node 회귀 3건 작성·미실행. [5차 영수증](release-audit-runs/A1/20261030-round05-independent-review-court-status-schema.md). 전체 Node/Word/D1/변호사 검수 미인증.
 - [ ] **A1-DOC-017** 법원 실제 보정명령과 예상 보완요청 UI 구분. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-DOC-018** 네트워크 단절/새로고침 이후 작업 중복/유실 방지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DOC-018** 네트워크 단절/새로고침 이후 작업 중복/유실 방지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 7차 부분검증**: `components/case-workflow.tsx`의 `send` 원본 명령ID 생성 구간 V8에서 같은 사건·같은 명령을 새 마운트 뒤 재작성하니 commandId가 `synthetic-cmd-1`→`synthetic-cmd-2`로 바뀜. GET 명령 영수증 조회 API는 있으나 UI의 pendingRef/useState는 새로고침으로 소실. **실제 서버 이중 커밋은 미검증**. UI 코드가 Draft PR #32와 겹치므로 직접 덮어쓰지 않고 재방문 receipt-only 복구 과제로 남김. [7차 영수증](release-audit-runs/A1/20261030-round07-correction-read-auth-reload-retry.md).
 
 ### A1 계산사무장 (18개)
 
@@ -188,7 +188,7 @@
 - [ ] **A1-LAW-014** 50 법률규칙·46 예외의 미적용·상충 상태. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-015** 직원 제안과 독립 변호사 승인의 서명 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 결함 재현 / PR #12 수정 제안 / 최종 인수 미검증**
 - [ ] **A1-LAW-016** 새 원문/계산/기준정보 후 기존 승인 무효화. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 3차 부분검증**: `business.net.adopt → touchCase → resetReviews`는 소득기간·변제·서식 검토를 초기화하는 코드 존재. 실제 법률 95검토 재실행·D1 계산 head/서식 E2E는 미인증. 증빙철회 시 typed 채무승인이 남는 별도 결함은 [Draft PR #20](https://github.com/firmengine/firmengine/pull/20)에서 제안. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
-- [ ] **A1-LAW-017** 실제 보정명령의 원본·기한·접수증 실증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-LAW-017** 실제 보정명령의 원본·기한·접수증 실증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 7차 P1 결함 재현**: 법원 보정항목 GET에서 사건별 역할 검사 없이 `getCase/readCourtCorrectionItems` 진입, 원본 GET V8 무권한 요청이 200·사건 조회 1회. [수정 Draft PR #36](https://github.com/firmengine/firmengine/pull/36): 읽기 전에 인간 신원과 사건별 case_editor/caseworker_review/lawyer_review 허용. 수정본 실제 GET 함수 V8 **7/7** 기대 일치, 새 회귀 테스트 6개 **작성만**, 전체 Node/D1/R2·법원 서식·변호사 검증 미실행. 외부 익명 노출 입증 아님. [7차 영수증](release-audit-runs/A1/20261030-round07-correction-read-auth-reload-retry.md).
 - [ ] **A1-LAW-018** 최종 서식 생성과 법원 제출·인가를 별개로 표시. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 5차 P0 후보**: 활성 문서가 단지 통장증빙이어도 임의 courtReference로 `approved`·`correction_requested` 기록이 `validateProcedureEvent`에서 통과(V8 2 부정사례). `approval-readiness`가 승인 이벤트를 out_of_scope로 처리함. 법원 원본·종류·접수증빙 검증 계약 공백: [이슈 #11 기록](https://github.com/firmengine/firmengine/issues/11#issuecomment-6517859973). 규칙/권한 변경은 별도 전문가 설계까지 보류. [5차 영수증](release-audit-runs/A1/20261030-round05-independent-review-court-status-schema.md).
 
 ### A1 데이터담당자 (18개)
@@ -210,7 +210,7 @@
 - [ ] **A1-DATA-015** 서식 token별 원문 ID·formula·runId 추적. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-016** DB 타입/Drizzle와 파일 마이그레이션 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 5차 부분검증**: `db/schema.ts`와 0017~0022 migration 정적 파싱, 신규 5개 테이블 열 이름 20/20·7/7·11/11·12/12·7/7 일치. journal 0000~0022 23개 일치. D1 실제 적용, FK/트리거/롤백/전체 테스트는 미인증. [5차 영수증](release-audit-runs/A1/20261030-round05-independent-review-court-status-schema.md).
 - [ ] **A1-DATA-017** 서류 재분류·기준 변경의 하위 소비처 재투영. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 3차 신규 P0 결함**: 문서 페이지 evidence→administrative 전환 시 원본 fact는 retracted/currentFacts=0·매칭 stale이나 typed 채무 `legalReview=accepted`·구 `factIds`가 남는 것을 원본 코드 본문 V8 합성으로 재현. **[Draft PR #20](https://github.com/firmengine/firmengine/pull/20)**에서 문서·페이지 철회 재검토 큐/typed 인정 무효화. 수정 helper 격리 V8 **6/6**, 새 Node 회귀 7개는 작성만·실행하지 않음. CI/D1/R2/변호사 미인증. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
-- [ ] **A1-DATA-018** 실제 사건 데이터와 합성 회귀 자료 격리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DATA-018** 실제 사건 데이터와 합성 회귀 자료 격리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 7차 부분검증**: `preapproval-correction-item-store.ts` 첫 쓰기 가드에서 structuredTest/referenceTest/evaluationClone의 합성 3조건이 모두 `CORRECTION_SYNTHETIC_CASE_WRITE_FORBIDDEN`으로 차단되고 일반 사건은 후속 검증으로 진행함을 실제 코드 가드 V8 **4/4** 확인. 다른 API·DB/운영 E2E는 미검증, [ ] 유지. [7차 영수증](release-audit-runs/A1/20261030-round07-correction-read-auth-reload-retry.md).
 
 ### A1 AX담당자 (18개)
 
