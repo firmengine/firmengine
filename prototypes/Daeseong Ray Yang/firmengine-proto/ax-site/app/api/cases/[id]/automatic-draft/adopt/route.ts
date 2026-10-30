@@ -51,7 +51,17 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const clause=files.map(()=>"?").join(",");
   const stored=(await database.prepare(`SELECT id,case_id AS caseId,revision,name,kind,object_key AS objectKey,hash,mime FROM artifacts WHERE case_id=? AND id IN (${clause})`)
    .bind(caseId,...files.map(f=>f.id)).all<AutoDraftStorageArtifact>()).results??[];
-  const sourceHash=await sha256(new TextEncoder().encode(JSON.stringify(data)));
+  const active=data.exportManifest?.files.filter(f=>f.status==="current")??[];
+  // An already adopted draft changes exportManifest (not evidence). The original
+  // writer receipt still identifies the source snapshot that was admitted.
+  // Accept only exactly the same original IDs/hashes and receipt identity.
+  const sameActive=data.exportManifest?.mode==="draft"&&active.length>0&&
+    active.length===files.length&&active.every(f=>files.some(a=>
+      a.id===f.id&&a.kind===f.kind&&a.hash===f.hash))&&
+    data.exportManifest?.documentWriter?.inputSha256===receipt.writerReceipt?.inputSha256&&
+    data.exportManifest?.documentWriter?.mode==="draft";
+  const sourceHash=sameActive?receipt.writerReceipt.inputSha256:
+    await sha256(new TextEncoder().encode(JSON.stringify(data)));
   let validated:ReturnType<typeof validateAutoDraftHandoff>;
   try{validated=validateAutoDraftHandoff({run,receipt,stored,current:{
      caseId,caseRevision:data.context.revision,dataVersion:heads.dataVersion,
@@ -60,23 +70,23 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   }});}catch(error){
    throw new HttpError(409,error instanceof Error?error.message:"AUTO_DRAFT_REVIEW_INTEGRITY_FAILED");
   }
-  const currentFiles=data.exportManifest?.files.filter(f=>f.status==="current")??[];
-  if(currentFiles.length){
-   const same=data.exportManifest?.mode==="draft"&&
-     currentFiles.length===validated.artifacts.length&&
-     currentFiles.every(f=>validated.artifacts.some(a=>a.id===f.id&&a.kind===f.kind&&a.hash===f.hash));
-   if(same)return Response.json({adopted:true,alreadyAdopted:true,mode:"draft",courtApprovalInferred:false,
-       documentRunId:run.id,files:validated.artifacts.map(a=>({id:a.id,kind:a.kind,hash:a.hash}))},
-       {headers:{"Cache-Control":"no-store"}});
-   throw new HttpError(409,"기존 검토 중인 생성물이 있습니다. 현재 문서를 처리한 뒤 새 검토본을 가져오세요.");
-  }
-  // HEAD presence is checked without re-downloading or duplicating the stored
-  // original artifact bytes. Their IDs and SHA are matched to the D1 ledger.
+  // HEAD checks precede both the initial and idempotent adoption path. The
+  // worker's originally generated R2 bytes are never duplicated or replaced.
   for(const file of validated.artifacts)if(!await bucket().head(file.objectKey))
     throw new HttpError(409,"자동 생성 파일의 원본 저장소 내용이 누락되었습니다.");
+  if(active.length){
+   if(sameActive)return Response.json({adopted:true,alreadyAdopted:true,mode:"draft",
+       courtApprovalInferred:false,canFinalize:false,readyForElectronicFiling:false,
+       documentRunId:run.id,files:validated.artifacts.map(a=>({id:a.id,kind:a.kind,hash:a.hash}))},
+       {headers:{"Cache-Control":"no-store"});
+   throw new HttpError(409,"기존 검토 중인 생성물이 있습니다. 현재 문서를 처리한 뒤 새 검토본을 가져오세요.");
+  }
   const latestRoles=await rolesForActor(user,caseId);
   if(!latestRoles.includes("case_editor")||!latestRoles.includes("caseworker_review"))
     throw new HttpError(403,"검토 권한이 변경되어 작업을 중단했습니다.");
+  // Another staff member could approve a new reference while storage is read.
+  if((await loadReferenceSnapshot(database)).sha256!==snapshot.sha256)
+    throw new HttpError(409,"자동초안 연결 중 기준정보 판본이 변경되었습니다.");
   const next=structuredClone(data);
   const manifestFiles=validated.artifacts.map(file=>({
     id:file.id,name:file.name,kind:file.kind as ExportManifest["files"][number]["kind"],
