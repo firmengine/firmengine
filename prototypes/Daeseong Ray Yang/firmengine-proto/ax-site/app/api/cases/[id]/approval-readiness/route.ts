@@ -1,10 +1,13 @@
 /** Read-only pre-approval gap diagnostic. Does not change the existing legal or draft pipeline. */
 import {db,errorResponse,getCase,HttpError,requireSameOrigin} from "../../../../../lib/server-store.ts";
-import {currentFacts} from "../../../../../lib/domain.ts";
+import {createCaseReadIndex,currentFacts,factSourceLineageIssues} from "../../../../../lib/domain.ts";
 import {executeCaseNodes} from "../../../../../lib/case-execution.ts";
 import {caseRequirementMonitor} from "../../../../../lib/case-requirement-monitor.ts";
 import {listCaseLawgraphReview} from "../../../../../lib/case-lawgraph-store.ts";
 import {RISK_CATALOG} from "../../../../../lib/legal-rules.ts";
+import {legalEvidenceInventory} from "../../../../../lib/legal-evidence-criteria.ts";
+import {getCalculationSpecs} from "../../../../../lib/execution-catalog.ts";
+import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.ts";
 import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
 import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
 import {buildPreApprovalReadiness} from "../../../../../lib/approval-readiness.ts";
@@ -53,11 +56,15 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     listCaseLawgraphReview(database,{caseId:id,limit:1})
   ]);
   const assessment=executeCaseNodes(data).assessment;
+  const sourceIndex=createCaseReadIndex(data),facts=currentFacts(data,sourceIndex);
+  // Source state alone does not establish a valid original document or legal recognition.
+  const acceptedFactIds=new Set(facts.filter(fact=>fact.state==="verified"&&fact.recognition==="accepted"
+    &&!factSourceLineageIssues(data,[fact.id],sourceIndex).length).map(fact=>fact.id));
   const after=await database.prepare(headSql).bind(id).first<Head>();
   if(!after||JSON.stringify(after)!==JSON.stringify(before))
    throw new HttpError(409,"검토 중 원본 또는 계산판본이 변경되었습니다. 재조회하세요.");
   const output=buildPreApprovalReadiness({
-    data,facts:currentFacts(data),assessment,
+    data,facts,assessment,
     sourceHead:{caseRevision:data.context.revision,sourceDataVersion:before.sourceDataVersion,
       calculationRunId:before.calculationRunId,calculationCurrent,referenceSha256:activeReference},
     monitor:requirements.status==="fulfilled"?requirements.value:null,
@@ -69,6 +76,13 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
     ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[])
   ];
-  return Response.json({...output,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+  const graph=buildApprovalIssueGraph({
+    risks:RISK_CATALOG,
+    contracts:legalEvidenceInventory(data.context.courtId,data.context.applicationDate),
+    facts,sourceValidAcceptedFactIds:acceptedFactIds,
+    calculation:assessment.calculation,calculations:getCalculationSpecs(),
+    legalCurrent:output.legalReview.current,legalChecks:output.legalReview.findings,
+  });
+  return Response.json({...output,judgmentGraph:graph,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
 }
