@@ -2,6 +2,7 @@
 
 import {useState,type FormEvent} from "react";
 import type {CaseCommand} from "@/lib/case-command-contract";
+import type {CommandSubmitOutcome} from "@/lib/command-submit-outcome";
 type CommandDraft=Omit<CaseCommand,"commandId"|"payloadVersion"|"expectedRevision"|"expectedStateFingerprint">;
 export interface ExportReviewView{
  mode:"draft"|"final"|null;fingerprint:string|null;issues:string[];
@@ -14,7 +15,7 @@ export interface ExportReviewView{
 export default function DocumentReviewFinalization(props:{
  caseId:string;review?:ExportReviewView;roles:string[];
  finalReady:boolean;pendingEdits:boolean;busy:boolean;
- onCommand:(draft:CommandDraft)=>void|Promise<void>;onRefresh:()=>Promise<void>;
+ onCommand:(draft:CommandDraft)=>Promise<CommandSubmitOutcome>;onRefresh:()=>Promise<void>;
 }){
  const [busy,setBusy]=useState(false),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [approvalReason,setApprovalReason]=useState("");
@@ -38,15 +39,27 @@ export default function DocumentReviewFinalization(props:{
   }catch(cause){setError(cause instanceof Error?cause.message:"문서 저장 결과가 불분명합니다. 최신 목록을 확인하세요.");}
   finally{setBusy(false);}
  };
- const approve=(e:FormEvent<HTMLFormElement>)=>{
+ const approve=async(e:FormEvent<HTMLFormElement>)=>{
   e.preventDefault();
   if(blocked||!review?.fingerprint||!approvalReason.trim())return;
   if(role==="lawyer"&&!review.reviews.caseworker)return;
-  void Promise.resolve(props.onCommand({
-   commandType:"document.review",target:{},patch:{role,fingerprint:review.fingerprint},
-   reason:approvalReason.trim()
-  }));
-  setApprovalReason("");
+  setBusy(true);setError("");setMessage("");
+  try{
+   const outcome=await props.onCommand({
+    commandType:"document.review",target:{},patch:{role,fingerprint:review.fingerprint},
+    reason:approvalReason.trim()
+   });
+   if(outcome!=="committed"){
+    setError(outcome==="rejected"
+     ?"검수 저장이 거부되었습니다. 사유를 확인하고 현재 생성물의 승인 상태를 다시 검토하세요."
+     :"저장 결과를 확정하지 못했습니다. 사유를 유지했습니다. 기존 명령 식별자로 다시 확인하세요.");
+    return;
+   }
+   setApprovalReason("");
+   setMessage("검수 명령 저장을 확인했습니다. 실제 법률 승인과 최종 서식 적합성은 별도 확인 사항입니다.");
+  }catch(cause){
+   setError(cause instanceof Error?cause.message:"검수 명령 저장 결과가 불분명합니다. 같은 명령으로 확인하세요.");
+  }finally{setBusy(false);}
  };
  const finalExists=review?.mode==="final"&&!review.issues.length&&!!review.fingerprint;
  return <section className="panel" aria-label="서류 재생성 및 사람 검수">
@@ -60,7 +73,7 @@ export default function DocumentReviewFinalization(props:{
    </div>}
    {finalExists&&<div className="workflow-form">
      <p>담당자 검수: {review?.reviews.caseworker?"완료":"대기"} · 변호사 검수: {review?.reviews.lawyer?"완료":"대기"}. 생성물을 변경하면 이 기록은 자동 무효화됩니다.</p>
-     <form className="workflow-form" onSubmit={approve}>
+     <form className="workflow-form" onSubmit={event=>void approve(event)}>
        <label className="field"><span>검수 역할</span><select value={role} onChange={e=>setRole(e.target.value as "caseworker"|"lawyer")}>
          {canStaff&&<option value="caseworker">담당자 검수</option>}
          {canLawyer&&<option value="lawyer">변호사 검수</option>}
