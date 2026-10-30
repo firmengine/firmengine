@@ -11,7 +11,7 @@ export interface CorrectionItemDraft {
  requiredDocumentTypeIds:string[];requiredPeriod:string|null;
  deadline:{date:string;sourceFactId:string}|null;
  responseEventId:string|null;responseDocumentIds:string[];receiptDocumentId:string|null;
- expectedCaseRevision:number;expectedHeadId:string|null;reason:string;
+ expectedCaseRevision:number;expectedSourceDataVersion:number;expectedHeadId:string|null;reason:string;
 }
 type Version={versionId:string;payload:CorrectionItemDraft;orderDocumentSha256:string};
 const knownCanonical=new Set(canonical.ids);
@@ -30,6 +30,7 @@ export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDr
  if(!draft||typeof draft!=="object"||draft.expectedCaseRevision!==data.context.revision)throw fail("CORRECTION_CASE_REVISION_MISMATCH");
  if(typeof draft.courtEventId!=="string"||!draft.courtEventId.trim()||
     !Number.isInteger(draft.itemNo)||draft.itemNo<1||draft.itemNo>500||
+    !Number.isSafeInteger(draft.expectedSourceDataVersion)||draft.expectedSourceDataVersion<0||
     typeof draft.orderDocumentId!=="string"||!Number.isInteger(draft.orderPage)||draft.orderPage<1||
     typeof draft.orderQuote!=="string"||draft.orderQuote.trim().length<10||draft.orderQuote.length>4000||
     typeof draft.reason!=="string"||draft.reason.trim().length<5||draft.reason.length>3000||
@@ -81,6 +82,7 @@ export async function upsertCourtCorrectionItem(database:D1Database,input:{data:
  const {data,draft}=input,validated=validateCorrectionItemDraft(data,draft),caseId=data.context.id;
  const current=await currentVersion(database,caseId);
  if(!current||current.revision!==draft.expectedCaseRevision)throw fail("CORRECTION_CASE_REVISION_MISMATCH");
+ if(current.dataVersion!==draft.expectedSourceDataVersion)throw fail("CORRECTION_SOURCE_DATA_VERSION_MISMATCH");
  const actualOrder=await database.prepare("SELECT sha256,case_id AS caseId FROM documents WHERE id=?")
    .bind(draft.orderDocumentId).first<{sha256:string;caseId:string}>();
  if(!actualOrder||actualOrder.caseId!==caseId||actualOrder.sha256!==validated.orderDocumentSha256)
