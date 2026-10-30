@@ -8,6 +8,8 @@ import { jsonResponse } from "../../../../../lib/json-response";
 import { finalizeDocumentWriterReceipt, prepareDocumentWrite } from "../../../../../lib/document-writer";
 import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
+import { parseExportRequestId } from "../../../../../lib/export-request-replay.ts";
+import { claimExportRequest, inspectExportReceipt, markExportUncertain, type ExportClaim, type ExportReceiptRow } from "../../../../../lib/export-request-ledger.ts";
 import {buildCurrentCaseWorkflowView} from "../../../../../lib/case-workflow-context.ts";
 import { finalWorkflowBlockers } from "../../../../../lib/document-workflow-gate.ts";
 import { getIntakeCatalog } from "../../../../../lib/intake-store.ts";
@@ -53,6 +55,55 @@ async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getC
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),data=await getCase(id),extras=await caseExtras(data);
   const mode=body.mode==="final"?"final":"draft";
+  let requestId:string|null;
+  try{requestId=parseExportRequestId(body.requestId);}catch{throw new HttpError(400,"문서 생성 요청 ID 형식이 잘못됐습니다.");}
+  // A UUID is required. Legacy clients may not bypass the durable ledger.
+  if(!requestId)throw new HttpError(400,"문서 생성 요청 ID가 필요합니다. 최신 화면에서 다시 진행하세요.");
+  const sourceRow=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(id).first<{version:number}>();
+  if(!sourceRow||!Number.isSafeInteger(sourceRow.version)||sourceRow.version<1)
+    throw new HttpError(409,"원문 데이터 판본을 확인할 수 없어 문서 생성을 보류했습니다.");
+  const expectedSourceDataVersion=sourceRow.version;
+  const referenceSha256=extras.referenceSnapshot?.sha256;
+  if(!referenceSha256||!/^[0-9a-f]{64}$/i.test(referenceSha256))
+    throw new HttpError(409,"적용 기준 판본의 해시를 확인할 수 없습니다.");
+  // Artifact-only export changes do not modify the semantic identity of the
+  // case facts, calculations and reviewed decisions underlying this request.
+  const semanticCase=structuredClone(data);semanticCase.exportManifest=undefined;
+  const requestHash=await commandHash({caseId:id,mode,caseRevision:data.context.revision,
+    sourceDataVersion:expectedSourceDataVersion,referenceSha256,semanticCase});
+  const existing=await db().prepare("SELECT case_id AS caseId,request_id AS requestId,request_hash AS requestHash,mode,case_revision AS caseRevision,source_data_version AS sourceDataVersion,reference_sha256 AS referenceSha256,status,manifest_fingerprint AS manifestFingerprint FROM case_export_request_receipts WHERE case_id=? AND request_id=?")
+    .bind(id,requestId).first<ExportReceiptRow>();
+  if(existing){
+    const liveFingerprint=data.exportManifest?.exportRequestId===requestId
+      ?await commandHash({caseId:id,requestId,mode,caseRevision:data.context.revision,
+        sourceDataVersion:expectedSourceDataVersion,referenceSha256,
+        files:data.exportManifest.files.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash}))})
+      :null;
+    const decision=inspectExportReceipt(existing,{caseId:id,requestId,requestHash,mode,
+      caseRevision:data.context.revision,sourceDataVersion:expectedSourceDataVersion,
+      referenceSha256,manifestFingerprint:liveFingerprint});
+    if(decision==="verify_sql_and_r2_before_reuse"){
+      if(!data.exportManifest?.files.length)throw new HttpError(409,"생성본 원장이 불완전합니다.");
+      for(const file of data.exportManifest.files){
+        const proof=await db().prepare("SELECT hash,object_key AS objectKey,revision FROM artifacts WHERE case_id=? AND id=?")
+          .bind(id,file.id).first<{hash:string;objectKey:string;revision:number}>();
+        if(!proof||proof.revision!==data.context.revision||proof.hash!==file.hash||
+          proof.objectKey!==`cases/${id}/artifacts/${file.id}`)
+          throw new HttpError(409,"기존 생성본의 SQL 증빙이 불완전하여 수동 대조가 필요합니다.");
+        const object=await bucket().get(proof.objectKey);
+        if(!object)throw new HttpError(409,"기존 생성본의 R2 객체가 없습니다.");
+        const digest=await crypto.subtle.digest("SHA-256",await object.arrayBuffer());
+        const actual=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,"0")).join("");
+        if(actual!==file.hash.toLowerCase())
+          throw new HttpError(409,"기존 생성본 R2 바이트 해시가 일치하지 않습니다.");
+      }
+      return jsonResponse(await caseResponse(data),request,{headers:{"Cache-Control":"no-store"}});
+    }
+    if(decision==="identity_conflict"||decision==="historical_committed_do_not_reissue")
+      throw new HttpError(409,"이미 사용된 문서 요청 ID입니다. 현재 문서 판본을 확인하고 새 요청을 만드세요.");
+    throw new HttpError(503,"문서 생성 요청의 결과가 확정되지 않았습니다. 증빙을 대조하기 전 재실행하지 않습니다.");
+  }
   let finalLegalReceipt:Awaited<ReturnType<typeof inspectCurrentFinalLawgraph>>|null=null;
   if(mode==="final"&&data.workflowState){
     const workflowView=await buildCurrentCaseWorkflowView(db(),data);
@@ -96,6 +147,27 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const writerReceipt=await finalizeDocumentWriterReceipt(prepared.receipt,generated);
   writerReceipt.fieldBases=await buildDocumentFieldBases({data,execution:prepared.execution,formResults:writerReceipt.formResults,artifacts:generated});
   if((await loadReferenceSnapshot(db())).sha256!==prepared.receipt.referenceRelease?.sha256)throw new HttpError(409,"문서 작성 중 적용 기준이 변경되었습니다. 최신 계산과 검토 상태를 확인하세요.");
+  // Claim D1 intent BEFORE any R2 PUT. Two HTTP workers may both render
+  // in parallel, but the same UUID can claim at most one durable request.
+  const latestCase=await getCase(id);
+  if(await snapshotSha256(latestCase)!==await snapshotSha256(data))
+    throw new HttpError(409,"문서 생성 전 사건 판본이 변경되었습니다.");
+  const row=await db().prepare("SELECT revision,storage_token AS storageToken FROM cases WHERE id=?")
+    .bind(id).first<{revision:number;storageToken:string}>();
+  if(!row||row.revision!==data.context.revision||!row.storageToken)
+    throw new HttpError(409,"사건 저장 토큰이 변경되었습니다.");
+  const claim:ExportClaim={caseId:id,requestId,requestHash,mode,
+    caseRevision:data.context.revision,sourceDataVersion:expectedSourceDataVersion,
+    referenceSha256,storageToken:row.storageToken,claimToken:crypto.randomUUID(),at:now()};
+  const claimStatement=claimExportRequest(claim);
+  let claimed;
+  try{claimed=await db().prepare(claimStatement.sql).bind(...claimStatement.args).run();}
+  catch{throw new HttpError(503,"문서 요청 등록 결과가 불확실합니다. 영수증부터 다시 조회해야 합니다.");}
+  if(!claimed.meta.changes)
+    throw new HttpError(409,"다른 실행에서 해당 문서 요청을 선점했거나 원본 판본이 변경됐습니다.");
+  const manifestFingerprint=await commandHash({caseId:id,requestId,mode,
+    caseRevision:data.context.revision,sourceDataVersion:expectedSourceDataVersion,
+    referenceSha256,files:generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash}))});
   const staged=generated.map(file=>{
     const objectKey=`cases/${id}/artifacts/${file.id}`;
     return {objectKey,bytes:file.bytes,mime:file.mime,record:{id:file.id,name:file.name,kind:file.kind,hash:file.hash,mime:file.mime,objectKey}};
@@ -124,14 +196,31 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       if(await snapshotSha256(current)!==await snapshotSha256(data))
         throw new HttpError(409,"문서 작성 중 사건 상태가 변경되었습니다. 현재 판본으로 다시 생성하세요.");
       const next=structuredClone(current);
-      next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),documentWriter:writerReceipt} as typeof next.exportManifest;
-      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only"});
+      next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),
+        exportRequestId:requestId,sourceDataVersionAtExport:expectedSourceDataVersion,documentWriter:writerReceipt} as typeof next.exportManifest;
+      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only",
+        expectedSourceDataVersion,
+        auditEvents:[
+          {type:"document_writer.prepared",detail:writerReceipt},
+          {type:"export.generated",detail:{revision:data.context.revision,mode,requestId,
+            files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt}}
+        ],
+        exportReceipt:{claim,artifactIds:generated.map(f=>f.id),manifestFingerprint}});
+
       savedCase=next;
     },
     deleteRecords:records=>db().batch(records.map(f=>db().prepare("DELETE FROM artifacts WHERE id = ? AND case_id = ? AND object_key = ?").bind(f.id,id,f.objectKey))),
     deleteObject:key=>bucket().delete(key),
     onCleanupFailure:report=>event(id,"export.cleanup_failed",{artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,failureCount:report.cleanupErrors.length}),
+    onCommitUncertain:async report=>{
+      // The case, audits and receipt may already have committed without ACK.
+      // Never delete R2/SQL on this path. Change only a still-claimed receipt.
+      const uncertain=markExportUncertain(claim);
+      await db().prepare(uncertain.sql).bind(...uncertain.args).run().catch(()=>{});
+      await event(id,"export.manifest_commit_unconfirmed",{
+        artifactIds:report.records.map(f=>f.id),reconciliationRequired:true}).catch(()=>{});
+    },
   });
-  await event(id,"document_writer.prepared",writerReceipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt});
+  // Durable audits and the completed request receipt were committed with the manifest.
   return jsonResponse(await caseResponse(savedCase??data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}
