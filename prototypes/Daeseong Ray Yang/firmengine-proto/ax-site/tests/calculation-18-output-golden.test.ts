@@ -9,6 +9,8 @@ import {buildFormBindings} from "../lib/form-mapping.ts";
 import {getCalculationSpecs} from "../lib/execution-catalog.ts";
 import {buildLegalProposals} from "../lib/legal-proposals.ts";
 import {scanTransactions} from "../lib/transaction-review.ts";
+import {executeCaseNodes} from "../lib/case-execution.ts";
+import {calculationFeatureRows} from "../lib/case-calculation-feature-store.ts";
 
 const sourceHash="c".repeat(64),asOf="2026-10-27";
 function goldenFixture():CaseData{
@@ -149,4 +151,30 @@ test("form_projection: D5103 monthly row, D5106 unsecured amount and D5110 scala
  assert.equal(bindings.rows.month.length,1);
  assert.equal(bindings.rows.month[0].period,"2026-10");
  assert.equal(bindings.rows.month[0].net_income,"3,000,000");
+});
+
+test("serialized SQL calculation feature outputs preserve golden amounts, names, source IDs and row ordinals",()=>{
+ const execution=executeCaseNodes(goldenFixture());
+ const rows=calculationFeatureRows(execution);
+ const expected:Record<string,string>={
+  monthlyIncomeWon:"3000000",debtPrincipalWon:"100000000",debtInterestWon:"0",
+  totalDebtWon:"100000000",securedDebtWon:"0",unsecuredDebtWon:"100000000",
+  liquidationValueWon:"1000000",recognizedLivingCostWon:"1500000",
+  disposableIncomeWon:"1500000",ordinaryRepaymentBudgetWon:"1500000",
+  monthlyPaymentWon:"1000000",planTotalWon:"36000000",presentValueWon:"30000000"
+ };
+ for(const [key,amount]of Object.entries(expected)){
+  const matches=rows.filter(row=>row.outputName===key);
+  assert.equal(matches.length,1,key+": each top-level calculation must have one feature output");
+  assert.equal(matches[0].value,amount,key);
+  assert.equal(matches[0].valueWon,amount,key);
+  assert.ok(matches[0].outputPath.startsWith("/assessment/calculation/"),key);
+  assert.ok(matches[0].formula.length>0,key);
+ }
+ const allocation=rows.find(row=>row.outputName==="allocations.allocatedPrincipalWon");
+ assert.equal(allocation?.subjectId,"debt-1");
+ assert.equal(allocation?.rowOrdinal,0);
+ assert.equal(allocation?.value,"36000000");
+ assert.ok(rows.find(row=>row.outputName==="monthlyIncomeWon")?.sourceFactIds.includes("income-net"));
+ assert.ok(rows.find(row=>row.outputName==="debtPrincipalWon")?.sourceFactIds.includes("debt-principal"));
 });
