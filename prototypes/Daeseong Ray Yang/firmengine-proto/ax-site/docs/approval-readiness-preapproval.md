@@ -50,7 +50,7 @@
 5. P0-09F: 등록 95/예외 46/법령·실무준칙/새 쟁점 커버리지 검증 + 법률전문가 독립평가.
 
 ## 검증/배포 상태
-- 신규 순수 분석 모듈을 별도 Node 22 TypeScript-strip 환경에서 합성 테스트 **13/13**(P0-09A 9개 + P0-09B 초기 4개) 실행함. 이 결과는 운영 통합이나 법률 판단 정확도를 인증하지 않음.
+- 신규 순수 분석 모듈을 별도 Node 22 TypeScript-strip 환경에서 격리 합성 회귀 **38/38**(인가 준비도·법률 계약·5단계 감사·조건부 시뮬레이션·실제 보정명령별 자료 검토·물리 OCR 저장현황) 실행함. 이 결과는 운영 통합이나 법률 판단 정확도를 인증하지 않음.
 - GitHub main에서의 완전한 npm ci / 전체 테스트 / Next 빌드 / D1·R2 / 실제 사이트 배포 및 실제 사건 적합성은 **아직 미검증**.
 - 기존 코드 수정 및 운영 마이그레이션은 없음. 다른 작업자의 main 변경이 본 기능에 미친 영향은 추후 CI와 함께 재검사 필요.
 
@@ -60,3 +60,7 @@
 - 현재 계산 헤드의 사건 판본/원본 버전/입력해시/기준정보 해시를 확인하고, 핵심 계산 출력(기존 자동 초안 요구 금액 및 청산가치 비교)을 현재 계산기로 다시 읽은 결과와 원 단위로 대조한다.
 - `case_calculation_features`의 출력이 없거나 중복, 비정상 JSON, 허용되지 않은 상태, 값 불일치 또는 DB 조회 오류이면 `calculation.persistedCurrent=false`로 처리하고 계산·법률 최신판본으로 표시하지 않는다. 기존 계산 원장이나 원천은 수정하지 않는다.
 - 추가 합성 테스트 2개로 null/0 구분, 결손/중복/비정상 JSON 및 금액 차이를 차단하는지 확인했다.
+
+## 최신 P0-09 확장
+
+`GET /api/cases/{id}/approval-readiness`는 `storedOcrCoverage`와 5단계 `stageAudit`를 함께 제공한다. `storedOcrCoverage`는 활성 PDF의 committed OCR head/원본 SHA/각 canonical ID의 실제 관측·미관측 상태를 D1에서 집계한다. 자세한 91입력/42출력·42 합성사례 + 3 대법원 판례 테스트는 `docs/preapproval-calculator-91-input-matrix-20261030.md`, `docs/preapproval-5-stage-case-regressions-20261030.md`. 단위테스트 합격은 운영 D1/법원 인가 판단 성능 인증이 아니다.
