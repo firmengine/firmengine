@@ -49,6 +49,9 @@ export function claimExportRequest(input: ExportClaim) {
 /** MUST be inserted into the *same* D1 batch as the manifest+audit CAS.
  * The storageToken is the NEW storage token after the guarded case UPDATE.
  * A standalone execution of this statement is forbidden by the caller contract.
+ * Every listed artifact must already be persisted under the same case/revision,
+ * so a receipt cannot be marked committed with missing/foreign artifact IDs.
+ * R2 bytes and the manifest must still be verified independently.
  */
 export const COMMIT_EXPORT_REQUEST_SQL = `
 UPDATE case_export_request_receipts
@@ -56,7 +59,10 @@ SET status='committed',artifact_ids_json=?,manifest_fingerprint=?,committed_at=?
 WHERE case_id=? AND request_id=? AND request_hash=? AND claim_token=?
 AND status='claimed' AND case_revision=? AND source_data_version=? AND reference_sha256=?
 AND EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id
- WHERE c.id=? AND c.revision=? AND c.storage_token=? AND s.data_version=?)`;
+ WHERE c.id=? AND c.revision=? AND c.storage_token=? AND s.data_version=?)
+AND NOT EXISTS (SELECT 1 FROM json_each(?) input_artifact
+ WHERE NOT EXISTS (SELECT 1 FROM artifacts a
+   WHERE a.id=input_artifact.value AND a.case_id=? AND a.revision=?))`;
 export function commitExportRequest(input: ExportClaim & {newStorageToken:string;
   artifactIds:readonly string[]; manifestFingerprint:string}) {
   assertExportClaim(input);
@@ -67,7 +73,8 @@ export function commitExportRequest(input: ExportClaim & {newStorageToken:string
     input.manifestFingerprint,input.at,input.at,input.caseId,input.requestId,
     input.requestHash,input.claimToken,input.caseRevision,input.sourceDataVersion,
     input.referenceSha256,input.caseId,input.caseRevision,input.newStorageToken,
-    input.sourceDataVersion] as const};
+    input.sourceDataVersion,JSON.stringify(input.artifactIds),input.caseId,
+    input.caseRevision] as const};
 }
 export const MARK_EXPORT_UNCERTAIN_SQL = `UPDATE case_export_request_receipts
 SET status='uncertain',updated_at=? WHERE case_id=? AND request_id=?
