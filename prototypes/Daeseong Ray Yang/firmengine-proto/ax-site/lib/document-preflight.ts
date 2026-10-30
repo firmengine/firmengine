@@ -50,6 +50,23 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
       }
     }
   }
+  // Internal form numeric integrity only; legal recognition and official form parity remain separate.
+  // Unlike an unresolved marker, a present but malformed value must not bypass arithmetic checks.
+  if(input.formCode==="D5110"||input.formCode==="D5111"){
+    for(const token of ["approved_monthly_income","recognized_living_cost",
+      "monthly_disposable_income","monthly_payment","monthly_trustee_fee",
+      "repayment_months","total_repayment","liquidation_value","present_value",
+      "disposal_payment_total","disposal_present_value"]){
+      const raw=input.bindings.scalars[token];
+      if(absent(raw))continue; // Existing requiredness gate handles missing/unknown separately.
+      if(numeric(raw)===null){
+        const issue:PreflightIssue={code:"PLAN_SCALAR_NUMERIC_INVALID",token,
+          message:"금액·회차 토큰에 원단위 정수가 아닌 값이 있어 독립 검토가 필요합니다.",
+          severity:input.mode==="final"?"blocker":"warning"};
+        if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+      }
+    }
+  }
   const creditorRows=input.bindings.rows.creditor??[];
   for(const [rowField,totalField] of [["principal","total_principal"],["interest","total_interest"]] as const) {
     const rowValues=creditorRows.map(row=>numeric(row[rowField])); const total=numeric(input.bindings.scalars[totalField]);
