@@ -113,3 +113,15 @@ test("existing persisted proposal outputs use physical proposals.* field names w
  assert.deepEqual(output.stages[2].missingSelectedModuleIds,[]);
  assert.ok(output.stages[2].allModules.every(x=>x.declaredOutputs[0].storedRows.length===1));
 });
+
+test("all 46 registered exceptions remain visible even though unimplemented legal applicability cannot be auto-cleared",()=>{
+ const d=sample();
+ d.exceptions=[{id:"EL-35",trigger:"synthetic preapproval",ruleRefs:["KR-PR-042"],features:["applicant.age"]},
+  {id:"EL-40",trigger:"synthetic after approval",ruleRefs:[],features:[]},
+  {id:"EL-46",trigger:"synthetic after discharge",ruleRefs:[],features:[]}];
+ const state=auditFivePreapprovalStages(d).stages[3];
+ assert.equal(state.exceptionCoverage.length,3);
+ assert.equal(state.exceptionCoverage[0].stageDisposition,"requires_case_specific_lawyer_review");
+ assert.equal(state.exceptionCoverage[1].stageDisposition,"deferred_postapproval");
+ assert.ok(state.exceptionCoverage.every(x=>!x.automaticallySatisfied&&!x.ruleApplicabilityApproved));
+});
