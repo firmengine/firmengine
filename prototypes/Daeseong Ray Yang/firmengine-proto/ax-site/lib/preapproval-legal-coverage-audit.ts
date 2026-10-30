@@ -29,6 +29,7 @@ export function auditPreapprovalLegalCatalog(input:{
   const group=byRule.get(id)??new Set<string>();group.add(exc.id);byRule.set(id,group);
  }
  const caseDate=input.caseData.context.applicationDate,courtId=input.caseData.context.courtId;
+ const postapprovalRules=new Set(["KR-PR-050"]);
  const rules=input.rules.map(rule=>{
   const requirements=(rule.required_features??[]).map(key=>{
    const observed=currentFacts.get(key)??[];
@@ -49,6 +50,7 @@ export function auditPreapprovalLegalCatalog(input:{
   const needs=requirements.filter(f=>f.status!=="source_supported_needs_legal_application");
   return {
    ruleId:rule.id,title:rule.title,sourceUrl:rule.source_url??null,
+   executionScope:postapprovalRules.has(rule.id)?"postapproval_deferred" as const:"preapproval_candidate_only" as const,
    declaredFeatureCount:requirements.length,features:requirements,
    linkedExceptionIds:[...(byRule.get(rule.id)??[])],
    applicability:{courtId,applicationDate:caseDate,authorityScope:rule.authority_scope??null,
@@ -56,7 +58,8 @@ export function auditPreapprovalLegalCatalog(input:{
     editionAfterApplication:!!rule.effective_date&&!!caseDate&&caseDate<rule.effective_date,
     courtAndHistoricalApplicabilityReviewed:false as const},
    missingOrUnacceptedFeatureKeys:needs.map(f=>f.featureKey),
-   status:needs.length?"evidence_or_mapping_review_required" as const:
+   status:postapprovalRules.has(rule.id)?"postapproval_deferred" as const:
+     needs.length?"evidence_or_mapping_review_required" as const:
      "evidence_observed_but_legal_review_required" as const,
    legalFinding:null,courtApprovalInferred:false as const,
   };
@@ -75,7 +78,7 @@ export function auditPreapprovalLegalCatalog(input:{
   automaticallySatisfied:false as const,courtApprovalInferred:false as const,
  }));
  const knownKeys=new Map<string,Set<string>>();
- for(const item of rules)for(const gap of item.missingOrUnacceptedFeatureKeys){
+ for(const item of rules.filter(r=>r.executionScope==="preapproval_candidate_only"))for(const gap of item.missingOrUnacceptedFeatureKeys){
   const impacted=knownKeys.get(gap)??new Set<string>();impacted.add(item.ruleId);knownKeys.set(gap,impacted);
  }
  return {schemaVersion:PREAPPROVAL_LEGAL_COVERAGE_VERSION,
