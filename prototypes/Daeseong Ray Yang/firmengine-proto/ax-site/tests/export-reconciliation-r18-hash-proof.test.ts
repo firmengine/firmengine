@@ -27,8 +27,8 @@ test("identical malformed manifest, SQL and alleged R2 hash cannot prove bytes",
     manifest: [{ id: "B", hash: "bad", status: "current" }],
     artifactRows: [artifact("B", "bad")], objectProofs: [proof("B", "bad")] });
   assert.equal(out.currentArtifactsVerified, false);
-  for (const code of ["CURRENT_MANIFEST_HASH_INVALID", "CURRENT_SQL_HASH_INVALID", "R2_BYTES_SHA_INVALID"])
-    assert.ok(codes(out).includes(code as any), code);
+  for (const code of ["CURRENT_MANIFEST_HASH_INVALID", "CURRENT_SQL_HASH_INVALID", "R2_BYTES_SHA_INVALID"] as const)
+    assert.ok(codes(out).includes(code), code);
   assert.equal(out.autoDeleteAllowed, false);
 });
 test("identical duplicate current manifest entry blocks current verification", () => {
