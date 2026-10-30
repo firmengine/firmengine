@@ -1,6 +1,6 @@
 /** Client commands are intent only. Identity, actor and approval roles are server-owned. */
 export const COMMAND_VERSION = "case-command/1" as const;
-export const COMMAND_TYPES = ["context.update","fact.correct","fact.review","object.upsert","object.remove","object.review","document.retract","document.role","intake.adopt","subject.link","requirement.override","document.match","requirement.confirm","task.update","decision.propose","decision.adopt","schedule.replace","legalCheck.dispose","document.edit","document.review","document.archive","procedure.record","schema.migrate"] as const;
+export const COMMAND_TYPES = ["context.update","fact.correct","fact.review","object.upsert","object.remove","object.review","document.retract","document.role","intake.adopt","subject.link","requirement.override","document.match","requirement.confirm","task.update","decision.propose","decision.adopt","business.net.propose","business.net.adopt","schedule.replace","legalCheck.dispose","document.edit","document.review","document.archive","procedure.record","schema.migrate"] as const;
 export type CommandType = typeof COMMAND_TYPES[number];
 export interface CaseCommand { commandId:string; commandType:CommandType; payloadVersion:1; expectedRevision:number; expectedStateFingerprint:string; target:Record<string,unknown>; patch:Record<string,unknown>; reason:string; baseValueHash?:string; sourceRefs?:unknown[]; effectivePeriod?:{start:string;end:string} }
 export class CommandError extends Error { code:string;status:number;details?:unknown;constructor(code:string,status:number,message:string,details?:unknown){super(message);this.code=code;this.status=status;this.details=details;this.name="CommandError";} }
@@ -29,4 +29,4 @@ export function canonicalJson(value:unknown):string {
   return JSON.stringify(value);
 }
 export async function commandHash(value:unknown):Promise<string>{const bytes=new TextEncoder().encode(canonicalJson(value));return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(v=>v.toString(16).padStart(2,"0")).join("");}
-export const commandRequiredRole=(type:CommandType):string=>["fact.review","object.review","document.review","requirement.confirm","subject.link","legalCheck.dispose"].includes(type)?"caseworker_review":"case_editor";
+export const commandRequiredRole=(type:CommandType):string=>["fact.review","object.review","document.review","requirement.confirm","subject.link","legalCheck.dispose","business.net.adopt"].includes(type)?"caseworker_review":"case_editor";
