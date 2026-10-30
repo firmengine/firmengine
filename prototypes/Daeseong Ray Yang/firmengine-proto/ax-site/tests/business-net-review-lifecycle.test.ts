@@ -216,3 +216,28 @@ test("a source period after the case as-of date cannot become reviewed present i
  d.context.asOf="2026-10-30";
  assert.throws(()=>preflightBusinessNet(d,selection),/BUSINESS_SOURCE_PERIOD_AFTER_CASE_AS_OF/);
 });
+
+test("raw source money, normalized unit and typed amount must agree before any reviewed net can be proposed",()=>{
+ setPolicy();
+ const {d,selection}=input(1,"2026-01-01","2026-01-31");
+ const gross=d.facts.find(f=>f.id===selection.grossFactId)!;
+ gross.value="3200000";
+ assert.throws(()=>preflightBusinessNet(d,selection),/BUSINESS_RAW_NUMERIC_SOURCE_MISMATCH/);
+ gross.value="3000000";
+ gross.numeric!.rawValue="3200000";
+ assert.throws(()=>preflightBusinessNet(d,selection),/BUSINESS_RAW_NUMERIC_SOURCE_MISMATCH/);
+ gross.numeric!.rawValue="3000000";
+ gross.sourceUnit="만원";
+ assert.throws(()=>preflightBusinessNet(d,selection),/BUSINESS_RAW_NUMERIC_SOURCE_MISMATCH/);
+});
+test("a staff proposal cannot also be adopted by the same actor, even if the actor has lawyer role",async()=>{
+ setPolicy();
+ const {d,selection}=input(1,"2026-01-01","2026-01-31");
+ const proposal=await proposeBusinessNet(d,selection,
+  "The two source row identities need independent legal expense review",
+  "same-user","2026-10-30T00:00:00Z");
+ d.workflowState!.businessNetReviews!.push(proposal);
+ assert.throws(()=>adoptBusinessNet(d,proposal.id,"same-user",
+   "No self-review permitted under source and legal policy",
+   "2026-10-30T00:00:01Z"),/BUSINESS_REVIEW_APPROVAL_INVALID/);
+});
