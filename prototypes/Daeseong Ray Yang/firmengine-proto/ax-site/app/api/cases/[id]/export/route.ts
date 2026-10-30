@@ -23,10 +23,13 @@ async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getC
   const semanticHash=await legalReviewInputFingerprint(data,referenceHash,EXECUTION_CONTRACT_VERSION),storageHash=await snapshotSha256(data);
   // Query by semantic fingerprint so a workflow-only update (including this
   // very disposition) cannot hide the analysis that the reviewer acted on.
+  const sourceVersion=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(data.context.id).first<{version:number}>();
   const candidates=await db().prepare(`SELECT id,type,at,payload FROM analyses WHERE case_id=? AND type IN ('legal_review','legal_advisory') AND json_valid(payload)=1 AND (json_extract(payload,'$.reviewInputFingerprint')=? OR (json_extract(payload,'$.reviewInputFingerprint') IS NULL AND json_extract(payload,'$.calculatorExecution.inputSha256')=? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256')=? AND json_extract(payload,'$.calculatorExecution.contractVersion')=?)) ORDER BY at DESC,id DESC LIMIT 501`).bind(data.context.id,semanticHash,storageHash,referenceHash,EXECUTION_CONTRACT_VERSION).all<{id:string;type:string;at:string;payload:string}>();
   const runs:{id:string;checkId:string;subjectFingerprint:string;dependencyFingerprint:string;status:string}[]=[];
   for(const row of candidates.results.slice(0,500)){
     const payload=JSON.parse(row.payload),receipt=payload.calculatorExecution;
+    if(payload.sourceDataVersion!==sourceVersion?.version)continue;
     if(receipt?.referenceRelease?.sha256!==referenceHash||receipt?.contractVersion!==EXECUTION_CONTRACT_VERSION)continue;
     for(const check of Array.isArray(payload.checks)?payload.checks:[]){
       if(typeof check?.id!=="string"||!Array.isArray(check.factIds))continue;

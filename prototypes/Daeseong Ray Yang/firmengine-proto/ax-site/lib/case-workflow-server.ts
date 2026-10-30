@@ -62,10 +62,12 @@ export async function caseWorkflowResponse(caseId:string){
   const fieldBases=(writerReceipt?.fieldBases??[]).filter(base=>currentArtifactsById.get(base.artifactId)?.hash===base.artifactHash);
   const legalReference=referenceIdentity()?.sha256??referenceRelease.sha256,legalFingerprint=await legalReviewInputFingerprint(data,legalReference,EXECUTION_CONTRACT_VERSION);
   const legalRows=await db().prepare("SELECT id,type,payload FROM analyses WHERE case_id=? AND type IN ('legal_review','legal_advisory') ORDER BY at DESC,id DESC LIMIT 101").bind(caseId).all<{id:string;type:string;payload:string}>();
+  const sourceVersion=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(caseId).first<{version:number}>();
   const legalCoverageTruncated=legalRows.results.length>100,rawLegalRuns=[] as {runId:string;id:string;checkId:string;subjectFingerprint:string;dependencyFingerprint:string;title:string;status:string;factIds:string[];truncated:boolean;coverageComplete:boolean}[];
   for(const row of legalRows.results.slice(0,100)){
     let payload:any;try{payload=JSON.parse(row.payload);}catch{continue;}
-    const receipt=payload?.calculatorExecution;if(payload?.reviewInputFingerprint!==legalFingerprint||receipt?.referenceRelease?.sha256!==legalReference||receipt?.contractVersion!==EXECUTION_CONTRACT_VERSION)continue;
+    const receipt=payload?.calculatorExecution;if(payload?.sourceDataVersion!==sourceVersion?.version||payload?.reviewInputFingerprint!==legalFingerprint||receipt?.referenceRelease?.sha256!==legalReference||receipt?.contractVersion!==EXECUTION_CONTRACT_VERSION)continue;
     const coverage=payload.evidenceCoverage??{};
     for(const check of Array.isArray(payload.checks)?payload.checks:[]){
       if(typeof check?.id!=="string"||!Array.isArray(check.factIds))continue;

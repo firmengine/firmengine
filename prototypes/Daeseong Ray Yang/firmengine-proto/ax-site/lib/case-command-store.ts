@@ -34,6 +34,10 @@ async function currentLegalRun(data:CaseData,command:CaseCommand){
   const payload=JSON.parse(row.payload),receipt=payload.calculatorExecution;
   const refHash=referenceIdentity()?.sha256??referenceRelease.sha256;
   const semanticHash=await legalReviewInputFingerprint(data,refHash,EXECUTION_CONTRACT_VERSION);
+  const sourceVersion=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(data.context.id).first<{version:number}>();
+  if(!sourceVersion||payload.sourceDataVersion!==sourceVersion.version)
+    conflict("법률 AI 검토 이후 OCR·상담·사건 원천 데이터가 바뀌었습니다.");
   const inputMatches=payload.reviewInputFingerprint?payload.reviewInputFingerprint===semanticHash:receipt?.inputSha256===await snapshotSha256(data);
   if(!inputMatches||receipt?.referenceRelease?.sha256!==(referenceIdentity()?.sha256??referenceRelease.sha256)||receipt?.contractVersion!==EXECUTION_CONTRACT_VERSION)conflict("검토 실행 이후 입력·기준이 바뀌었습니다.");
   const checks=Array.isArray(payload.checks)?payload.checks:[],matches=checks.filter((c:{id?:string})=>c.id===command.target.checkId);
