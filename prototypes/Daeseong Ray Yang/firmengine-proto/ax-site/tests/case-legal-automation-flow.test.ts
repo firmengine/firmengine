@@ -200,3 +200,63 @@ test("a queued pre-fix draft with no stored LawGraph fields is blocked before wr
   assert.deepEqual(h.sqlite.prepare("PRAGMA foreign_key_check").all(),[]);
  }finally{h.close();}
 });
+
+
+test("nonempty but missing required stored LawGraph form token cannot execute an automatic writer",async()=>{
+ const h=setup();try{
+  const input=await h.initialize("projection-partial-token"),fp=await legalReviewInputFingerprint(input.data,release.sha256,EXECUTION_CONTRACT_VERSION);
+  const checks=RISK_CATALOG.map(r=>({id:r.id,status:"legal_review",reason:"합성 인가 전 검토",factIds:[],ruleIds:[],missingDocuments:[],nextAction:"담당자 확인"}));
+  const payload={checks,summary:"Synthetic legal review",sourceDataVersion:input.version,reviewInputFingerprint:fp,
+   calculatorExecution:{inputSha256:input.hash,referenceRelease:{sha256:release.sha256},contractVersion:EXECUTION_CONTRACT_VERSION},model:"gpt-6-luna"};
+  h.sqlite.prepare("INSERT INTO analyses(id,case_id,revision,type,payload,at) VALUES(?, ?,1,'legal_advisory',?,'2026-10-30')")
+    .run("projection-partial-advisory",input.caseId,JSON.stringify(payload));
+  let writerCalls=0;const services=h.services(input.data,async()=>({stage:"legal_complete",remaining:0}));
+  services.generateDraft=async()=>{writerCalls++;throw new Error("UNEXPECTED_AUTOMATIC_WRITER_CALL");};
+  await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  const view=await listCaseLawgraphReview(h.db,{caseId:input.caseId,limit:500});
+  assert.ok(view.runId);assert.ok(view.totalDocumentFields>0,"test requires real saved form projection");
+  const cut=h.sqlite.prepare("DELETE FROM case_document_field_values WHERE review_run_id=? AND form_code='D5100' AND token='client_name'")
+    .run(view.runId);
+  assert.equal(Number(cut.changes),1,"only the selected scalar should be removed");
+  h.sqlite.prepare("UPDATE case_legal_automation_jobs SET status='draft_pending',next_attempt_at=NULL,outcome_json=? WHERE case_id=?")
+    .run(JSON.stringify({draftCandidate:true,documentFieldProjectionError:null,documentFieldCount:view.totalDocumentFields}),input.caseId);
+  const res=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(res.results[0].status,"review_required");assert.equal(writerCalls,0);
+  const state=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.ok(state.outcome.blockers.includes("DOCUMENT_FIELD_PROJECTION_REQUIRED_TOKEN_MISSING"));
+  assert.ok(state.outcome.blockers.includes("DOCUMENT_FIELD_PROJECTION_STORAGE_MISMATCH"));
+  assert.equal((await listCaseLawgraphReview(h.db,{caseId:input.caseId})).checks.length,95,
+    "review findings must survive a damaged persisted document projection");
+ }finally{h.close();}
+});
+
+test("operator can reproject same source revision using saved 95 legal checks without new AI calls",async()=>{
+ const h=setup();try{
+  const input=await h.initialize("projection-retry"),fp=await legalReviewInputFingerprint(input.data,release.sha256,EXECUTION_CONTRACT_VERSION);
+  const checks=RISK_CATALOG.map(r=>({id:r.id,status:"legal_review",reason:"독립 가상 사실검토",factIds:[],ruleIds:[],missingDocuments:[],nextAction:"담당자 확인"}));
+  const payload={checks,summary:"Synthetic retained checks",sourceDataVersion:input.version,reviewInputFingerprint:fp,
+   calculatorExecution:{inputSha256:input.hash,referenceRelease:{sha256:release.sha256},contractVersion:EXECUTION_CONTRACT_VERSION},model:"gpt-6-luna"};
+  h.sqlite.prepare("INSERT INTO analyses(id,case_id,revision,type,payload,at) VALUES(?, ?,1,'legal_advisory',?,'2026-10-30')")
+    .run("projection-retry-advisory",input.caseId,JSON.stringify(payload));
+  let aiCalls=0;const services=h.services(input.data,async()=>{aiCalls++;return {stage:"legal_complete",remaining:0};});
+  await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  const before=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.equal(before.status,"review_required");assert.ok(before.reviewRunId);
+  const poisoned={...before.outcome,draftCandidate:false,
+   documentFieldProjectionError:"FORM_PROJECTION_REPAIR_REQUIRED",
+   documentProjectionBlockers:["DOCUMENT_FIELD_PROJECTION_FAILED"]};
+  h.sqlite.prepare("UPDATE case_legal_automation_jobs SET outcome_json=? WHERE case_id=?")
+   .run(JSON.stringify(poisoned),input.caseId);
+  const accepted=await retryFailedCaseLegalAutomation(h.db,{caseId:input.caseId,expectedDataVersion:input.version});
+  assert.equal(accepted.status,"retry_wait");
+  const regenerated=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(regenerated.scanned,1);assert.equal(aiCalls,1,
+   "retry must reuse prior advisory facts and not restart 95 paid checks");
+  const after=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.equal(after.outcome.documentFieldProjectionError,null);
+  assert.equal((await listCaseLawgraphReview(h.db,{caseId:input.caseId})).checks.length,95);
+  assert.equal(after.autoSubmission,false);
+  await assert.rejects(retryFailedCaseLegalAutomation(h.db,{caseId:input.caseId,expectedDataVersion:input.version}),
+    /LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB/);
+ }finally{h.close();}
+});
