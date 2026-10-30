@@ -138,10 +138,17 @@ export function auditFivePreapprovalStages(input: StageAuditInput) {
   ];
   const deferredExceptions=input.exceptions.filter(x=>["EL-40","EL-46"].includes(x.id)).map(x=>x.id);
   const preapprovalExceptions=input.exceptions.filter(x=>!deferredExceptions.includes(x.id));
+  const exceptionCoverage=input.exceptions.map(item=>({
+    id:item.id,trigger:item.trigger??"",ruleIds:[...(item.ruleRefs??[])],
+    candidateFeatures:[...(item.features??[])],
+    stageDisposition:deferredExceptions.includes(item.id)?"deferred_postapproval":"requires_case_specific_lawyer_review",
+    automaticallySatisfied:false as const,
+    ruleApplicabilityApproved:false as const,
+  }));
   const stage4={...tableRef("P4_LEGAL"),state:input.legalCurrent&&riskReview.every(r=>r.reviewedCurrent)?"lawyer_review_required":"legal_coverage_incomplete",
     expectedRiskCount:input.risks.length,currentRiskCount:riskReview.filter(r=>r.reviewedCurrent).length,
     notCurrentRiskIds:riskReview.filter(r=>!r.reviewedCurrent).map(r=>r.id),unknownLegalIds,
-    exceptionScenarioCount:input.exceptions.length,preapprovalExceptionIds:preapprovalExceptions.map(x=>x.id),deferredPostapprovalExceptionIds:deferredExceptions,
+    exceptionScenarioCount:input.exceptions.length,exceptionCoverage,preapprovalExceptionIds:preapprovalExceptions.map(x=>x.id),deferredPostapprovalExceptionIds:deferredExceptions,
     riskChecks:riskReview,statutoryPreflight,legalReviewReferences:["KR-PR-043","KR-PR-044","KR-PR-045","KR-PR-046","KR-PR-048"],
     lawArticles:["KR-610","KR-611","KR-613","KR-614"]};
   const courtOrderAudit=auditPreapprovalCourtCorrections(data,facts,input.validSourceFactIds);
