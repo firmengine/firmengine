@@ -109,6 +109,34 @@ test("physical migration is idempotent and record pagination is bounded and dete
   }finally{h.close();}
 });
 
+test("a 2,200-cell plural OCR page returns all rows and all fields rather than silently dropping fields after 2,000",async()=>{
+  const h=setup();try{
+    const read:PageRead={
+      documentType:"shared-document:bank_statement@bank_transactions",
+      complete:true,warnings:[],
+      records:Array.from({length:11},(_,ri)=>({
+        category:"other" as const,label:"synthetic-record-"+ri,
+        fields:Array.from({length:200},(_,fi)=>({
+          key:"unknown_field_"+fi,label:"synthetic field "+fi,
+          value:"record-"+ri+"-field-"+fi,unit:null,
+          quote:"source record "+ri+" field "+fi,confidence:"clear" as const,
+          bbox:[0.1,0.1,0.2,0.2] as [number,number,number,number],
+          sourceState:"present" as const
+        }))
+      }))
+    };
+    const stored=await persistPageExtractionRows(h.database,input(read));
+    assert.equal(stored.records,11);assert.equal(stored.features,2200);
+    const output=await listCaseExtractionRows(h.database,{caseId:"case-1",limit:25});
+    assert.equal(output.totalRecords,11);
+    assert.equal(output.featuresTruncated,false);
+    assert.equal(output.records.reduce((n,r)=>n+r.fields.length,0),2200);
+    assert.ok(output.records.every(row=>row.fieldCount===200&&row.fields.length===200));
+    assert.equal(output.records[10].fields[199].value,"record-10-field-199");
+    assert.equal(new Set(output.records.flatMap(row=>row.fields.map(field=>field.featureId))).size,2200);
+  }finally{h.close();}
+});
+
 test("nullable canonical amount owner roles preserve every debt schema field and allow exact canonical foreign keys",async()=>{
   const h=setup();try{
     const read:PageRead={documentType:"shared-document:debt_certificate@debt_certificate",complete:true,warnings:[],records:[{category:"debt",label:"Synthetic creditor",fields:[{key:"principal_balance",label:"Current principal",value:"1000",unit:"KRW",quote:"Current principal 1000 KRW",bbox:[0.1,0.1,0.3,0.2],confidence:"clear",canonicalFieldId:"debt_certificate::principal_balance",sourceState:"present"}]}]};
