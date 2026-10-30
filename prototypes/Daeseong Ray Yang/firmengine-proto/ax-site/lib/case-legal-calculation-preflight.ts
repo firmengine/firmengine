@@ -26,9 +26,15 @@ export function evaluateLegalCalculationPreflight(input:{
  }
  for(const name of new Set(input.requiredOutputs)){
   const rows=input.observed.filter(row=>row.outputName===name);
+  // Approved *Won outputs must stay exact integer KRW values, not arbitrary
+  // JSON strings, floats, booleans or objects marked "computed" in storage.
+  // Keep the legitimate computed 0 distinct from missing or unreviewed 0.
+  const value=rows[0]?.value;
+  const exactWon=!name.endsWith("Won")||
+    typeof value==="string"&&/^-?\d+$/.test(value)||
+    typeof value==="number"&&Number.isSafeInteger(value);
   if(rows.length!==1||!["computed","reviewed_basis"].includes(rows[0].status)||
-      rows[0].value===null||rows[0].value===undefined||
-      rows[0].value===""||rows[0].value==="unknown"){
+      value===null||value===undefined||value===""||value==="unknown"||!exactWon){
     blockers.add("REQUIRED_LEGAL_CALCULATOR_OUTPUT_UNRESOLVED:"+name);
   }
  }
