@@ -10,7 +10,7 @@ import { calculationSourceCellIssues } from "../lib/ocr-calculation-input.ts";
 import { persistPageExtractionRows,listCaseExtractionRows } from "../lib/extraction-row-store.ts";
 import { projectPage,type PageRead } from "../lib/extraction.ts";
 import { monthlyIncome,calculateCase } from "../lib/assessment.ts";
-import { createCase,normalizeMoney } from "../lib/domain.ts";
+import { applyExtraction,createCase,normalizeMoney } from "../lib/domain.ts";
 
 const SHA="a".repeat(64),IMAGE="b".repeat(64);
 const cell=(key:string,id:string,value:string,unit:string|null="KRW",quote=key+" "+value)=>({
@@ -223,6 +223,17 @@ test("physical SQL storage -> read_json -> exact page projection -> BigInt month
   assert.equal(view.records[0].fields.find(f=>f.key==="income.payroll.net_pay")?.projectionKey,"net");
   assert.equal(restored.incomes[0].amountBasis,"period_total");
   assert.equal(monthlyIncome(restored.incomes[0]).value?.toString(),"1800000");
+  // Real persisted read format, not a hand-built calculator IncomeSource.
+  // Legal verification below is synthetic and does not grant a court decision.
+  const data=createCase("synthetic SQL income","case-1","2026-10-30");
+  data.documents=[{id:"doc-1",name:"salary.pdf",sha256:SHA,status:"active",pages:[1]}];
+  data.pages=[{documentId:"doc-1",page:1,role:"evidence",text:raw.records.flatMap(row=>row.fields.map(f=>f.quote??"")).join(" | ")}];
+  const applied=applyExtraction(data,restored);
+  applied.facts=applied.facts.map(f=>({...f,state:"verified",recognition:"accepted"}));
+  applied.incomes=applied.incomes.map(i=>({...i,recognition:"accepted",recurring:"yes"}));
+  applied.context.inventoryComplete.income="yes";
+  assert.equal(calculateCase(applied,rule).incomeRows[0].monthlyWon,"1800000");
+  assert.equal(calculateCase(applied,rule).monthlyIncomeWon,"1800000");
   assert.deepEqual(sql.prepare("PRAGMA foreign_key_check").all(),[]);
  }finally{sql.close();}
 });
