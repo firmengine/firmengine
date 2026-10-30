@@ -23,7 +23,9 @@ type WorkflowResponse = {
   health?:WorkflowHealth;
   legalAutomation?:{
     status:string;completedChecks?:number;expectedChecks?:number;currentDataVersion?:number|null;lastError?:string|null;updatedAt?:string|null;quietDueAt?:string|null;remainingMs?:number|null;
-    outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;unresolvedRequiredDocuments?:{requirementId:string;status:string;missingFields:string[]}[];projectionBlockers?:number;};
+    outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;unresolvedRequiredDocuments?:{requirementId:string;status:string;missingFields:string[]}[];projectionBlockers?:number;
+      documentFieldProjectionError?:string|null;documentFieldCount?:number;documentProjectionExpectedTokenCount?:number;
+      documentProjectionBlockers?:string[];};
   };
 };
 type CommandDraft = Omit<CaseCommand, "commandId" | "payloadVersion" | "expectedRevision" | "expectedStateFingerprint">;
@@ -173,6 +175,12 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
   const option = (value: string, title: string): [string, string] => [value, title];
   const select = (name: string, options: [string, string][], required = true) => <select name={name} required={required} defaultValue="">{!required && <option value="">선택 안 함</option>}<option value="" disabled>선택하세요</option>{options.map(([v, t]) => <option key={v} value={v}>{t}</option>)}</select>;
   const reason = (form: FormData) => String(form.get("reason") ?? "").trim();
+  const repairOutcome=data?.legalAutomation?.outcome;
+  const projectionRepairable=data?.legalAutomation?.status==="review_required"&&
+    (Boolean(repairOutcome?.documentFieldProjectionError)||
+     repairOutcome?.documentFieldCount===0||
+     Boolean(repairOutcome?.documentProjectionBlockers?.some(reason=>reason.startsWith("DOCUMENT_FIELD_")))||
+     Boolean(repairOutcome?.blockers?.some(reason=>reason.startsWith("LAWGRAPH_FORM_FIELD_PROJECTION_"))));
 
   return <main className="workflow-page page-content">
     <div className="page-heading"><div><div className="eyebrow">CASE WORKFLOW</div><h1>사건 업무 흐름<span className="heading-dot">.</span></h1><p>상담에서 자료 요청, 근거 확인, 담당자 작업과 절차 기록까지 이어서 관리합니다.</p></div><div className="heading-actions"><a className="button button-outline" href={`/cases/${encodeURIComponent(caseId)}`}><ArrowLeft size={15} />사건으로</a><button className="button button-outline" onClick={() => void load()} disabled={loading || busy}><RefreshCw size={15} />새로고침</button></div></div>
@@ -215,7 +223,7 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
          <div className="workflow-state-row"><span>처리 상태: {label(data.legalAutomation.status)}</span><span>검토 진행: {data.legalAutomation.completedChecks??0}/{data.legalAutomation.expectedChecks??95}</span><span>최종 검토: 사람 확인 필수</span></div>
          {data.legalAutomation.status==="debouncing"&&data.legalAutomation.quietDueAt&&<p className="workflow-muted">원천 데이터 안정화 중 · 다음 검토 가능 시각 {new Date(data.legalAutomation.quietDueAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})} (데이터가 추가 수정되면 다시 10분 대기)</p>}
          {data.legalAutomation.lastError&&<p className="workflow-caution">실행 오류: {data.legalAutomation.lastError}</p>}
-         {data.legalAutomation.status==="failed"&&typeof data.legalAutomation.currentDataVersion==="number"&&<button className="button button-outline" disabled={busy} onClick={async()=>{
+         {(data.legalAutomation.status==="failed"||projectionRepairable)&&typeof data.legalAutomation.currentDataVersion==="number"&&<button className="button button-outline" disabled={busy} onClick={async()=>{
            setBusy(true);try{
              const response=await fetch("/api/cases/"+encodeURIComponent(caseId)+"/automation/retry",{
                method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
@@ -225,8 +233,15 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
              await load();
            }catch(cause){setError(cause instanceof Error?cause.message:"재시도 접수 실패");}
            finally{setBusy(false);}
-         }}>실패한 법률 AI 단계 재시도</button>}
+         }}>{projectionRepairable?"서식 필드 재투영 검증 (AI 재호출 없음)":"실패한 법률 AI 단계 재시도"}</button>}
          {data.legalAutomation.outcome?.summary&&<p>{data.legalAutomation.outcome.summary}</p>}
+         {data.legalAutomation.outcome?.documentProjectionBlockers?.length?(
+           <div className="workflow-caution" role="status"><strong>검토용 서식의 항목 연결이 불완전합니다.</strong>
+             <p>법률 검토 결과는 보존했습니다. 서식의 필드·반복행 연결이 검증될 때까지 자동초안 생성을 보류합니다.</p>
+             <p>연결된 항목 {data.legalAutomation.outcome.documentFieldCount??0}개 · 기대 토큰 {data.legalAutomation.outcome.documentProjectionExpectedTokenCount??"확인 필요"}개</p>
+             {data.legalAutomation.outcome.documentProjectionBlockers.slice(0,8).map(code=><p key={code}>{code}</p>)}
+           </div>
+         ):null}
          {Boolean(data.legalAutomation.outcome?.blockers?.length)&&<div className="workflow-caution"><strong>자동작성을 보류한 이유</strong>
            {data.legalAutomation.outcome!.blockers!.slice(0,12).map(reason=><p key={reason}>{reason}</p>)}</div>}
          {Boolean(data.legalAutomation.outcome?.pendingCourtPolicyChanges)&&<p className="workflow-caution">법원·법령 기준 변경 알림 {data.legalAutomation.outcome!.pendingCourtPolicyChanges}건 · 승인 전 기준 검토 필요</p>}
