@@ -56,22 +56,93 @@ export async function recomputeCaseDataUpdate(database:D1Database,input:{caseId:
   }catch(error){if(error instanceof Error&&error.message.includes("CALCULATION_VERSION_MISMATCH"))return {caseId:input.caseId,status:"superseded" as const,dataVersion:state.dataVersion};throw error;}
 }
 
-/** Durable source-state versus computed-head scan; an external worker may poll it. */
-export async function drainCaseDataUpdates(database:D1Database,input:{caseId?:string;limit?:number;loadCase:(caseId:string)=>Promise<CaseData>;now?:Clock}){
-  const limit=Math.min(10,Math.max(1,Number.isSafeInteger(input.limit)?input.limit!:3));
-  const rows=(await database.prepare(`SELECT state.case_id AS caseId,state.data_version AS dataVersion,state.last_changed_at AS lastChangedAt
-    FROM case_data_change_state AS state
-    LEFT JOIN case_calculation_heads AS calculated ON calculated.case_id = state.case_id
-    LEFT JOIN case_calculation_runs AS calc_run ON calc_run.id = calculated.run_id
-    JOIN cases AS current_case ON current_case.id = state.case_id
-    WHERE (calculated.case_id IS NULL OR calculated.data_version < state.data_version OR calculated.case_revision <> current_case.revision OR calc_run.reference_sha256 IS NULL OR calc_run.reference_sha256 <> ?)
-    ${input.caseId?"AND state.case_id = ?":""}
-    ORDER BY state.last_changed_at,state.case_id LIMIT ?`).bind(referenceIdentity()?.sha256??referenceRelease.sha256,...(input.caseId?[input.caseId,limit]:[limit])).all<{caseId:string;dataVersion:number;lastChangedAt:string}>()).results;
-  const results=[];
-  for(const row of rows){
-    try{results.push(await recomputeCaseDataUpdate(database,{caseId:row.caseId,loadCase:()=>input.loadCase(row.caseId),now:input.now}));}
-    catch(error){results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"failed" as const,error:error instanceof Error?error.message:"CASE_DATA_RECOMPUTE_FAILED"});}
-  }
-  return {scanned:rows.length,computed:results.filter(row=>row.status==="computed").length,debouncing:results.filter(row=>row.status==="debouncing").length,results};
+/** Do not select rows before the quiet deadline: they must never occupy the
+ * limited Cron window ahead of ready cases. Retry/lease state is per CASE,
+ * never global, so one failure cannot starve later cases.
+ * D1 remains the authority; no model is run by this calculation poller. */
+export async function drainCaseDataUpdates(database:D1Database,input:{
+ caseId?:string;limit?:number;loadCase:(caseId:string)=>Promise<CaseData>;now?:Clock
+}){
+ const limit=Math.min(10,Math.max(1,Number.isSafeInteger(input.limit)?input.limit!:3));
+ const ms=(input.now??Date.now)(),at=new Date(ms).toISOString(),
+   cutoff=new Date(ms-CASE_DATA_QUIET_PERIOD_MS).toISOString();
+ const reference=referenceIdentity()?.sha256??referenceRelease.sha256;
+ const sql=[
+   "SELECT state.case_id AS caseId,state.data_version AS dataVersion,",
+   "current_case.revision AS caseRevision FROM case_data_change_state state",
+   "JOIN cases current_case ON current_case.id=state.case_id",
+   "LEFT JOIN case_calculation_heads calculated ON calculated.case_id=state.case_id",
+   "LEFT JOIN case_calculation_runs calc_run ON calc_run.id=calculated.run_id",
+   "LEFT JOIN case_calculation_poll_jobs poll ON poll.case_id=state.case_id",
+   "WHERE (calculated.case_id IS NULL OR calculated.data_version<state.data_version",
+   "OR calculated.case_revision<>current_case.revision OR calc_run.reference_sha256 IS NULL",
+   "OR calc_run.reference_sha256<>?) AND state.last_changed_at<=?",
+   "AND (poll.case_id IS NULL OR poll.data_version<>state.data_version",
+   "OR poll.case_revision<>current_case.revision OR poll.reference_sha256<>?",
+   "OR (poll.status='retry_wait' AND poll.next_attempt_at<=?)",
+   "OR (poll.status='running' AND poll.lease_until<=?))",
+   input.caseId?"AND state.case_id=?":"",
+   "ORDER BY state.last_changed_at,state.case_id LIMIT ?"
+ ].filter(Boolean).join(" ");
+ const candidates=(await database.prepare(sql)
+   .bind(reference,cutoff,reference,at,at,...(input.caseId?[input.caseId]:[]),limit)
+   .all<{caseId:string;dataVersion:number;caseRevision:number}>()).results??[];
+ const results=[];
+ for(const row of candidates){
+   const lease=crypto.randomUUID(),until=new Date(ms+180_000).toISOString();
+   // CAS-style UPSERT. Two workers selecting the same case cannot both claim.
+   const claim=await database.prepare([
+     "INSERT INTO case_calculation_poll_jobs",
+     "(case_id,data_version,case_revision,reference_sha256,status,attempts,lease_token,lease_until,next_attempt_at,last_error,updated_at)",
+     "VALUES(?,?,?,?,'running',1,?,?,NULL,NULL,?)",
+     "ON CONFLICT(case_id) DO UPDATE SET data_version=excluded.data_version,case_revision=excluded.case_revision,",
+     "reference_sha256=excluded.reference_sha256,status='running',",
+     "attempts=CASE WHEN case_calculation_poll_jobs.data_version=excluded.data_version",
+     "AND case_calculation_poll_jobs.case_revision=excluded.case_revision",
+     "AND case_calculation_poll_jobs.reference_sha256=excluded.reference_sha256",
+     "THEN case_calculation_poll_jobs.attempts+1 ELSE 1 END,",
+     "lease_token=excluded.lease_token,lease_until=excluded.lease_until,next_attempt_at=NULL,",
+     "last_error=NULL,updated_at=excluded.updated_at",
+     "WHERE case_calculation_poll_jobs.data_version<>excluded.data_version",
+     "OR case_calculation_poll_jobs.case_revision<>excluded.case_revision",
+     "OR case_calculation_poll_jobs.reference_sha256<>excluded.reference_sha256",
+     "OR (case_calculation_poll_jobs.status='retry_wait'",
+     "AND case_calculation_poll_jobs.next_attempt_at<=excluded.updated_at)",
+     "OR (case_calculation_poll_jobs.status='running'",
+     "AND case_calculation_poll_jobs.lease_until<=excluded.updated_at)"
+    ].join(" ")).bind(row.caseId,row.dataVersion,row.caseRevision,reference,lease,until,at).run();
+   if(!claim.meta.changes){results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"already_claimed" as const});continue;}
+   try{
+     const value=await recomputeCaseDataUpdate(database,{
+       caseId:row.caseId,loadCase:()=>input.loadCase(row.caseId),now:input.now
+     });
+     // A successful or superseded attempt must NOT cool down the newer source version.
+     await database.prepare("DELETE FROM case_calculation_poll_jobs WHERE case_id=? AND lease_token=?")
+       .bind(row.caseId,lease).run();
+     results.push(value);
+   }catch(error){
+     const receipt=await database.prepare("SELECT attempts FROM case_calculation_poll_jobs WHERE case_id=? AND lease_token=?")
+       .bind(row.caseId,lease).first<{attempts:number}>();
+     const attempts=receipt?.attempts??1,terminal=attempts>=5;
+     const code=error instanceof Error&&/^[A-Z][A-Z0-9_]{5,100}$/.test(error.message)
+       ?error.message:"CASE_CALCULATION_AUTOMATION_FAILED";
+     const retryAt=terminal?null:new Date(ms+Math.min(900_000,30_000*2**Math.max(0,attempts-1))).toISOString();
+     await database.prepare("UPDATE case_calculation_poll_jobs SET status=?,next_attempt_at=?,last_error=?,lease_token=NULL,lease_until=NULL,updated_at=? WHERE case_id=? AND lease_token=?")
+       .bind(terminal?"failed":"retry_wait",retryAt,code,at,row.caseId,lease).run();
+     results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:terminal?"failed" as const:"retry_wait" as const,error:code,nextAttemptAt:retryAt});
+   }
+ }
+ return {scanned:candidates.length,computed:results.filter(x=>x.status==="computed").length,
+    debouncing:results.filter(x=>x.status==="debouncing").length,results};
 }
 export const drainDueCaseDataUpdates=drainCaseDataUpdates;
+
+/** Read-only operator status. No model execution or event acknowledgement. */
+export async function caseCalculationPollHealth(database:D1Database,caseId:string){
+ const row=await database.prepare("SELECT p.case_id AS caseId,p.data_version AS dataVersion,p.case_revision AS caseRevision,p.reference_sha256 AS referenceSha256,p.status,p.attempts,p.lease_until AS leaseUntil,p.next_attempt_at AS nextAttemptAt,p.last_error AS error,s.data_version AS currentDataVersion,c.revision AS currentRevision FROM case_calculation_poll_jobs p JOIN cases c ON c.id=p.case_id JOIN case_data_change_state s ON s.case_id=p.case_id WHERE p.case_id=?")
+  .bind(caseId).first<{caseId:string;dataVersion:number;caseRevision:number;referenceSha256:string;status:string;attempts:number;leaseUntil:string|null;nextAttemptAt:string|null;error:string|null;currentDataVersion:number;currentRevision:number}>();
+ if(!row)return {caseId,status:"no_poll_error" as const};
+ const stale=row.dataVersion!==row.currentDataVersion||row.caseRevision!==row.currentRevision||row.referenceSha256!==(referenceIdentity()?.sha256??referenceRelease.sha256);
+ return {caseId,status:stale?"superseded":row.status,attempts:row.attempts,nextAttemptAt:row.nextAttemptAt,
+   leaseUntil:row.leaseUntil,errorCode:row.error,sourceDataVersion:row.dataVersion};
+}

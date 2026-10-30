@@ -295,6 +295,13 @@ export const caseCalculationFeatures = sqliteTable("case_calculation_features", 
   subjectId:text("subject_id"),rowOrdinal:integer("row_ordinal"),valueJson:text("value_json").notNull(),valueWon:text("value_won"),status:text("status").notNull(),
   sourceFactIdsJson:text("source_fact_ids_json").notNull(),inputRefsJson:text("input_refs_json").notNull(),formula:text("formula").notNull(),
 },t=>[index("case_calculation_features_output_idx").on(t.runId,t.calculationId,t.outputName)]);
+export const caseCalculationPollJobs=sqliteTable("case_calculation_poll_jobs",{
+ caseId:text("case_id").primaryKey().references(()=>cases.id),dataVersion:integer("data_version").notNull(),
+ caseRevision:integer("case_revision").notNull(),referenceSha256:text("reference_sha256").notNull(),
+ status:text("status").notNull(),attempts:integer("attempts").notNull().default(0),
+ leaseToken:text("lease_token"),leaseUntil:text("lease_until"),nextAttemptAt:text("next_attempt_at"),
+ lastError:text("last_error"),updatedAt:text("updated_at").notNull(),
+},t=>[index("case_calculation_poll_jobs_due_idx").on(t.status,t.nextAttemptAt,t.leaseUntil)]);
 export const caseCalculationHeads = sqliteTable("case_calculation_heads", {
   caseId:text("case_id").primaryKey().notNull(),runId:text("run_id").notNull(),dataVersion:integer("data_version").notNull(),caseRevision:integer("case_revision").notNull(),
   inputSha256:text("input_sha256").notNull(),updatedAt:text("updated_at").notNull(),
