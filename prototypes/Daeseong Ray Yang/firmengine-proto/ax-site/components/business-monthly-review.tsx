@@ -34,7 +34,7 @@ export default function BusinessMonthlyReview({caseId,revision,roles,busy,review
  const [approvalReason,setApprovalReason]=useState<Record<string,string>>({});
  const [fetching,setFetching]=useState(false);
  useEffect(()=>{
-  let active=true;setFetching(true);setError("");
+  let active=true;setData(null);setFetching(true);setError("");
   const root="/api/cases/"+encodeURIComponent(caseId)+"/data?view=";
   Promise.all([
    readJson<MonthView>(root+"business_monthly_workbench"),
