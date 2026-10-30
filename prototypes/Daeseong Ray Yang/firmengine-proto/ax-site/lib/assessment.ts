@@ -192,7 +192,8 @@ export function monthlyIncome(source: IncomeSource): { value: bigint | null; rea
   // An explicit `periodMonths` does not turn a partial or malformed source
   // period into complete calendar months. Never let a payslip covering 15 days
   // enter the month-average denominator as one full observed month.
-  if (source.amountBasis === "period_total" && (source.periodStart || source.periodEnd) && !span?.completeMonths)
+  if ((source.amountBasis === "period_total" || source.amountBasis === "monthly") &&
+      (source.periodStart || source.periodEnd) && !span?.completeMonths)
     reasons.push("INCOME_PERIOD_NOT_COMPLETE_CALENDAR_MONTHS");
   const months = source.amountBasis === "monthly" ? 1 : source.amountBasis === "period_total" ? source.periodMonths ?? inferredMonths : null;
   if (source.amountBasis === "period_total" && source.periodMonths !== null && source.periodMonths !== undefined && inferredMonths !== null && source.periodMonths !== inferredMonths) reasons.push("INCOME_PERIOD_DENOMINATOR_CONFLICT");
