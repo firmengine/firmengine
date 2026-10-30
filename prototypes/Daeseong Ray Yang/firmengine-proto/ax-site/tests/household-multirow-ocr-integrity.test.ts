@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {projectPage,type PageRead} from "../lib/extraction.ts";
+import {applyExtraction,createCase} from "../lib/domain.ts";
 
 // Independent synthetic OCR rows. They must never be flattened or summed.
 const sourceHash="b".repeat(64);
@@ -51,4 +52,27 @@ test("unreadable single total is not treated as zero or as non-applicable",()=>{
  const result=extract([record("unreadable total",[["reported_members",null]])]);
  assert.equal(result.household?.reportedMembers,null);
  assert.ok(result.warnings?.some(x=>x.includes("누락·오인식")));
+});
+
+test("separate pages with conflicting household totals invalidate auto-count instead of overwriting the first",()=>{
+ const data=createCase("synthetic household source conflict","synthetic-household-conflict","2026-10-30");
+ data.documents=[
+  {id:"doc-A",name:"first.pdf",sha256:sourceHash,status:"active",pages:[1]},
+  {id:"doc-B",name:"second.pdf",sha256:sourceHash,status:"active",pages:[1]}
+ ];
+ data.pages=[
+  {documentId:"doc-A",page:1,role:"evidence",text:"reported_members 3"},
+  {documentId:"doc-B",page:1,role:"evidence",text:"reported_members 2"}
+ ];
+ const reading=(value:string):PageRead=>({
+  documentType:"unknown",complete:true,warnings:[],
+  records:[record("household total",[["reported_members",value]])]
+ });
+ const first=applyExtraction(data,projectPage(reading("3"),"doc-A",1,sourceHash));
+ assert.equal(first.household.reportedMembers,3);
+ const second=applyExtraction(first,projectPage(reading("2"),"doc-B",1,sourceHash));
+ assert.equal(second.household.reportedMembers,null);
+ assert.equal(second.household.recognition,"unreviewed");
+ assert.ok(second.household.factIds.length>=2);
+ assert.ok(second.extractionWarnings?.some(x=>x.includes("복수·상충")));
 });
