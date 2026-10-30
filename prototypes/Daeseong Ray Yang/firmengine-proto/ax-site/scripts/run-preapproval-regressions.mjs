@@ -14,6 +14,7 @@ const examples=[
  "tests/preapproval-stage-audit.test.ts",
  "tests/preapproval-simulation.test.ts",
  "tests/preapproval-correction-audit.test.ts",
+ "tests/preapproval-ocr-storage-audit.test.ts",
  "tests/preapproval-official-registry.test.ts",
  "tests/preapproval-judicial-precedents.test.ts",
  "tests/preapproval-full-contract-coverage.test.ts",
