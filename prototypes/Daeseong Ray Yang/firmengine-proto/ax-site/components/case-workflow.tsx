@@ -6,6 +6,7 @@ import type { LucideIcon } from "lucide-react";
 import type { CaseCommand, CommandType } from "@/lib/case-command-contract";
 import CaseReviewActions, { type ReviewArtifact,type ReviewFieldBase,type CurrentLegalRun } from "./case-review-actions";
 import DocumentReviewFinalization,{type ExportReviewView} from "./document-review-finalization";
+import BusinessMonthlyReview from "./business-monthly-review";
 import type { CaseWorkflowState } from "@/lib/case-workflow-state";
 import type { WorkflowHealth } from "@/lib/workflow-health";
 import SubstitutionReviewForm, {type SubstitutionProofCandidate} from "./substitution-review-form";
@@ -219,6 +220,8 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
       <Panel title="담당 작업" icon={Clock3}>
         {data.tasks.count === 0 ? <p className="workflow-muted">열린 작업이 없습니다.</p> : <div className="workflow-list">{data.tasks.items.map(task => <article className="workflow-card" key={task.id}><div className="workflow-card-head"><div><strong>{task.title}</strong><p>{task.blockedBy.length ? `선행 항목 ${task.blockedBy.length}개` : "선행 항목 없음"}</p></div><span className="badge badge-neutral">{label(task.status)}</span></div><form className="workflow-form" onSubmit={submit(form => command("task.update", { taskId: task.id }, { status: String(form.get("status")), ownerId: String(form.get("ownerId") ?? "") || null, dueAt: String(form.get("dueAt") ?? "") || null, waitingOn: String(form.get("waitingOn") ?? "") || null }, reason(form)))}><div className="form-grid"><FormField label="진행 상태">{select("status", [["open", "열림"], ["in_progress", "진행 중"], ["waiting", "대기"], ["resolved", "완료"], ["dismissed", "취소"]])}</FormField><FormField label="담당자" hint="담당자를 지정하려면 확인된 담당자 식별자를 입력하세요.">{input("ownerId", "text", false, task.ownerId ?? "", "담당자 식별자")}</FormField><FormField label="기한">{input("dueAt", "date", false, task.dueAt ?? "")}</FormField><FormField label="대기 사유">{input("waitingOn", "text", false, task.waitingOn ?? "", "필요한 응답이나 자료")}</FormField></div><ReasonField /><Submit busy={busy}>작업 상태 저장</Submit></form></article>)}</div>}
       </Panel>
+      <BusinessMonthlyReview caseId={caseId} revision={data.revision} roles={data.roles}
+        reviews={data.workflow.businessNetReviews} busy={busy||!!pendingCommand} onCommand={send}/>
       <DocumentReviewFinalization caseId={caseId} review={data.exportReview} roles={data.roles}
         finalReady={data.finalLegalReadiness?.readyForFinalReviewCopy===true}
         pendingEdits={Boolean(data.workflow?.documentEdits?.length)} busy={busy||!!pendingCommand}
