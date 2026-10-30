@@ -63,7 +63,7 @@
 | living_cost_proposal | `context.courtId` | — | 사건 설정·법률 검토 입력 |
 | living_cost_proposal | `household.recognizedMembers` | — | **계산 입력의 표준 OCR 경로 미연결** |
 | living_cost_proposal | `household.additionalLivingCost` | — | **계산 입력의 표준 OCR 경로 미연결** |
-| objection_minimum | `context.planApprovalDate` | — | 사건 설정·법률 검토 입력 |
+| objection_minimum | `context.planApprovalDate` | — | **검증된 Fact 키** (`data.context` 속성 아님) |
 | objection_minimum | `context.ruleReleaseId` | — | 사건 설정·법률 검토 입력 |
 | objection_minimum | `context.courtObjection` | — | 사건 설정·법률 검토 입력 |
 | objection_minimum | `claims.presentValue` | — | 별도 도구/법률결정 입력 |
@@ -79,8 +79,8 @@
 | seoul_short_term | `debts.lastYearDebt` | — | 별도 도구/법률결정 입력 |
 | seoul_short_term | `applicant.age` | — | 별도 도구/법률결정 입력 |
 | seoul_short_term | `legal.seoul424.statutory_severe_disability` | — | 별도 도구/법률결정 입력 |
-| seoul_short_term | `household.minorChildren` | — | **계산 입력의 표준 OCR 경로 미연결** |
-| seoul_short_term | `household.singleParent` | — | **계산 입력의 표준 OCR 경로 미연결** |
+| seoul_short_term | `household.minorChildren` | — | **검증된 Fact 키** (`data.household` 속성 아님) |
+| seoul_short_term | `household.singleParent` | — | **검증된 Fact 키** (`data.household` 속성 아님) |
 | seoul_short_term | `rentalFraud.officialDecision` | — | 별도 도구/법률결정 입력 |
 | transaction_review | `transaction.date` | `bank_transactions::transaction_datetime` | 직접 ID 연결 (검증·인정 별도) |
 | transaction_review | `transaction.accountId` | `bank_transactions::account_id` | 직접 ID 연결 (검증·인정 별도) |
@@ -98,6 +98,6 @@
 
 ### 검증 합계
 
-- 18모듈의 선언 입력 슬롯 91개: 직접 21, 유도 3, 사건 설정 34, 객체 계산 입력 미연결 21, 별도 의사결정/도구 입력 12.
+- 18모듈의 선언 입력 슬롯 91개: 직접 21, 유도 3, 사건 설정 33, 객체 계산 입력 미연결 19, 명시 검증된 Fact 입력 3, 별도 의사결정/도구 입력 12.
 - 월평균/채무총액/재산청산가치 외 변제 예산·채권 배분·선택기간·규칙판본은 OCR 값만으로 계산할 수 없다.
 - 실제 실행 리그레션은 `tests/ocr-calculator-input-integration.test.ts`와 `tests/ocr-calculation-db-contract.test.ts`에 정의됨. 이 문서는 테스트 실행결과가 아닌 **현재 코드 키 계약 대조**다.
