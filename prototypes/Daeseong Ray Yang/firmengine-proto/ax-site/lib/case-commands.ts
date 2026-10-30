@@ -211,7 +211,7 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
      month:text(patch.month,"사업소득 월")
    };
    const proposal=await proposeBusinessNet(previous,selection,command.reason,auth.actor,auth.at);
-   work.businessNetReviews.push(proposal);
+   (work.businessNetReviews??=[]).push(proposal);
    impact.businessNetReview={id:proposal.id,month:proposal.month,status:"proposed",
      grossWon:proposal.grossWon,costWon:proposal.costWon,netWon:proposal.netWon};
  }else if(kind==="business.net.adopt"){
@@ -220,9 +220,9 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
    if(isSynthetic(data))fail("합성 사건에 사업경비의 법률상 인정을 승인할 수 없습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");
    const approved=adoptBusinessNet(previous,text(target.reviewId,"사업소득 검토"),
      auth.actor,command.reason,auth.at);
-   const index=work.businessNetReviews.findIndex(row=>row.id===approved.review.id);
+   const index=(work.businessNetReviews??[]).findIndex(row=>row.id===approved.review.id);
    if(index<0)fail("최신 사건의 사업소득 검토 기록이 없습니다.",409,"CASE_STATE_CONFLICT");
-   work.businessNetReviews[index]=approved.review;
+   work.businessNetReviews![index]=approved.review;
    data.incomes.push(approved.income);
    resetReviews(data,impact);
    work.reviewHistory.push({at:auth.at,actor:auth.actor,reason:command.reason,
