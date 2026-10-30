@@ -107,6 +107,11 @@
 | E44 | 30개 담당자 동시 로그인/사건 열람 | UI/BFF/Auth→Backend | read-side 캐시·rate·ACL, 모델 재실행 없음 | GET으로 API 토큰 비용 발생 0 |
 | E45 | n8n 자체 DB 또는 Redis 장애 | n8n/Backend queue | domain outbox 미전송 이벤트 유지, 복구 후 재전송, 사건 상태 훼손 금지 | 이벤트 유실 0, 재발송 중복 0 |
 | E46 | 테스트용 합성 원본의 실제 제출 시도 | Test Fixture Guard→Export | synthetic fixture는 final/filing 금지, staging 외 접근 격리 | 합성→실제 제출 변환 0 |
+| E47 | LawGraph 판단 저장 성공, 문서 필드 투영만 실패·0건 | Legal Review→Form Projection→Draft Gate | 판단 이력을 보존하되 자동 검토초안 후보·작성은 보류, 원문/토큰 복구 후 재시도 | C01/T15: projectionError 또는 0 field면 eligible=false |
+| E48 | 구 상담의 갈음서류 A←B+C 승인이 남은 채 새 상담 활성화 | Intake→Requirement/Legal→Final Export | UI·법률자동검토·최종 export의 필수서류·갈음 상태 동일, 구 판본 원본요청 복구 | C04/X01–X03: 동일 사건 3경로 판정 diff 0 |
+| E49 | 관할 B의 법령변경 경보가 관할 A 사건에 남음 | Monitor→Substitution→Legal→Staff UI | 적용 관할/시행일/서식 불일치 알림은 해당 사건의 초안·갈음 상태를 변경하지 않음 | C03/DB10–DB11: 비대상 사건 영향 0 |
+| E50 | 자동 검토용 초안 2개 생성 후 담당자가 문안수정·승인 | Automatic Writer→Artifact/Review UI | 자동초안이 동일 artifact ID/해시로 검토 목록에 노출, 편집·재생성 후 이전 검수 무효화 | C02: 별도 outcome.drafts 링크만 존재해선 불합격 |
+| E51 | 원천 OCR 완료지만 필수 계산값 missing/provisional에서 95개 AI 시작 | Calc→Legal Source+Calculation Preflight | 수치·근거 부족이면 AI 호출 전 보류/사람 질문, 필요한 항목만 재판단 | C05: 불필요 모델 호출 0, 근거 없는 계산 완료 0 |
 
 ## 4. 단계별 API 경계 및 후속 에이전트 대기 조건
 
