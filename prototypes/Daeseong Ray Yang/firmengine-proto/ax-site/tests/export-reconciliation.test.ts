@@ -18,7 +18,7 @@ test("current SQL, case revision, manifest hash and byte SHA all agree", () => {
 });
 test("current manifest without SQL artifact is blocked", () => {
   const out=reconcileExportEvidence({...base(),artifactRows:[]});
-  assert.deepEqual(codes(out),["CURRENT_SQL_MISSING","COMMITTED_SQL_MISSING"]);
+  assert.deepEqual(codes(out),["CURRENT_SQL_MISSING","COMMITTED_SQL_MISSING","R2_UNTRACKED_OBJECT_PRESERVE"]);
   assert.equal(out.currentArtifactsVerified,false);
 });
 test("A committed then B current: historical artifact must not be auto-deleted", () => {
@@ -57,7 +57,7 @@ test("R2 bytes hash mismatch blocks verification despite matching SQL and manife
 });
 test("same artifact id in different case cannot clear current/committed proof", () => {
   const out=reconcileExportEvidence({...base(),artifactRows:[row("B","case-2")]});
-  assert.deepEqual(codes(out),["CURRENT_OTHER_CASE","COMMITTED_OTHER_CASE"]);
+  assert.deepEqual(codes(out),["CURRENT_OTHER_CASE","COMMITTED_OTHER_CASE","R2_UNTRACKED_OBJECT_PRESERVE"]);
   assert.equal(out.currentArtifactsVerified,false);
 });
 test("stale revision cannot be treated as current, even with matching hash", () => {

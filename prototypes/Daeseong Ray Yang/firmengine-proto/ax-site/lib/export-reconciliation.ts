@@ -33,7 +33,8 @@ export type ExportEvidenceIssueCode =
   | "R2_OBJECT_MISSING" | "R2_PROOF_UNKNOWN" | "R2_BYTES_UNVERIFIED"
   | "R2_BYTES_HASH_MISMATCH" | "UNCERTAIN_COMMIT_PRESERVE"
   | "CLAIMED_REQUEST_PRESERVE" | "UNREFERENCED_SQL_PRESERVE"
-  | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY" | "OBJECT_KEY_SCOPE_MISMATCH";
+  | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY" | "OBJECT_KEY_SCOPE_MISMATCH"
+  | "R2_PROOF_CONFLICT" | "R2_UNTRACKED_OBJECT_PRESERVE" | "R2_UNTRACKED_PROOF_UNKNOWN";
 export interface ExportEvidenceIssue {
   code: ExportEvidenceIssueCode;
   artifactId?: string;
@@ -60,7 +61,19 @@ export function reconcileExportEvidence(input: {
     issues.push({ code, ...(artifactId ? { artifactId } : {}), ...(requestId ? { requestId } : {}), autoDeleteAllowed: false });
   };
   const rows = new Map(input.artifactRows.map(row => [row.id, row]));
-  const proofs = new Map(input.objectProofs.map(proof => [proof.objectKey, proof]));
+  // Multiple probes may race with a retry or a partial R2 failure. Never let
+  // the last element in an unordered response silently win over a contradiction.
+  const proofs = new Map<string, ExportObjectEvidence>();
+  const conflictingProofs = new Set<string>();
+  for (const proof of input.objectProofs) {
+    const previous = proofs.get(proof.objectKey);
+    if (previous && (previous.exists !== proof.exists ||
+      (previous.verifiedSha256 ?? null) !== (proof.verifiedSha256 ?? null))) {
+      conflictingProofs.add(proof.objectKey);
+    } else if (!previous) {
+      proofs.set(proof.objectKey, proof);
+    }
+  }
   const current = input.manifest.filter(file => file.status === "current");
   const referenced = new Set(input.manifest.map(file => file.id));
   let currentArtifactsVerified = current.length > 0;
@@ -86,6 +99,11 @@ export function reconcileExportEvidence(input: {
   }
   const seenKeys = new Set<string>();
   const currentKeys = new Set(current.map(file => rows.get(file.id)?.objectKey).filter((key): key is string => !!key));
+  for (const key of conflictingProofs) {
+    // Report only keys owned by this case, not other cases observed by a bulk probe.
+    if (key.startsWith("cases/"+input.caseId+"/artifacts/")) add("R2_PROOF_CONFLICT");
+    if (currentKeys.has(key)) currentArtifactsVerified = false;
+  }
   for (const row of input.artifactRows) {
     if (row.caseId !== input.caseId) continue; // No permission to audit another case.
     if (!referenced.has(row.id)) add("UNREFERENCED_SQL_PRESERVE", row.id);
@@ -99,7 +117,7 @@ export function reconcileExportEvidence(input: {
       continue;
     }
     seenKeys.add(row.objectKey);
-    const proof = proofs.get(row.objectKey);
+    const proof = conflictingProofs.has(row.objectKey) ? undefined : proofs.get(row.objectKey);
     const isCurrent = current.some(file => file.id === row.id);
     if (!proof || proof.exists === null) {
       add("R2_PROOF_UNKNOWN", row.id);
@@ -113,6 +131,18 @@ export function reconcileExportEvidence(input: {
     } else if (proof.verifiedSha256 !== row.hash) {
       add("R2_BYTES_HASH_MISMATCH", row.id);
       if (isCurrent) currentArtifactsVerified = false;
+    }
+  }
+  // R2 PUT may succeed while D1 artifact-row persistence fails. Those objects
+  // do not appear in the SQL-row loop above. Observed keys are NOT a complete
+  // bucket inventory; absence from this list never implies that an object is absent.
+  const ownedPrefix = "cases/"+input.caseId+"/artifacts/";
+  for (const [key, proof] of proofs) {
+    if (!key.startsWith(ownedPrefix) || seenKeys.has(key)) continue;
+    if (conflictingProofs.has(key) || proof.exists === null) {
+      add("R2_UNTRACKED_PROOF_UNKNOWN");
+    } else if (proof.exists === true) {
+      add("R2_UNTRACKED_OBJECT_PRESERVE");
     }
   }
   return { issues, currentArtifactsVerified, autoDeleteAllowed: false };
