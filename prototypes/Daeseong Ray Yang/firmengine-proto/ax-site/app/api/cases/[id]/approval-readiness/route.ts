@@ -1,0 +1,74 @@
+/** Read-only pre-approval gap diagnostic. Does not change the existing legal or draft pipeline. */
+import {db,errorResponse,getCase,HttpError,requireSameOrigin} from "../../../../../lib/server-store.ts";
+import {currentFacts} from "../../../../../lib/domain.ts";
+import {executeCaseNodes} from "../../../../../lib/case-execution.ts";
+import {caseRequirementMonitor} from "../../../../../lib/case-requirement-monitor.ts";
+import {listCaseLawgraphReview} from "../../../../../lib/case-lawgraph-store.ts";
+import {RISK_CATALOG} from "../../../../../lib/legal-rules.ts";
+import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
+import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
+import {buildPreApprovalReadiness} from "../../../../../lib/approval-readiness.ts";
+
+export const runtime="edge";
+type Head={
+ caseRevision:number;sourceDataVersion:number|null;
+ calculationRunId:string|null;calcCaseRevision:number|null;calcDataVersion:number|null;
+ runCaseRevision:number|null;runDataVersion:number|null;
+ runInputSha256:string|null;headInputSha256:string|null;calcReferenceSha256:string|null;
+};
+const headSql="SELECT c.revision AS caseRevision,s.data_version AS sourceDataVersion,"
+ +"h.run_id AS calculationRunId,h.case_revision AS calcCaseRevision,h.data_version AS calcDataVersion,"
+ +"r.case_revision AS runCaseRevision,r.data_version AS runDataVersion,"
+ +"r.input_sha256 AS runInputSha256,h.input_sha256 AS headInputSha256,"
+ +"r.reference_sha256 AS calcReferenceSha256 FROM cases c "
+ +"LEFT JOIN case_data_change_state s ON s.case_id=c.id "
+ +"LEFT JOIN case_calculation_heads h ON h.case_id=c.id "
+ +"LEFT JOIN case_calculation_runs r ON r.id=h.run_id WHERE c.id=?";
+export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){
+ try{
+  requireSameOrigin(request);
+  const {id}=await params,query=new URL(request.url).searchParams;
+  const expectedRevision=query.get("expectedRevision");
+  if(expectedRevision!==null&&(!/^[1-9][0-9]*$/.test(expectedRevision)||!Number.isSafeInteger(Number(expectedRevision))))
+   throw new HttpError(400,"잘못된 사건 판본입니다.");
+  const data=await getCase(id),database=db();
+  if(expectedRevision!==null&&Number(expectedRevision)!==data.context.revision)
+   throw new HttpError(409,"사건이 변경되었습니다. 현재 판본으로 다시 조회하세요.");
+  const before=await database.prepare(headSql).bind(id).first<Head>();
+  if(!before||before.caseRevision!==data.context.revision)
+   throw new HttpError(409,"계산/원본 스냅샷이 바뀌었습니다.");
+  const activeReference=referenceIdentity()?.sha256??referenceRelease.sha256;
+  const calculationCurrent=!!before.calculationRunId
+   &&before.sourceDataVersion!==null
+   &&before.calcCaseRevision===data.context.revision
+   &&before.runCaseRevision===data.context.revision
+   &&before.calcDataVersion===before.sourceDataVersion
+   &&before.runDataVersion===before.sourceDataVersion
+   &&!!before.runInputSha256&&before.runInputSha256===before.headInputSha256
+   &&before.calcReferenceSha256===activeReference;
+  // Reuse the live substitution/consultation/court-aware monitor. The monitor's
+  // consultation IDs and workflow requirement IDs are intentionally NOT conflated.
+  const [requirements,legal]=await Promise.allSettled([
+    caseRequirementMonitor(database,data),
+    listCaseLawgraphReview(database,{caseId:id,limit:1})
+  ]);
+  const assessment=executeCaseNodes(data).assessment;
+  const after=await database.prepare(headSql).bind(id).first<Head>();
+  if(!after||JSON.stringify(after)!==JSON.stringify(before))
+   throw new HttpError(409,"검토 중 원본 또는 계산판본이 변경되었습니다. 재조회하세요.");
+  const output=buildPreApprovalReadiness({
+    data,facts:currentFacts(data),assessment,
+    sourceHead:{caseRevision:data.context.revision,sourceDataVersion:before.sourceDataVersion,
+      calculationRunId:before.calculationRunId,calculationCurrent,referenceSha256:activeReference},
+    monitor:requirements.status==="fulfilled"?requirements.value:null,
+    legalReview:legal.status==="fulfilled"?legal.value:null,
+    expectedRiskIds:RISK_CATALOG.map(x=>x.id),
+    riskTitles:Object.fromEntries(RISK_CATALOG.map(x=>[x.id,x.title]))
+  });
+  const failures=[
+    ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
+    ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[])
+  ];
+  return Response.json({...output,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+ }catch(error){return errorResponse(error);}
+}
