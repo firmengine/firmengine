@@ -1,4 +1,6 @@
 # AX 현재 구조 P0 단계별 보완 및 인수 체크 (2026-10-30)
+
+> 아래는 당시 수정·검증 이력이다. 추가 반영된 F01/0021과 남은 충돌은 [현재 활성 인수표](current-unresolved-and-synthetic-audit-20261030.md)를 우선한다.
 원본: GitHub firmengine/firmengine main `ax-site`. **별도 브랜치 없음. 운영 D1/R2/Cron 배포 또는 전체 E2E 합격을 의미하지 않음.**
 
 ## 1. 지금 반영한 격리된 세 가지 결함
@@ -44,7 +46,7 @@
 ## 3. 다른 실행 중인 P0 영역과 충돌 방지
 
 - **P0-02~08** 작업은 `docs/production-p0-plan-20261030.md`와 GitHub #3~#9에서 추적 중. 이미 다르게 수정 중인 `assessment.ts`, `extraction.ts`, `feature-lineage-audit.ts`, `lawgraph-document-field-projection.ts`는 이 변경에서 덮어쓰지 않았다.
-- **P0 교차 차단 #10 (F01)**: `cases.revision`, `storage_token` 및 R2 pointer를 업무/원천 변경이 함께 사용하는 현 구조는 사람의 법률 의견·서류 편집 후 재판단의 최신성을 불필요하게 잃을 수 있다. 이 문제는 독립 data/workflow/legal/document revision과 fingerprint를 동시에 변경해야 하므로 임의로 트리거만 약화하지 않았다. **해결 전 검토→승인→최종 문서의 E2E 완결을 선언하지 않는다.**
+- **P0 교차 차단 #10 (F01) — 후속 코드 반영**: `case-mutation-classifier.ts`·`server-store.ts`·`case-commands.ts`와 **0021** SQL이 승인·문안·산출물 전용 변경을 원천 변경에서 구분한다. 이 항목을 미구현으로 계속 기록하지 않는다. **잔여 인수**는 0021 staging 적용, 진짜 원문 변경은 반드시 감시되고 직원/변호사 검토만으로 계산·LawGraph head가 무효화되지 않는 실제 E2E다.
 - **F07 자동초안/직원 검토 연결**: 자동 초안 artifact는 별도 derived 테이블에 있고 기존 exportManifest/CaseReviewActions와 완전한 편집·승인 계약이 달라 추가 연결 필요. 법률/문서 작업자와 공통 계약 확정 전 메인 writer를 중복 구현하지 않는다.
 - 상담 AI 자체의 **자동 재분류 작업자**는 이번 SQL 감시와 별개. 저장된 새 상담이 분석/요건 편입 전이면 법률 재판단 사전검증에서 차단된다.
 - 갈음서류 watcher 자체의 실패 횟수/공정성은 별도 검증 필요; 계산 큐 개선이 곧 갈음 watcher 개선은 아니다.
@@ -60,10 +62,10 @@
 
 ## 5. 운영 반영 전 필수 순서
 
-1. `drizzle/0017`, `0018` 기존, 그리고 신규 `0019_consultation_revision_watch.sql` → `0020_calculation_poll_fairness.sql` 순으로 **staging** D1에 적용. 운영은 해당 스키마 대응 코드와 배포가 원자적으로 진행될 때만.
+1. `drizzle/0017`, `0018` 기존, 그리고 신규 `0019_consultation_revision_watch.sql` → `0020_calculation_poll_fairness.sql` → `0021_workflow_only_source_watch.sql` 순으로 **staging** D1에 적용. 운영은 해당 스키마 대응 코드와 배포가 원자적으로 진행될 때만.
 2. `npm ci` → `npm run check:source` → lint/build → `node --experimental-strip-types --test tests/consultation-revision-watch.test.ts tests/case-calculation-poll-fairness.test.ts tests/case-legal-source-preflight.test.ts tests/case-legal-automation-flow.test.ts`.
 3. 합성 사건 최소 3건: (A) 자료 완결, (B) OCR 처리중, (C) 원본/상담 수정 경합. Cron 1분/quiet 10분/AI 6개 batch/에러 복구/서류 human gate를 통합 확인.
 4. 실패·중복·리트라이·권한을 포함한 실제 D1/R2 Cron 테스트 결과와 전후 migration 데이터 검증 영수증을 확보한다.
-5. P0 #10 버전 경계를 해결한 뒤 법률 담당자 검토→서류 최종 작성과 초안 재검토 경로를 E2E로 승인한다.
+5. P0 #10의 0021 **운영 적용과 동시 승인/문서검수 E2E**를 수행한다. 코드 반영과 운영 승인을 구별한다.
 
 이 문서는 기능 구현 완료와 **운영 품질 인증**을 구분하기 위한 작업 인계 기록이다.
