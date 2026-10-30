@@ -15,6 +15,9 @@ const OWNER_FIELDS:Readonly<Record<string,string>>={
 const valid=(data:CaseData,f:Fact,index:CaseReadIndex)=>
   f.state==="verified"&&f.recognition==="accepted"&&
   f.validation.every(e=>e.severity!=="error")&&
+  // OCR source identity is not verified when a reviewed value diverges from
+  // the source raw token. The mismatch needs a documented human reconciliation.
+  typeof f.value==="string"&&typeof f.rawValue==="string"&&f.value===f.rawValue&&
   (!f.fieldObservation||f.fieldObservation.sourceState==="present")&&
   factSourceLineageIssues(data,[f.id],index).length===0;
 const key=(f:Fact)=>f.canonicalFieldId??f.fieldObservation?.canonicalFieldId??"";
@@ -23,6 +26,8 @@ const completeBusinessId=(value:string|null)=>!!value&&/^\d{3}-?\d{2}-?\d{5}$/.t
 interface BusinessRegistrationEvidence{
   sourceRecordId:string;registrationFactId:string;
   businessIdObserved:string|null;businessEntityFactIds:string[];representativeFactIds:string[];
+  /** Other registration facts remain visible for staff; never auto-approve ownership. */
+  contextFactIds:string[];
   verifiedSource:boolean;reviewOnly:true;
 }
 export interface BusinessSourceIdentityRow {
@@ -39,46 +44,54 @@ export function businessIdentityCrosswalk(data:CaseData,index:CaseReadIndex=crea
  const reg=bySubject.entries();
  const registrations:BusinessRegistrationEvidence[]=[];
  for(const [sourceRecordId,rows] of reg){
-  const identifiers=rows.filter(f=>key(f)===REG+"business_id");
-  if(!identifiers.length)continue;
-  const entity=rows.filter(f=>key(f)===REG+"business_entity");
-  const reps=rows.filter(f=>key(f)===REG+"representative");
+  const registrationFacts=rows.filter(f=>key(f).startsWith(REG));
+  if(!registrationFacts.length)continue;
+  // Even without an ID, status, joint-owner and opening-date evidence must
+  // remain available as a review candidate, not silently disappear.
+  const identifiers=registrationFacts.filter(f=>key(f)===REG+"business_id");
+  const entity=registrationFacts.filter(f=>key(f)===REG+"business_entity");
+  const reps=registrationFacts.filter(f=>key(f)===REG+"representative");
   const one=identifiers.length===1?identifiers[0]:null;
   registrations.push({sourceRecordId,registrationFactId:one?.id??"",
    businessIdObserved:one?textValue(one.value):null,
    businessEntityFactIds:entity.map(f=>f.id),
    representativeFactIds:reps.map(f=>f.id),
+   contextFactIds:[...new Set(registrationFacts.filter(f=>key(f)!==REG+"business_id").map(f=>f.id))].sort(),
    verifiedSource:!!one&&completeBusinessId(textValue(one.value))&&valid(data,one,index),
    reviewOnly:true});
  }
- const sourceRecords=new Map<string,{family:string;amountFactIds:string[]}>();
+ // A local subject ID is not a global cross-family source-row identifier.
+ const sourceRecords=new Map<string,{family:string;sourceRecordId:string}>();
  const canonicalMoneyBySubject=new Set(Object.keys(OWNER_FIELDS));
  for(const f of facts){
   const canonical=key(f);
   const family=canonical.split("::")[0];
   if(!canonicalMoneyBySubject.has(family))continue;
   if(!canonical.startsWith(family+"::"))continue;
-  const entry=sourceRecords.get(f.subjectId)??{family,amountFactIds:[]};
-  // Record the entire source row for candidate mapping but only monetary facts
-  // are selected for gross/cost cross-check by the separate business audit.
-  sourceRecords.set(f.subjectId,entry);
+  // Preserve separate VAT/cost candidates even if their document-local row
+  // identifiers happen to match. No automatic business identity is inferred.
+  sourceRecords.set(family+"\u0000"+f.subjectId,{family,sourceRecordId:f.subjectId});
  }
  const amountIndex=new Map<string,string[]>();
  // One exact-ID pass; no repeated paging/sorting over all OCR source records.
- for(const f of facts)if(Object.hasOwn(BUSINESS_SOURCE_MONEY_ROLES,key(f)))
-  amountIndex.set(f.subjectId,[...(amountIndex.get(f.subjectId)??[]),f.id]);
- const records:BusinessSourceIdentityRow[]=[...sourceRecords].map(([sourceRecordId,item])=>{
-  const related=bySubject.get(sourceRecordId)??[];
+ for(const f of facts)if(Object.hasOwn(BUSINESS_SOURCE_MONEY_ROLES,key(f))){
+  const routeKey=key(f).split("::")[0]+"\u0000"+f.subjectId;
+  amountIndex.set(routeKey,[...(amountIndex.get(routeKey)??[]),f.id]);
+ }
+ const records:BusinessSourceIdentityRow[]=[...sourceRecords].map(([routeKey,item])=>{
+  const sourceRecordId=item.sourceRecordId;
+  const related=(bySubject.get(sourceRecordId)??[]).filter(f=>key(f).startsWith(item.family+"::"));
   const owners=related.filter(f=>key(f)===OWNER_FIELDS[item.family]);
   const usable=owners.length===1&&valid(data,owners[0],index)&&!!textValue(owners[0].value);
-  return {sourceRecordId,family:item.family,amountFactIds:[...new Set(amountIndex.get(sourceRecordId)??[])].sort(),
+  return {sourceRecordId,family:item.family,amountFactIds:[...new Set(amountIndex.get(routeKey)??[])].sort(),
    ownerFactIds:owners.map(f=>f.id),
    ownerNameObserved:usable?textValue(owners[0].value):null,
    ownerEvidenceVerified:usable,
    registrationFactId:null,
    identityStatus:"unverified_cross_document_identity" as const,
    reviewAction:"connect_to_registration_by_staff_with_source_evidence" as const};
- }).filter(row=>row.amountFactIds.length>0).sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId));
+ }).filter(row=>row.amountFactIds.length>0)
+  .sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId)||a.family.localeCompare(b.family));
  return {schemaVersion:BUSINESS_IDENTITY_CROSSWALK_VERSION,
   caseRevision:data.context.revision,
   registrationRows:registrations.sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId)),
