@@ -207,6 +207,8 @@ test("case command keeps source facts immutable; lawyer-only adoption is persist
   command("business.net.adopt",{reviewId},{}),
   {actor:"synthetic-lawyer",roles:["case_editor","lawyer_review"],at:"2026-10-30T00:00:02Z"});
  assert.equal(adopted.data.workflowState!.businessNetReviews![0].status,"approved");
+ assert.equal(adopted.data.context.incomePeriodReviewed,false,"New approved income invalidates previous representative period review");
+ assert.equal(adopted.data.context.ruleApplicationReviewed,false,"Lawyer adoption does not silently reapprove all statutory application");
  assert.equal(adopted.data.incomes.filter(x=>x.sourceCalculationRole==="period_income_observation").length,1);
  assert.equal(JSON.stringify(adopted.data.facts),beforeFacts);
  assert.equal(reviewedBusinessIncomeIds(adopted.data).size,1);
