@@ -53,3 +53,17 @@ node --experimental-strip-types --test tests/ocr-calculator-input-integration.te
 ## 후속 작업 시 주의
 
 데이터를 담당하는 별도 에이전트가 push할 때마다 해당 커밋이 변경한 파일, 계산/추출 피처 계약 변화, 법률/서식 영향 및 관련 테스트를 각 이슈 댓글에 누적한다. 편집 가능한 정책은 승인형 레지스트리에서만 변경하며, 코드 안전불변식은 변경 승인의 대상이 아니다. 공개 GitHub에 실제 의뢰인 자료, 운영 키, 샘플 원본 추출값을 올리지 않는다.
+
+## 2026-10-30 추가 동시작업 커밋 확인 (UTC 02:14 기준)
+
+| P0 범위 | 타 작업 에이전트 main 확인 | 영향과 미해결 |
+|---|---|---|
+| 03 상담 | `c3a67beb` | 상담 수정 revision / 활성·비활성 변경 이벤트를 별도 SQL 마이그레이션 0019에 반영. 85종 상담-추출 요건의 법률상 완전성과 실제 배포 미검증. |
+| 05 OCR·DB | `4aca409a`, `0ca98f87`, `a7eab2f7`, `1174be5a` | 가구 다중 원문행 보존, 다른 문서 간 가구원 수 오인 방지, >2000 source features 묵살 방지·2200 테스트 추가. 실제 693 정답셋 대조는 미실행. |
+| 06 계산 | `9bad1dd6`, `1c6dc3c7`, `c5e69588`, `7b3b694a`, `ec5b96e0` | 불완전 대표기간 수입·월 승인액 차단, 동일 Fact 다중 typed 소비 차단, 계산 Poll lease/backoff/고립과 migration 0020 추가. 18개 모듈 실제 E2E는 미완료. |
+| 07 법률근거 | `c159f217` | 승인형 95 체크 canonical OCR 피처 계약은 정확한 고유 693 ID compact index 기반으로 검증. 88개 이상 전문가 승인 계약 작성 필요. |
+| 08 최종문서 | `de45d877`, `22a988e7` | export DB commit 경계에서 현재 source/calculation/LawGraph run 재확인. TypeScript 선택적 서식 토큰 type guard 수정. 95-check·법원양식 E2E 미완료. |
+
+**교차 P0 차단 발견 — [#10](https://github.com/firmengine/firmengine/issues/10):** `case-commands.ts:legalCheck.dispose` 기본 사건 revision 증가, `saveCase` workflow-only payload/token 저장, `drizzle/0010/0018` source-change triggers가 업무승인을 원본변경으로 인식할 가능성이 큼. `case-command-store.currentLegalRun` 및 최종 LawGraph gate의 dataVersion 일치 요구와 충돌. 해결 전에는 '검수 완료 후 무중단 최종 문서' 인수 불가. **데이터 작업자와 함께 원천/업무/법률/출력 판본을 분리해야 한다.** 트리거를 임의로 수정·제거하면 실제 자료수정 무효화가 누락될 수 있으므로 해당 SQL을 덮어쓰지 않았다.
+
+**검증 상태:** 본 표의 커밋은 GitHub main의 소스/테스트 추가를 확인한 것이고, 코드 전체 컴파일·Node 회귀·Cloudflare Cron/DB 마이그레이션·실제 법원 전자서식 제출 적합성이 성공했다는 뜻이 아니다.
