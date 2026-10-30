@@ -7,7 +7,7 @@ import {createCase} from "../lib/domain.ts";
 import {CURRENT_RULESET,RISK_CATALOG} from "../lib/legal-rules.ts";
 import {executeCaseNodes} from "../lib/case-execution.ts";
 import {persistCaseCalculationFeatures} from "../lib/case-calculation-feature-store.ts";
-import {drainCaseLegalAutomation,readCaseLegalAutomation,type LegalAutomationServices} from "../lib/case-legal-automation.ts";
+import {drainCaseLegalAutomation,readCaseLegalAutomation,retryFailedCaseLegalAutomation,type LegalAutomationServices} from "../lib/case-legal-automation.ts";
 import {listCaseLawgraphReview} from "../lib/case-lawgraph-store.ts";
 import {caseDataQuietWindow,CASE_DATA_QUIET_PERIOD_MS} from "../lib/case-data-recompute.ts";
 import {legalReviewInputFingerprint} from "../lib/legal-review-identity.ts";
@@ -89,5 +89,37 @@ test("95 source-version-linked legal AI conditions persist as human-review-only 
   assert.equal(view.complete,true);assert.equal(view.courtApprovalInferred,false);
   assert.ok(view.checks.every(c=>c.status==="legal_review"));
   assert.equal((await readCaseLegalAutomation(h.db,input.caseId)).outcome!==undefined,true);
+ }finally{h.close();}
+});
+
+test("failed legal AI batches respect retry lease/backoff and require explicit operator recovery",async()=>{
+ const h=setup();try{
+  const input=await h.initialize();
+  let calls=0;
+  const services=h.services(input.data,async()=>{calls++;throw new Error("LEGAL_REVIEW_STAGE_UNEXPECTED");});
+  const first=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(first.results[0].status,"retry_wait");assert.equal(calls,1);
+  assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
+  h.sqlite.prepare("UPDATE case_legal_automation_jobs SET attempts=3,next_attempt_at='2000-01-01T00:00:00Z' WHERE case_id=?").run(input.caseId);
+  const last=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(last.results[0].status,"failed");assert.equal(calls,2);
+  const recovered=await retryFailedCaseLegalAutomation(h.db,{caseId:input.caseId,expectedDataVersion:input.version});
+  assert.equal(recovered.status,"retry_wait");
+  const state=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.equal(state.status,"retry_wait");
+  await assert.rejects(retryFailedCaseLegalAutomation(h.db,{caseId:input.caseId,expectedDataVersion:input.version}),/LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB/);
+ }finally{h.close();}
+});
+test("source-only DB change invalidates calculator/legal head without treating prior review as current",async()=>{
+ const h=setup();try{
+  const input=await h.initialize();
+  const services=h.services(input.data,async()=>({stage:"legal_review",remaining:89}));
+  await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  const prior=await readCaseLegalAutomation(h.db,input.caseId);
+  h.sqlite.prepare("UPDATE case_data_change_state SET data_version=data_version+1 WHERE case_id=?").run(input.caseId);
+  const after=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.equal(prior.status,"pending");
+  assert.equal(after.status,"waiting_for_calculation");
+  assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
  }finally{h.close();}
 });
