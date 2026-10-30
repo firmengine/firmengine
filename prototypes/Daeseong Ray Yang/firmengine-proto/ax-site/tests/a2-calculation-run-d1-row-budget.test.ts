@@ -27,3 +27,10 @@ test("UTF-8 multibyte Korean text is counted in bytes rather than JS string unit
   /CALCULATION_FEATURE_RESULT_SIZE_LIMIT/);
  assert.doesNotThrow(()=>assertCalculationRunPayloadSize("가".repeat(100),"{}"));
 });
+test("missing_json and other run metadata count against the same D1 SQL row",()=>{
+ assert.throws(()=>assertCalculationRunPayloadSize(
+  "x".repeat(1_500_000),"y".repeat(200_000),["z".repeat(250_000)]),
+  /CALCULATION_FEATURE_RESULT_SIZE_LIMIT/);
+ assert.doesNotThrow(()=>assertCalculationRunPayloadSize(
+  "x".repeat(1_500_000),"y".repeat(200_000),["z".repeat(100_000)]));
+});
