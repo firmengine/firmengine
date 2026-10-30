@@ -183,6 +183,10 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   try {
     await commitExportArtifactTransaction({
     artifacts:staged,
+    // Durable intent is already claimed. An R2/SQL ACK can be lost before
+    // the manifest CAS starts; keep all attempted evidence for manual review.
+    // The surrounding catch marks claimed receipts uncertain without replay.
+    preservePreCommitFailureEvidence:true,
     upload:(key,bytes,mime)=>bucket().put(key,bytes,{httpMetadata:{contentType:mime}}),
     persistRecords:records=>db().batch(records.map(f=>db().prepare("INSERT INTO artifacts (id,case_id,revision,name,kind,object_key,hash,mime,created_at) VALUES (?,?,?,?,?,?,?,?,?)").bind(f.id,id,data.context.revision,f.name,f.kind,f.objectKey,f.hash,f.mime,now()))),
     commitManifest:async()=>{
