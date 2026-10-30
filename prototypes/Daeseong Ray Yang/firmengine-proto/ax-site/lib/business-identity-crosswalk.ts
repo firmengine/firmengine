@@ -3,7 +3,7 @@
  * never sets an applicant income, cross-document identity or court decision.
  */
 import {createCaseReadIndex,currentFacts,factSourceLineageIssues,type CaseData,type CaseReadIndex,type Fact} from "./domain.ts";
-import {auditBusinessSourceEvidence} from "./business-source-evidence.ts";
+import {BUSINESS_SOURCE_MONEY_ROLES} from "./business-source-evidence.ts";
 
 export const BUSINESS_IDENTITY_CROSSWALK_VERSION="business-identity-evidence/1";
 const REG="business_registration::";
@@ -50,7 +50,6 @@ export function businessIdentityCrosswalk(data:CaseData,index:CaseReadIndex=crea
    verifiedSource:!!one&&!!textValue(one.value)&&valid(data,one,index),
    reviewOnly:true});
  }
- const business=auditBusinessSourceEvidence(data,index,{limit:1});
  const sourceRecords=new Map<string,{family:string;amountFactIds:string[]}>();
  const canonicalMoneyBySubject=new Set(Object.keys(OWNER_FIELDS));
  for(const f of facts){
@@ -64,11 +63,9 @@ export function businessIdentityCrosswalk(data:CaseData,index:CaseReadIndex=crea
   sourceRecords.set(f.subjectId,entry);
  }
  const amountIndex=new Map<string,string[]>();
- // Reuse exact source-money canonical IDs from the audit's own source row list.
- for(let offset=0;offset<business.total;offset+=1000){
-  const page=auditBusinessSourceEvidence(data,index,{offset,limit:1000});
-  for(const row of page.rows)amountIndex.set(row.sourceRecordId,[...(amountIndex.get(row.sourceRecordId)??[]),row.factId]);
- }
+ // One exact-ID pass; no repeated paging/sorting over all OCR source records.
+ for(const f of facts)if(Object.hasOwn(BUSINESS_SOURCE_MONEY_ROLES,key(f)))
+  amountIndex.set(f.subjectId,[...(amountIndex.get(f.subjectId)??[]),f.id]);
  const records:BusinessSourceIdentityRow[]=[...sourceRecords].map(([sourceRecordId,item])=>{
   const related=bySubject.get(sourceRecordId)??[];
   const owners=related.filter(f=>key(f)===OWNER_FIELDS[item.family]);
