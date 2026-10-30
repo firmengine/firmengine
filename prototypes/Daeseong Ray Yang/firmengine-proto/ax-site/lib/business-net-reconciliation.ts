@@ -93,7 +93,8 @@ export type BusinessNetPreflight = {
  * inputs COULD be proposed under a reviewed reference mapping.
  */
 export function preflightBusinessNet(
- data:CaseData,selection:BusinessNetSelection,index:CaseReadIndex=createCaseReadIndex(data)
+ data:CaseData,selection:BusinessNetSelection,
+ index:CaseReadIndex=createCaseReadIndex(data),ignoredReviewId?:string
 ):BusinessNetPreflight{
  if(index.owner!==data)throw Error("BUSINESS_INCOME_WRONG_CASE");
  if(!selection||typeof selection.businessRegistrationFactId!=="string"||
@@ -158,7 +159,7 @@ export function preflightBusinessNet(
  const sources=unique(sourceIds);
  // A fact may not be reused in another already approved distinct monthly net.
  const approved=data.workflowState?.businessNetReviews??[];
- if(approved.some(review=>review.status==="approved"&&
+ if(approved.some(review=>review.id!==ignoredReviewId&&review.status==="approved"&&
      (review.month===selection.month&&review.payerIdentityId===normalizedId||
       [review.grossFactId,...review.costFactIds].some(id=>[selection.grossFactId,...selection.costFactIds].includes(id)))))
     throw Error("BUSINESS_MONTH_OR_SOURCE_ALREADY_APPROVED");
@@ -195,28 +196,15 @@ function exactReview(data:CaseData,review:BusinessNetReview,index:CaseReadIndex)
  if(!review||review.schemaVersion!==BUSINESS_NET_REVIEW_VERSION||
     !["proposed","approved"].includes(review.status)||!review.sourceFactIds.length)return false;
  try{
-  const recreated=preflightBusinessNetIgnoringExisting(data,{
+  const recreated=preflightBusinessNet(data,{
    month:review.month,businessRegistrationFactId:review.businessRegistrationFactId,
-   grossFactId:review.grossFactId,costFactIds:review.costFactIds},review.id);
+   grossFactId:review.grossFactId,costFactIds:review.costFactIds},index,review.id);
   return recreated.grossWon===review.grossWon&&recreated.costWon===review.costWon&&
    recreated.netWon===review.netWon&&recreated.payerIdentityId===review.payerIdentityId&&
    recreated.referenceRuleId===review.referenceRuleId&&recreated.referenceSha256===review.referenceSha256&&
    JSON.stringify(recreated.sourceFactIds)===JSON.stringify(review.sourceFactIds)&&
    recreated.basisSnapshot===review.basisSnapshot;
  }catch{return false;}
-}
-// Run preflight without treating the one receipt being adopted as a duplicate.
-// This does NOT bypass any factual, period, source version or reference check.
-function preflightBusinessNetIgnoringExisting(
- data:CaseData,selection:BusinessNetSelection,ignoreId:string
-){
- const previous=data.workflowState?.businessNetReviews??[];
- const other=previous.filter(x=>x.id!==ignoreId);
- const staged:{workflowState?:CaseData["workflowState"]}={workflowState:data.workflowState?
-  {...data.workflowState,businessNetReviews:other}:undefined};
- const base={...data,...staged} as CaseData;
- const adjusted=createCaseReadIndex(base);
- return preflightBusinessNet(base,selection,adjusted);
 }
 export function validBusinessNetReview(
  data:CaseData,review:BusinessNetReview,index:CaseReadIndex=createCaseReadIndex(data)
