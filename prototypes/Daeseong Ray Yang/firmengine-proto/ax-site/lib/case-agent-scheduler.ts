@@ -6,6 +6,7 @@ import { drainCaseDataUpdates } from "./case-data-recompute.ts";
 import { drainCaseLegalAutomation } from "./case-legal-automation.ts";
 import { reviewLegal } from "./pipeline.ts";
 import { generateAutomaticReviewDraft } from "./automatic-review-draft.ts";
+import {inspectLegalAutomationSourceReadiness} from "./case-legal-source-preflight.ts";
 import { drainCaseSubstitutionWatch } from "./case-substitution-watch.ts";
 import { getIntakeCatalog } from "./intake-store.ts";
 import { db, getCase, caseExtras } from "./server-store.ts";
@@ -34,6 +35,7 @@ export async function processCaseAgentUpdates(input:{caseId?:string;limit?:numbe
     legal=await drainCaseLegalAutomation(database,{caseId:input.caseId,limit,services:{
       loadCase:getCase,reviewLegal,
       processingComplete:async data=>(await caseExtras(data)).processingReadiness.complete,
+      sourceReadiness:async data=>inspectLegalAutomationSourceReadiness(database,data,(await caseExtras(data)).processingReadiness.complete),
       generateDraft:generateAutomaticReviewDraft,
     }});
   }catch(error){

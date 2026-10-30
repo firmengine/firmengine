@@ -3,6 +3,7 @@
  * Source case rows are NEVER mutated by this derived-results processor.
  */
 import type {CaseData} from "./domain.ts";
+import type {LegalSourceReadiness} from "./case-legal-source-preflight.ts";
 import {RISK_CATALOG} from "./legal-rules.ts";
 import {EXECUTION_CONTRACT_VERSION} from "./execution-catalog.ts";
 import {legalReviewInputFingerprint} from "./legal-review-identity.ts";
@@ -24,6 +25,7 @@ export interface LegalAutomationServices{
  loadCase:(caseId:string)=>Promise<CaseData>;
  reviewLegal:(caseId:string)=>Promise<{stage:string;remaining?:number;checks?:unknown[]}>;
  processingComplete:(data:CaseData)=>Promise<boolean>;
+ sourceReadiness:(data:CaseData)=>Promise<LegalSourceReadiness>;
  generateDraft:(input:{caseId:string;caseRevision:number;dataVersion:number;calculationRunId:string;legalReviewRunId:string;jobId:string;leaseToken:string})=>Promise<{documentRunId:string;artifacts:{id:string;name:string;kind:string}[]}>;
 }
 const clock=()=>new Date().toISOString();
@@ -171,7 +173,7 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
  await database.prepare("INSERT OR IGNORE INTO case_legal_automation_jobs(id,case_id,data_version,case_revision,calculation_run_id,input_sha256,reference_sha256,status,expected_checks,created_at,updated_at) VALUES(?,?,?,?,?,?,?,'pending',?,?,?)")
   .bind(jobId,candidate.caseId,candidate.dataVersion,candidate.caseRevision,candidate.calculationRunId,candidate.inputSha256,candidate.referenceSha256,checkIds.length,now,now).run();
  const lease=crypto.randomUUID(),until=new Date(Date.now()+LEGAL_AUTOMATION_LEASE_MS).toISOString();
- const claimed=await database.prepare("UPDATE case_legal_automation_jobs SET status='running',attempts=attempts+1,lease_token=?,lease_until=?,updated_at=? WHERE id=? AND (status IN ('pending','retry_wait','draft_pending') OR (status='running' AND lease_until<?)) AND (next_attempt_at IS NULL OR next_attempt_at<=?) AND EXISTS(SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=? AND h.run_id=? AND h.input_sha256=?)")
+ const claimed=await database.prepare("UPDATE case_legal_automation_jobs SET status='running',attempts=attempts+1,lease_token=?,lease_until=?,updated_at=? WHERE id=? AND (status IN ('pending','retry_wait','draft_pending','waiting_evidence') OR (status='running' AND lease_until<?)) AND (next_attempt_at IS NULL OR next_attempt_at<=?) AND EXISTS(SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=? AND h.run_id=? AND h.input_sha256=?)")
    .bind(lease,until,now,jobId,now,now,candidate.caseId,candidate.caseRevision,candidate.dataVersion,candidate.calculationRunId,candidate.inputSha256).run();
  if(!claimed.meta.changes)return {caseId:candidate.caseId,status:"already_claimed_or_complete"};
  const job=await database.prepare("SELECT id,case_id AS caseId,case_revision AS caseRevision,data_version AS dataVersion,calculation_run_id AS calculationRunId,input_sha256 AS inputSha256,reference_sha256 AS referenceSha256,status,attempts,completed_checks AS completedChecks,expected_checks AS expectedChecks,lease_token AS leaseToken,lease_until AS leaseUntil,next_attempt_at AS nextAttemptAt,legal_review_run_id AS legalReviewRunId,document_run_id AS documentRunId,outcome_json AS outcomeJson,last_error AS lastError FROM case_legal_automation_jobs WHERE id=?")
@@ -184,6 +186,14 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
     const report={state:"skipped_fixture",reason:"Protected synthetic/reference case: unattended AI work disabled",courtApprovalInferred:false};
     await transition(database,job,lease,"skipped_fixture",{outcome:report});
     return {caseId:job.caseId,status:"skipped_fixture"};
+  }
+  const readiness=await services.sourceReadiness(source);
+  if(!readiness.ready){
+   const state=readiness.status;
+   await transition(database,job,lease,state,{nextAttemptAt:readiness.retryable?later(120):null,
+     outcome:{sourceReadiness:state,blockers:readiness.blockers,nextAction:readiness.nextAction,
+       dataVersion:job.dataVersion,requiresHumanReview:!readiness.retryable,courtApprovalInferred:false}});
+   return {caseId:job.caseId,status:state,blockers:readiness.blockers};
   }
   if(job.legalReviewRunId&&["draft_pending","retry_wait","running"].includes(candidate.jobStatus??""))return await processDraft(database,job,lease,services);
   const response=await services.reviewLegal(job.caseId);
@@ -218,7 +228,7 @@ export async function drainCaseLegalAutomation(database:D1Database,input:{
   throw new Error("LEGAL_AUTOMATION_INVALID_QUERY");
  const now=clock(),ref=referenceIdentity()?.sha256??referenceRelease.sha256;
  const filter=input.caseId?" AND c.id=?":"";
- const sql="SELECT c.id AS caseId,c.revision AS caseRevision,s.data_version AS dataVersion,h.run_id AS calculationRunId,r.input_sha256 AS inputSha256,r.reference_sha256 AS referenceSha256,j.id AS jobId,j.status AS jobStatus,j.lease_until AS jobLeaseUntil,j.next_attempt_at AS nextAttemptAt FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id JOIN case_calculation_runs r ON r.id=h.run_id LEFT JOIN case_legal_automation_jobs j ON j.case_id=c.id AND j.data_version=s.data_version AND j.calculation_run_id=h.run_id WHERE h.data_version=s.data_version AND h.case_revision=c.revision AND r.reference_sha256=? AND (j.id IS NULL OR ((j.status IN ('pending','retry_wait','draft_pending') OR j.status='running' AND j.lease_until<?) AND (j.next_attempt_at IS NULL OR j.next_attempt_at<=?)))"+filter+" ORDER BY COALESCE(j.updated_at,s.last_changed_at),c.id LIMIT ?";
+ const sql="SELECT c.id AS caseId,c.revision AS caseRevision,s.data_version AS dataVersion,h.run_id AS calculationRunId,r.input_sha256 AS inputSha256,r.reference_sha256 AS referenceSha256,j.id AS jobId,j.status AS jobStatus,j.lease_until AS jobLeaseUntil,j.next_attempt_at AS nextAttemptAt FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id JOIN case_calculation_runs r ON r.id=h.run_id LEFT JOIN case_legal_automation_jobs j ON j.case_id=c.id AND j.data_version=s.data_version AND j.calculation_run_id=h.run_id WHERE h.data_version=s.data_version AND h.case_revision=c.revision AND r.reference_sha256=? AND (j.id IS NULL OR ((j.status IN ('pending','retry_wait','draft_pending','waiting_evidence') OR j.status='running' AND j.lease_until<?) AND (j.next_attempt_at IS NULL OR j.next_attempt_at<=?)))"+filter+" ORDER BY COALESCE(j.updated_at,s.last_changed_at),c.id LIMIT ?";
  const candidates=(await database.prepare(sql).bind(ref,now,now,...(input.caseId?[input.caseId]:[]),limit).all<Candidate>()).results??[];
  const results=[];
  for(const c of candidates)results.push(await processJob(database,c,input.services));

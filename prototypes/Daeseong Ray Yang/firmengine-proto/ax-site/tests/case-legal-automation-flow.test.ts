@@ -35,6 +35,8 @@ function setup(){
  };
  const services=(data:ReturnType<typeof createCase>,reviewLegal:LegalAutomationServices["reviewLegal"]):LegalAutomationServices=>({
   loadCase:async()=>data,reviewLegal,processingComplete:async()=>true,
+  // This mock isolates orchestration; independent source-preflight tests verify the production contract.
+  sourceReadiness:async()=>({ready:true,retryable:false,status:"ready",blockers:[],nextAction:""}),
   generateDraft:async()=>{throw new Error("DOCUMENT_DRAFT_MUST_NOT_RUN_WITH_MISSING_CALCULATION");}
  });
  return {sqlite,db,initialize,services,close:()=>sqlite.close()};
@@ -132,5 +134,36 @@ test("direct source case-payload rewrite without revision still increments SQL s
   const after=(h.sqlite.prepare("SELECT data_version AS v FROM case_data_change_state WHERE case_id=?").get(input.caseId) as {v:number}).v;
   assert.equal(after,before+1);
   assert.ok(["debouncing","waiting_for_calculation"].includes((await readCaseLegalAutomation(h.db,input.caseId)).status));
+ }finally{h.close();}
+});
+
+test("OCR still processing causes a durable wait without spending an AI call",async()=>{
+ const h=setup();try{
+  const input=await h.initialize();let modelCalls=0;
+  const services=h.services(input.data,async()=>{modelCalls++;return{stage:"legal_review",remaining:89};});
+  services.sourceReadiness=async()=>({ready:false,retryable:true,status:"waiting_evidence",
+    blockers:["SOURCE_PAGE_VERIFICATION_PENDING"],nextAction:"verify source"});
+  const a=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(a.results[0].status,"waiting_evidence");
+  assert.equal(modelCalls,0);
+  assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
+  assert.equal((await readCaseLegalAutomation(h.db,input.caseId)).status,"waiting_evidence");
+  h.sqlite.prepare("UPDATE case_legal_automation_jobs SET next_attempt_at='2000-01-01T00:00:00Z' WHERE case_id=?").run(input.caseId);
+  services.sourceReadiness=async()=>({ready:true,retryable:false,status:"ready",blockers:[],nextAction:""});
+  const b=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(b.results[0].status,"reviewing");
+  assert.equal(modelCalls,1);
+ }finally{h.close();}
+});
+test("untraceable source snapshot is a legal review blocker and cannot be auto-retried forever",async()=>{
+ const h=setup();try{
+  const input=await h.initialize();let modelCalls=0;
+  const services=h.services(input.data,async()=>{modelCalls++;return {stage:"legal_complete",remaining:0};});
+  services.sourceReadiness=async()=>({ready:false,retryable:false,status:"review_required",
+   blockers:["NORMALIZED_SOURCE_FALLBACK_UNVERIFIED"],nextAction:"recheck OCR"});
+  const a=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(a.results[0].status,"review_required");
+  assert.equal(modelCalls,0);
+  assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
  }finally{h.close();}
 });
