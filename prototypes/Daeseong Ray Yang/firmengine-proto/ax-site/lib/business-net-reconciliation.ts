@@ -139,10 +139,12 @@ export function preflightBusinessNet(
   for(const extra of current){
    const role=BUSINESS_SOURCE_MONEY_ROLES[canonical(extra)];
    if(role&&extra.id!==f.id){
-    // A nonzero refund or VAT adjustment must be separately reconciled before
-    // the as-stated gross/cost formula is accepted.
+    // VAT and taxable/exempt components support cross-check only. They are
+    // NOT revenue or expense twice. A nonzero refund/extra gross/extra cost
+    // would require its own approved adjustment contract: fail closed here.
     const value=money(sourceFact(data,index,extra.id,canonical(extra)));
-    if(value!==0n)throw Error("BUSINESS_VAT_REFUND_OR_COMPONENT_REVIEW_REQUIRED:"+extra.id);
+    if(value!==0n&&!["turnover_component","vat_collected","input_vat","withheld_tax"].includes(role))
+      throw Error("BUSINESS_UNRECONCILED_FINANCIAL_COMPONENT:"+extra.id);
     sourceIds.push(extra.id);
    }
   }
