@@ -1,0 +1,77 @@
+{
+  "schemaVersion": "preapproval-supplemental-judicial-precedents/1",
+  "asOf": "2026-10-30",
+  "note": "Only public Supreme Court holdings paraphrased into synthetic review guards. Never infer actual client facts, court orders or case approval.",
+  "cases": [
+    {
+      "id": "SUP-2015MA657",
+      "stage": "P5_CORRECTIONS",
+      "ruleIds": [
+        "KR-PR-049"
+      ],
+      "exceptionIds": [
+        "EL-42"
+      ],
+      "sourceUrl": "https://law.go.kr/LSW/precInfoP.do?precSeq=179701",
+      "scenario": "보정에 일부 응했으나 추가 보정이 필요한 경우, 미흡 사실만으로 즉시 신청 불성실·기각이라고 자동 판정하지 않음",
+      "requiredChecks": [
+        "court_order_original_document",
+        "itemized_correction_response",
+        "court_reconsideration_or_hearing",
+        "counsel_review"
+      ],
+      "prohibitedInferences": [
+        "automatically_dismissed",
+        "court_approval_granted"
+      ]
+    },
+    {
+      "id": "SUP-2026MA6688",
+      "stage": "P1_DOCUMENTS",
+      "ruleIds": [
+        "KR-PR-008",
+        "KR-PR-009"
+      ],
+      "exceptionIds": [
+        "EL-33"
+      ],
+      "sourceUrl": "https://sc.scourt.go.kr/portal/news/NewsViewAction.work?gubun=4&pageIndex=1&seqnum=11325&type=0",
+      "scenario": "과거 개인회생 기각·폐지 반복 외에 현재 계속소득, 미납경위, 채권자 회수, 변동된 재산과 신청 목적 조사",
+      "requiredChecks": [
+        "prior_case_outcomes_and_reasons",
+        "current_wage_continuity",
+        "payment_failure_reasons",
+        "creditor_recovery_since_prior_case",
+        "financial_change"
+      ],
+      "prohibitedInferences": [
+        "automatic_bad_faith",
+        "automatically_dismissed",
+        "court_approval_granted"
+      ]
+    },
+    {
+      "id": "SUP-2023MA6207",
+      "stage": "P4_LEGAL",
+      "ruleIds": [
+        "KR-PR-048"
+      ],
+      "exceptionIds": [
+        "EL-44"
+      ],
+      "sourceUrl": "https://www.scourt.go.kr/portal/news/NewsViewAction.work?gubun=4&seqnum=9488",
+      "scenario": "인가 전 급여 압류/추심명령의 경우 적립금을 납부하지 않았다는 사정만으로 변제계획 수행 불가능 확정하지 않음",
+      "requiredChecks": [
+        "wage_attachment_order_date",
+        "commencement_decision_date",
+        "employer_retained_wages",
+        "plan_start_after_approval",
+        "ability_to_pay"
+      ],
+      "prohibitedInferences": [
+        "automatically_infeasible",
+        "court_approval_granted"
+      ]
+    }
+  ]
+}
