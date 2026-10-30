@@ -244,7 +244,7 @@
 - [ ] **A2-IT-003** 각 산식의 sourceVersion·calcRunId·reference SHA 일치. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-004** 누락/null을 기본 0으로 바꾸는 유틸리티 경로. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-005** R2 원본 SHA와 계산 출처인용의 무결성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-IT-006** 원단위 정수 1/거액/음수/0/잘못된 소수 입력. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
+- [ ] **A2-IT-006** 원단위 정수 1/거액/음수/0/잘못된 소수 입력. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **8차 부분:** 본문 `reconcilePlanLedger`의 null·잘못된 수치가 `BigInt` 예외를 일으키는 P1, 실제 0원은 구별. Draft PR #43 fail-closed 제안 및 V8 격리 대조. [8차 영수증](release-audit-runs/A2/2026-10-30_r08_ledger-integrity-and-sql-5000.md). 정식 Node/큰수/단위변환 미실행.
 - [ ] **A2-IT-007** 귀속 월/발급일/신청일의 UTC·현지시간 정합성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** Date.UTC 월말·윤년 계산 원본식 격리/구간경계 재현. 단계별 원본 날짜 앵커 [PR #25](https://github.com/firmengine/firmengine/pull/25). 실제 D1/브라우저 시간대·최종 출력 미인증.
 - [ ] **A2-IT-008** 계산 실행 중 자료 변경과 원자적 CAS 처리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-009** 관리 기준정보 수정·승인·활성화·롤백/영향분석. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -266,7 +266,7 @@
 - [ ] **A2-DOC-002** 개인회생 채권자목록의 여러 채권자/별제권 부속. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-003** 재산목록의 종류·지분·담보·가액·면제증빙. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-004** 수입 및 지출에 관한 목록의 소득/경비/생계비. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **2차 부분 재현**: D5103 완전 월/윤년/연간·부분월 귀속 8/8, D5110 별도 monthly/approved scalar 확인; Word/공식 전자소송 서식 동등성 미인증. [실행 증빙](release-audit-runs/A2/2026-10-30_1411_KST_seoul424-court-scope-and-form-semantics.md).
-- [ ] **A2-DOC-005** 변제계획안의 기초원금/기간/월변제/배분표. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** D5110 관련 `payment-schedule`/`repayment-plan-model`/`document-annexes` 날짜 불일치 P1; 수정 [PR #25](https://github.com/firmengine/firmengine/pull/25) 미병합. 실제 DOCX 반복행/법원 원본·직원/변호사 검수 미인증. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증. **7차 부분:** 검토완료 납부일 미관찰을 정합상 정상으로 통과하는 코드 결함 [PR #37](https://github.com/firmengine/firmengine/pull/37) 제안; D5110 실제 DOCX 날짜·금액·법원 공식 양식 대조 미실행.
+- [ ] **A2-DOC-005** 변제계획안의 기초원금/기간/월변제/배분표. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** D5110 관련 `payment-schedule`/`repayment-plan-model`/`document-annexes` 날짜 불일치 P1; 수정 [PR #25](https://github.com/firmengine/firmengine/pull/25) 미병합. 실제 DOCX 반복행/법원 원본·직원/변호사 검수 미인증. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증. **7차 부분:** 검토완료 납부일 미관찰을 정합상 정상으로 통과하는 코드 결함 [PR #37](https://github.com/firmengine/firmengine/pull/37) 제안; D5110 실제 DOCX 날짜·금액·법원 공식 양식 대조 미실행. **8차 부분:** #25/#29는 `repayment-plan-model.ts`, #37/#43은 `plan-reconciliation.ts` 동일 파일 변경 충돌 위험 확인; 수정본 #37+#43 함수 동작 격리 6/6, 실제 Git 머지·D5110 Word 바이트 미실행. [8차 영수증](release-audit-runs/A2/2026-10-30_r08_ledger-integrity-and-sql-5000.md).
 - [ ] **A2-DOC-006** 진술서 서술사실과 추정·변호사 의견 분리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-007** 신청일 기준 발급서류 유효기간/서류본 분리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-008** 급여명세/원천징수/실입금 금액의 역할 구분. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -314,7 +314,7 @@
 - [ ] **A2-CALC-027** 현재가치/PV 할인율·평가기준일·현금흐름. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-028** 청산가치 보장과 총 변제액 법률 비교. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-029** 담보 15억/무담보 10억 경계값 법정 판본. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-CALC-030** 산식별 정상/영/음수/null/중복/단위 오류 golden. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. ****6차 부분:** 0 vs null, 중복, 누락, stale Fact, malformed JSON의 저장 replay 검증 V8 9/9. 18 산식 전체·91 입력 실행·세무/법률 승인 미인증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
+- [ ] **A2-CALC-030** 산식별 정상/영/음수/null/중복/단위 오류 golden. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. ****6차 부분:** 0 vs null, 중복, 누락, stale Fact, malformed JSON의 저장 replay 검증 V8 9/9. 18 산식 전체·91 입력 실행·세무/법률 승인 미인증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md). **8차 부분:** 10원 채권 1원 지급·잔액9원 fixture에서 오류 문자열/null/알수없는 분류/잘못된 지급재원/잔액999의 false PASS·throw 재현; Draft PR #43 수정 함수본문 8/8. [8차 영수증](release-audit-runs/A2/2026-10-30_r08_ledger-integrity-and-sql-5000.md). 전체 18산식·법률 인정 미실행.
 
 ### A2 변호사 (24개)
 
@@ -368,7 +368,7 @@
 - [ ] **A2-DATA-021** 원문 없는 합성 추정값이 운영 저장에 들어가지 않기. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-022** 독립 계산 golden과 실제 엔진 금액 비교. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-023** 반올림·절사·잔여원 순서에 무관한 재현성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** BigInt 나머지원 소수 사례 7종 독립 격리 계산 정상, 채권2건 각 10원/3회 경우 월별 [8,6,6] vs 7원 cap 첫월 초과 확인. 실제 엔진 `reconcilePlanLedger`/SQL 재독 미실행.
-- [ ] **A2-DATA-024** 실제 저장 스키마대로 합성 사건 insert→replay. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **7차 부분:** `0011` SQL/Drizzle와 계산 run JSON 저장 필드·sourceHeads 관계 정적 대조, 원문+run JSON 합계 2MB 초과 P1 [PR #38](https://github.com/firmengine/firmengine/pull/38). 실제 SQLite/D1 insert·re-read 미실행. **7차 보완:** SQL 16열의 run 단일 행 상한에 `missing_json`·기타 식별/상태 필드까지 포함하도록 PR #38 보완. 6개 격리 합성 경계 통과; 실제 D1 E2E 미인증.
+- [ ] **A2-DATA-024** 실제 저장 스키마대로 합성 사건 insert→replay. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **7차 부분:** `0011` SQL/Drizzle와 계산 run JSON 저장 필드·sourceHeads 관계 정적 대조, 원문+run JSON 합계 2MB 초과 P1 [PR #38](https://github.com/firmengine/firmengine/pull/38). 실제 SQLite/D1 insert·re-read 미실행. **7차 보완:** SQL 16열의 run 단일 행 상한에 `missing_json`·기타 식별/상태 필드까지 포함하도록 PR #38 보완. 6개 격리 합성 경계 통과; 실제 D1 E2E 미인증. **8차 부분:** 0011 계산테이블/인덱스 동일 SQL 격리 SQLite 5,000 insert+500건×10 재독, 0원715/null4285·FK0·누락1건 검출. SQL만으로 5,001 insert 가능, 5,000 제한은 응용 계층. [8차 영수증](release-audit-runs/A2/2026-10-30_r08_ledger-integrity-and-sql-5000.md). 전체 migration/staging D1 미실행.
 
 ### A2 AX담당자 (18개)
 
@@ -386,7 +386,7 @@
 - [ ] **A2-AX-012** 임시 산술값과 인정 순소득 출력 분리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-013** 동적 법률기준 승인 전 프롬프트/정규화 회귀. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-014** 모델이 존재하지 않는 금액·기한을 채워 넣지 않기. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-AX-015** 독립 산술 오라클로 실제 계산 결과 검증. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** 현재 원본 달력식/원단위 잔여원 독립 Node 22 합성 오라클, 수정안 5개 Node `test` 소스 추가(프로젝트 미실행); 법률/세무/서식 승인 아님. ****6차 부분:** SQL 결과 0건/누락 1~2건이 기존 replay에서 `valid:true`인 P1을 독립 V8 예상/실측 10/10으로 재현·보완 제안. 수정 소스와 9개 테스트 케이스 V8 9/9; 전체 Node/CI/법률 미검증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
+- [ ] **A2-AX-015** 독립 산술 오라클로 실제 계산 결과 검증. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** 현재 원본 달력식/원단위 잔여원 독립 Node 22 합성 오라클, 수정안 5개 Node `test` 소스 추가(프로젝트 미실행); 법률/세무/서식 승인 아님. ****6차 부분:** SQL 결과 0건/누락 1~2건이 기존 replay에서 `valid:true`인 P1을 독립 V8 예상/실측 10/10으로 재현·보완 제안. 수정 소스와 9개 테스트 케이스 V8 9/9; 전체 Node/CI/법률 미검증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md). **8차 부분:** 변제원장 실제 함수본문 V8 8/8 독립 expected/observed 일치, PR #37 날짜차단 합성 결합 6/6. [8차 영수증](release-audit-runs/A2/2026-10-30_r08_ledger-integrity-and-sql-5000.md) / [Draft PR #43](https://github.com/firmengine/firmengine/pull/43). Node 프로젝트 회귀 미실행.
 - [ ] **A2-AX-016** 법적 반론/예외 검색 실패 때 검토 대기 처리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-017** 실제 법률 승인 없는 산식을 승인 완료로 표현 금지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-018** 전체 시나리오 결과를 근거·판본별 품질지표로 기록. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -931,3 +931,10 @@
 - **P1 세 경계 재현:** 등록증 원문 raw≠Fact값/사업주 이름 raw 상충에도 기존 읽기전용 사업자 검토가 verified=true; 사업자번호 없는 status·공동사업자·개업일은 검토행에서 실종; 서로 다른 VAT/비용 문서의 동일 로컬 subjectId는 출처가 잘못 합쳐짐. `business-identity-crosswalk.ts`의 안전한 evidence-only 분리 수정안 [Draft PR #39](https://github.com/firmengine/firmengine/pull/39) **미병합**. 브랜치 실제 함수 본문을 V8 격리 실행한 합성 **7/7** 기대 일치, native Node 회귀테스트 4개 작성만 함. 전체 Node/CI/typecheck, staging D1/R2/Cron, 법원 Word/실무준칙, 변호사 검토·배포 **미실행**.
 - **법률 판단 경계:** 사업 상태·공동사업자·개업일·과세/면세·신고일과 사업자 동일인 판단은 독립 검토 필요; 매출·VAT·환불·카드 청구를 승인 없이 소득·청산가치·현재 채무에 합산하지 않는다. PR #39는 계산/법률/서식 자동 승인 로직을 변경하지 않는다.
 - **다음 순서:** canonical #141~160 (카드청구/할부, 현금성 자산, 현금진술·통화/기준일) + 변호사 관점 우선 순환. PR #39 실제-import Node·타 PR 통합회귀 및 D1/R2 검증 이전에는 [x] 금지.
+
+### 2026-10-30 A2 8차 — 결손·잘못된 분류의 변제원장 false PASS/BigInt throw 및 5,000행 SQL 격리
+- **A2 5역할/5 ID [ ] 전부 유지**: `A2-AX-015 / A2-DATA-024 / A2-CALC-030 / A2-IT-006 / A2-DOC-005`. [8차 감사 영수증](release-audit-runs/A2/2026-10-30_r08_ledger-integrity-and-sql-5000.md).
+- **P1 두 유형**: `reconcilePlanLedger`에서 잘못된/null 금액은 `BigInt` 예외, 미등록 채권 분류·틀린 지급재원·비정상 잔액은 `reconciled` 오판. 법률/세무 기준은 건드리지 않고 차단하는 [Draft PR #43](https://github.com/firmengine/firmengine/pull/43), 미병합. 실제 원 함수/수정본문 V8 8/8 및 #37 합성결합 6/6, 신규 Node 테스트 9개 작성만 함.
+- `0011` 테이블 SQL 형태 격리 SQLite에서 5,000행 insert/읽기, 실제 0원715·null4285, FK0, 한 행 누락 탐지 성공. **5,001 SQL 직접 INSERT 허용** → 응용 계층 행수 가드가 안전 불변식. 운영 D1/전체 migration 미인증.
+- **동일 파일 PR**: #25↔#29(`repayment-plan-model.ts`), #37↔#43(`plan-reconciliation.ts`). #33/#38은 서로 다른 저장·재검산 파일이지만 통합 E2E 필요. 제품 인수·전체 CI·D5110 실제 Word·법원/세무 전문가 승인·배포 **0건**.
+- **다음**: A2-LAW 우선 순환, PR #25/#29/#37/#43 실제 통합 Node 회귀, 42 이종 출력/91 입력의 실행/SQL replay, 36·48·60회 변제계획 Word 대조, staging D1 5,000/5,001·R2/Cron. 법원 제424호 2026-10-01 신설·법 2026-10-02 시행판은 공식 원문 공지 확인만이며 사건별 적용 법적 확정 금지.
