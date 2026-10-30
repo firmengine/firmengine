@@ -3,6 +3,7 @@ import { currentFacts,reviewFact,touchCase,retractDocument,reviewExport,archiveE
 import { parseContextPatch,parseHouseholdPatch } from "./context-validation.ts";
 import { upsertObject,removeObject } from "./object-editor.ts";
 import { applyFactProjection,invalidateFactSupport } from "./fact-object-projection.ts";
+import { invalidateWithdrawnDocumentEvidence } from "./document-evidence-cascade.ts";
 import { caseWorkflow } from "./case-workflow-state.ts";
 import { assertKeys,commandHash,CommandError,type CaseCommand } from "./case-command-contract.ts";
 import { applyRequirementOverride } from "./case-requirements.ts";
@@ -50,6 +51,36 @@ function resetReviews(data:CaseData,impact?:Record<string,unknown>){
  if(impact){const prior=impact.reviewInvalidation as unknown[];impact.reviewInvalidation=[...prior,...invalidated];}
  if(data.workflowState)for(const decision of data.workflowState.decisions)if(decision.status==="proposed")decision.status="stale";
 }
+/** A page or entire document can be withdrawn without changing its historic facts.
+ * The linked typed rows must still lose approval, even when the fact field is
+ * source-only and has no direct numeric projection mapping.
+ */
+async function queueWithdrawnEvidenceReview(
+ data:CaseData,withdrawnFactIds:string[],auth:CommandAuthority,reason:string,impact:Record<string,unknown>
+):Promise<void>{
+ const affected=invalidateWithdrawnDocumentEvidence(data,withdrawnFactIds);
+ if(!affected.length)return;
+ const work=data.workflowState??caseWorkflow();data.workflowState=work;
+ const blockers:{code:string;factIds:string[];reason:string}[]=[];
+ for(const target of affected){
+   const reasonCode=JSON.stringify({collection:target.collection,objectId:target.objectId,withdrawnFactIds:target.withdrawnFactIds});
+   const blocker={code:"WITHDRAWN_DOCUMENT_EVIDENCE",factIds:target.withdrawnFactIds,reason:reasonCode};
+   blockers.push(blocker);work.projectionBlockers.push(blocker);
+   work.tasks=mergeCaseTasks(work.tasks,[await makeCaseTask({
+     type:"projection_remap",subject:`${target.collection}:${target.objectId}`,
+     title:"문서 철회·분류 변경 후 계산 대상 증빙 재검토",
+     dependency:{caseRevision:data.context.revision,...target},
+     evidenceIds:target.remainingFactIds,reason,at:auth.at
+   })]);
+ }
+ work.reviewHistory.push({at:auth.at,actor:auth.actor,reason,
+   before:{event:"withdrawn_document_evidence",typedDecisions:affected}});
+ impact.projectionBlockers=[...(impact.projectionBlockers as unknown[]),...blockers];
+ impact.reviewInvalidation=[...(impact.reviewInvalidation as unknown[]),
+   ...affected.map(target=>({key:`${target.collection}.${target.objectId}`,
+     priorRecognition:target.previousRecognition,priorLegalReview:target.previousLegalReview}))];
+}
+
 /** Pure command reducer. Trusted external contexts are loaded by the server, never accepted as client caseData. */
 export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,auth:CommandAuthority):Promise<{data:CaseData;impact:Record<string,unknown>}> {
  await assertMutableCase(previous);
@@ -136,7 +167,7 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
    else {assertKeys(patch,["recognition"],["recognition"]);review(auth);if(isSynthetic(data))fail("합성 객체의 인정은 금지되어 있습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");if(!["unreviewed","accepted","rejected"].includes(String(patch.recognition))||collection==="transactions")fail("객체의 반영 상태를 확인하세요.");const item=data[collection as "incomes"|"debts"|"assets"].find(v=>v.id===target.objectId);if(!item)fail("항목을 찾을 수 없습니다.",404);if(collection==="debts")(item as {legalReview:string}).legalReview=String(patch.recognition);else(item as {recognition:string}).recognition=String(patch.recognition);}
    data.workflowState=caseWorkflow(previous.workflowState);resetReviews(data,impact);
  }else if(kind==="document.retract"){
-   assertKeys(target,["documentId"],["documentId"]);assertKeys(patch,[]);data=retractDocument(previous,text(target.documentId,"문서"));data.workflowState=caseWorkflow(previous.workflowState);const retired=data.documents.filter(d=>d.status==="deleted"&&previous.documents.some(p=>p.id===d.id&&p.status==="active")).map(d=>d.id);impact.withdrawPageJobs=retired;for(const m of data.workflowState.documentMatches)if(retired.includes(m.documentId)&&m.state==="accepted"){m.state="stale";m.version++;}resetReviews(data,impact);
+   assertKeys(target,["documentId"],["documentId"]);assertKeys(patch,[]);data=retractDocument(previous,text(target.documentId,"문서"));data.workflowState=caseWorkflow(previous.workflowState);const retired=data.documents.filter(d=>d.status==="deleted"&&previous.documents.some(p=>p.id===d.id&&p.status==="active")).map(d=>d.id);impact.withdrawPageJobs=retired;for(const m of data.workflowState.documentMatches)if(retired.includes(m.documentId)&&m.state==="accepted"){m.state="stale";m.version++;}await queueWithdrawnEvidenceReview(data,currentFacts(previous).filter(f=>f.refs.some(ref=>retired.includes(ref.documentId))).map(f=>f.id),auth,command.reason,impact);resetReviews(data,impact);
  }else if(kind==="document.role"){
    assertKeys(target,["documentId","page"],["documentId","page"]);assertKeys(patch,["role"],["role"]);
    const documentId=text(target.documentId,"문서"),pageNo=target.page,role=enumValue(patch.role,KNOWN_PAGE_ROLES,"페이지 역할");
@@ -145,7 +176,12 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
    if(!document||!page)fail("현재 사건의 활성 문서 페이지를 선택하세요.",404);
    const immutable=samplePageRole(document.sha256,page.page).role;
    if((page.role==="filed_form"||immutable==="filed_form")&&role!=="filed_form")fail("평가 정답으로 분리한 페이지의 역할은 변경할 수 없습니다.",409,"IMMUTABLE_PAGE_ROLE");
-   if(page.role!==role){page.role=role;if(role!=="evidence"){for(const fact of currentFacts(data).filter(f=>f.refs.some(ref=>ref.documentId===documentId&&ref.page===pageNo)))data.facts.push({...fact,id:crypto.randomUUID(),version:fact.version+1,supersedes:fact.id,state:"retracted",recognition:"rejected",reviewer:auth.actor,reviewReason:command.reason,createdAt:auth.at});for(const match of work.documentMatches)if(match.documentId===documentId&&match.state==="accepted"){match.state="stale";match.version++;}}}
+   if(page.role!==role){page.role=role;if(role!=="evidence"){
+     const withdrawnFacts=currentFacts(data).filter(f=>f.refs.some(ref=>ref.documentId===documentId&&ref.page===pageNo));
+     for(const fact of withdrawnFacts)data.facts.push({...fact,id:crypto.randomUUID(),version:fact.version+1,supersedes:fact.id,state:"retracted",recognition:"rejected",reviewer:auth.actor,reviewReason:command.reason,createdAt:auth.at});
+     for(const match of work.documentMatches)if(match.documentId===documentId&&match.state==="accepted"){match.state="stale";match.version++;}
+     await queueWithdrawnEvidenceReview(data,withdrawnFacts.map(f=>f.id),auth,command.reason,impact);
+   }}
    impact.pageRoleMutation={documentId,page:pageNo,role};resetReviews(data,impact);
  }else if(kind==="intake.adopt"){
    assertKeys(target,["runId"],["runId"]);assertKeys(patch,[]);if(!auth.intakeRun||!auth.intakeCatalog||auth.intakeRun.id!==target.runId||auth.intakeRun.caseId!==data.context.id||auth.intakeRun.stale)fail("최신 상담 결과를 다시 확인하세요.",409,"CASE_STATE_CONFLICT");
