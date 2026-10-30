@@ -20,10 +20,10 @@ test("complete twelve months with repeated expense rows preserve exactly one rev
  const result=assembleBusinessMonthEvidence(input,period);
  assert.equal(result.expectedMonths,12);
  assert.equal(result.months.length,12);
- assert.equal(result.incompleteSourceCoverage,false);
+ assert.equal(result.incompleteSourceCoverage,true,"Cross-document business identity remains unapproved");
  assert.ok(result.months.every(month=>month.sourceGrossWon==="3000000"));
  assert.ok(result.months.every(month=>month.sumRawCostLinesWon==="1500000"));
- assert.ok(result.months.every(month=>month.arithmeticDifferenceWon==="1500000"));
+ assert.ok(result.months.every(month=>month.arithmeticDifferenceWon===null,"Unjoined VAT and supplier costs cannot be subtracted"));
  assert.ok(result.months.every(month=>month.legalNetApproved===false));
  assert.ok(result.months.every(month=>month.gaps.includes("BUSINESS_IDENTITY_NOT_CROSSWALKED")));
  assert.equal(result.months.flatMap(month=>month.costLineFacts).length,24);
