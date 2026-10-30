@@ -3,6 +3,7 @@
  * Planned IDs are intent, not evidence of a D1 row, R2 bytes, a committed
  * manifest, staff review, lawyer approval, or a court filing.
  * null means NOT OBSERVED; [] means OBSERVED EMPTY.
+ * Audit event proofs MUST carry the case/request/revision identity; type alone is not proof.
  * No output is permission to replay, delete, mark committed, or approve.
  */
 export function inspectExportRecoveryEvidence(input) {
@@ -93,7 +94,9 @@ export function inspectExportRecoveryEvidence(input) {
   }
   if (auditEvents == null) { add("AUDIT_EVENTS_NOT_OBSERVED"); incomplete = true; }
   else if (!["document_writer.prepared", "export.generated"].every(type =>
-    auditEvents.some(event => event.type === type))) {
+    auditEvents.some(event => event.type === type && receipt &&
+      event.caseId === receipt.caseId && event.requestId === receipt.requestId &&
+      event.revision === receipt.caseRevision))) {
     add("AUDIT_EVENTS_OBSERVED_INCOMPLETE"); incomplete = true;
   }
   const classification = conflict ? "conflict" : stale ? "stale" :
