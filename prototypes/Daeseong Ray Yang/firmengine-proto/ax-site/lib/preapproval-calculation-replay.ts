@@ -65,6 +65,10 @@ export function auditStoredCalculationReplay(input: {
       push("OUTPUT_VALUE_MISMATCH", row);
     if (row.valueWon !== undefined && row.valueWon !== null && parsedOk &&
       (typeof parsed !== "string" || parsed !== row.valueWon)) push("STORED_WON_MISMATCH", row);
+    // The SQL writer stores an exact Won scalar in both value_json and value_won.
+    // SQL NULL is not the same as an observed zero or another integer value.
+    if (row.valueWon === null && parsedOk && typeof parsed === "string" && /^-?\d+$/.test(parsed) &&
+      /Won$/.test(row.outputPath.split("/").at(-1) ?? "")) push("STORED_WON_MISMATCH", row);
     if (row.sourceFactIdsJson !== undefined) {
       try {
         const ids: unknown = JSON.parse(row.sourceFactIdsJson);
