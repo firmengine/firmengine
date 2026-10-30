@@ -8,6 +8,8 @@ import {RISK_CATALOG} from "../../../../../lib/legal-rules.ts";
 import {legalEvidenceInventory} from "../../../../../lib/legal-evidence-criteria.ts";
 import {getCalculationSpecs} from "../../../../../lib/execution-catalog.ts";
 import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.ts";
+import {auditFivePreapprovalStages,type StoredCalcFeature} from "../../../../../lib/preapproval-stage-audit.ts";
+import legalExceptions from "../../../../../lib/legal-exceptions.json" with {type:"json"};
 import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
 import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
 import {buildPreApprovalReadiness,verifyStoredApprovalCalculationOutputs} from "../../../../../lib/approval-readiness.ts";
@@ -55,7 +57,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     caseRequirementMonitor(database,data),
     listCaseLawgraphReview(database,{caseId:id,limit:1})
   ]);
-  const assessment=executeCaseNodes(data).assessment;
+  const execution=executeCaseNodes(data),assessment=execution.assessment;
   // Extra read-only integrity check: current persisted calculator feature values
   // must reproduce the active deterministic engine on this exact case revision.
   const calculationOutputNames=[...AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,"liquidationComparison"];
@@ -77,6 +79,21 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   // Source state alone does not establish a valid original document or legal recognition.
   const acceptedFactIds=new Set(facts.filter(fact=>fact.state==="verified"&&fact.recognition==="accepted"
     &&!factSourceLineageIssues(data,[fact.id],sourceIndex).length).map(fact=>fact.id));
+  // Read all stored calculator features, not just 13 summary figures. The audit
+  // covers the declared inputs/outputs of every calculator and never treats
+  // absence of a stored row as a zero or a completed execution.
+  let persistedFeatures:StoredCalcFeature[]|null=null,featureReadComplete=false;
+  try{
+    if(before.calculationRunId){
+      const result=await database.prepare("SELECT calculation_id AS calculationId,output_name AS outputName,output_path AS outputPath,status,value_json AS valueJson,source_fact_ids_json AS sourceFactIdsJson,formula FROM case_calculation_features WHERE run_id=? ORDER BY id LIMIT 5001")
+        .bind(before.calculationRunId).all<StoredCalcFeature>();
+      persistedFeatures=result.results??[];
+      featureReadComplete=persistedFeatures.length<5000;
+    }
+  }catch{
+    persistedFeatures=null;featureReadComplete=false;
+  }
+  if(!featureReadComplete)calculationCurrent=false;
   const after=await database.prepare(headSql).bind(id).first<Head>();
   if(!after||JSON.stringify(after)!==JSON.stringify(before))
    throw new HttpError(409,"검토 중 원본 또는 계산판본이 변경되었습니다. 재조회하세요.");
@@ -92,7 +109,8 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   const failures=[
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
     ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[]),
-    ...calculationReplayIssues
+    ...calculationReplayIssues,
+    ...(!featureReadComplete?["FULL_CALCULATION_FEATURE_READ_INCOMPLETE"]:[])
   ];
   const graph=buildApprovalIssueGraph({
     risks:RISK_CATALOG,
@@ -101,6 +119,18 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     calculation:assessment.calculation,calculations:getCalculationSpecs(),
     legalCurrent:output.legalReview.current,legalChecks:output.legalReview.findings,
   });
-  return Response.json({...output,judgmentGraph:graph,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+  const stageAudit=auditFivePreapprovalStages({
+    data,facts,assessment,
+    calculationSpecs:getCalculationSpecs(),
+    selectedCalculationIds:execution.plan.calculationTasks.map(task=>task.id),
+    persistedCalculationFeatures:persistedFeatures,
+    persistedCalculationComplete:featureReadComplete,calculationHeadCurrent:calculationCurrent,
+    risks:RISK_CATALOG,exceptions:legalExceptions.scenarios,
+    legalChecks:output.legalReview.findings,
+    legalCurrent:output.legalReview.current,
+    documents:requirements.status==="fulfilled"?requirements.value:null,
+    validSourceFactIds:acceptedFactIds,
+  });
+  return Response.json({...output,judgmentGraph:graph,stageAudit,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
 }
