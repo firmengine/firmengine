@@ -15,7 +15,6 @@
 | F04: 미검증 증거로 95개 법률 AI 실행 | `case-legal-source-preflight.ts`와 `case-legal-automation.ts`의 증거·상담·정규화 head 검사 | 실제 OCR → D1 → AI 연쇄 E2E |
 | F01: 순수 검토/산출물 수정이 source_version을 무조건 올림 | `case-mutation-classifier.ts`, `server-store.ts`, `case-commands.ts`, `drizzle/0021_workflow_only_source_watch.sql`의 변경구분+원천오염 차단 | **0021 적용 필수**, D1/R2 원자성·사람 검토→최종 문서 E2E; 전체 독립 판본 설계는 후속 |
 | C01: LawGraph 문서 필드 투영 실패 시 초안 허용 오류 | `case-legal-automation.ts`가 projection error 및 0개 필드를 `explicitFailures`에 추가하고, 옛 `draft_pending`도 저장 필드 COUNT / 오류를 재확인 후 writer 호출을 차단 | **별도 6개 가상 후보 판정 전부 기대 결과(6/6)**; `tests/case-legal-automation-flow.test.ts`에 구 대기열 차단 회귀가 추가됨. Node 전체 회귀·실제 D1 writer E2E는 미인증 |
-
 | C02: 자동초안과 직원 검토 원장 분리 | 원본 R2 artifact ID·SHA를 검증해 `exportManifest` draft로 명시적 인계하는 API/화면, 원천·계산·법률·참조기준을 같은 D1 CAS로 묶는 안전경계, 문안 편집/재생성/최종본 직원→변호사 검수 UI 코드 추가 | 격리 handoff 8/8 + head CAS 7/7. **실제 D1/R2·권한·Word 재생성 E2E/전체 Node CI 미인증**. [상세](c01-c02-c04-cross-agent-debug-20261030.md) |
 | C04: 갈음 상태 네 경로 불일치 | 동일한 `case-workflow-context.ts` 판단 입력을 직원 화면·LawGraph·최종 export·갈음 watcher에서 사용. 실패한 단일 global policy poll을 제거하고 event/due 기반 fair scan 적용 | 페이지 충돌 3/3 + watcher due/version/알림 SQL 7/7. **실제 85종 갈음·상담 변경 통합 테스트 미인증**. [상세](c01-c02-c04-cross-agent-debug-20261030.md) |
 
