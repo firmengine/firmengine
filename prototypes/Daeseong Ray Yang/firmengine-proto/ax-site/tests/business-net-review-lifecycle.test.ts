@@ -36,6 +36,7 @@ const rules={id:"synthetic",status:"source_verified" as const,sources:[]};
 function input(month=1,filingStart="2026-01-01",filingEnd="2026-12-31"){
  const d=createCase("Synthetic business monthly review","business-monthly-case","2026-10-30");
  d.context.filingPeriod={start:filingStart,end:filingEnd};
+ d.context.asOf="2026-12-31"; // Synthetic historical coverage checkpoint, not production current date.
  d.context.incomePeriodReviewed=true;d.context.inventoryComplete={income:"yes",debt:"yes",asset:"yes"};
  d.workflowState=caseWorkflow();
  d.household={recognizedLivingCost:normalizeMoney("0"),recognizedMembers:1,
@@ -206,4 +207,11 @@ test("case command keeps source facts immutable; lawyer-only adoption is persist
  assert.equal(adopted.data.incomes.filter(x=>x.sourceCalculationRole==="period_income_observation").length,1);
  assert.equal(JSON.stringify(adopted.data.facts),beforeFacts);
  assert.equal(reviewedBusinessIncomeIds(adopted.data).size,1);
+});
+
+test("a source period after the case as-of date cannot become reviewed present income",()=>{
+ setPolicy();
+ const {d,selection}=input(11);
+ d.context.asOf="2026-10-30";
+ assert.throws(()=>preflightBusinessNet(d,selection),/BUSINESS_SOURCE_PERIOD_AFTER_CASE_AS_OF/);
 });
