@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {buildPreApprovalReadiness,type ApprovalReadinessInput} from "../lib/approval-readiness.ts";
+import {buildPreApprovalReadiness,verifyStoredApprovalCalculationOutputs,type ApprovalReadinessInput} from "../lib/approval-readiness.ts";
 
 function input():ApprovalReadinessInput{
  return {
@@ -112,4 +112,24 @@ test("discontinued before approval remains an in-scope pre-approval branch, not 
  assert.equal(r.outOfScope,false);
  assert.notEqual(r.status,"out_of_scope");
  assert.equal(r.autoApproval,false);
+});
+
+test("persisted financial outputs must exactly replay null and string amounts, not guess zeros",()=>{
+ const d=input(),amounts=["monthlyIncomeWon","recognizedLivingCostWon"] as const;
+ const rows=[
+  {outputName:"monthlyIncomeWon",valueJson:JSON.stringify("3000000"),status:"computed"},
+  {outputName:"recognizedLivingCostWon",valueJson:"null",status:"missing"},
+ ];
+ assert.equal(verifyStoredApprovalCalculationOutputs(d.assessment.calculation,rows,amounts).current,true);
+ assert.ok(verifyStoredApprovalCalculationOutputs(d.assessment.calculation,[
+  {...rows[0],valueJson:JSON.stringify("0")},rows[1]],amounts).issues.includes("CALCULATION_REPLAY_MISMATCH:monthlyIncomeWon"));
+ assert.ok(verifyStoredApprovalCalculationOutputs(d.assessment.calculation,[rows[0]],amounts)
+  .issues.includes("MISSING_OR_DUPLICATE_STORED_CALCULATION:recognizedLivingCostWon"));
+ assert.equal(verifyStoredApprovalCalculationOutputs(d.assessment.calculation,[rows[0],rows[1],rows[1]],amounts).current,false);
+});
+test("malformed stored calculations cannot clear current approval check",()=>{
+ const d=input(),r=verifyStoredApprovalCalculationOutputs(d.assessment.calculation,
+  [{outputName:"monthlyIncomeWon",valueJson:"not-json",status:"computed"}],["monthlyIncomeWon"]);
+ assert.equal(r.current,false);
+ assert.ok(r.issues.includes("MALFORMED_STORED_CALCULATION:monthlyIncomeWon"));
 });
