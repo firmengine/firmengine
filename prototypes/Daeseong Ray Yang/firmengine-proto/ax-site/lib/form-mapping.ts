@@ -13,6 +13,17 @@ import { applicantIdentityValue } from "./applicant-identity.ts";
 import { applicantStatementForForm } from "./statement-paragraphs.ts";
 import { PUBLIC_FORM_BASE64, PUBLIC_FORM_METADATA } from "./form-template-data.ts";
 
+/** An annual/partial/unknown source period is NOT a court-form monthly row.
+ * No proportional allocation of annual totals is permitted without real months. */
+export function exactSourceCalendarMonth(start:string|undefined,end:string|undefined,basis:string|undefined):string|null{
+ if(!["monthly","period_total"].includes(basis??"")||!start||!end||!/^\d{4}-\d{2}-\d{2}$/.test(start)||!/^\d{4}-\d{2}-\d{2}$/.test(end))return null;
+ const from=new Date(start+"T00:00:00.000Z"),to=new Date(end+"T00:00:00.000Z");
+ if(!Number.isFinite(from.valueOf())||!Number.isFinite(to.valueOf())||from.toISOString().slice(0,10)!==start||to.toISOString().slice(0,10)!==end)return null;
+ if(start.slice(0,7)!==end.slice(0,7)||from.getUTCDate()!==1)return null;
+ const monthEnd=new Date(Date.UTC(to.getUTCFullYear(),to.getUTCMonth()+1,0)).getUTCDate();
+ return to.getUTCDate()===monthEnd?start.slice(0,7):null;
+}
+
 export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.3";
 export const MISSING_FORM_VALUE = "[확인 필요]";
 export const BASIC_FORM_CODES = documentPolicy.basicFormCodes as Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>>;
@@ -177,8 +188,20 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   for (const [key, kind] of Object.entries({cash:"cash",bank_balance:"deposit",insurance_surrender:"insurance",vehicle_value:"vehicle",housing_deposit:"lease_deposit",real_estate_value:"real_estate",retirement_value:"retirement",business_assets_value:"business",other_assets:"other"})) scalars[key] = assetSum(kind);
   scalars.assets_total = assetSum();
   rows.month = data.incomes.map((income) => {
-    const valid = sourceValid(data, income.factIds,index);
-    return { entity: present(income.label), period: `${income.periodStart || "?"} ~ ${income.periodEnd || "?"}; ${income.amountBasis || "unknown"}; ${income.periodMonths ?? "?"}개월`, revenue: valid ? numeric(income.gross) : MISSING_FORM_VALUE, expense: valid ? numeric(income.expenses) : MISSING_FORM_VALUE, net_income: valid ? numeric(income.net) : MISSING_FORM_VALUE };
+    const month=exactSourceCalendarMonth(income.periodStart,income.periodEnd,income.amountBasis);
+    const verified=sourceValid(data,income.factIds,index);
+    const calculationRow=calculation.incomeRows.find(row=>row.id===income.id);
+    // Use the calculation result, not a second ad hoc division in the writer.
+    // Annual certificates, partial periods and duplicate/unreviewed aggregates
+    // cannot masquerade as a monthly D5103 cash-flow cell.
+    const usable=!!month&&verified&&calculationRow?.monthlyWon!==null&&calculationRow?.monthlyWon!==undefined;
+    return {
+      entity:present(income.label),
+      period:month??MISSING_FORM_VALUE,
+      revenue:usable?numeric(income.gross):MISSING_FORM_VALUE,
+      expense:usable?numeric(income.expenses):MISSING_FORM_VALUE,
+      net_income:usable?amount(calculationRow!.monthlyWon):MISSING_FORM_VALUE
+    };
   });
   const business = calculation.incomeGroups.filter((group) => group.sourceIds.some(id=>data.incomes.find(s=>s.id===id)?.kind==="business"));
   scalars.monthly_business_income = data.context.inventoryComplete.income === "yes" && (business.length>0||!data.incomes.some(s=>s.kind==="business")) && business.every((r) => r.monthlyObservedAverageWon !== null) ? amount(business.reduce((sum,row)=>sum+BigInt(row.monthlyObservedAverageWon!),0n).toString()) : MISSING_FORM_VALUE;

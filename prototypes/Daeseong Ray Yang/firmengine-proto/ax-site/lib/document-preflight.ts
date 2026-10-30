@@ -38,6 +38,18 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     if(input.mode==="final"&&needsValue) blockers.push(issue); else warnings.push(issue);
   }
   const numeric = (value:unknown):bigint|null => { const text=String(value??"").replace(/[\s,₩원]/g,""); return /^-?\d+$/.test(text)?BigInt(text):null; };
+  // D5103 is a month-by-month form view; rendering an annual total in one
+  // month row is a monetary misstatement even when the total is numerically valid.
+  // This is FirmEngine's own final-review integrity gate, not official portal certification.
+  if(input.formCode==="D5103"){
+    for(const [index,row]of (input.bindings.rows.month??[]).entries()){
+      const month=String(row.period??""),amount=String(row.net_income??"");
+      if(!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)||numeric(amount)===null){
+        const issue:PreflightIssue={code:"D5103_MONTH_EVIDENCE_UNRESOLVED",token:`month[${index}]`,message:"월별 귀속기간이나 검증된 순소득이 없습니다. 연간합계를 1개월 소득으로 기재할 수 없습니다.",severity:input.mode==="final"?"blocker":"warning"};
+        if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+      }
+    }
+  }
   const creditorRows=input.bindings.rows.creditor??[];
   for(const [rowField,totalField] of [["principal","total_principal"],["interest","total_interest"]] as const) {
     const rowValues=creditorRows.map(row=>numeric(row[rowField])); const total=numeric(input.bindings.scalars[totalField]);
