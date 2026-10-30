@@ -138,7 +138,7 @@
 - [ ] **A1-DOC-006** 월별 급여·사업장·계좌·채권자 다중 문서 유지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-007** 같은 파일 중복 업로드와 삭제·교체 이력 확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-008** OCR 숫자/문구와 원문 PDF 페이지·위치 대조 UI. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-DOC-009** 잘못 분류된 서류의 재분류 및 하위 계산 무효화. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DOC-009** 잘못 분류된 서류의 재분류 및 하위 계산 무효화. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **9차 부분:** 실제 `case-commands.ts` 문서 페이지 evidence→administrative 분기 V8 합성: 페이지 역할/원문 fact 현재 0건/요구서류 match stale 3/3 기대일치, 그러나 채무 `legalReview=accepted` 및 철회된 old `factIds` 2건 잔존. 기존 P0 동일 재현, [Draft PR #20](https://github.com/firmengine/firmengine/pull/20) 이미 제안·미병합이므로 신규 결함 중복 집계하지 않음. D1 계산·법률·서식 E2E 미검증, [9차 영수증](release-audit-runs/A1/20261030-round09-document-role-legal-contract-input-matrix.md). **[ ] 유지**.
 - [ ] **A1-DOC-010** 발급일·발생기간·신청일 차이의 유효성 표시. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-011** 갈음서류 A←B+C 중 B만 제출하면 미충족 유지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-012** 갈음 승인 후 원본 철회/상담변경 시 재요청 복원. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -184,7 +184,7 @@
 - [ ] **A1-LAW-010** 가구원·추가생계비의 법원 재량 근거·승인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-011** 청산가치 보장·가용소득 제공·수행가능성 구분. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-012** 2026-10-01 서울 424호 개정의 접수일/관할 판본. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-LAW-013** 95 법률 위험의 미승인 증거계약 자동통과 방지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-LAW-013** 95 법률 위험의 미승인 증거계약 자동통과 방지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **9차 신규 P1:** `pipeline.reviewLegal`가 `legalEvidenceCriterion`의 canonicalFieldGroups/requiredCalculationOutputs/evidenceContractStatus 3개를 batch.map에서 모두 버려 승인된 근거계약의 증빙·계산 필수조건 검증이 미전달됨. 현행 risk 95/95 manual·seed 정책 승인 0건이므로 자동승인 발생을 입증한 것은 아님(기존 fail-closed legal_review 유지). [Draft PR #46](https://github.com/firmengine/firmengine/pull/46) 3파일 별도 작성, 변경 helper 및 실제 법률 gate V8 격리 10/10 기대일치; 전체 Node/D1/법률 전문 승인 미인증, #42 pipeline 중복수정 주의. [9차 영수증](release-audit-runs/A1/20261030-round09-document-role-legal-contract-input-matrix.md). **[ ] 유지**.
 - [ ] **A1-LAW-014** 50 법률규칙·46 예외의 미적용·상충 상태. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-015** 직원 제안과 독립 변호사 승인의 서명 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 결함 재현 / PR #12 수정 제안 / 최종 인수 미검증**
 - [ ] **A1-LAW-016** 새 원문/계산/기준정보 후 기존 승인 무효화. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 3차 부분검증**: `business.net.adopt → touchCase → resetReviews`는 소득기간·변제·서식 검토를 초기화하는 코드 존재. 실제 법률 95검토 재실행·D1 계산 head/서식 E2E는 미인증. 증빙철회 시 typed 채무승인이 남는 별도 결함은 [Draft PR #20](https://github.com/firmengine/firmengine/pull/20)에서 제안. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
@@ -206,7 +206,7 @@
 - [ ] **A1-DATA-011** 자료 정정·철회에도 이벤트 이력 및 최신값 보존. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 코드 감사+V8 합성 가드 6/6 / PR #12 미병합 / 운영 인수 미검증**
 - [ ] **A1-DATA-012** 출처 없는 데이터가 법률/계산 소비처에 연결되지 않기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-013** 대량 2,000 원문행·5,000 계산행 조회 경계. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-DATA-014** 계산 18·입력91 선언과 DB typed 경로 매핑. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DATA-014** 계산 18·입력91 선언과 DB typed 경로 매핑. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **9차 부분:** 실제 main의 계산18·입력91(고유 path 78)/canonical693, 기본48패밀리+서류확장+OCR 보강 정의를 독립 조인 검증. 명시적 source→typed 47경로(대상 32개) 모두 원본 ID 일치, 누락0; 입력 분류 직접21/유도4/사건설정33/객체 미직접18/법률 Fact3/도구12. 서류별 보강에 있는 4개 필드를 기본목록 누락으로 오판하지 않음. 실제 D1 저장↔typed↔18계산/법원서식 종단 E2E 미실행, [9차 영수증](release-audit-runs/A1/20261030-round09-document-role-legal-contract-input-matrix.md). **[ ] 유지**.
 - [ ] **A1-DATA-015** 서식 token별 원문 ID·formula·runId 추적. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-016** DB 타입/Drizzle와 파일 마이그레이션 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 5차 부분검증**: `db/schema.ts`와 0017~0022 migration 정적 파싱, 신규 5개 테이블 열 이름 20/20·7/7·11/11·12/12·7/7 일치. journal 0000~0022 23개 일치. D1 실제 적용, FK/트리거/롤백/전체 테스트는 미인증. [5차 영수증](release-audit-runs/A1/20261030-round05-independent-review-court-status-schema.md).
 - [ ] **A1-DATA-017** 서류 재분류·기준 변경의 하위 소비처 재투영. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 3차 신규 P0 결함**: 문서 페이지 evidence→administrative 전환 시 원본 fact는 retracted/currentFacts=0·매칭 stale이나 typed 채무 `legalReview=accepted`·구 `factIds`가 남는 것을 원본 코드 본문 V8 합성으로 재현. **[Draft PR #20](https://github.com/firmengine/firmengine/pull/20)**에서 문서·페이지 철회 재검토 큐/typed 인정 무효화. 수정 helper 격리 V8 **6/6**, 새 Node 회귀 7개는 작성만·실행하지 않음. CI/D1/R2/변호사 미인증. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
