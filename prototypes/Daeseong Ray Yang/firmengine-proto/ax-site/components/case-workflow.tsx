@@ -22,7 +22,7 @@ type WorkflowResponse = {
   diagnostics: Record<string, unknown>;
   health?:WorkflowHealth;
   legalAutomation?:{
-    status:string;completedChecks?:number;expectedChecks?:number;lastError?:string|null;updatedAt?:string|null;
+    status:string;completedChecks?:number;expectedChecks?:number;currentDataVersion?:number|null;lastError?:string|null;updatedAt?:string|null;
     outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;};
   };
 };
@@ -214,6 +214,17 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
          <p className="workflow-muted">마지막 변경 후 10분 안정화 → 계산 → 법률 AI 재검토 → 오류 분석 → 검토용 초안. 법원 제출·승인은 자동 처리하지 않습니다.</p>
          <div className="workflow-state-row"><span>처리 상태: {label(data.legalAutomation.status)}</span><span>검토 진행: {data.legalAutomation.completedChecks??0}/{data.legalAutomation.expectedChecks??95}</span><span>최종 검토: 사람 확인 필수</span></div>
          {data.legalAutomation.lastError&&<p className="workflow-caution">실행 오류: {data.legalAutomation.lastError}</p>}
+         {data.legalAutomation.status==="failed"&&typeof data.legalAutomation.currentDataVersion==="number"&&<button className="button button-outline" disabled={busy} onClick={async()=>{
+           setBusy(true);try{
+             const response=await fetch("/api/cases/"+encodeURIComponent(caseId)+"/automation/retry",{
+               method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+               body:JSON.stringify({expectedDataVersion:data.legalAutomation!.currentDataVersion})});
+             const result=await response.json().catch(()=>({})) as {error?:string};
+             if(!response.ok)throw new Error(result.error??"재시도 접수 실패");
+             await load();
+           }catch(cause){setError(cause instanceof Error?cause.message:"재시도 접수 실패");}
+           finally{setBusy(false);}
+         }}>실패한 법률 AI 단계 재시도</button>}
          {data.legalAutomation.outcome?.summary&&<p>{data.legalAutomation.outcome.summary}</p>}
          {Boolean(data.legalAutomation.outcome?.blockers?.length)&&<div className="workflow-caution"><strong>자동작성을 보류한 이유</strong>
            {data.legalAutomation.outcome!.blockers!.slice(0,12).map(reason=><p key={reason}>{reason}</p>)}</div>}
