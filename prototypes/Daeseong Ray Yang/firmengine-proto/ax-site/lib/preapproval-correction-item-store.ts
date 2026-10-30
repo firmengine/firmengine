@@ -157,8 +157,15 @@ export async function readCourtCorrectionItems(database:D1Database,data:CaseData
    status:currentSource?"itemized_needs_lawyer_and_court_receipt_review":"stale_source_or_invalid_item",
    courtOrderSatisfied:false as const};
  });
+ const actualOrderEvents=(data.workflowState?.procedureEvents??[]).filter(e=>e.state==="correction_requested");
+ const listedOrders=new Set(items.map(item=>item.courtEventId));
+ const orderEventsWithoutItems=actualOrderEvents.filter(e=>!listedOrders.has(e.id)).map(e=>e.id);
+ const staleItemIds=items.filter(item=>!item.sourceCurrent).map(item=>item.versionId);
  return {schemaVersion:PREAPPROVAL_CORRECTION_ITEM_STORE_VERSION,caseId:data.context.id,
   caseRevision:current.revision,sourceDataVersion:current.dataVersion,
+  actualOrderCount:actualOrderEvents.length,
+  unitemizedCourtEventIds:orderEventsWithoutItems,staleItemVersionIds:staleItemIds,
+  unresolvedCourtItemCount:items.length+orderEventsWithoutItems.length,
   count:items.length,items,courtApprovalInferred:false as const,
   note:"Human-itemized order fields are evidence routing only. A submitted document or receipt does not establish the court's acceptance or legal compliance."};
 }
