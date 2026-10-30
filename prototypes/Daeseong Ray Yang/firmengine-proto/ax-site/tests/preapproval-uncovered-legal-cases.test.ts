@@ -7,6 +7,9 @@ import {LEGAL_CATALOG} from "../lib/legal-rules.ts";
 import exceptions from "../lib/legal-exceptions.json" with {type:"json"};
 import {auditPreapprovalLegalCatalog} from "../lib/preapproval-legal-coverage-audit.ts";
 
+type RuleGap={scenarioId:string;kind:"rule_missing_evidence";stage:string;ruleId:string;sourceUrl:string;demandedFeatureKeys:string[];courtApprovalInferred:false};
+type ExceptionGap={scenarioId:string;kind:"exception_trigger_not_executed";stage:string;exceptionId:string;ruleIds:string[];courtApprovalInferred:false};
+const typedGaps=gaps.cases as unknown as Array<RuleGap|ExceptionGap>;
 const data={context:{id:"no-evidence-fixture",revision:1,courtId:"seoul",applicationDate:"2026-10-30"},facts:[]} as any;
 const inspection=auditPreapprovalLegalCatalog({caseData:data,facts:[],
  sourceValidatedAcceptedFactIds:new Set(),rules:LEGAL_CATALOG,exceptions:exceptions.scenarios});
@@ -17,10 +20,10 @@ test("the 39 supplemental legal gap cases cover exactly previously missing 19 ru
  const missingExceptions=exceptions.scenarios.filter(e=>!ex.has(e.id)).map(e=>e.id);
  assert.equal(gaps.cases.length,39);
  assert.equal(gaps.classes.ruleNegative,19);assert.equal(gaps.classes.exceptionNegative,20);
- assert.deepEqual(gaps.cases.filter(x=>x.kind==="rule_missing_evidence").map(x=>x.ruleId).sort(),missingRules.sort());
- assert.deepEqual(gaps.cases.filter(x=>x.kind==="exception_trigger_not_executed").map(x=>x.exceptionId).sort(),missingExceptions.sort());
+ assert.deepEqual(typedGaps.filter(x=>x.kind==="rule_missing_evidence").map(x=>x.ruleId).sort(),missingRules.sort());
+ assert.deepEqual(typedGaps.filter(x=>x.kind==="exception_trigger_not_executed").map(x=>x.exceptionId).sort(),missingExceptions.sort());
 });
-for(const row of gaps.cases) {
+for(const row of typedGaps) {
  test("no-evidence case rejects automatic legal sufficiency: "+row.scenarioId,()=>{
   if(row.kind==="rule_missing_evidence") {
    const current=inspection.rules.find(x=>x.ruleId===row.ruleId);
