@@ -19,6 +19,7 @@ import { samplePageRole } from "./sample-manifest.ts";
 import { assessCase,sourceFactMoneyValue } from "./assessment.ts";
 import { CURRENT_RULESET } from "./legal-rules.ts";
 import { adoptCalculationOverride,calculationBaseFingerprint,proposeCalculationOverride,type OverrideField } from "./calculation-overrides.ts";
+import {proposeBusinessNet,adoptBusinessNet,type BusinessNetSelection} from "./business-net-reconciliation.ts";
 import { disposalApplicabilityBasisFingerprint,evaluateDisposalApplicability } from "./disposal-applicability.ts";
 import type { IntakeCatalog,IntakeRun } from "./intake-types.ts";
 import { applyCaseSchemaMigration,assertWritableWorkflowSchema,type CaseSchemaMigrationPlan } from "./case-schema-migration.ts";
@@ -198,6 +199,36 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
    assertKeys(target,["requirementId"],["requirementId"]);assertKeys(patch,[]);review(auth);if(isSynthetic(data))fail("Synthetic requirement confirmations are prohibited.",409,"SYNTHETIC_REVIEW_PROHIBITED");if(!work.requirements.some(r=>r.requirementId===target.requirementId&&!r.retired))fail("Current requirement is required.",404);if(!auth.requirementComplete||!auth.requirementFingerprint)fail("対象·기간·필수 필드 확인을 먼저 완료하세요.",422,"REQUIRED_INPUT_UNRESOLVED");work.requirementConfirmations.push({requirementId:String(target.requirementId),fingerprint:auth.requirementFingerprint,actor:auth.actor,at:auth.at,reason:command.reason});
  }else if(kind==="task.update"){
    assertKeys(target,["taskId"],["taskId"]);assertKeys(patch,["status","ownerId","dueAt","waitingOn"]);const index=work.tasks.findIndex(t=>t.id===target.taskId);if(index<0)fail("작업을 찾을 수 없습니다.",404);work.tasks[index]=updateCaseTask(work.tasks[index],patch,auth.actor,command.reason,auth.at);data.context.revision=previous.context.revision;data.exportManifest=structuredClone(previous.exportManifest);
+
+ }else if(kind==="business.net.propose"){
+   assertKeys(target,[]);
+   assertKeys(patch,["businessRegistrationFactId","grossFactId","costFactIds","month"],
+     ["businessRegistrationFactId","grossFactId","costFactIds","month"]);
+   const selection:BusinessNetSelection={
+     businessRegistrationFactId:text(patch.businessRegistrationFactId,"사업자등록 원문"),
+     grossFactId:text(patch.grossFactId,"총매출 원문"),
+     costFactIds:strings(patch.costFactIds),
+     month:text(patch.month,"사업소득 월")
+   };
+   const proposal=await proposeBusinessNet(previous,selection,command.reason,auth.actor,auth.at);
+   work.businessNetReviews.push(proposal);
+   impact.businessNetReview={id:proposal.id,month:proposal.month,status:"proposed",
+     grossWon:proposal.grossWon,costWon:proposal.costWon,netWon:proposal.netWon};
+ }else if(kind==="business.net.adopt"){
+   assertKeys(target,["reviewId"],["reviewId"]);assertKeys(patch,[]);
+   review(auth,"lawyer_review");
+   if(isSynthetic(data))fail("합성 사건에 사업경비의 법률상 인정을 승인할 수 없습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");
+   const approved=adoptBusinessNet(previous,text(target.reviewId,"사업소득 검토"),
+     auth.actor,command.reason,auth.at);
+   const index=work.businessNetReviews.findIndex(row=>row.id===approved.review.id);
+   if(index<0)fail("최신 사건의 사업소득 검토 기록이 없습니다.",409,"CASE_STATE_CONFLICT");
+   work.businessNetReviews[index]=approved.review;
+   data.incomes.push(approved.income);
+   resetReviews(data,impact);
+   work.reviewHistory.push({at:auth.at,actor:auth.actor,reason:command.reason,
+     before:{businessReviewId:approved.review.id,approvalState:"proposed"}});
+   impact.businessNetReview={id:approved.review.id,month:approved.review.month,
+     incomeId:approved.income.id,status:"approved"};
  }else if(kind==="decision.propose"||kind==="decision.adopt"){
    if(kind==="decision.propose"){
     assertKeys(target,["path"],["path"]);assertKeys(patch,["value"],["value"]);const path=text(target.path,"계산 입력");if(!["monthlyTrusteeFee","monthlyPriorityPayment","monthlyEstatePayment","approvedMonthlyPayment","planMonths","allocationBasis"].includes(path))fail("이 값은 계산 입력 제안으로 변경할 수 없습니다.");const monetaryPath=["monthlyTrusteeFee","monthlyPriorityPayment","monthlyEstatePayment","approvedMonthlyPayment"].includes(path);if(!monetaryPath&&(command.sourceRefs?.length||command.effectivePeriod))fail("원문 근거와 적용기간은 계산 금액 제안에만 사용할 수 있습니다.");
