@@ -94,7 +94,9 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
    const claim=await database.prepare([
      "INSERT INTO case_calculation_poll_jobs",
      "(case_id,data_version,case_revision,reference_sha256,status,attempts,lease_token,lease_until,next_attempt_at,last_error,updated_at)",
-     "VALUES(?,?,?,?,'running',1,?,?,NULL,NULL,?)",
+     "SELECT ?,?,?,?,'running',1,?,?,NULL,NULL,? WHERE EXISTS", 
+      "(SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id",
+      "WHERE c.id=? AND c.revision=? AND s.data_version=?)",
      "ON CONFLICT(case_id) DO UPDATE SET data_version=excluded.data_version,case_revision=excluded.case_revision,",
      "reference_sha256=excluded.reference_sha256,status='running',",
      "attempts=CASE WHEN case_calculation_poll_jobs.data_version=excluded.data_version",
@@ -110,7 +112,8 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
      "AND case_calculation_poll_jobs.next_attempt_at<=excluded.updated_at)",
      "OR (case_calculation_poll_jobs.status='running'",
      "AND case_calculation_poll_jobs.lease_until<=excluded.updated_at)"
-    ].join(" ")).bind(row.caseId,row.dataVersion,row.caseRevision,reference,lease,until,at).run();
+    ].join(" ")).bind(row.caseId,row.dataVersion,row.caseRevision,reference,lease,until,at,
+      row.caseId,row.caseRevision,row.dataVersion).run();
    if(!claim.meta.changes){results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"already_claimed" as const});continue;}
    try{
      const value=await recomputeCaseDataUpdate(database,{

@@ -5,7 +5,7 @@ import {readFileSync,readdirSync} from "node:fs";
 import {drainCaseDataUpdates,caseCalculationPollHealth,retryFailedCaseCalculationPoll} from "../lib/case-data-recompute.ts";
 
 const NOW=Date.parse("2026-10-30T12:00:00.000Z");
-function fixture(){
+function fixture(afterCandidateSelection?:(sqlite:DatabaseSync)=>void){
  const sqlite=new DatabaseSync(":memory:");
  sqlite.exec("PRAGMA foreign_keys=ON");
  const dir=new URL("../drizzle/",import.meta.url);
@@ -19,7 +19,11 @@ function fixture(){
  const database={prepare(sql:string){let values:SQLInputValue[]=[];const s={
   bind(...args:SQLInputValue[]){values=args;return s;},
   async first<T>(){return sqlite.prepare(sql).get(...values) as T??null;},
-  async all<T>(){return {results:sqlite.prepare(sql).all(...values) as T[]};},
+  async all<T>(){
+   const results=sqlite.prepare(sql).all(...values) as T[];
+   if(sql.includes("SELECT state.case_id AS caseId"))afterCandidateSelection?.(sqlite);
+   return {results};
+  },
   async run(){return {meta:{changes:Number(sqlite.prepare(sql).run(...values).changes)}};}
  };return s;}} as unknown as D1Database;
  const calls:string[]=[];
@@ -83,5 +87,32 @@ test("staff may recover a current failed calculation case without changing sourc
   assert.equal((f.sqlite.prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id='due-a'").get() as {version:number}).version,before.version);
   await assert.rejects(retryFailedCaseCalculationPoll(f.database,{caseId:"due-a",expectedDataVersion:before.version}),/CASE_CALCULATION_POLL_NO_CURRENT_FAILED_JOB/);
   await assert.rejects(retryFailedCaseCalculationPoll(f.database,{caseId:"due-a",expectedDataVersion:before.version+1}),/CASE_CALCULATION_POLL_RETRY_STALE_SOURCE/);
+ }finally{f.close();}
+});
+
+test("stale selected source cannot replace a newer running calculation lease",async()=>{
+ let injected=false;
+ const f=fixture(sqlite=>{
+  if(injected)return;
+  injected=true;
+  const current=sqlite.prepare("SELECT data_version AS dataVersion FROM case_data_change_state WHERE case_id='due-a'")
+   .get() as {dataVersion:number};
+  const freshVersion=current.dataVersion+1;
+  sqlite.prepare("UPDATE case_data_change_state SET data_version=? WHERE case_id='due-a'")
+   .run(freshVersion);
+  sqlite.prepare("INSERT INTO case_calculation_poll_jobs(case_id,data_version,case_revision,reference_sha256,status,attempts,lease_token,lease_until,updated_at) VALUES(?,?,?,?,?,?,?,?,?)")
+   .run("due-a",freshVersion,1,"synthetic-ref","running",1,"newer-worker","2099-01-01T00:00:00.000Z","2026-10-30T12:00:00.000Z");
+ });
+ try{
+  const out=await f.poll("due-a");
+  assert.equal(out.scanned,1);
+  assert.equal(out.results[0]?.status,"already_claimed");
+  assert.deepEqual(f.calls,[]);
+  const current=f.sqlite.prepare("SELECT data_version AS dataVersion,lease_token AS leaseToken FROM case_calculation_poll_jobs WHERE case_id='due-a'")
+   .get() as {dataVersion:number;leaseToken:string};
+  const source=f.sqlite.prepare("SELECT data_version AS dataVersion FROM case_data_change_state WHERE case_id='due-a'")
+   .get() as {dataVersion:number};
+  assert.equal(current.dataVersion,source.dataVersion);
+  assert.equal(current.leaseToken,"newer-worker");
  }finally{f.close();}
 });
