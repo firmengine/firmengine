@@ -1,69 +1,30 @@
-# FirmEngine AX — P0-02~08 동시작업 통합 보드 (2026-10-30)
+# FirmEngine AX — 현재 남은 P0 인수 작업 (2026-10-30)
 
-> **상태는 GitHub main의 코드 수준이다. 운영 D1/R2·Cloudflare Cron·실제 모델/서식/법원 적합성 검증이 아니다.**
-> 사용자 지시: 기존 서비스·DB·API 유지, ax-site 내부만 수정, 변경은 main 직접 반영. 데이터/계산을 다른 작업자가 동시에 수정하므로 **매 항목 시작 및 커밋 전 main head 확인**; 변경된 원본 파일 SHA가 다르면 무단 덮어쓰기 금지.
+범위: `ax-site`의 **최신 GitHub main**. 이 문서는 현재 해야 할 일만 기록한다. 이전에 구현한 기능·커밋 나열은 제거했다. 과거 변경 이력은 GitHub 커밋 및 v43/v44 감사문서에 남는다.
 
-## 작업 등록 및 인수조건
+> **검증 기준**: 소스 반영 ≠ 전체 Node 테스트 통과 ≠ 운영 D1/R2·Cron 검증 ≠ 변호사 승인/법원 적합성. 동일 파일 동시 수정 시 최신 SHA 재확인, 다른 수정사항 덮어쓰기 금지.
 
-| 항목 | GitHub | 진행 및 확인된 코드 | 잔여 인수조건 |
-|---|---|---|---|
-| P0-02 기준정보 통합 | [#3](https://github.com/firmengine/firmengine/issues/3) | 승인·버전형 기준정보에서 갈음 법원정책과 LawGraph 증거계약을 편집 가능한 별도 관리 레코드로 추가. 자동 활성화가 아닌 제안·2인 승인 경로. | 나머지 상담/OCR/계산/서식의 전체 기준 편집성, 관할·시행일·영향/롤백 대조, 운영 DB 검증. |
-| P0-03 상담 85종→필수 OCR 계약 | [#4](https://github.com/firmengine/firmengine/issues/4) | 85종/70개 상담 규칙·사건별 fieldPlan 경로 기존 구현 확인. 다른 작업자의 피처 범위/기간 강화 커밋 확인. | 사건별 reviewed source→canonical 그룹 확정·전수 검증. 승인 없는 후보를 법적 충족으로 오인 금지. |
-| P0-04 갈음 A←B+C | [#5](https://github.com/firmengine/firmengine/issues/5) | 서울·부산 실무준칙 402 기준 소득 갈음 8개 조합을 승인형 정책으로 외부화. 정확한 문서 집합·기간·사유/서명·원문 필드/사람승인 없으면 복원. | 85종의 검증된 허용/조건부/금지 경로 전수 법률 검토, 실사례·변경복구 E2E. |
-| P0-05 693 OCR→DB→계산 피처 | [#6](https://github.com/firmengine/firmengine/issues/6) | 별도 작업자: `cc3646b` material OCR 금액 입력 누락 차단, `388b129` 문서·페이지·기간 scope 엄격화. | 693 전수 소비처 중 필요한 부분의 정확한 계약·데이터 저장 및 실제 추출/SQL E2E. |
-| P0-06 계산 18/91 계약 | [#7](https://github.com/firmengine/firmengine/issues/7) | 별도 작업자: `b605f3a` 총계 누락/0 처리 방지, `14801f1` 자동초안까지 미연결 재무 입력 차단. | 남은 객체입력 18종, PV/우선채권/관할예외·시점·수식 원장 검증 및 18모듈 실제 운영 호출. |
-| P0-07 LawGraph 95 | [#8](https://github.com/firmengine/firmengine/issues/8) | 승인 가능한 위험ID별 canonical 필드 OR-군·필수 계산값·관할·시행일 계약/관리 API 및 법률 검토 패킷·누락 차단. 초기 95 중 미승인 항목은 자동 통과시키지 않음. | 88개 미정의 항목은 법률전문가가 명시 피처 계약을 작성·승인해야 함. 최종 법적 검토 품질 평가. |
-| P0-08 최종 LawGraph→서류 | [#9](https://github.com/firmengine/firmengine/issues/9) | 최신 법률판단 95건·계산 실행·참조기준 해시·사람의 법률 승인 검증; 생성될 서식 토큰별 SQL 스냅샷/계산 출처 저장. 투영 실패 시 검토 보존 및 자동초안 차단. | 전체 서식 출력의 토큰×원천 대응 검증, 법원 전자서식 판본/첨부/출력 검수, 레거시 전환과 CI/E2E 통과. |
+| 범위 · 이슈 | 아직 완결되지 않은 인수조건 |
+|---|---|
+| P0-02 기준정보 [#3](https://github.com/firmengine/firmengine/issues/3) | 상담·OCR·계산·법률·서식의 변경 가능한 실무 기준을 승인형 기준정보로 모두 관리하고 관할/시행일/근거/롤백/영향을 운영 DB에서 확인. 안전 불변식은 편집 불가 |
+| P0-03 상담 85종 [#4](https://github.com/firmengine/firmengine/issues/4) | 사건별 요구서류의 `reviewed source → canonical` 정확 계약, 필수/권장/법원 개별요청, 대상·기간·관할, 상담 재분석·업무 적용까지 전수 검증 |
+| P0-04 갈음 A←B+C [#5](https://github.com/firmengine/firmengine/issues/5) | 승인된 법원별 허용/조건부/불가 경로의 85종 법률 검수. 철회·기간/관할 변경·원문 불일치 시 즉시 복구 E2E |
+| P0-05 OCR 693 [#6](https://github.com/firmengine/firmengine/issues/6) | 원문/SQL/사건 typed 객체/법률·서식의 소비처를 필드·행·단위·기간·대상별로 검증. 직접 계산 대상이 아닌 source-only 사실을 무단 합산하지 않음. 실제 대량 OCR·정정·중복행 E2E |
+| P0-06 계산 18·입력 91 [#7](https://github.com/firmengine/firmengine/issues/7) | 잔여 미인증 객체 입력, 순·총소득 기간, 담보/우선채권/중복, 생계비, 할인현재가치, 변제기간·배분을 원문→산식→금액→문서값 동일성으로 전수 실행 |
+| P0-07 LawGraph 95 [#8](https://github.com/firmengine/firmengine/issues/8) | 필수 피처 계약 미정의 88개 전문가 검수·승인, 관할·시행일·근거·정확한 source/calc ID·예외/충돌·재검토의 자동 침묵통과 금지 |
+| P0-08 최종 문서 [#9](https://github.com/firmengine/firmengine/issues/9) | 95검토→서식토큰→생성물 ID/해시→담당자/변호사 검수·수정·재생성→최종 검토본의 동일 사건·동일 기준 E2E. 공식 전자소송 판본/첨부 대조 |
+| 교차 인수 [#10](https://github.com/firmengine/firmengine/issues/10) | source/review/산출물 분류 코드는 반영됐으나 **0021 migration** 운영 적용 및 여러 번의 법률 승인·파일 생성과 계산/법률 head 보존을 실제 DB·R2에서 검증해야 함 |
+| 인가 전 절차적 검토 [#11](https://github.com/firmengine/firmengine/issues/11) | 조회 전용 준비도(09A) 다음 09B–09F: 쟁점별 하위 단계, 격리 가정 시뮬레이션, 보완요청 우선순위, 인가 전 기한·절차, 전문가 독립평가 |
 
-## 추가 코드 반영 기록
+## 아직 해결하지 않은 기능·시나리오 충돌
+**현재 재현 및 소스 검증 표**: [최신 미해결 충돌 및 가상 시나리오](current-unresolved-and-synthetic-audit-20261030.md).
 
-- `c675b036` : P0-02/04 갈음 정책 기준정보 편입, 정확한 조합 8개, 증빙/법률용 2인 승인.
-- `98d905a3` : P0-08 최신 LawGraph 최종 검토 게이트 및 화면 진단.
-- `527a260a` : P0-08 직원 검토와 법률 담당자 검토를 구분.
-- `53f3b981` : P0-02/07 95 위험항목의 편집·승인형 원문 필드/계산 근거 계약.
-- `f95bbcdb` : P0-08 SQL 법률 검토 실행에 실제 서식필드 근거 저장.
-- `48f1ba6c` : 문서 필드 원문 인정/누락 출처 강제.
-- `787a51ad` : 서식 투영 실패 시에도 기존 법률 검토 보존, 자동초안 차단.
+현재 가장 먼저 다룰 것은 (1) **LawGraph 문서 필드 투영 실패가 자동초안 후보 차단에 반영되지 않는 문제**, (2) **자동초안과 직원 검토 문서원장의 분리**, (3) **법원별 적용 범위 없는 전역 변경 경보**, (4) **갈음 판정의 자동·화면 호출 컨텍스트 불일치**다. 기존 코드에 반영된 F02·F03·F04 및 F01의 0021 코드 가드는 이 문서의 *미구현 작업*에서 제외했다.
 
-## 통합 계약 (불변)
+## 진행 순서 및 통합 합격 기준
+1. `0017`~`0021`을 순서대로 staging D1에 적용, 기존 데이터/트리거/권한/R2 pointer 영향 확인. 운영 적용은 별도 승인 및 배포 검증 후 진행.
+2. `npm ci`, `npm run check:source`, `npm run lint`, `npm run build`, 최신 테스트 전체 실행. 검사 실패/미실행은 미인증으로 기록.
+3. 합성 사건 3건 이상으로 상담 변경, OCR 누락·오인식·해당없음·0·복수행, 계산 변경, 95검토, 수동 두 단계 승인, 문서 편집, 재생성, 복구, 동시사건을 재현.
+4. 공식 법원 서식/실무준칙·시행일/관할 및 변호사 독립 검증. 합성 테스트 성능을 실사건 99% 정확도·인가확률로 표현하지 않음.
 
-1. 모든 업데이트는 사건 내부 ID·documentId·page·record ordinal·canonicalFieldId·source hash·source data version·calculationRunId·legalReviewRunId·기준정보 SHA로 추적한다.
-2. 누락·마스킹·오인식·미관찰·명시적 비해당·0·충돌을 서로 다른 상태로 보존한다.
-3. OCR/계산/AI 판단은 사람의 출처 승인, 법률상 인정 또는 전자소송 적합성의 대체물이 아니다.
-4. 법률상 필수·갈음·서식 요구는 관할/시행일/공식 근거/사람승인을 함께 만족할 때만 적용한다.
-5. 최신 데이터 변경이 기존 검증·계산·판단·문서 생성을 무효화하고, 10분 안정화 후 재계산한다. 갈음 복구는 10분을 기다리지 않는다.
-6. 다른 에이전트가 작업하는 `assessment.ts`, `feature-lineage-audit.ts`, OCR/DB 투영 모듈은 덮어쓰지 않는다. 변경 여부는 main SHA와 개별 파일 SHA로 검사하고 충돌 시 중단한다.
-7. CI 통과·운영 동작을 실행하지 않은 상태에서는 절대 완료로 표기하지 않는다.
-
-## 인수 테스트 (실행 및 상태는 별도 기록)
-
-```bash
-npm ci
-npm run check:source
-npm run lint
-npm run build
-npm run test:intake-pipeline
-npm run test:legal-auto
-node --experimental-strip-types --test tests/substitution-policy-reference.test.ts tests/legal-evidence-criteria.test.ts tests/final-lawgraph-readiness.test.ts tests/lawgraph-document-field-projection.test.ts
-node --experimental-strip-types --test tests/ocr-calculator-input-integration.test.ts tests/calculation-18-output-golden.test.ts tests/feature-lineage-audit.test.ts
-```
-
-현재 GitHub head의 Actions 자동 실행 결과가 확인되지 않았으므로 **신규 테스트는 작성되었으나 전체 실행 통과는 미인증**. 운영 적용 시 실제 D1 마이그레이션(0017, 0018 포함), Cron 설정, 각 사건 버전 재계산, 신규 기준정보 활성화·무효화 실측을 별도 수행해야 한다.
-
-## 후속 작업 시 주의
-
-데이터를 담당하는 별도 에이전트가 push할 때마다 해당 커밋이 변경한 파일, 계산/추출 피처 계약 변화, 법률/서식 영향 및 관련 테스트를 각 이슈 댓글에 누적한다. 편집 가능한 정책은 승인형 레지스트리에서만 변경하며, 코드 안전불변식은 변경 승인의 대상이 아니다. 공개 GitHub에 실제 의뢰인 자료, 운영 키, 샘플 원본 추출값을 올리지 않는다.
-
-## 2026-10-30 추가 동시작업 커밋 확인 (UTC 02:14 기준)
-
-| P0 범위 | 타 작업 에이전트 main 확인 | 영향과 미해결 |
-|---|---|---|
-| 03 상담 | `c3a67beb` | 상담 수정 revision / 활성·비활성 변경 이벤트를 별도 SQL 마이그레이션 0019에 반영. 85종 상담-추출 요건의 법률상 완전성과 실제 배포 미검증. |
-| 05 OCR·DB | `4aca409a`, `0ca98f87`, `a7eab2f7`, `1174be5a` | 가구 다중 원문행 보존, 다른 문서 간 가구원 수 오인 방지, >2000 source features 묵살 방지·2200 테스트 추가. 실제 693 정답셋 대조는 미실행. |
-| 06 계산 | `9bad1dd6`, `1c6dc3c7`, `c5e69588`, `7b3b694a`, `ec5b96e0` | 불완전 대표기간 수입·월 승인액 차단, 동일 Fact 다중 typed 소비 차단, 계산 Poll lease/backoff/고립과 migration 0020 추가. 18개 모듈 실제 E2E는 미완료. |
-| 07 법률근거 | `c159f217` | 승인형 95 체크 canonical OCR 피처 계약은 정확한 고유 693 ID compact index 기반으로 검증. 88개 이상 전문가 승인 계약 작성 필요. |
-| 08 최종문서 | `de45d877`, `22a988e7` | export DB commit 경계에서 현재 source/calculation/LawGraph run 재확인. TypeScript 선택적 서식 토큰 type guard 수정. 95-check·법원양식 E2E 미완료. |
-
-**교차 P0 차단 발견 — [#10](https://github.com/firmengine/firmengine/issues/10):** `case-commands.ts:legalCheck.dispose` 기본 사건 revision 증가, `saveCase` workflow-only payload/token 저장, `drizzle/0010/0018` source-change triggers가 업무승인을 원본변경으로 인식할 가능성이 큼. `case-command-store.currentLegalRun` 및 최종 LawGraph gate의 dataVersion 일치 요구와 충돌. 해결 전에는 '검수 완료 후 무중단 최종 문서' 인수 불가. **데이터 작업자와 함께 원천/업무/법률/출력 판본을 분리해야 한다.** 트리거를 임의로 수정·제거하면 실제 자료수정 무효화가 누락될 수 있으므로 해당 SQL을 덮어쓰지 않았다.
-
-**검증 상태:** 본 표의 커밋은 GitHub main의 소스/테스트 추가를 확인한 것이고, 코드 전체 컴파일·Node 회귀·Cloudflare Cron/DB 마이그레이션·실제 법원 전자서식 제출 적합성이 성공했다는 뜻이 아니다.
+**불변 원칙**: 모든 값은 원문→검증 피처→사건값→계산 run/산식→법률 근거/검토→서식토큰·산출물 ID로 역추적되어야 하며, 미관찰/오인식/누락/해당없음/0/상충은 구분한다. 문서 생성 자체로 법원 제출 또는 인가가 이루어지지 않는다.
