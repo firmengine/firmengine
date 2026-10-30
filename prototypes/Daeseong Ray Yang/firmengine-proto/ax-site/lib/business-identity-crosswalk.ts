@@ -19,6 +19,7 @@ const valid=(data:CaseData,f:Fact,index:CaseReadIndex)=>
   factSourceLineageIssues(data,[f.id],index).length===0;
 const key=(f:Fact)=>f.canonicalFieldId??f.fieldObservation?.canonicalFieldId??"";
 const textValue=(value:unknown):string|null=>typeof value==="string"&&value.trim()?value.trim():null;
+const completeBusinessId=(value:string|null)=>!!value&&/^\d{3}-?\d{2}-?\d{5}$/.test(value.replace(/\s+/g,""));
 interface BusinessRegistrationEvidence{
   sourceRecordId:string;registrationFactId:string;
   businessIdObserved:string|null;businessEntityFactIds:string[];representativeFactIds:string[];
@@ -47,7 +48,7 @@ export function businessIdentityCrosswalk(data:CaseData,index:CaseReadIndex=crea
    businessIdObserved:one?textValue(one.value):null,
    businessEntityFactIds:entity.map(f=>f.id),
    representativeFactIds:reps.map(f=>f.id),
-   verifiedSource:!!one&&!!textValue(one.value)&&valid(data,one,index),
+   verifiedSource:!!one&&completeBusinessId(textValue(one.value))&&valid(data,one,index),
    reviewOnly:true});
  }
  const sourceRecords=new Map<string,{family:string;amountFactIds:string[]}>();
