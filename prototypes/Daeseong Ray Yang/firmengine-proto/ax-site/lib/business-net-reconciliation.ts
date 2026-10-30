@@ -215,7 +215,8 @@ function exactReview(data:CaseData,review:BusinessNetReview,index:CaseReadIndex)
 export function validBusinessNetReview(
  data:CaseData,review:BusinessNetReview,index:CaseReadIndex=createCaseReadIndex(data)
 ):boolean{
- return review.status==="approved"&&!!review.reviewer?.trim()&&!!review.reviewReason?.trim()&&
+ return review.status==="approved"&&!!review.proposer?.trim()&&!!review.reviewer?.trim()&&
+   review.proposer.trim()!==review.reviewer.trim()&&!!review.reviewReason?.trim()&&
    !!review.reviewedAt&&exactReview(data,review,index);
 }
 export function reviewedBusinessIncomeIds(data:CaseData,index:CaseReadIndex=createCaseReadIndex(data)):Set<string>{
