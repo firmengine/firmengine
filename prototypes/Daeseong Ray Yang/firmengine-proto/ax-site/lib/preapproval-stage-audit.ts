@@ -3,6 +3,7 @@
  */
 import type { CaseData, Fact } from "./domain.ts";
 import type { Assessment } from "./assessment.ts";
+import {auditPreapprovalCourtCorrections} from "./preapproval-correction-audit.ts";
 
 export const PREAPPROVAL_STAGE_VERSION = "preapproval-stage-audit/1" as const;
 export type StageId = "P1_DOCUMENTS" | "P2_EVIDENCE" | "P3_CALCULATIONS" | "P4_LEGAL" | "P5_CORRECTIONS";
@@ -136,7 +137,9 @@ export function auditFivePreapprovalStages(input: StageAuditInput) {
     exceptionScenarioCount:input.exceptions.length,preapprovalExceptionIds:preapprovalExceptions.map(x=>x.id),deferredPostapprovalExceptionIds:deferredExceptions,
     riskChecks:riskReview,statutoryPreflight,legalReviewReferences:["KR-PR-043","KR-PR-044","KR-PR-045","KR-PR-046","KR-PR-048"],
     lawArticles:["KR-610","KR-611","KR-613","KR-614"]};
+  const courtOrderAudit=auditPreapprovalCourtCorrections(data,facts,input.validSourceFactIds);
   const stage5={...tableRef("P5_CORRECTIONS"),state:!activeBeforeApproval?"outside_preapproval_scope":recordedCorrections.length?"court_order_itemization_required":"court_order_not_observed",
+    courtOrderAudit,
     courtOrderEvents:recordedCorrections.map(e=>({id:e.id,at:e.occurredAt,sourceDocumentIds:[...e.sourceDocumentIds],courtReference:e.courtReference,
       reason:e.reason,relatedFields:[...e.relatedFields],deadlineEvidenceIds:correctionDeadlines.map(f=>f.id),
       itemLevelDeadlineAndResponseVerified:false})),
