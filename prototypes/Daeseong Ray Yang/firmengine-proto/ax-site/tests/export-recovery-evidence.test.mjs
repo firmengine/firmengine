@@ -13,7 +13,8 @@ function fixture() {
     artifactRows:[{id:"artifact-aaaaaaaa",caseId:"synthetic-case",revision:3,objectKey:KEY,hash:H}],
     objectProofs:[{objectKey:KEY,exists:true,verifiedSha256:H}],
     manifest:{requestId:"request-aaaaaaaa",artifactIds:["artifact-aaaaaaaa"],fingerprint:H},
-    auditEvents:[{type:"document_writer.prepared"},{type:"export.generated"}],
+    auditEvents:[{type:"document_writer.prepared",caseId:"synthetic-case",requestId:"request-aaaaaaaa",revision:3},
+      {type:"export.generated",caseId:"synthetic-case",requestId:"request-aaaaaaaa",revision:3}],
   };
 }
 function expect(mutator, classification, issue) {
@@ -68,3 +69,9 @@ test("R2 proof collection unobserved is not a missing object", () =>
   expect(x=>{x.objectProofs=null;}, "inconclusive", "R2_PROOFS_NOT_OBSERVED"));
 test("SQL null hash is conflict, not a diagnostic runtime crash", () =>
   expect(x=>{x.artifactRows[0].hash=null;}, "conflict", "SQL_IDENTITY_OR_HASH_CONFLICT"));
+test("same type of audit event from another request is not receipt evidence", () =>
+  expect(x=>{x.auditEvents[0].requestId="request-bbbbbbbb";},
+    "inconclusive", "AUDIT_EVENTS_OBSERVED_INCOMPLETE"));
+test("same request event from another case is not receipt evidence", () =>
+  expect(x=>{x.auditEvents[1].caseId="foreign-case";},
+    "inconclusive", "AUDIT_EVENTS_OBSERVED_INCOMPLETE"));
