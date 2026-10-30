@@ -46,3 +46,20 @@ test("nonmaterial calculation notes do not create a false mismatch blocker",()=>
   draftEligibility:{eligible:true,reasons:[]},calculationIssues:["INCOME_REPRESENTATIVE_PERIOD_NOT_SELECTED"]});
  assert.equal(r.draftCandidate,true);
 });
+
+test("LawGraph document-field projection failures always block a review draft",()=>{
+ const checks=[c("legal_review")];
+ for(const failure of ["LAWGRAPH_FORM_FIELD_PROJECTION_FAILED","LAWGRAPH_FORM_FIELD_PROJECTION_EMPTY"]){
+  const eligibility=automatedDraftEligibility({checks,expectedCheckIds:["R1"],complete:true,
+   calculationHeadCurrent:true,engineCanGenerateDraft:true,
+   requiredCalculationFields:[{outputName:"monthlyIncomeWon",value:"1000",status:"computed"}],
+   requiredCalculationOutputNames:["monthlyIncomeWon"],allowHumanReviewPendingForDraft:true,
+   explicitFailures:[failure]});
+  assert.equal(eligibility.eligible,false,failure);
+  assert.ok(eligibility.reasons.includes("EXPLICIT_FAILURE_PRESENT"),failure);
+  const report=summarizeAutomaticLegalReview({checks,expectedCount:1,draftEligibility:eligibility});
+  assert.equal(report.draftCandidate,false,failure);
+  assert.equal(report.canFinalize,false);
+  assert.equal(report.courtApprovalInferred,false);
+ }
+});
