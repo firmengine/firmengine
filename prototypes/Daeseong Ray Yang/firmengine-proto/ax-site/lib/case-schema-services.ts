@@ -13,6 +13,7 @@ import { buildFeatureLineageAudit,evaluateCaseFieldLineage,auditLegalRiskContrac
 import { buildCalculationInputAudit } from "./calculation-input-audit.ts";
 import {auditBusinessSourceEvidence} from "./business-source-evidence.ts";
 import {buildBusinessMonthlyWorkbench} from "./business-monthly-workbench.ts";
+import {businessIdentityCrosswalk} from "./business-identity-crosswalk.ts";
 
 export const CASE_SCHEMA_CONTRACT={
   version:"case-feature-storage/1",databaseBinding:"DB",databaseEngine:"Cloudflare D1 / SQLite",
@@ -59,6 +60,7 @@ export async function readCaseSchemaData(caseId:string,input:{view?:string;docum
     const all=buildFeatureLineageAudit(active.catalog,active.sha256,{limit:1000});
     return evaluateCaseFieldLineage(data,all.fields,{limit:input.limit,offset:input.offset});
   }
+  if(view==="business_identity_crosswalk")return businessIdentityCrosswalk(data);
   if(view==="business_monthly_workbench")return buildBusinessMonthlyWorkbench(data);
   if(view==="business_source_audit")
     return auditBusinessSourceEvidence(data,undefined,{limit:input.limit,offset:input.offset});
