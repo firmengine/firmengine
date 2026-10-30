@@ -22,8 +22,8 @@ type WorkflowResponse = {
   diagnostics: Record<string, unknown>;
   health?:WorkflowHealth;
   legalAutomation?:{
-    status:string;completedChecks?:number;expectedChecks?:number;currentDataVersion?:number|null;lastError?:string|null;updatedAt?:string|null;
-    outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;};
+    status:string;completedChecks?:number;expectedChecks?:number;currentDataVersion?:number|null;lastError?:string|null;updatedAt?:string|null;quietDueAt?:string|null;remainingMs?:number|null;
+    outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;unresolvedRequiredDocuments?:{requirementId:string;status:string;missingFields:string[]}[];projectionBlockers?:number;};
   };
 };
 type CommandDraft = Omit<CaseCommand, "commandId" | "payloadVersion" | "expectedRevision" | "expectedStateFingerprint">;
@@ -213,6 +213,7 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
        {data.legalAutomation&&<Panel title="DB 변경 후 자동 법률 재판단" icon={ShieldCheck}>
          <p className="workflow-muted">마지막 변경 후 10분 안정화 → 계산 → 법률 AI 재검토 → 오류 분석 → 검토용 초안. 법원 제출·승인은 자동 처리하지 않습니다.</p>
          <div className="workflow-state-row"><span>처리 상태: {label(data.legalAutomation.status)}</span><span>검토 진행: {data.legalAutomation.completedChecks??0}/{data.legalAutomation.expectedChecks??95}</span><span>최종 검토: 사람 확인 필수</span></div>
+         {data.legalAutomation.status==="debouncing"&&data.legalAutomation.quietDueAt&&<p className="workflow-muted">원천 데이터 안정화 중 · 다음 검토 가능 시각 {new Date(data.legalAutomation.quietDueAt).toLocaleString("ko-KR",{timeZone:"Asia/Seoul"})} (데이터가 추가 수정되면 다시 10분 대기)</p>}
          {data.legalAutomation.lastError&&<p className="workflow-caution">실행 오류: {data.legalAutomation.lastError}</p>}
          {data.legalAutomation.status==="failed"&&typeof data.legalAutomation.currentDataVersion==="number"&&<button className="button button-outline" disabled={busy} onClick={async()=>{
            setBusy(true);try{
@@ -228,6 +229,10 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
          {data.legalAutomation.outcome?.summary&&<p>{data.legalAutomation.outcome.summary}</p>}
          {Boolean(data.legalAutomation.outcome?.blockers?.length)&&<div className="workflow-caution"><strong>자동작성을 보류한 이유</strong>
            {data.legalAutomation.outcome!.blockers!.slice(0,12).map(reason=><p key={reason}>{reason}</p>)}</div>}
+         {Boolean(data.legalAutomation.outcome?.pendingCourtPolicyChanges)&&<p className="workflow-caution">법원·법령 기준 변경 알림 {data.legalAutomation.outcome!.pendingCourtPolicyChanges}건 · 승인 전 기준 검토 필요</p>}
+         {Boolean(data.legalAutomation.outcome?.unresolvedRequiredDocuments?.length)&&<div className="workflow-caution"><strong>필수자료 미충족</strong>
+           {data.legalAutomation.outcome!.unresolvedRequiredDocuments!.slice(0,20).map(item=><p key={item.requirementId}>{item.requirementId} · {label(item.status)} · {item.missingFields.join(", ")||"증빙 검토 필요"}</p>)}
+         </div>}
          {Boolean(data.legalAutomation.outcome?.findings?.length)&&<details className="workflow-details"><summary>법률 검토·보완 사항 ({data.legalAutomation.outcome!.findings!.length}건)</summary>
            <div className="workflow-list">{data.legalAutomation.outcome!.findings!.slice(0,20).map(item=><article className="workflow-card" key={item.id}><strong>{item.id} · {label(item.status)}</strong><p>{item.reason}</p>
            {item.missingDocuments.length>0&&<p>필요 자료: {item.missingDocuments.join(" · ")}</p>}<p>다음 조치: {item.nextAction}</p></article>)}</div></details>}

@@ -119,7 +119,7 @@ test("source-only DB change invalidates calculator/legal head without treating p
   h.sqlite.prepare("UPDATE case_data_change_state SET data_version=data_version+1 WHERE case_id=?").run(input.caseId);
   const after=await readCaseLegalAutomation(h.db,input.caseId);
   assert.equal(prior.status,"pending");
-  assert.equal(after.status,"waiting_for_calculation");
+  assert.ok(["debouncing","waiting_for_calculation"].includes(after.status));
   assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
  }finally{h.close();}
 });
@@ -131,6 +131,6 @@ test("direct source case-payload rewrite without revision still increments SQL s
   h.sqlite.prepare("UPDATE cases SET payload=? WHERE id=?").run(JSON.stringify({...input.data,context:{...input.data.context,caseName:"Updated directly"}}),input.caseId);
   const after=(h.sqlite.prepare("SELECT data_version AS v FROM case_data_change_state WHERE case_id=?").get(input.caseId) as {v:number}).v;
   assert.equal(after,before+1);
-  assert.equal((await readCaseLegalAutomation(h.db,input.caseId)).status,"waiting_for_calculation");
+  assert.ok(["debouncing","waiting_for_calculation"].includes((await readCaseLegalAutomation(h.db,input.caseId)).status));
  }finally{h.close();}
 });
