@@ -46,3 +46,15 @@
 현 최신 월별 조립 함수 본문만 추출한 **격리 V8 10/10 일치**(변경 후 재검증). GitHub에서 전체 Node/TypeScript 빌드·DB 운영 검증·실제 법원 서식 E2E는 실행하지 못했으므로 완전 통합 통과로 기재하지 않는다.
 
 남은 필수 작업은 **검증된 동일사업자 관계의 담당자 승인 영수증을 저장하고, 각 경비의 법률상 인정·VAT 처리 기준을 적용해 결론 수치를 계산엔진에 전달한 뒤 실제 제출 양식과 E2E 대조**하는 것이다. 이 과정 없이 임의로 재무 피처 ID를 typed 순소득에 직결해서는 안 된다.
+
+
+## 현재 연결 계산 서비스와 GitHub 기준정보 대조 (정적+연결된 도구 확인)
+
+- 연결된 FirmEngine 계산 서비스의 `get_execution_catalog`를 **직접 호출**했다. 응답은 계산모듈 **18개**, 추출 패밀리 **48개**, 실행 카탈로그 `case-execution/1.2.0`이다.
+- 연결 서비스의 사업소득 관련 5개 family(`business_sales_vat`, `business_costs_and_ledgers`, `business_current_income_summary`, `business_registration`, `tax_income`)를 GitHub `main`의 실제 `document-agent-field-contracts.json`과 `global_field_id`·datatype·unit·temporal_role별로 대조했고 **차이 0건**이었다.
+- 연결 서비스 계산 18개 각각의 `inputs[]` 및 `formBindings[]`를 현재 GitHub `reference-decision-tables.json`과 비교해 **차이 0건**이었다.
+- 기준정보 `firmengine-reference-2026-10-29.1` revision 1 SHA `347dbe44af48986386fb83c0438dd8ac8d42f2c725e505749f4375e88b9fe231`도 연결 서비스와 현재 GitHub `reference-release.json` 간 동일했다.
+- 693개 canonical ID 색인, 사업금액 ID 11개·기간 ID 6개, 18개 계산모듈·91개 입력 및 D1 소스 스키마 이관문 `0008`/`0016`에 대한 정적 교차검사는 **발견된 미등록 ID·형식 불일치 0건**이었다.
+- 별도 `lib/business-schema-integrity.ts`와 `?view=business_schema_integrity` 조회를 추가하여 **현재 리포지터리 내의 정적 계약 변동**을 감지한다.
+
+**범위주의:** 연결 서비스의 **카탈로그/기준정보 일치**는 현재 GitHub `main`에서 새로 추가한 계산 가드·워크벤치·API가 **운영 배포됐거나 실제 D1 데이터를 통과했다는 뜻이 아니다**. 서비스의 실사건 식별자 및 운영 D1 접근이 이번 검증에 제공되지 않아 **실제 적재 행과 최근 소스값 비교는 미완료**다. 기존 `cases.payload` JSON·`extraction_records`/`extracted_features` SQL 물리 저장 구조를 변경하는 migration은 추가하지 않았다.
