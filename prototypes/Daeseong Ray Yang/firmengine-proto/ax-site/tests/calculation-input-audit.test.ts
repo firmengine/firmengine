@@ -38,3 +38,11 @@ test("legal fact names with context/household prefixes never masquerade as typed
  assert.equal(short.declaredInputs.find(x=>x.path==="household.minorChildren")?.category,"source_verified_legal_fact_not_case_property");
  assert.equal(short.declaredInputs.find(x=>x.path==="household.singleParent")?.category,"source_verified_legal_fact_not_case_property");
 });
+
+test("current principal balance is a guarded typed Debt.principal, not unrelated original principal",()=>{
+ const a=audit(),debt=a.modules.find(m=>m.calculationId==="debt_total")!;
+ const row=debt.declaredInputs.find(x=>x.path==="debt.principal")!;
+ assert.equal(row.category,"derived_from_ocr_review_required");
+ assert.ok(row.derivedCandidateFieldIds.includes("debt_certificate::principal_balance"));
+ assert.ok(!row.derivedCandidateFieldIds.includes("debt_certificate::original_principal"));
+});
