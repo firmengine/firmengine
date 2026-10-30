@@ -407,8 +407,10 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
         if(basis==="unknown"&&!!field("net"))
           warnings.push(`${id}: 금액의 월액/기간합계 기준을 확정할 근거가 없어 계산 분모를 보류했습니다.`);
         const label=value("label")||value("employer")||rawKind||r.label;
+        const sourceCalculationRole:IncomeSource["sourceCalculationRole"]=sourceFamily==="tax_income"?"historical_tax_comparison":
+          sourceFamily==="business_sales_vat"?"gross_turnover_only":"period_income_observation";
         incomes.push({id,kind:incomeKind,label,employer:value("employer"),payerIdentityId:value("payer_identity_id"),
-          aggregationTreatment:"unknown",aggregationReviewed:false,gross:num("gross"),expenses:num("expenses"),net:num("net"),
+          sourceCalculationRole,aggregationTreatment:"unknown",aggregationReviewed:false,gross:num("gross"),expenses:num("expenses"),net:num("net"),
           periodStart:start,periodEnd:end,periodMonths:integer("period_months"),amountBasis:basis,recurring:tri(value("recurring")),
           recognition:"unreviewed",factIds:ids});
       }

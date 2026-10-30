@@ -116,6 +116,8 @@ export interface IncomeSource {
   aggregationTreatment?: "series_observation" | "independent_source" | "component" | "duplicate" | "unknown";
   aggregationReviewed?: boolean;
   aggregationReviewReason?: string;
+  /** Document source semantics; an annual tax return is comparative evidence until explicitly recognized. */
+  sourceCalculationRole?: "historical_tax_comparison" | "gross_turnover_only" | "period_income_observation";
   gross?: NumericInput | null;
   expenses?: NumericInput | null;
   net?: NumericInput | null;

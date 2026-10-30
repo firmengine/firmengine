@@ -345,8 +345,13 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     ].length > 0;
     const meta = source as IncomeSourceAudit;
     const reviewedDuplicate = meta.aggregationTreatment === "duplicate" && meta.aggregationReviewed === true && !!meta.aggregationReviewReason?.trim();
-    const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate || moneyConflict ? null : monthly.value;
-    const reasons = [...monthly.reasons, ...lineage, ...(moneyConflict ? ["INCOME_OBJECT_FACT_CONFLICT"] : []), ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : [])];
+    // A prior-year income-tax certificate may duplicate already observed wages
+    // or business revenues. It is comparative evidence, not automatically an
+    // independent current monthly payer; only explicit human recognition or
+    // reviewed duplicate treatment can use/exclude it safely.
+    const historicalUnreviewed = source.sourceCalculationRole==="historical_tax_comparison" && source.recognition!=="accepted";
+    const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate || moneyConflict || historicalUnreviewed ? null : monthly.value;
+    const reasons = [...monthly.reasons, ...lineage, ...(moneyConflict ? ["INCOME_OBJECT_FACT_CONFLICT"] : []), ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : []), ...(historicalUnreviewed ? ["INCOME_HISTORICAL_TAX_RECOGNITION_REQUIRED"] : [])];
     if (reviewedDuplicate) duplicateIds.push(source.id);
     incomeRows.push({ id: source.id, label: source.label, monthlyWon: asMoney(value), reasons });
     incomeObservations.push({ source: meta, value, span: monthSpan(source.periodStart, source.periodEnd) });
