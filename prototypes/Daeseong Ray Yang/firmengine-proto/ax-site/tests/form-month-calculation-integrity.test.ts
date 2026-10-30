@@ -41,3 +41,27 @@ test("D5103 table and stable edit row IDs follow the calculator's post-dedup inc
  assert.equal(bindings.rows.month[0].period,"2026-09");
  assert.deepEqual(stableFormRowIds("month",d,{assessment:{calculation}} as any,bindings),["A"]);
 });
+
+test("D5103 final version blocks a positive monthly income with zero source month rows",async()=>{
+ const z=await evaluateDocumentPreflight({formCode:"D5103",mode:"final",identity,
+   bindings:{scalars:{client_name:"Synthetic applicant",approved_monthly_income:"2,400,000"},rows:{month:[]}}});
+ assert.equal(z.status,"blocked");
+ assert.ok(z.blockers.some(b=>b.code==="D5103_MONTH_ROWS_MISSING"));
+});
+test("D5103 draft flags absent month rows without representing them as zero",async()=>{
+ const z=await evaluateDocumentPreflight({formCode:"D5103",mode:"draft",identity,
+   bindings:{scalars:{client_name:"Synthetic applicant",approved_monthly_income:"2,400,000"},rows:{month:[]}}});
+ assert.equal(z.blockers.some(b=>b.code==="D5103_MONTH_ROWS_MISSING"),false);
+ assert.ok(z.warnings.some(w=>w.code==="D5103_MONTH_ROWS_MISSING"));
+});
+test("D5103 does not invent month rows when a monthly income is unresolved",async()=>{
+ const z=await evaluateDocumentPreflight({formCode:"D5103",mode:"final",identity,
+   bindings:{scalars:{client_name:"Synthetic applicant",approved_monthly_income:"[확인 필요]"},rows:{month:[]}}});
+ assert.equal(z.blockers.some(b=>b.code==="D5103_MONTH_ROWS_MISSING"),false);
+});
+test("D5103 valid month evidence is not rejected as a missing repeat group",async()=>{
+ const z=await evaluateDocumentPreflight({formCode:"D5103",mode:"final",identity,
+   bindings:{scalars:{client_name:"Synthetic applicant",approved_monthly_income:"2,400,000"},
+   rows:{month:[{entity:"Synthetic business",period:"2026-10",net_income:"2,400,000"}]}}});
+ assert.equal(z.blockers.some(b=>b.code==="D5103_MONTH_ROWS_MISSING"),false);
+});
