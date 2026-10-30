@@ -70,3 +70,18 @@
 - 구체적인 결함 경로는 **C01, C03, C04**, 그리고 추가 이벤트 의미 검증 **C07**이다. **C02(자동초안↔검수 원장 분리)**와 **C05(계산 preflight 전에 법률 AI 과금 가능)**는 소스 경로 비교로 확인했지만 이 46건의 독립 통합 실행 대상은 아니다.
 - 격리 테스트는 실제 `npm test`, Cloudflare D1의 DDL·트랜잭션·Worker concurrency, R2 손실 복구, 사람 로그인/권한, n8n, 95개 실제 API 모델 호출을 대체하지 않는다.
 - 실제 운영 사례·개인정보·비공개 정답·비밀키를 사용하지 않았다. 법원 제출 가능, 법률 판단 정확도 99%, 인가 승인 등으로 승격하지 않는다.
+
+## 5. C01 후속 코드 수정 재검증 (P01–P06, **추가 6건**)
+
+기존 T15는 **수정 전 결함 재현 기록**으로 보존한다. 이후 `case-legal-automation.ts`의 `finalizeReview`가 투영 실패/필드 0개를 `automatedDraftEligibility.explicitFailures`에 전달하도록 수정되었고, 구버전 `draft_pending`도 `processDraft`에서 저장 필드 수/이전 오류를 확인해 writer 실행을 차단한다. 관련 커밋: `f2e1354`, `0862bf1`, `944b8bf`.
+
+| ID | 별도 가상 실행 | 현재 후보 판단 | 기대와 일치 |
+|---|---|---|---|
+| P01 | 문서 필드 8건, 투영 오류 없음, 필수 계산 13건 존재 | `eligible=true` (검토용만) | 예 |
+| P02 | 투영 함수 오류, 생성 필드 0건 | `eligible=false` / `EXPLICIT_FAILURE_PRESENT` | 예 |
+| P03 | 명시적 오류 없음, 생성 필드 0건 | `eligible=false` / `EXPLICIT_FAILURE_PRESENT` | 예 |
+| P04 | 생성 필드가 3건 있어도 계산 참조 투영 오류 | `eligible=false` / `EXPLICIT_FAILURE_PRESENT` | 예 |
+| P05 | 중요한 계산 원천의 정합성 미해결 | `eligible=false` / `EXPLICIT_FAILURE_PRESENT` | 예 |
+| P06 | 할인현재가치 필수 계산값 없음 | `eligible=false` / `CALCULATION_VALUE_MISSING:presentValueWon` | 예 |
+
+**6/6은 소스의 조건식과 실제 자격판정 함수 본문을 가상 입력으로 격리 호출한 결과다.** 전체 Node 회귀 테스트, 운영 D1/R2, 실제 법원 문서, 구 대기열 복구 E2E 실행 결과가 아니다. 기존 46개 역사적 시나리오와 섞어 합격률로 집계하지 않는다.
