@@ -22,15 +22,15 @@ function caseData(id="case-a",withDebt=false){
 function setup(){
   const sqlite=new DatabaseSync(":memory:");sqlite.exec("PRAGMA foreign_keys=ON");
   for(const name of readdirSync(new URL("../drizzle",import.meta.url)).filter(n=>/^\d+.*\.sql$/.test(n)).sort())sqlite.exec(readFileSync(new URL("../drizzle/"+name,import.meta.url),"utf8"));
-  let beforeBatch:(()=>void)|undefined;
-  const db={prepare(sql:string){let values:SQLInputValue[]=[];const s={bind(...args:SQLInputValue[]){values=args;return s;},async first<T>(){return sqlite.prepare(sql).get(...values) as T??null;},async all<T>(){return{results:sqlite.prepare(sql).all(...values) as T[]};},async run(){const r=sqlite.prepare(sql).run(...values);return{meta:{changes:Number(r.changes)}};}};return s;},async batch(statements:Array<{run():Promise<unknown>}>){beforeBatch?.();beforeBatch=undefined;sqlite.exec("BEGIN IMMEDIATE");try{const out=[];for(const s of statements)out.push(await s.run());sqlite.exec("COMMIT");return out;}catch(e){sqlite.exec("ROLLBACK");throw e;}}} as unknown as D1Database;
+  let beforeBatch:(()=>void)|undefined,beforeFeatureRead:(()=>void)|undefined;
+  const db={prepare(sql:string){let values:SQLInputValue[]=[];const s={bind(...args:SQLInputValue[]){values=args;return s;},async first<T>(){return sqlite.prepare(sql).get(...values) as T??null;},async all<T>(){if(sql.startsWith("SELECT * FROM case_calculation_features WHERE run_id=?")&&beforeFeatureRead){const mutate=beforeFeatureRead;beforeFeatureRead=undefined;mutate();}return{results:sqlite.prepare(sql).all(...values) as T[]};},async run(){const r=sqlite.prepare(sql).run(...values);return{meta:{changes:Number(r.changes)}};}};return s;},async batch(statements:Array<{run():Promise<unknown>}>){beforeBatch?.();beforeBatch=undefined;sqlite.exec("BEGIN IMMEDIATE");try{const out=[];for(const s of statements)out.push(await s.run());sqlite.exec("COMMIT");return out;}catch(e){sqlite.exec("ROLLBACK");throw e;}}} as unknown as D1Database;
   const save=(data:ReturnType<typeof createCase>)=>{
     sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at,storage_token) VALUES (?,?,?,?,?,?,?,?)").run(data.context.id,data.context.caseName,"owner",data.context.revision,JSON.stringify(data),"at","at","token");
     for(const d of data.documents)sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,ready,created_at) VALUES (?,?,?,?,?,1,'at')").run(d.id,data.context.id,d.name,d.sha256,d.pages.length);
   };
   const version=(id:string)=>(sqlite.prepare("SELECT data_version FROM case_data_change_state WHERE case_id=?").get(id) as {data_version:number}).data_version;
   const args=(data:ReturnType<typeof createCase>):PersistCaseCalculationFeaturesInput=>({caseId:data.context.id,dataVersion:version(data.context.id),caseRevision:data.context.revision,inputSha256:createHash("sha256").update(JSON.stringify(data)).digest("hex"),execution:executeCaseNodes(data),sourceHeads:{sourceRevision:data.context.revision,documentIds:data.documents.map(d=>d.id)}});
-  return{sqlite,db,save,version,args,race:(id:string)=>{beforeBatch=()=>sqlite.prepare("UPDATE cases SET revision=revision+1 WHERE id=?").run(id);},close:()=>sqlite.close()};
+  return{sqlite,db,save,version,args,race:(id:string)=>{beforeBatch=()=>sqlite.prepare("UPDATE cases SET revision=revision+1 WHERE id=?").run(id);},raceFeatureRead:(mutate:()=>void)=>{beforeFeatureRead=mutate;},close:()=>sqlite.close()};
 }
 test("missing engine outputs remain null with explicit status; metadata false is preserved and derived writes do not reset source watch",async()=>{
   const h=setup();try{
@@ -88,5 +88,27 @@ test("execution identity mismatches and out-of-bounds reads fail closed; no sepa
     assert.ok(features.every(f=>f.value!==undefined));
     await assert.rejects(listCaseCalculationFeatures(h.db,{caseId:data.context.id,limit:501}),/INVALID_CALCULATION_FEATURE_QUERY/);
     h.sqlite.exec(readFileSync(new URL("../drizzle/0011_case_calculation_features.sql",import.meta.url),"utf8"));
+  }finally{h.close();}
+});
+
+
+test("calculation paging rejects a changed run even when case revision and source dataVersion do not change",async()=>{
+  const h=setup();try{
+    const data=caseData("case-head-paging",true);h.save(data);
+    const input=h.args(data);
+    const first=await persistCaseCalculationFeatures(h.db,input);
+    const second=await persistCaseCalculationFeatures(h.db,{...input,sourceHeads:{syntheticPageVersion:2}});
+    assert.notEqual(first.runId,second.runId);
+    const baseline=h.version(data.context.id);
+    h.sqlite.prepare("UPDATE case_calculation_heads SET run_id=? WHERE case_id=?").run(first.runId,data.context.id);
+    const page=await listCaseCalculationFeatures(h.db,{caseId:data.context.id,limit:1,expectedDataVersion:baseline,expectedRunId:first.runId});
+    assert.equal(page.runId,first.runId);assert.equal(page.nextOffset,1);
+    h.raceFeatureRead(()=>h.sqlite.prepare("UPDATE case_calculation_heads SET run_id=? WHERE case_id=?").run(second.runId,data.context.id));
+    await assert.rejects(listCaseCalculationFeatures(h.db,{caseId:data.context.id,limit:1,offset:1,expectedDataVersion:baseline,expectedRunId:first.runId}),/CALCULATION_VERSION_MISMATCH/);
+    assert.equal(h.version(data.context.id),baseline,"the active calculation run can change without source dataVersion changing");
+    await assert.rejects(listCaseCalculationFeatures(h.db,{caseId:data.context.id,expectedRunId:first.runId}),/CALCULATION_VERSION_MISMATCH/);
+    const next=await listCaseCalculationFeatures(h.db,{caseId:data.context.id,expectedDataVersion:baseline,expectedRunId:second.runId,limit:1});
+    assert.equal(next.runId,second.runId);assert.equal(next.headStale,false);
+    await assert.rejects(listCaseCalculationFeatures(h.db,{caseId:data.context.id,expectedRunId:"untrusted"}),/INVALID_CALCULATION_FEATURE_QUERY/);
   }finally{h.close();}
 });
