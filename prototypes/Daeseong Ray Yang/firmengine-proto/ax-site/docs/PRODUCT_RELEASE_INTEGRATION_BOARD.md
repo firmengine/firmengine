@@ -144,7 +144,7 @@
 - [ ] **A1-DOC-012** 갈음 승인 후 원본 철회/상담변경 시 재요청 복원. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-013** 누락·불명확 항목에 대해 발급처/기간/대상자 안내. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-014** OCR 오류의 직원 정정과 독립 원문값 보존. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-DOC-015** 서류 검수·문안 편집·재생성 이력과 재확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 결함 재현 / PR #12 수정 제안 / Word·D1 E2E 미검증**
+- [ ] **A1-DOC-015** 서류 검수·문안 편집·재생성 이력과 재확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 결함 재현 / PR #12 수정 제안 / Word·D1 E2E 미검증** **A1 3차 추가 확인**: 문안 편집 이력 불변성 관련 기존 [Draft PR #12](https://github.com/firmengine/firmengine/pull/12)는 여전히 미병합. source/main 정적 확인만 추가했으며 Word·Node·D1 E2E 미인증. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
 - [ ] **A1-DOC-016** 직원 검수만으로 최종 변호사/법원 상태 승격 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-017** 법원 실제 보정명령과 예상 보완요청 UI 구분. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-018** 네트워크 단절/새로고침 이후 작업 중복/유실 방지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -187,7 +187,7 @@
 - [ ] **A1-LAW-013** 95 법률 위험의 미승인 증거계약 자동통과 방지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-014** 50 법률규칙·46 예외의 미적용·상충 상태. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-015** 직원 제안과 독립 변호사 승인의 서명 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **상태: 결함 재현 / PR #12 수정 제안 / 최종 인수 미검증**
-- [ ] **A1-LAW-016** 새 원문/계산/기준정보 후 기존 승인 무효화. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-LAW-016** 새 원문/계산/기준정보 후 기존 승인 무효화. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 3차 부분검증**: `business.net.adopt → touchCase → resetReviews`는 소득기간·변제·서식 검토를 초기화하는 코드 존재. 실제 법률 95검토 재실행·D1 계산 head/서식 E2E는 미인증. 증빙철회 시 typed 채무승인이 남는 별도 결함은 [Draft PR #20](https://github.com/firmengine/firmengine/pull/20)에서 제안. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
 - [ ] **A1-LAW-017** 실제 보정명령의 원본·기한·접수증 실증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-018** 최종 서식 생성과 법원 제출·인가를 별개로 표시. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 
@@ -209,7 +209,7 @@
 - [ ] **A1-DATA-014** 계산 18·입력91 선언과 DB typed 경로 매핑. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-015** 서식 token별 원문 ID·formula·runId 추적. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-016** DB 타입/Drizzle와 파일 마이그레이션 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-DATA-017** 서류 재분류·기준 변경의 하위 소비처 재투영. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DATA-017** 서류 재분류·기준 변경의 하위 소비처 재투영. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 3차 신규 P0 결함**: 문서 페이지 evidence→administrative 전환 시 원본 fact는 retracted/currentFacts=0·매칭 stale이나 typed 채무 `legalReview=accepted`·구 `factIds`가 남는 것을 원본 코드 본문 V8 합성으로 재현. **[Draft PR #20](https://github.com/firmengine/firmengine/pull/20)**에서 문서·페이지 철회 재검토 큐/typed 인정 무효화. 수정 helper 격리 V8 **6/6**, 새 Node 회귀 7개는 작성만·실행하지 않음. CI/D1/R2/변호사 미인증. [3차 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
 - [ ] **A1-DATA-018** 실제 사건 데이터와 합성 회귀 자료 격리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 
 ### A1 AX담당자 (18개)
@@ -823,3 +823,10 @@
 - 체크: A4-DOC-007, A4-LAW-008, A4-CALC-004, A4-DATA-012; 교차 X-042/X-044. 4역할 순환. **전체 완료 0건**; 실제 원본 함수 격리 재현과 PR 회귀 추가만 부분 검증.
 - 같은 사건번호 두 보정명령에 B의 답변이 A의 현재 답변으로 연결되는 P0를 main 원본 함수로 재현. [Draft PR #19](https://github.com/firmengine/firmengine/pull/19)에서 동일 reference 복수 명령의 자동 답변 바인딩 거부 및 기존 mapping stale. 단일 명령은 유지. 원문 인용이 실제 해당 페이지에 있다는 출처검증 부재(P1)는 추가 설계·변호사 검토가 필요.
 - [세부 영수증](release-audit-runs/A4/20261030-round02-court-response-identity.md): 실제 함수 본문 격리 validation 5/5, read 본문 전후 4개 관찰, 계산 quiet pure 5/5, unsourced quote 반례 1건. **PR 테스트 파일 4건 추가했으나 저장소 원본 Node/전체 CI와 D1/R2/법원서식·변호사 검수는 미실행**. 다음: R2→D1 실패·응답유실 X-047 및 명시적 responseOrderId 계약.
+
+### 2026-10-30 A1 3차 — 문서 철회/페이지 재분류 시 typed 승인 잔존
+
+- 역할 순환: 서류담당자(`A1-DOC-015`), 변호사(`A1-LAW-016`), 데이터담당자(`A1-DATA-017`). **A1 최종 인수 완료 0건**. [상세 재현·독립 기대값·코드 변경 영수증](release-audit-runs/A1/20261030-round03-document-evidence-cascade.md).
+- main 최초 검토 SHA `3cdcb6cbf3cb66e3c8dae5d7f8b8afb2166a32c4`: 문서 역할변경에서 source fact는 `retracted`, 현재 `currentFacts=0`이지만 typed 채무의 `legalReview=accepted`와 구 factId는 그대로였다. 격리 원본함수 실행으로 재현한 **원천-typed-법률 승인 불변식 결함**이며 실제 Cloudflare 악용 실증은 아니다.
+- [Draft PR #20](https://github.com/firmengine/firmengine/pull/20): 문서/페이지 철회 시 typed 인정·원문 연결 무효화와 담당자 `projection_remap` 생성. 수정 helper 본문 합성 V8 6/6 기대일치, 신규 회귀 테스트 7건 등록. **원본 Node 전체·staging D1/R2·공식 서식/변호사 미실행, 미병합**. 기존 PR #12·#17 등 덮어쓰기 없음.
+- 다음 A1 역할: IT(`A1-IT-008`: R2/D1 부분실패), AX(`A1-AX-015`: 문안 인계·승인 artifact), 계산사무장(`A1-CALC-015`: 구판본 계산 source/reference). PR #17 완료 CAS와 중복 수정 금지.
