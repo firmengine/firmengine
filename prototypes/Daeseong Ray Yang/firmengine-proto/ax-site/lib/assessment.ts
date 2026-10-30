@@ -4,6 +4,7 @@ import { resolveDebtRows } from "./debt-resolution.ts";
 import { resolveIncomeRows } from "./income-resolution.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { createDebtSourceIntegrityResolver } from "./debt-source-integrity.ts";
+import {auditMaterialCalculatorSources} from "./material-calculation-source-gate.ts";
 import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, normalizeMoney } from "./domain.ts";
 import type { Asset, CaseData, CaseReadIndex, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
 import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-proposals.ts";
@@ -335,6 +336,10 @@ function aggregateIncomeObservations(data: CaseData, input: IncomeObservation[],
 
 export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex=createCaseReadIndex(data)): CalculationResult {
   const traces: CalculationTrace[] = [], issues: string[] = [], duplicateIds: string[] = [];
+  // Exact source-linked financial observations that cannot be reached by the
+  // case calculation objects remain explicit blockers, never silent zeros.
+  const materialAudit=auditMaterialCalculatorSources(data,index);
+  issues.push(...materialAudit.issues.map(issue=>issue.code+":"+issue.canonicalFieldId+":"+issue.factId));
   const incomeRows: CalculationResult["incomeRows"] = [];
   const incomeObservations: IncomeObservation[] = [];
   const incomeResolution = resolveIncomeRows(data);
