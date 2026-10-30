@@ -19,6 +19,7 @@ import { workflowHealth,type HealthJob,type HealthCommand } from "./workflow-hea
 import { commandHash } from "./case-command-contract.ts";
 import { readCaseLegalAutomation } from "./case-legal-automation.ts";
 import {inspectCurrentFinalLawgraph} from "./final-lawgraph-readiness.ts";
+import {currentLegalDispositionOutcome} from "./legal-review-identity.ts";
 export async function caseWorkflowResponse(caseId:string){
   await drainCaseRecomputeJobs(caseId,1);
   const data=await getCase(caseId),workflow=caseWorkflow(data.workflowState);
@@ -82,7 +83,9 @@ export async function caseWorkflowResponse(caseId:string){
   const stateFingerprint=await caseStateFingerprint(data);
   const health=workflowHealth({data,stateFingerprint,jobs:recomputeJobs.results.slice(0,50),commands:commandRows.results.slice(0,20),jobsTruncated:recomputeJobs.results.length>50,commandsTruncated:commandRows.results.length>20,requiredUnresolved:view.requirementStates.filter(item=>!["satisfied","not_applicable_confirmed","waived_by_review","retired"].includes(item.requirementStatus)).length,reconciliationIssues:execution.planReconciliation.issues,now:new Date().toISOString()});
   const finalLegalReadiness=workflow.requirements.length?await inspectCurrentFinalLawgraph(db(),{caseId,caseRevision:data.context.revision,
-  referenceSha256:legalReference,humanDispositions:legalRuns.map(run=>({checkId:run.checkId,state:"current",disposition:run.disposition??null}))})
+  referenceSha256:legalReference,humanDispositions:[...new Map((workflow.legalDispositions??[]).map(d=>[d.checkId,d] as const)).values()]
+    .map(d=>({checkId:d.checkId,state:"current",disposition:d.role==="lawyer"?
+      currentLegalDispositionOutcome(d,rawLegalRuns):"needs_review"}))})
   .catch(error=>({readyForFinalReviewCopy:false,blockers:["LAWGRAPH_READINESS_UNAVAILABLE"],error:error instanceof Error?error.message:"UNKNOWN"}))
   :{readyForFinalReviewCopy:false,blockers:["WORKFLOW_NOT_ADOPTED"]};
 const legalAutomation=await readCaseLegalAutomation(db(),caseId).catch(()=>({

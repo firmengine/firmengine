@@ -43,7 +43,9 @@ async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getC
   for(const disposition of latestByCheck.values()){
     // A saved rejection remains a blocker; accepted receipts require the exact current run.
     const outcome=currentLegalDispositionOutcome(disposition,runs);
-    result.push({checkId:disposition.checkId,state:"current",disposition:outcome});
+    // A caseworker OCR/requirements approval cannot stand in for the lawyer's
+    // check-specific legal acceptance of the current source and calculation.
+    result.push({checkId:disposition.checkId,state:"current",disposition:disposition.role==="lawyer"?outcome:outcome==="accepted"?"needs_review":outcome});
   }
   if(candidates.results.length>500)result.push({checkId:"legal-review-coverage",state:"current",disposition:"needs_review"});
   return result;
