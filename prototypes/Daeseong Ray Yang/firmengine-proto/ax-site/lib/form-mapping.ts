@@ -187,20 +187,20 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   };
   for (const [key, kind] of Object.entries({cash:"cash",bank_balance:"deposit",insurance_surrender:"insurance",vehicle_value:"vehicle",housing_deposit:"lease_deposit",real_estate_value:"real_estate",retirement_value:"retirement",business_assets_value:"business",other_assets:"other"})) scalars[key] = assetSum(kind);
   scalars.assets_total = assetSum();
-  rows.month = data.incomes.map((income) => {
-    const month=exactSourceCalendarMonth(income.periodStart,income.periodEnd,income.amountBasis);
-    const verified=sourceValid(data,income.factIds,index);
-    const calculationRow=calculation.incomeRows.find(row=>row.id===income.id);
-    // Use the calculation result, not a second ad hoc division in the writer.
-    // Annual certificates, partial periods and duplicate/unreviewed aggregates
-    // cannot masquerade as a monthly D5103 cash-flow cell.
-    const usable=!!month&&verified&&calculationRow?.monthlyWon!==null&&calculationRow?.monthlyWon!==undefined;
+  const incomesById=new Map(data.incomes.map(income=>[income.id,income]));
+  // The source set of a D5103 month table is exactly the set used by
+  // the deterministic calculation after explicit duplicate exclusions.
+  rows.month = calculation.incomeRows.map((calculationRow) => {
+    const income=incomesById.get(calculationRow.id);
+    const month=income?exactSourceCalendarMonth(income.periodStart,income.periodEnd,income.amountBasis):null;
+    const verified=!!income&&sourceValid(data,income.factIds,index);
+    const usable=!!month&&verified&&calculationRow.monthlyWon!==null;
     return {
-      entity:present(income.label),
+      entity:present(income?.label),
       period:month??MISSING_FORM_VALUE,
-      revenue:usable?numeric(income.gross):MISSING_FORM_VALUE,
-      expense:usable?numeric(income.expenses):MISSING_FORM_VALUE,
-      net_income:usable?amount(calculationRow!.monthlyWon):MISSING_FORM_VALUE
+      revenue:usable?numeric(income?.gross):MISSING_FORM_VALUE,
+      expense:usable?numeric(income?.expenses):MISSING_FORM_VALUE,
+      net_income:usable?amount(calculationRow.monthlyWon):MISSING_FORM_VALUE
     };
   });
   const business = calculation.incomeGroups.filter((group) => group.sourceIds.some(id=>data.incomes.find(s=>s.id===id)?.kind==="business"));

@@ -56,7 +56,7 @@ export function stableFormRowIds(group:string,data:CaseData,execution:ExecutionS
     return ids.filter(id=>{const debt=data.debts.find(item=>item.id===id);return !!debt&&(group==="secured"?(debt.secured==="yes"||debt.classification==="secured"):group==="disputed"?debt.classification==="disputed":group==="priority"?debt.priority==="priority":debt.classification==="estate");});
   }
   if(group==="asset") return calculation.assetRows.map(row=>row.id);
-  if(group==="month") return data.incomes.map(row=>row.id);
+  if(group==="month") return calculation.incomeRows.map(row=>row.id);
   if(group==="attachment") return data.documents.filter(d=>d.status==="active").map(row=>row.id);
   if(["career","enforcement","prior","family"].includes(group)) {
     const prefixes=[group,`statement.${group}`,`household.${group}`];
