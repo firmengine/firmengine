@@ -73,6 +73,18 @@ test("part-month payslip does not divide a sum by an invented whole-month durati
  assert.equal(result.incomeRows[0].monthlyWon,null);
  assert.ok(result.issues.some(i=>i.startsWith("INCOME_PERIOD_DENOMINATOR_MISSING")));
 });
+test("explicit periodMonths cannot override a half-month or malformed OCR period",()=>{
+ const source={id:"part",kind:"wage" as const,label:"Part month",net:normalizeMoney("1000000"),
+  amountBasis:"period_total" as const,periodStart:"2026-10-15",periodEnd:"2026-10-31",periodMonths:1,factIds:[]};
+ const half=monthlyIncome(source);
+ assert.equal(half.value,null);
+ assert.ok(half.reasons.includes("INCOME_PERIOD_NOT_COMPLETE_CALENDAR_MONTHS"));
+ const bad=monthlyIncome({...source,periodStart:"2026-02-01",periodEnd:"2026-02-30"});
+ assert.equal(bad.value,null);
+ const full=monthlyIncome({...source,periodStart:"2026-10-01",periodEnd:"2026-10-31"});
+ assert.equal(full.value,1000000n);
+});
+
 test("same-employer monthly observations cannot be merged by name unless separately human reviewed",()=>{
  const source=read("shared-document:salary_statement@payroll_payslip","income",[
   [field("income.payroll.employer","payroll_payslip::income.payroll.employer","Employer A",null),
