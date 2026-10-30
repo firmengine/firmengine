@@ -8,7 +8,7 @@ import { jsonResponse } from "../../../../../lib/json-response";
 import { finalizeDocumentWriterReceipt, prepareDocumentWrite } from "../../../../../lib/document-writer";
 import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
-import { parseExportRequestId } from "../../../../../lib/export-request-replay.ts";
+import { parseExportRequestId, inspectExportRequestReplay } from "../../../../../lib/export-request-replay.ts";
 import { claimExportRequest, inspectExportReceipt, markExportUncertain, type ExportClaim, type ExportReceiptRow } from "../../../../../lib/export-request-ledger.ts";
 import {buildCurrentCaseWorkflowView} from "../../../../../lib/case-workflow-context.ts";
 import { finalWorkflowBlockers } from "../../../../../lib/document-workflow-gate.ts";
@@ -84,6 +84,13 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       caseRevision:data.context.revision,sourceDataVersion:expectedSourceDataVersion,
       referenceSha256,manifestFingerprint:liveFingerprint});
     if(decision==="verify_sql_and_r2_before_reuse"){
+      // A committed SQL receipt alone does not prove that this export is still
+      // current, reviewed, or tied to the same source/reference/writer revision.
+      // The independent D1+R2 byte verification below remains mandatory.
+      if(inspectExportRequestReplay({requestId,manifest:data.exportManifest,
+        caseRevision:data.context.revision,mode,sourceDataVersion:expectedSourceDataVersion,
+        referenceSha256})!=="reuse")
+        throw new HttpError(409,"현재 문서 원장·작성 영수증·원천 판본이 불일치하여 재사용할 수 없습니다.");
       if(!data.exportManifest?.files.length)throw new HttpError(409,"생성본 원장이 불완전합니다.");
       for(const file of data.exportManifest.files){
         const proof=await db().prepare("SELECT hash,object_key AS objectKey,revision FROM artifacts WHERE case_id=? AND id=?")
