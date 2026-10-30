@@ -48,6 +48,9 @@ function calculatedFrom(typed:{recordCategory:string;key:string}[]){
   if(t.recordCategory==="income"&&["net","gross","expenses","period_start","period_end"].includes(t.key))ids.push("income_average","income_aggregation","monthlyIncomeWon");
   if(t.recordCategory==="debt"&&["principal_balance","principal","interest","creditor","as_of"].includes(t.key))ids.push("debt_total","debtPrincipalWon","debtInterestWon");
   if(t.recordCategory==="asset"&&["gross_value","kind","as_of","secured_payoff","valuation_basis"].includes(t.key))ids.push("asset_liquidation","liquidationValueWon");
+  // Case-execution transaction review is evidence analysis only; it does not
+  // promote a raw bank OCR amount into income, asset value or legal approval.
+  if(t.recordCategory==="transaction"&&["account_id","amount","counterparty","direction","date"].includes(t.key))ids.push("transaction_review");
  }
  return distinct(ids);
 }
