@@ -94,3 +94,25 @@ test("source-version movement is scanned without calculator quiet-period waiting
   assert.equal(row.dataVersion,2);
  }finally{h.close();}
 });
+
+test("idle cases with different court signals are not perpetually rescanned",async()=>{
+ const h=harness();try{
+  const initial=await scanCaseSubstitutions(h.database,{caseId:"case1",source:h.dbSource});
+  assert.equal(initial.status,"scanned");
+  const repeat=await drainCaseSubstitutionWatch(h.database,{caseId:"case1",limit:1,source:h.dbSource});
+  assert.equal(repeat.scanned,0);
+  assert.deepEqual(repeat.results,[]);
+ }finally{h.close();}
+});
+test("new policy alert triggers a conservative rescan without changing source data",async()=>{
+ const h=harness();try{
+  await scanCaseSubstitutions(h.database,{caseId:"case1",source:h.dbSource});
+  const before=(h.sql.prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id='case1'").get() as {version:number}).version;
+  h.sql.prepare("INSERT INTO legal_monitor_alerts (id,created_at,acknowledged_at) VALUES (?,?,NULL)")
+   .run("policy-change",new Date(Date.now()+60_000).toISOString());
+  const result=await drainCaseSubstitutionWatch(h.database,{caseId:"case1",limit:1,source:h.dbSource});
+  assert.equal(result.scanned,1);
+  const after=(h.sql.prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id='case1'").get() as {version:number}).version;
+  assert.equal(after,before);
+ }finally{h.close();}
+});
