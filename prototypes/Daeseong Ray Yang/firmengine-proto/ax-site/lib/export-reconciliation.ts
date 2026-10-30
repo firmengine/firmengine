@@ -33,7 +33,7 @@ export type ExportEvidenceIssueCode =
   | "R2_OBJECT_MISSING" | "R2_PROOF_UNKNOWN" | "R2_BYTES_UNVERIFIED"
   | "R2_BYTES_HASH_MISMATCH" | "UNCERTAIN_COMMIT_PRESERVE"
   | "CLAIMED_REQUEST_PRESERVE" | "UNREFERENCED_SQL_PRESERVE"
-  | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY";
+  | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY" | "OBJECT_KEY_SCOPE_MISMATCH";
 export interface ExportEvidenceIssue {
   code: ExportEvidenceIssueCode;
   artifactId?: string;
@@ -85,12 +85,17 @@ export function reconcileExportEvidence(input: {
     }
   }
   const seenKeys = new Set<string>();
+  const currentKeys = new Set(current.map(file => rows.get(file.id)?.objectKey).filter((key): key is string => !!key));
   for (const row of input.artifactRows) {
     if (row.caseId !== input.caseId) continue; // No permission to audit another case.
     if (!referenced.has(row.id)) add("UNREFERENCED_SQL_PRESERVE", row.id);
+    if (row.objectKey !== "cases/"+input.caseId+"/artifacts/"+row.id) {
+      add("OBJECT_KEY_SCOPE_MISMATCH", row.id);
+      if (current.some(file => file.id === row.id)) currentArtifactsVerified = false;
+    }
     if (seenKeys.has(row.objectKey)) {
       add("DUPLICATE_OBJECT_KEY", row.id);
-      if (current.some(file => file.id === row.id)) currentArtifactsVerified = false;
+      if (currentKeys.has(row.objectKey)) currentArtifactsVerified = false;
       continue;
     }
     seenKeys.add(row.objectKey);
