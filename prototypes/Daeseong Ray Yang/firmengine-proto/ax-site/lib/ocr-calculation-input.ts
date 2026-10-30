@@ -37,6 +37,10 @@ export function calculationSourceCellIssues(cell:CalculationSourceCell,definitio
  if(datatype==="money"||datatype==="money_or_itemized"||datatype==="money_or_unknown"){
   if(!cell.unit?.trim())issues.push("SOURCE_MONETARY_UNIT_MISSING");
   else if(normalizeMoney(raw,cell.unit.trim()).normalizationStatus!=="exact")issues.push("SOURCE_MONEY_NOT_EXACT_KRW");
+  // Commas in OCR monetary text are thousands separators, never disposable noise.
+  // Keep the source string intact and require review of malformed grouping.
+  const grouped=raw.normalize("NFKC").replace(/\s*(?:원|KRW)\s*$/i,"").trim();
+  if(grouped.includes(",")&&!/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(grouped))issues.push("SOURCE_MONEY_GROUPING_INVALID");
  }
  if(datatype==="date"&&!validDate(raw))issues.push("SOURCE_DATE_INVALID");
  if(datatype==="datetime"&&!validTime(raw))issues.push("SOURCE_DATETIME_INVALID");
