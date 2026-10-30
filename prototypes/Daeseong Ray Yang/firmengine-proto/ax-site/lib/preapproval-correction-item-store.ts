@@ -45,6 +45,13 @@ export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDr
  const document=data.documents.find(d=>d.id===draft.orderDocumentId&&d.status==="active");
  if(!order||!order.courtReference?.trim()||!order.sourceDocumentIds.includes(draft.orderDocumentId)||!document||!document.pages.includes(draft.orderPage))
   throw fail("CORRECTION_COURT_ORDER_SOURCE_UNVERIFIED");
+ // An excerpt entered by staff is not verified solely by selecting an active PDF.
+ // Require the exact page's available text; image-only pages need a human-reviewed
+ // page-bound transcription route before this stricter gate can be released.
+ const orderPageText=data.pages.find(p=>p.documentId===draft.orderDocumentId&&p.page===draft.orderPage)?.text;
+ const normalizedQuote=(text:string)=>text.replace(/\s+/g," ").trim();
+ if(!orderPageText?.trim()||!normalizedQuote(orderPageText).includes(normalizedQuote(draft.orderQuote)))
+  throw fail("CORRECTION_ORDER_QUOTE_NOT_SOURCE_ANCHORED");
  const deadline=draft.deadline;
  if(deadline!==null){
   if(!deadline||typeof deadline.sourceFactId!=="string"||typeof deadline.date!=="string"||!iso(deadline.date))throw fail("CORRECTION_DEADLINE_NOT_SOURCE_BOUND");
