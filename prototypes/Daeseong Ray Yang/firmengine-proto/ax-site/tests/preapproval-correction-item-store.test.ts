@@ -140,3 +140,11 @@ test("revoked response receipt event invalidates current court-correction mappin
  assert.equal(stored.items[0].sourceCurrent,false);
  assert.equal(stored.items[0].courtOrderSatisfied,false);
 });
+
+test("a real court correction order with no itemization is explicitly reported as unhandled",async()=>{
+ const {data,db}=setup();
+ const r=await readCourtCorrectionItems(db,data);
+ assert.equal(r.actualOrderCount,1);
+ assert.deepEqual(r.unitemizedCourtEventIds,["court-order"]);
+ assert.equal(r.unresolvedCourtItemCount,1);
+});
