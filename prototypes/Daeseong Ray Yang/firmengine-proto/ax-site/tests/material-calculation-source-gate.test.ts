@@ -116,3 +116,36 @@ test("one exact net payroll observation cannot support two independent typed inc
  assert.equal(report.issues[0].code,"CALC_INPUT_MULTIPLE_TYPED_MATCHES");
  assert.equal(calculateCase(data,rules).monthlyIncomeWon,null);
 });
+
+test("cash/deposit source raw correction cannot inherit a stale typed amount",()=>{
+ const data=setup("cash_deposit_asset::gross_value","1000000");
+ data.assets=[{id:"asset-1",kind:"deposit",label:"synthetic source item",grossValue:normalizeMoney("1000000"),factIds:["fact-1"],recognition:"unreviewed"}];
+ assert.equal(auditMaterialCalculatorSources(data).issueCount,0);
+ data.facts[0].rawValue="2000000";
+ assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_SOURCE_VALUE_MISMATCH");
+ data.facts[0].rawValue="1000000";
+ data.facts[0].fieldObservation={...data.facts[0].fieldObservation!,rawValue:"3000000",rawUnit:"KRW"};
+ assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_SOURCE_VALUE_MISMATCH");
+ data.facts[0].fieldObservation={...data.facts[0].fieldObservation!,rawValue:"1000000",rawUnit:"KRW"};
+ assert.equal(auditMaterialCalculatorSources(data).issueCount,0);
+ data.facts[0].sourceUnit="만원";
+ assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_SOURCE_VALUE_MISMATCH");
+});
+test("bank balance raw disagreement is not hidden by a matching numeric/typed cache",()=>{
+ const data=setup("bank_account_balance::balance","1000000");
+ data.assets=[{id:"asset-1",kind:"deposit",label:"synthetic account",grossValue:normalizeMoney("1000000"),factIds:["fact-1"],recognition:"unreviewed"}];
+ data.facts[0].rawValue="1200000";
+ assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_SOURCE_VALUE_MISMATCH");
+});
+test("explicit zero and legacy missing raw do not become false source-value mismatch",()=>{
+ const data=setup("cash_deposit_asset::gross_value","0");
+ data.assets=[{id:"asset-1",kind:"cash",label:"synthetic zero",grossValue:normalizeMoney("0"),factIds:["fact-1"],recognition:"unreviewed"}];
+ assert.equal(auditMaterialCalculatorSources(data).issueCount,0);
+ data.facts[0].fieldObservation={...data.facts[0].fieldObservation!,rawValue:"0",rawUnit:"KRW"};
+ assert.equal(auditMaterialCalculatorSources(data).issueCount,0);
+ delete data.facts[0].rawValue;
+ data.facts[0].fieldObservation={...data.facts[0].fieldObservation!,rawValue:null};
+ assert.ok(!auditMaterialCalculatorSources(data).issues.some(x=>x.code==="CALC_INPUT_SOURCE_VALUE_MISMATCH"));
+ data.facts[0].fieldObservation={...data.facts[0].fieldObservation!,sourceState:"not_seen"};
+ assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_AMOUNT_INVALID");
+});
