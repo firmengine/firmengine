@@ -3,6 +3,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { CheckCircle2, FileText, Loader2, LockKeyhole } from "lucide-react";
 import type { CaseCommand } from "@/lib/case-command-contract";
+import type { CommandSubmitOutcome } from "@/lib/command-submit-outcome";
 
 type CommandDraft = Omit<CaseCommand,"commandId"|"payloadVersion"|"expectedRevision"|"expectedStateFingerprint">;
 export type ReviewArtifact = {id:string;name:string;hash:string;formCode:string|null;status:string};
@@ -15,7 +16,7 @@ export type CaseReviewActionsProps = {
   fieldBases:ReviewFieldBase[];
   legalRuns?:CurrentLegalRun[];
   roles?:string[];
-  onCommand:(draft:CommandDraft)=>void|Promise<void>;
+  onCommand:(draft:CommandDraft)=>Promise<CommandSubmitOutcome>;
   onError?:(message:string)=>void;
   busy?:boolean;
 };
@@ -35,7 +36,11 @@ export default function CaseReviewActions({artifacts,fieldBases,legalRuns=[],rol
     const element=event.currentTarget,form=new FormData(element),base=editable[Number(form.get("baseIndex"))],value=String(form.get("value")??""),reason=String(form.get("reason")??"").trim();
     if(!base||!reason){onError?.(REQUIRED_REASON);return;}
     if(base.artifactId!==artifact.id||base.artifactHash!==artifact.hash){onError?.("현재 생성물이 바뀌었습니다. 최신 상태를 다시 불러오세요.");return;}
-    try{await onCommand({commandType:"document.edit",target:{artifactId:base.artifactId,fieldId:base.fieldId,...(base.rowId?{rowId:base.rowId}:{})},patch:{baseValue:base.value,value},reason,baseValueHash:base.baseValueHash});element.reset();}
+    try{
+      const outcome=await onCommand({commandType:"document.edit",target:{artifactId:base.artifactId,fieldId:base.fieldId,...(base.rowId?{rowId:base.rowId}:{})},patch:{baseValue:base.value,value},reason,baseValueHash:base.baseValueHash});
+      if(outcome!=="committed")throw new Error(outcome==="rejected"?"문서 편집 저장이 거부되었습니다. 현재 생성물을 다시 확인하세요.":"문서 편집 저장 결과가 불분명합니다. 같은 명령으로 다시 확인하세요.");
+      element.reset();
+    }
     catch(cause){onError?.(cause instanceof Error?cause.message:"문서 편집을 저장하지 못했습니다.");}
   };
   const submitLegal=(event:FormEvent<HTMLFormElement>)=>{
@@ -44,7 +49,7 @@ export default function CaseReviewActions({artifacts,fieldBases,legalRuns=[],rol
     const run=legalRuns.find(item=>item.runId===runId&&item.checkId===checkId);
     if(!run||run.truncated||run.coverageComplete===false||!run.factIds.length||!reason){onError?.("현재 완전한 법률 실행, 근거 사실과 이유를 확인하세요.");return;}
     if(run.conflict&&status==="accepted"){onError?.("현재 실행 결과가 상충합니다. 충돌을 해결하기 전에는 검토 완료로 기록할 수 없습니다.");return;}
-    void Promise.resolve(onCommand({commandType:"legalCheck.dispose",target:{runId,checkId},patch:{status,evidenceFactIds,role},reason})).catch(cause=>onError?.(cause instanceof Error?cause.message:"법률 검토를 저장하지 못했습니다."));
+    void Promise.resolve(onCommand({commandType:"legalCheck.dispose",target:{runId,checkId},patch:{status,evidenceFactIds,role},reason})).then(outcome=>{if(outcome!=="committed")onError?.(outcome==="rejected"?"법률 검토 기록이 거부되었습니다. 현재 근거를 확인하세요.":"법률 검토 기록이 확정되지 않았습니다. 같은 명령으로 결과를 확인하세요.");}).catch(cause=>onError?.(cause instanceof Error?cause.message:"법률 검토를 저장하지 못했습니다."));
   };
   const canReviewAsCaseworker=roles.includes("caseworker_review"),canReviewAsLawyer=roles.includes("lawyer_review");
   return <section className="case-review-actions" aria-label="문서 편집 및 법률 검토">
