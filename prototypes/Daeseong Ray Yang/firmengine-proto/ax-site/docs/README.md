@@ -33,3 +33,5 @@
 - [법률 위험 95건 필수 피처 계약 검토표](legal-risk-95-field-contract-review.md)
 
 - [18개 법적 계산 모듈 입력·OCR 연결 상태](calculation-input-coverage-20261030.md)
+
+- [18개 계산모듈 실측·격리 수학 검증 및 재현 테스트 상태](calculator-18-runtime-audit-20261030.md)
