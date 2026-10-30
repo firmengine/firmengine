@@ -75,10 +75,11 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only"}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
+  if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
   if(category!=="source"){
     try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
@@ -101,8 +102,23 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     if(bytes.byteLength>=CASE_INLINE_LIMIT){const key=afterKey||await putSnapshot(bytes,"case");const pointer:CasePointer={_storage:"r2-case-v1",caseId:data.context.id,revision:data.context.revision,key,sha256:inputSha256,summary:caseSummary(data)};payload=JSON.stringify(pointer);}
   }catch(error){await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw error;}
   const guard="EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)";
+  // A review draft from the AI pipeline may be linked to the staff workbench
+  // only while the exact OCR/calculation/LawGraph heads still match. This
+  // predicate participates in the same D1 batch as the artifact-only CAS.
+  const expectedHeads=options?.expectedHeads;
+  const headGuard=expectedHeads?(
+    " AND EXISTS (SELECT 1 FROM case_data_change_state s "+
+    "JOIN case_calculation_heads c ON c.case_id=s.case_id AND c.data_version=s.data_version "+
+    "JOIN case_calculation_runs cr ON cr.id=c.run_id AND cr.reference_sha256=? "+
+    "JOIN case_legal_review_heads l ON l.case_id=s.case_id AND l.data_version=s.data_version "+
+    "AND l.calculation_run_id=c.run_id WHERE s.case_id=? AND s.data_version=? "+
+    "AND c.run_id=? AND l.review_run_id=? AND c.case_revision=? AND l.case_revision=?)"
+  ):"";
+  const headParams=expectedHeads?[expectedHeads.referenceSha256,data.context.id,
+    expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
+    expected,expected]:[];
   const batch:D1PreparedStatement[]=[
-    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[])),
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
   if(mutation){
