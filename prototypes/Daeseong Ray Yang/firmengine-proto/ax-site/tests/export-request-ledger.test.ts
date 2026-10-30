@@ -13,8 +13,10 @@ function setup() { const db=new DatabaseSync(':memory:');
   db.exec('PRAGMA foreign_keys=ON');
   db.exec(`CREATE TABLE cases(id TEXT PRIMARY KEY,revision INTEGER NOT NULL,storage_token TEXT NOT NULL);
     CREATE TABLE case_data_change_state(case_id TEXT PRIMARY KEY,data_version INTEGER NOT NULL);
+    CREATE TABLE artifacts(id TEXT PRIMARY KEY,case_id TEXT NOT NULL,revision INTEGER NOT NULL,object_key TEXT,hash TEXT);
     INSERT INTO cases VALUES ('synthetic',2,'token-2'),('other',2,'token-2');
-    INSERT INTO case_data_change_state VALUES ('synthetic',4),('other',4);`);
+    INSERT INTO case_data_change_state VALUES ('synthetic',4),('other',4);
+    INSERT INTO artifacts VALUES ('artifact-0001','synthetic',2,'cases/synthetic/artifacts/artifact-0001','hash');`);
   db.exec(schema); return db;
 }
 function run(db:DatabaseSync, statement:{sql:string;args:readonly unknown[]}) {
@@ -98,4 +100,42 @@ test('no receipt requires guarded claim; no cross-case reuse',()=>{
 test('bad artifact list cannot be committed',()=>{
   for(const artifacts of [[],['artifact-0001','artifact-0001'],['x']])
     assert.throws(()=>commitExportRequest({...base,newStorageToken:'new-token',artifactIds:artifacts,manifestFingerprint:'f'}));
+});
+
+
+test('receipt commit rejects missing SQL artifact despite case CAS and valid input',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
+  const commit=commitExportRequest({...base,newStorageToken:'new-token',
+    artifactIds:['missing-artifact'],manifestFingerprint:'fp-current'});
+  assert.equal(run(db,commit),0);
+  assert.equal(lookup(db).status,'claimed');db.close();
+});
+test('receipt commit rejects artifact belonging to a different case or revision',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  db.exec(`INSERT INTO artifacts VALUES('foreign-artifact','other',2,'cases/other/artifacts/foreign-artifact','h');
+    INSERT INTO artifacts VALUES('old-artifact','synthetic',1,'cases/synthetic/artifacts/old-artifact','h');
+    UPDATE cases SET storage_token='new-token' WHERE id='synthetic';`);
+  for (const id of ['foreign-artifact','old-artifact']) {
+    assert.equal(run(db,commitExportRequest({...base,newStorageToken:'new-token',
+      artifactIds:[id],manifestFingerprint:'fp-current'})),0,`should block ${id}`);
+  }
+  assert.equal(lookup(db).status,'claimed');db.close();
+});
+test('multi-artifact commit requires every row, not just the first',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'");
+  const input={...base,newStorageToken:'new-token',
+    artifactIds:['artifact-0001','missing-artifact'],manifestFingerprint:'fp-current'};
+  assert.equal(run(db,commitExportRequest(input)),0);
+  db.exec("INSERT INTO artifacts VALUES('missing-artifact','synthetic',2,'cases/synthetic/artifacts/missing-artifact','h')");
+  assert.equal(run(db,commitExportRequest(input)),1);
+  assert.equal(lookup(db).status,'committed');db.close();
+});
+test('deleting an artifact before commit fails closed even with unchanged source',()=>{
+  const db=setup();assert.equal(run(db,claimExportRequest(base)),1);
+  db.exec("UPDATE cases SET storage_token='new-token' WHERE id='synthetic'; DELETE FROM artifacts WHERE id='artifact-0001'");
+  assert.equal(run(db,commitExportRequest({...base,newStorageToken:'new-token',
+    artifactIds:['artifact-0001'],manifestFingerprint:'fp'})),0);
+  assert.equal(lookup(db).status,'claimed');db.close();
 });
