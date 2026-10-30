@@ -75,3 +75,11 @@ test("same type of audit event from another request is not receipt evidence", ()
 test("same request event from another case is not receipt evidence", () =>
   expect(x=>{x.auditEvents[1].caseId="foreign-case";},
     "inconclusive", "AUDIT_EVENTS_OBSERVED_INCOMPLETE"));
+test("R2 success with SQL collection unobserved cannot assert an orphan", () => {
+  const input=fixture(); input.artifactRows=null;
+  const out=inspectExportRecoveryEvidence(input);
+  assert.equal(out.classification,"inconclusive");
+  assert.ok(out.codes.includes("SQL_ROWS_NOT_OBSERVED"));
+  assert.equal(out.codes.includes("R2_WITHOUT_SQL_ROW"),false);
+  assert.equal(out.canDelete,false);
+});
