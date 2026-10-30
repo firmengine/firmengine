@@ -8,7 +8,7 @@ import {createCaseReadIndex,currentFacts,moneyValue,validSourceRef,factSourceLin
 export type BusinessMoneyRole =
   "turnover_total"|"turnover_component"|"returns_refunds"|"vat_collected"|
   "cost_line"|"cost_summary"|"input_vat"|"gross_receivable"|"net_cash_received"|"withheld_tax";
-const sourceMoneyRoles:Readonly<Record<string,BusinessMoneyRole>>={
+export const BUSINESS_SOURCE_MONEY_ROLES:Readonly<Record<string,BusinessMoneyRole>>={
   "business_sales_vat::income.sales.gross_sales":"turnover_total",
   "business_sales_vat::income.sales.taxable_sales":"turnover_component",
   "business_sales_vat::income.sales.exempt_sales":"turnover_component",
@@ -21,7 +21,7 @@ const sourceMoneyRoles:Readonly<Record<string,BusinessMoneyRole>>={
   "business_current_income_summary::income.self_employment.net_receipt":"net_cash_received",
   "business_current_income_summary::income.self_employment.withheld_tax":"withheld_tax"
 };
-const rowPeriods:Readonly<Record<string,readonly [string,string]>>={
+export const BUSINESS_SOURCE_PERIOD_FIELDS:Readonly<Record<string,readonly [string,string]>>={
   business_sales_vat:[
     "business_sales_vat::income.sales.reporting_period_start",
     "business_sales_vat::income.sales.reporting_period_end"
@@ -71,7 +71,7 @@ export function auditBusinessSourceEvidence(
  if(!Number.isSafeInteger(offset)||offset<0||!Number.isSafeInteger(limit)||limit<1||limit>1000)
    throw Error("INVALID_BUSINESS_SOURCE_AUDIT_PAGE");
  const facts=currentFacts(data,index);
- const financial=facts.filter(fact=>!!sourceMoneyRoles[canonicalId(fact)]);
+ const financial=facts.filter(fact=>!!BUSINESS_SOURCE_MONEY_ROLES[canonicalId(fact)]);
  const window=data.context.filingPeriod;
  const validWindow=!!window&&exactDate(window.start)&&exactDate(window.end)&&window.start<=window.end;
  const bySubject=index.bySubject;
@@ -85,7 +85,7 @@ export function auditBusinessSourceEvidence(
  const all=financial.map((fact):BusinessSourceMoneyRow=>{
   const id=canonicalId(fact),family=id.split("::")[0];
   const row=bySubject.get(fact.subjectId)??[];
-  const slots=rowPeriods[family];
+  const slots=BUSINESS_SOURCE_PERIOD_FIELDS[family];
   // A single valid date is required. "First matching field wins" can classify
   // a conflicting or unverified period as historical and incorrectly suppress
   // a live financial-source blocker.
@@ -101,14 +101,14 @@ export function auditBusinessSourceEvidence(
   // The net_receipt canonical field has the schema temporal role "event_date".
   // A service period or invoice date cannot establish when cash was actually received.
   // Do not silently assign a cash receipt to an accrual month.
-  const receiptEventDateMissing=sourceMoneyRoles[id]==="net_cash_received";
+  const receiptEventDateMissing=BUSINESS_SOURCE_MONEY_ROLES[id]==="net_cash_received";
   const start=!receiptEventDateMissing&&slots?fieldDate(slots[0]):null;
   const end=!receiptEventDateMissing&&slots?fieldDate(slots[1]):null;
   const scope:PeriodOverlap= !validWindow||!start||!end||end<start ? "unknown" :
     end<window!.start||start>window!.end ? "outside" :
     start<window!.start||end>window!.end ? "partly_outside":"inside";
   const linkedBusinessIncomeIds=[...new Set(links.get(fact.id)??[])].sort();
-  return {factId:fact.id,canonicalFieldId:id,role:sourceMoneyRoles[id],sourceRecordId:fact.subjectId,
+  return {factId:fact.id,canonicalFieldId:id,role:BUSINESS_SOURCE_MONEY_ROLES[id],sourceRecordId:fact.subjectId,
     sourceDocumentIds:[...new Set(fact.refs.map(ref=>ref.documentId))].sort(),
     sourcePages:[...new Set(fact.refs.map(ref=>ref.page))].sort((a,b)=>a-b),
     amountWon:moneyValue(fact.numeric)?.toString()??null,
