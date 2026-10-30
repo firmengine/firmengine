@@ -16,7 +16,8 @@ test("all 50 legal rule families and 46 exceptions are individually retained whe
  assert.equal(new Set(a.rules.map(x=>x.ruleId)).size,50);
  assert.equal(new Set(a.exceptions.map(x=>x.exceptionId)).size,46);
  assert.equal(a.unrecognizedRuleReferenceIds.length,0);
- assert.ok(a.rules.every(r=>r.status==="evidence_or_mapping_review_required"));
+ assert.equal(a.rules.filter(r=>r.status==="evidence_or_mapping_review_required").length,49);
+ assert.equal(a.rules.find(r=>r.ruleId==="KR-PR-050")?.status,"postapproval_deferred");
  assert.ok(a.exceptions.every(e=>!e.automaticallySatisfied&&!e.courtApprovalInferred));
  assert.equal(a.courtApprovalInferred,false);
 });
