@@ -1,0 +1,938 @@
+{
+  "schemaVersion": "preapproval-legal-gap-negative-cases/1",
+  "asOf": "2026-10-30",
+  "basis": "Actual current legal-catalog.json and legal-exceptions.json; these are negative evidence/coverage tests, NOT verified real legal adjudication.",
+  "sourceCatalogGenerated": true,
+  "classes": {
+    "ruleNegative": 19,
+    "exceptionNegative": 20
+  },
+  "cases": [
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-001",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-001",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국 (서울 준칙 부분은 서울회생법원에 한정)",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "context.applicationDate",
+        "context.commencementDate",
+        "context.planApprovalDate",
+        "context.courtCode",
+        "context.ruleApplicationReviewed"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-002",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-002",
+      "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028273375",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "applicant.address",
+        "applicant.workplaceAddress",
+        "applicant.businessAddress",
+        "context.courtCode",
+        "jurisdiction.basis"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-003",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-003",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "applicant.isNaturalPerson",
+        "insolvency.currentOrExpected",
+        "insolvency.evidence",
+        "income.continuityReview"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-004",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-004",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "incomeSources.wage.active",
+        "incomeSources.wage.contract",
+        "incomeSources.wage.history",
+        "incomeSources.wage.futureContinuity"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-005",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-005",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "incomeSources.business.active",
+        "incomeSources.business.history",
+        "incomeSources.business.futureContinuity"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-012",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-012",
+      "sourceUrl": "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-07-01",
+      "demandedFeatureKeys": [
+        "context.applicationDate",
+        "documents.issuerType",
+        "documents.issuedAt",
+        "documents.specialCircumstanceReview"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-013",
+      "kind": "rule_missing_evidence",
+      "stage": "P1_DOCUMENTS",
+      "ruleId": "KR-PR-013",
+      "sourceUrl": "https://www.law.go.kr/LSW/admRulInfoR.do?admRulSeq=2200000108651",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-07-01",
+      "demandedFeatureKeys": [
+        "debts.proofRequest",
+        "debts.obtainmentEffort",
+        "debts.requestCopy",
+        "debts.creditorReply",
+        "debts.listRevision"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-017",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-017",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "incomeSources.kind",
+        "incomeSources.period",
+        "incomeSources.gross",
+        "incomeSources.necessaryCosts",
+        "incomeSources.continuity",
+        "incomeSources.protectionReview"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-018",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-018",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "incomeSources.business.expenses",
+        "expenseEvidence",
+        "necessityReview",
+        "personalBusinessAllocation"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-019",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-019",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "incomeSources.basis",
+        "deductions.type",
+        "deductions.amount",
+        "deductions.period",
+        "deductions.alreadyNetted"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-023",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-023",
+      "sourceUrl": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=41&pageIndex=1&searchWord=&seqnum=19158",
+      "authorityScope": "서울회생법원",
+      "editionEffectiveDate": "2026-01-01",
+      "demandedFeatureKeys": [
+        "housing.region",
+        "housing.actualMonthlyCost",
+        "housing.contract",
+        "housing.payments",
+        "household.recognizedSize",
+        "housing.recognizedExtra"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-025",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-025",
+      "sourceUrl": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=41&pageIndex=1&searchWord=&seqnum=19158",
+      "authorityScope": "서울회생법원",
+      "editionEffectiveDate": "2026-01-01",
+      "demandedFeatureKeys": [
+        "education.childId",
+        "education.minor",
+        "education.specialNeeds",
+        "education.recurringCost",
+        "education.receipts",
+        "education.review"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-026",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-026",
+      "sourceUrl": "https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=41&pageIndex=1&searchWord=&seqnum=19158",
+      "authorityScope": "서울회생법원",
+      "editionEffectiveDate": "2026-01-01",
+      "demandedFeatureKeys": [
+        "income.reviewedMonthly",
+        "medianIncomeTable",
+        "household.recognizedSize",
+        "expenses.recurringNecessary",
+        "plan.repaymentRatio",
+        "debts.lastSixMonthRatio"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-031",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-031",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0580&lsiSeq=290631&urlMode=lsScJoRltInfoR",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "assets.protectionGround",
+        "exemption.request",
+        "exemption.courtDecision",
+        "exemption.regionalLimitVersion"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-033",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-033",
+      "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276255",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "context.commencementDate",
+        "taxes.type",
+        "taxes.dueDate",
+        "taxes.amount",
+        "taxes.paymentStatus",
+        "taxes.priorityReview",
+        "taxes.estateReview"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-034",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-034",
+      "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276255",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "employmentClaims.kind",
+        "employmentClaims.amount",
+        "employmentClaims.relationship",
+        "employmentClaims.estateReview"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-037",
+      "kind": "rule_missing_evidence",
+      "stage": "P4_LEGAL",
+      "ruleId": "KR-PR-037",
+      "sourceUrl": "https://www.law.go.kr/lsLawLinkInfo.do?chrClsCd=010202&lsJoLnkSeq=1000527594",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "debts.listed",
+        "debts.cause",
+        "debts.nonDischargeGround",
+        "debts.intentFinding",
+        "debts.injuryFinding",
+        "debts.supportObligation",
+        "debts.guarantees",
+        "debts.thirdPartyCollateral"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-039",
+      "kind": "rule_missing_evidence",
+      "stage": "P2_EVIDENCE",
+      "ruleId": "KR-PR-039",
+      "sourceUrl": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=171784",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": null,
+      "demandedFeatureKeys": [
+        "debts.incurredAt",
+        "debts.useOfFunds",
+        "debts.refinancedDebt",
+        "bankTransactions.coverage",
+        "applicant.explanation"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-RULE-KR-PR-050",
+      "kind": "rule_missing_evidence",
+      "stage": "OUT_OF_SCOPE_POST_APPROVAL",
+      "ruleId": "KR-PR-050",
+      "sourceUrl": "https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0624&lsiSeq=290631&urlMode=lsScJoRltInfoR",
+      "authorityScope": "대한민국",
+      "editionEffectiveDate": "2026-10-02",
+      "demandedFeatureKeys": [
+        "plan.performance",
+        "payments.ledger",
+        "discharge.application",
+        "discharge.finalDecision",
+        "hardship.noFault",
+        "hardship.liquidationFloor",
+        "hardship.modificationImpossible"
+      ],
+      "existingReferencedDocuments": [],
+      "hypotheticalSourceFacts": [],
+      "expectation": "unmapped_or_missing_source_requires_review",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-01",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P1_DOCUMENTS",
+      "exceptionId": "EL-01",
+      "trigger": "신청예정일이 법령·준칙 변경 경과조치와 접함",
+      "ruleIds": [
+        "KR-PR-001",
+        "KR-PR-042"
+      ],
+      "demandedFeatureKeys": [
+        "applicationDate",
+        "courtId",
+        "ruleReleaseId"
+      ],
+      "requiredDocuments": [
+        "신청일 증빙",
+        "이전 신청·결정문",
+        "적용 판본 공포·시행 부칙"
+      ],
+      "missingAction": "적용일 및 부칙 원문 확인 전 요건충족 표기 보류",
+      "coverageGap": "서울준칙 2026.10.1판 기준일은 catalog에 있으나 court id/date 자동 버전관리 미구현",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-02",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P1_DOCUMENTS",
+      "exceptionId": "EL-02",
+      "trigger": "주소·근무지·영업소·재산소재가 다른 관할에 걸침",
+      "ruleIds": [
+        "KR-PR-002"
+      ],
+      "demandedFeatureKeys": [
+        "주소",
+        "주된영업소",
+        "계속근무지",
+        "재산소재"
+      ],
+      "requiredDocuments": [
+        "주민등록초본·실거주자료",
+        "재직/영업소 증빙",
+        "관할 법원 안내"
+      ],
+      "missingAction": "관할 근거가 충돌하면 법원 확인",
+      "coverageGap": "지방 회생법원·지원의 예외 관할을 단순 courtId로만 결정",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-03",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P1_DOCUMENTS",
+      "exceptionId": "EL-03",
+      "trigger": "지급불능 또는 지급곤란 소명 필요",
+      "ruleIds": [
+        "KR-PR-003"
+      ],
+      "demandedFeatureKeys": [
+        "지급능력",
+        "현재·장래소득",
+        "만기채무"
+      ],
+      "requiredDocuments": [
+        "채권 잔액/연체",
+        "계좌·급여·지출",
+        "압류·소송자료"
+      ],
+      "missingAction": "현금흐름과 만기채무 기간을 보완",
+      "coverageGap": "지급불능 실질판단 자동화 및 사실관계 통합 없음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-09",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-09",
+      "trigger": "고용주가 미지급 임금·퇴직금을 부담",
+      "ruleIds": [
+        "KR-PR-034",
+        "KR-PR-036"
+      ],
+      "demandedFeatureKeys": [
+        "employeeClaim",
+        "coveredAmount",
+        "subrogation"
+      ],
+      "requiredDocuments": [
+        "근로계약",
+        "임금대장·퇴직금 산정",
+        "체당금/대지급금 자료"
+      ],
+      "missingAction": "근로자별 기간·대지급금 대위분 확인",
+      "coverageGap": "우선·재단·비면책의 예외 배분액 계산 자동화 없음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-10",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-10",
+      "trigger": "세금·임금 외 다른 우선권 채권",
+      "ruleIds": [
+        "KR-PR-036"
+      ],
+      "demandedFeatureKeys": [
+        "priorityBasis",
+        "priorityAmount"
+      ],
+      "requiredDocuments": [
+        "우선권 근거 법률·판결",
+        "채권액·기한"
+      ],
+      "missingAction": "법률상 우선권과 일반채권 분류를 증빙",
+      "coverageGap": "우선채권 분류·충당 우선순위의 규칙엔진 미구현",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-12",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-12",
+      "trigger": "임차보증금 반환채무/임차인 권리가 부동산에 설정",
+      "ruleIds": [
+        "KR-PR-027",
+        "KR-PR-032",
+        "KR-PR-043"
+      ],
+      "demandedFeatureKeys": [
+        "tenantDeposit",
+        "priority",
+        "leaseDeposit"
+      ],
+      "requiredDocuments": [
+        "임대차계약",
+        "확정일자·전입·점유",
+        "보증금 잔액",
+        "등기부"
+      ],
+      "missingAction": "전입·확정일자·점유·계약변경을 확인",
+      "coverageGap": "지역·기준시점·임차인 권리별 우선 공제액 산정 미구현",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-13",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-13",
+      "trigger": "거주 목적 보증금 또는 압류금지재산 해당 가능",
+      "ruleIds": [
+        "KR-PR-031"
+      ],
+      "demandedFeatureKeys": [
+        "protectedAsset",
+        "residence",
+        "exemptionScope"
+      ],
+      "requiredDocuments": [
+        "임대차계약·전입/점유",
+        "예금 출처·계좌 잔액",
+        "시행령 기준일",
+        "압류금지 청구권/예금의 종류·잔액 및 지급일",
+        "면제재산 신청·결정, 주거보증금·주민등록·점유 자료",
+        "압류명령 사건일과 관련 시행령 부칙"
+      ],
+      "missingAction": "보호 근거조항·요건·기준일 자료 요청",
+      "coverageGap": "보호액 수기 입력은 2026-02-01 시행액 상향, 급여/예금/보험/주거보증금의 서로 다른 statutory caps와 합산/중복 규칙을 적용하지 않는다.",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-14",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-14",
+      "trigger": "퇴직금·퇴직연금 권리 보유",
+      "ruleIds": [
+        "KR-PR-027",
+        "KR-PR-031",
+        "KR-PR-043"
+      ],
+      "demandedFeatureKeys": [
+        "retirementType",
+        "vested",
+        "seizureProtection"
+      ],
+      "requiredDocuments": [
+        "퇴직급여 예상액 확인서",
+        "가입/운용/수급형태",
+        "근속기간·퇴직예정"
+      ],
+      "missingAction": "가입자·운용기관별 권리 내역과 적용 법령 제출",
+      "coverageGap": "퇴직연금 압류금지 여부는 연금종류별 별도 근거 확인을 위해 높은 우선순위로 수동검토. 2026 민사집행법 시행령 보험/압류금액 변경을 정기 업데이트해야 한다.",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-15",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-15",
+      "trigger": "국민연금·공무원연금·사적연금 수급/적립",
+      "ruleIds": [
+        "KR-PR-017",
+        "KR-PR-031"
+      ],
+      "demandedFeatureKeys": [
+        "pensionType",
+        "income",
+        "accountAsset",
+        "protection"
+      ],
+      "requiredDocuments": [
+        "연금종류 확인서",
+        "수급액/예상액·계좌내역",
+        "관련 연금법"
+      ],
+      "missingAction": "연금법 유형·지급주기·수급/적립 구분",
+      "coverageGap": "연금별 압류금지/청산가치 범위는 일반 법률검토에 남음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-18",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-18",
+      "trigger": "주소지 외 주거비 또는 월세·주택대출이 큼",
+      "ruleIds": [
+        "KR-PR-021",
+        "KR-PR-023"
+      ],
+      "demandedFeatureKeys": [
+        "region",
+        "householdSize",
+        "rent",
+        "housingLoan"
+      ],
+      "requiredDocuments": [
+        "임대차/대출계약",
+        "월 납입·영수증",
+        "주민등록·거주 확인"
+      ],
+      "missingAction": "해당 법원·지역 기준표와 실지급 자료 확보",
+      "coverageGap": "전국 기준표가 미검증이라고 명시; 서울 범위 밖 안전값도 없음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-21",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-21",
+      "trigger": "최근 차입이 있고 카드론·대환·사업투자·도박 소비 포함",
+      "ruleIds": [
+        "KR-PR-029",
+        "KR-PR-039",
+        "KR-PR-049"
+      ],
+      "demandedFeatureKeys": [
+        "incurredAt",
+        "useOfFunds",
+        "creditorPayments",
+        "speculationLoss"
+      ],
+      "requiredDocuments": [
+        "신규 대출 사용처",
+        "이체·카드 명세",
+        "기존채무 상환흐름",
+        "도박/투자 정산"
+      ],
+      "missingAction": "차입일부터 지출처까지 연결된 계좌 거래와 사실진술 요청",
+      "coverageGap": "대법원 판례 결론은 사실별; 분쟁/고의 사기 여부 코드판단 불가",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-24",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-24",
+      "trigger": "자동차·영업설비 등 생업 유지에 필요한 자산",
+      "ruleIds": [
+        "KR-PR-027",
+        "KR-PR-031",
+        "KR-PR-043"
+      ],
+      "demandedFeatureKeys": [
+        "assetValue",
+        "ownership",
+        "payoff",
+        "disposalCost",
+        "incomeImpact"
+      ],
+      "requiredDocuments": [
+        "등록원부·시가",
+        "담보잔액",
+        "생업필수성·소득영향",
+        "대체/매각 견적"
+      ],
+      "missingAction": "평가 기준일·대체 가능성·계속소득 자료 요청",
+      "coverageGap": "함수는 청산기여값만 추정, 소득·생활 영향은 산식 반영하지 않고 문구만",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-25",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-25",
+      "trigger": "임대 중인 부동산 매각이 변제안으로 제시됨",
+      "ruleIds": [
+        "KR-PR-032",
+        "KR-PR-043",
+        "KR-PR-048"
+      ],
+      "demandedFeatureKeys": [
+        "rentIncome",
+        "tenantDeposit",
+        "securedPayoff",
+        "saleProceeds"
+      ],
+      "requiredDocuments": [
+        "시가/담보권",
+        "임차보증금·명도/임대차",
+        "매각비용·세금",
+        "월세 소득"
+      ],
+      "missingAction": "각 대안의 순현금과 장래수입 자료를 요청",
+      "coverageGap": "문서에 Considerations 있으나 통합 cashflow 시나리오 계산 없음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-26",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-26",
+      "trigger": "압류금지급여·복지급여·별도 관리 기금 수령",
+      "ruleIds": [
+        "KR-PR-017",
+        "KR-PR-031"
+      ],
+      "demandedFeatureKeys": [
+        "benefitType",
+        "sourceStatute",
+        "restrictedUse"
+      ],
+      "requiredDocuments": [
+        "지급결정서",
+        "급여종류·법률근거",
+        "지급계좌·사용제한"
+      ],
+      "missingAction": "지급기관과 법정 보호 조문 확인",
+      "coverageGap": "복지급여별 근거·용도 및 보유잔액 추적 수동",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-27",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-27",
+      "trigger": "배우자 및 가족이 생활비를 분담/지급",
+      "ruleIds": [
+        "KR-PR-022",
+        "KR-PR-021",
+        "KR-PR-028"
+      ],
+      "demandedFeatureKeys": [
+        "contribution",
+        "householdExpense",
+        "dependentCount"
+      ],
+      "requiredDocuments": [
+        "가구원 소득·부양자료",
+        "공동계좌·송금내역",
+        "임대료/공과금 부담"
+      ],
+      "missingAction": "공동부담 기준과 신청인 지출 증빙 요청",
+      "coverageGap": "가구 구성·실제 기여분을 계산엔 인정생계비 고정값으로만 입력",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-29",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-29",
+      "trigger": "소송·분쟁·미확정 채권이 있음",
+      "ruleIds": [
+        "KR-PR-010",
+        "KR-PR-038",
+        "KR-PR-007"
+      ],
+      "demandedFeatureKeys": [
+        "dispute",
+        "claimedAmount",
+        "undisputedAmount",
+        "asOf"
+      ],
+      "requiredDocuments": [
+        "소장·판결·항소",
+        "채권자 청구내역",
+        "채무자 이의 및 보증/담보자료"
+      ],
+      "missingAction": "절차 단계와 주장별 금액을 보완",
+      "coverageGap": "판결 확정·집행·채무액의 법률상 효과 엔진에 없음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-32",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-32",
+      "trigger": "신청 전 특정 채권자만 큰 금액을 상환",
+      "ruleIds": [
+        "KR-PR-039",
+        "KR-PR-040",
+        "KR-PR-049"
+      ],
+      "demandedFeatureKeys": [
+        "preferentialPayment",
+        "date",
+        "source",
+        "relatedParty"
+      ],
+      "requiredDocuments": [
+        "기간별 금융거래",
+        "채권자별 잔액 변화",
+        "지급 재원/목적"
+      ],
+      "missingAction": "동일 기간 모든 변제와 재원을 추적",
+      "coverageGap": "레거시 리스크의 대다수는 manual; 구체적 자동 분기 제한",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-40",
+      "kind": "exception_trigger_not_executed",
+      "stage": "OUT_OF_SCOPE_POST_APPROVAL",
+      "exceptionId": "EL-40",
+      "trigger": "일반·비면책 채무 포함, 계획 완료 후 면책 예상",
+      "ruleIds": [
+        "KR-PR-037",
+        "KR-PR-050"
+      ],
+      "demandedFeatureKeys": [
+        "nonDischargeable",
+        "fraud",
+        "intentionalTort",
+        "supportClaim",
+        "planCompleted"
+      ],
+      "requiredDocuments": [
+        "채무 발생원인·판결·손해배상/벌금 자료",
+        "인가/수행 기록",
+        "채권자목록 수정 이력"
+      ],
+      "missingAction": "채권 발생원인·확정판결·법률근거 검토",
+      "coverageGap": "비면책 여부는 모델 자문과 검토자 확인; 자동 판정/보장 없음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-43",
+      "kind": "exception_trigger_not_executed",
+      "stage": "P2_EVIDENCE",
+      "exceptionId": "EL-43",
+      "trigger": "인지하지 못한 소득원·계좌·채권·재산이 있을 가능성",
+      "ruleIds": [
+        "KR-PR-010",
+        "KR-PR-027",
+        "KR-PR-049"
+      ],
+      "demandedFeatureKeys": [
+        "inventoryComplete",
+        "searchedSources",
+        "negativeEvidence"
+      ],
+      "requiredDocuments": [
+        "전체 금융기관/계좌 조회",
+        "세금 신고·연금·보험·가족 송금",
+        "신청인 확인서"
+      ],
+      "missingAction": "조사한 기관·기간·계좌 범위를 먼저 확인",
+      "coverageGap": "계산 게이트 존재하지만 포괄적 completeness가 사실확인 근거와 항상 결합되지는 않음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    },
+    {
+      "scenarioId": "UNREVIEWED-EXCEPTION-EL-46",
+      "kind": "exception_trigger_not_executed",
+      "stage": "OUT_OF_SCOPE_POST_APPROVAL",
+      "exceptionId": "EL-46",
+      "trigger": "도산·채무조정 절차와 채권목록 누락이 면책에 영향",
+      "ruleIds": [
+        "KR-PR-010",
+        "KR-PR-037",
+        "KR-PR-050"
+      ],
+      "demandedFeatureKeys": [
+        "scheduleOmission",
+        "creditorNotice",
+        "amendment",
+        "dischargeEffect"
+      ],
+      "requiredDocuments": [
+        "이전 채권자목록 및 정정",
+        "송달·이의·확정문",
+        "채권자별 현재 잔액"
+      ],
+      "missingAction": "이전 목록·정정 이력과 송달/절차결과 확인",
+      "coverageGap": "누락 채권의 면책 효과는 사실·조문 판단에 남음",
+      "hypotheticalSourceFacts": [],
+      "expectation": "exception_triggers_not_automatically_satisfied",
+      "courtApprovalInferred": false
+    }
+  ]
+}
