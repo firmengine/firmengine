@@ -11,6 +11,7 @@ import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { snapshotSha256 } from "./calculator-tools.ts";
 import { buildDerivedExecution, completeDerivedEvaluation, DERIVED_EVALUATION_INLINE_LIMIT, isDerivedEvaluation, pendingDerivedEvaluation, type DerivedEvaluationEnvelope, type ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { getCaseDataRecomputeEligibility, recomputeCaseDataUpdate } from "./case-data-recompute.ts";
+import { GUARDED_CASE_AUDIT_EVENT_INSERT_SQL, caseAuditEventBindings, type CaseExportAuditEvent } from "./case-audit-event-batch.ts";
 
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 export const now=()=>new Date().toISOString();
@@ -75,11 +76,20 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string};auditEvents?:readonly CaseExportAuditEvent[]}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
   if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
+  // Export audit receipts are committed in the same D1 batch as manifest CAS.
+  // Do not accept arbitrary case/court approvals as operational audit events.
+  const auditEvents=options?.auditEvents??[];
+  if(auditEvents.length&&(category!=="artifact_only"||auditEvents.length!==2||
+    new Set(auditEvents.map(item=>item.type)).size!==2||
+    !auditEvents.some(item=>item.type==="document_writer.prepared")||
+    !auditEvents.some(item=>item.type==="export.generated")))
+    throw new HttpError(409,"EXPORT_AUDIT_EVENT_PAIR_INVALID");
+  const auditActor=auditEvents.length?await actor():null;
   if(category!=="source"){
     try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
@@ -128,6 +138,14 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     batch.push(db().prepare(`INSERT INTO case_recompute_jobs (id,case_id,job_kind,input_fingerprint,contract_fingerprint,status,result_ref,created_at,updated_at) SELECT ?,?,?,?,?,'pending',?,?,? WHERE ${guard}`).bind(jobId,data.context.id,"deterministic_evaluation",afterStateHash,`${EXECUTION_CONTRACT_VERSION}:${pending.referenceSha256}`,JSON.stringify({evaluationId,storageToken:token,inputSha256,revision:data.context.revision}),at,at,data.context.id,data.context.revision,token));
     for(const task of data.workflowState?.tasks??[])batch.push(db().prepare(`INSERT INTO case_tasks (id,case_id,dedupe_key,type,owner_id,due_at,waiting_on,blocked_by,status,dependency_fingerprint,payload,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard} ON CONFLICT(case_id,dedupe_key) DO UPDATE SET owner_id=excluded.owner_id,due_at=excluded.due_at,waiting_on=excluded.waiting_on,blocked_by=excluded.blocked_by,status=excluded.status,dependency_fingerprint=excluded.dependency_fingerprint,payload=excluded.payload,updated_at=excluded.updated_at`).bind(task.id,data.context.id,task.dedupeKey,task.type,task.ownerId,task.dueAt,task.waitingOn,JSON.stringify(task.blockedBy),task.status,task.dependencyFingerprint,JSON.stringify(task),task.createdAt,task.updatedAt,data.context.id,data.context.revision,token));
     batch.push(...(mutation.guardedStatements?.(token)??[]));
+  }
+  // These inserts follow the guarded case UPDATE inside one db().batch()
+  // transaction. A failed CAS creates zero audit events; a failed INSERT rolls
+  // back the manifest. An HTTP ACK loss after COMMIT keeps both receipts.
+  for(const auditEvent of auditEvents){
+    batch.push(db().prepare(GUARDED_CASE_AUDIT_EVENT_INSERT_SQL).bind(
+      ...caseAuditEventBindings({eventId:crypto.randomUUID(),caseId:data.context.id,
+        actorId:auditActor!,event:auditEvent,at,revision:data.context.revision,storageToken:token})));
   }
   if(category!=="source"){
     // The trigger sees review_only/artifact_only once; clear the marker in the
