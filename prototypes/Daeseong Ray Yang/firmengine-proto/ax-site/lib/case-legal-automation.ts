@@ -64,7 +64,7 @@ async function gatherChecks(database:D1Database,job:Job,data:CaseData){
  const found=new Map<string,StoredLegalCheck>(),summaries:string[]=[],models=new Set<string>(),known=new Set(checkIds);
  for(const row of result.results??[]){
   const payload=decode<Record<string,any>|null>(row.payload,null);
-  if(!payload||payload.reviewInputFingerprint!==exactFingerprint)continue;
+  if(!payload||payload.sourceDataVersion!==job.dataVersion||payload.reviewInputFingerprint!==exactFingerprint)continue;
   if(typeof payload.model==="string")models.add(payload.model);
   if(typeof payload.summary==="string"&&payload.summary.trim())summaries.push(payload.summary.slice(0,2000));
   for(const item of Array.isArray(payload.checks)?payload.checks:[]){

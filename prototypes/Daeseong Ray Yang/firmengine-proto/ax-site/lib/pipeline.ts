@@ -542,8 +542,12 @@ const LEGAL_REVIEW_SCHEMA=obj({checks:{type:"array",items:obj({id:{type:"string"
 type Advisory={checks:{id:string;status:string;reason:string;factIds:string[];ruleIds:string[];missingDocuments:string[];nextAction:string}[];summary:string};
 export async function reviewLegal(caseId:string){
   const data=await getCase(caseId),sourceIndex=createCaseReadIndex(data),calculator=await runCaseCalculatorNode(data),execution=calculator.execution,assessment=execution.assessment,facts=currentFacts(data,sourceIndex);
+  const sourceRow=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(caseId).first<{version:number}>();
+  if(!sourceRow||!Number.isSafeInteger(sourceRow.version))throw new Error("LEGAL_SOURCE_VERSION_UNAVAILABLE");
+  const sourceDataVersion=sourceRow.version;
   const catalog=RISK_CATALOG.map(r=>({id:r.id,title:r.title,conditions:r.conditions,features:r.required_features,request:r.evidence_request,legalRuleIds:r.current_rule_ids,manual:!r.implementation.may_auto_clear}));
-  const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory' AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? ORDER BY at DESC LIMIT 1000").bind(caseId,data.context.revision,calculator.receipt.inputSha256,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION).all<{payload:string}>();
+  const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory' AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? AND json_extract(payload,'$.sourceDataVersion') = ? ORDER BY at DESC LIMIT 1000").bind(caseId,data.context.revision,calculator.receipt.inputSha256,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION,sourceDataVersion).all<{payload:string}>();
   const completed=currentCompletedLegalCheckIds(old.results,{inputSha256:calculator.receipt.inputSha256,referenceSha256:calculator.receipt.referenceRelease.sha256,contractVersion:EXECUTION_CONTRACT_VERSION},new Set(catalog.map(item=>item.id)));
   const batch=catalog.filter(r=>!completed.has(r.id)).slice(0,LEGAL_REVIEW_BATCH_SIZE).map(r=>({id:r.id,title:r.title,conditions:r.conditions??"",features:r.features??[],request:r.request??"",legalRuleIds:r.legalRuleIds??[],manual:r.manual}));if(!batch.length)return {remaining:0,stage:"legal_complete"};
   const legalIds=new Set(batch.flatMap(r=>r.legalRuleIds));
@@ -556,11 +560,13 @@ export async function reviewLegal(caseId:string){
   const checks=gateLegalReviewChecks({batch,response:value.checks,providedFacts,eligibleFactIds:new Set(providedFacts.map(f=>f.id)),validRuleIds,coverage:packet.coverage});
   // Usage is logged separately here to avoid moving the case revision between checklist batches.
   await event(caseId,"model.call",{agent:"legal_checklist",...usage});
-  if(await snapshotSha256(await getCase(caseId))!==calculator.receipt.inputSha256){
+  const afterRow=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(caseId).first<{version:number}>();
+  if(afterRow?.version!==sourceDataVersion||await snapshotSha256(await getCase(caseId))!==calculator.receipt.inputSha256){
     await event(caseId,"legal_advisory.superseded",{calculatorExecution:calculator.receipt});
     return {remaining:catalog.length,stage:"legal_snapshot_changed",checks:[]};
   }
-  await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),caseId,data.context.revision,"legal_advisory",JSON.stringify({checks,summary:value.summary,evidenceCoverage:packet.coverage,reviewInputFingerprint:await legalReviewInputFingerprint(data,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION),calculatorExecution:calculator.receipt,model:usage.model,usage,scope:"법적 검토 보조 · 승인확률/자동인정 아님"}),now()).run();
+  await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),caseId,data.context.revision,"legal_advisory",JSON.stringify({checks,summary:value.summary,sourceDataVersion,evidenceCoverage:packet.coverage,reviewInputFingerprint:await legalReviewInputFingerprint(data,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION),calculatorExecution:calculator.receipt,model:usage.model,usage,scope:"법적 검토 보조 · 승인확률/자동인정 아님"}),now()).run();
   await event(caseId,"calculator.tool_called",calculator.receipt);
   return {remaining:catalog.length-completed.size-checks.length,stage:"legal_review",checks,evidenceCoverage:packet.coverage,calculatorExecution:calculator.receipt};
 }

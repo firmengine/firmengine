@@ -76,7 +76,7 @@ test("95 source-version-linked legal AI conditions persist as human-review-only 
   const input=await h.initialize();
   const fingerprint=await legalReviewInputFingerprint(input.data,release.sha256,EXECUTION_CONTRACT_VERSION);
   const checks=RISK_CATALOG.map(r=>({id:r.id,status:"legal_review",reason:"검토용 합성 조건",factIds:[],ruleIds:[],missingDocuments:[],nextAction:"담당자 확인"}));
-  const payload={checks,summary:"Synthetic advisory; no legal approval",reviewInputFingerprint:fingerprint,
+  const payload={checks,summary:"Synthetic advisory; no legal approval",sourceDataVersion:input.version,reviewInputFingerprint:fingerprint,
     calculatorExecution:{inputSha256:input.hash,referenceRelease:{sha256:release.sha256},contractVersion:EXECUTION_CONTRACT_VERSION},
     model:"gpt-6-luna"};
   h.sqlite.prepare("INSERT INTO analyses(id,case_id,revision,type,payload,at) VALUES(?, ?,1,'legal_advisory',?,'2026-10-30')")
