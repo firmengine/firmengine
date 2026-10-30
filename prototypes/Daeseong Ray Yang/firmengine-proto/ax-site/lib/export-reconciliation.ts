@@ -35,7 +35,7 @@ export type ExportEvidenceIssueCode =
   | "CLAIMED_REQUEST_PRESERVE" | "UNREFERENCED_SQL_PRESERVE"
   | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY" | "OBJECT_KEY_SCOPE_MISMATCH"
   | "R2_PROOF_CONFLICT" | "R2_UNTRACKED_OBJECT_PRESERVE" | "R2_UNTRACKED_PROOF_UNKNOWN"
-  | "ARTIFACT_EVIDENCE_CONFLICT";
+  | "ARTIFACT_EVIDENCE_CONFLICT" | "FOREIGN_CASE_OBJECT_KEY_ALIAS";
 export interface ExportEvidenceIssue {
   code: ExportEvidenceIssueCode;
   artifactId?: string;
@@ -123,6 +123,19 @@ export function reconcileExportEvidence(input: {
   }
   const seenKeys = new Set<string>();
   const currentKeys = new Set(current.map(file => rows.get(file.id)?.objectKey).filter((key): key is string => !!key));
+  // A foreign-case SQL row may reuse this case's R2 key despite having a
+  // different artifact ID. Report the alias without exposing a foreign ID.
+  // Only an alias to a CURRENT object blocks current verification; a historic
+  // alias remains a separate investigation and never authorizes deletion.
+  const ownedPrefixForAlias = "cases/"+input.caseId+"/artifacts/";
+  const foreignAliases = new Set(input.artifactRows
+    .filter(row => row.caseId !== input.caseId && row.objectKey.startsWith(ownedPrefixForAlias))
+    .map(row => row.objectKey));
+  for (const key of foreignAliases) {
+    add("FOREIGN_CASE_OBJECT_KEY_ALIAS");
+    if (currentKeys.has(key)) currentArtifactsVerified = false;
+  }
+
   for (const key of conflictingProofs) {
     // Report only keys owned by this case, not other cases observed by a bulk probe.
     if (key.startsWith("cases/"+input.caseId+"/artifacts/")) add("R2_PROOF_CONFLICT");
