@@ -129,7 +129,11 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     total_repayment: amount(calculation.planTotalWon), liquidation_value: amount(calculation.liquidationValueWon),
     present_value: amount(calculation.presentValueWon), present_value_basis: present(data.context.presentValueBasis),
     allocation_basis: data.context.allocationBasisReviewed === true ? present(allocationLabels[data.context.allocationBasis ?? ""]) : "[배분 기준 검토 필요]",
-    approved_monthly_income: data.incomes.length > 0 && data.incomes.every((s) => s.recognition === "accepted" && factSourceLineageIssues(data, s.factIds,index).length === 0) ? amount(calculation.monthlyIncomeWon) : MISSING_FORM_VALUE,
+    approved_monthly_income: calculation.monthlyIncomeWon !== null && calculation.incomeRows.length > 0 && calculation.incomeRows.every((row) => {
+      const current=data.incomes.find(s=>s.id===row.id);
+      return !!current&&row.monthlyWon!==null&&current.recognition==="accepted"&&
+        current.factIds.length>0&&factSourceLineageIssues(data,current.factIds,index).length===0;
+    }) ? amount(calculation.monthlyIncomeWon) : MISSING_FORM_VALUE,
   });
   // D5110's ③=①−② and ⑤=③−④ are a different quantity from an approved ordinary-claim payment.
   const beforeFee = calculation.monthlyIncomeWon === null || calculation.recognizedLivingCostWon === null ? null : BigInt(calculation.monthlyIncomeWon) - BigInt(calculation.recognizedLivingCostWon);
