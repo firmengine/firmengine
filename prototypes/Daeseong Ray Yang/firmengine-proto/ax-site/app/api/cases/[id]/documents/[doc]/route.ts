@@ -1,6 +1,7 @@
+import { rolesForActor } from "../../../../../../lib/app-roles.ts";
 import { canUseRescueRole } from "../../../../../../lib/classification-recovery";
 import { createHash } from "node:crypto";
-import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
+import { bucket,db,errorResponse,getCase,HttpError,now,requireHumanActor,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
 import { rescueSpecs } from "../../../../../../lib/scan-quality";
 type Context={params:Promise<{id:string,doc:string}>};
@@ -92,7 +93,11 @@ export async function PUT(request:Request,{params}:Context){try{
   return Response.json({stored:true,page});
 }catch(e){return errorResponse(e);}}
 export async function GET(request:Request,{params}:Context){try{
-  const {id,doc}=await params,r=await record(id,doc),url=new URL(request.url);let key=r.original_key;
+  const {id,doc}=await params;
+  // A private Site login does not grant access to another case's document bytes.
+  const who=await requireHumanActor(),roles=await rolesForActor(who,id);
+  if(!roles.some(role=>role==="case_editor"||role==="caseworker_review"||role==="lawyer_review"))throw new HttpError(403,"CASE_READ_ROLE_REQUIRED");
+  const r=await record(id,doc),url=new URL(request.url);let key=r.original_key;
   if(url.searchParams.get("kind")==="page"){
     const page=Number(url.searchParams.get("page"));const row=await db().prepare("SELECT image_key FROM page_jobs WHERE document_id = ? AND page = ? AND case_id = ?").bind(doc,page,id).first<{image_key:string|null}>();key=row?.image_key??null;
   }

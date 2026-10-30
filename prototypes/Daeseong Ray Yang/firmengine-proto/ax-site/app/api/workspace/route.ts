@@ -1,13 +1,20 @@
 import { currentReferenceSnapshot } from "../../../lib/reference-runtime.ts";
-import { caseSummary,connection,db,errorResponse } from "../../../lib/server-store";
+import { caseSummary,connection,db,errorResponse,now,requireHumanActor } from "../../../lib/server-store";
 import { CURRENT_RULESET, LEGAL_CATALOG, RISK_CATALOG } from "../../../lib/legal-rules";
+import { rolesForActor } from "../../../lib/app-roles.ts";
 import { BENCHMARK } from "../../../lib/sample-manifest";
 import { getChatGPTUser } from "../../chatgpt-auth";
 import type { CaseData } from "../../../lib/domain";
 export async function GET(){try{
+  const who=await requireHumanActor();
+  // Bootstrap the verified Site owner's existing case_editor grant, if applicable.
+  await rolesForActor(who,"*");
+  const at=now();
+  // Filter before LIMIT; do not leak other cases through counts or truncation.
+  const allowed="EXISTS (SELECT 1 FROM app_role_grants g WHERE g.actor_id = ? AND g.role IN ('case_editor','caseworker_review','lawyer_review') AND (g.scope_id='*' OR g.scope_id=c.id) AND g.status='active' AND g.effective_from<=? AND (g.effective_to IS NULL OR g.effective_to>?))";
   const [rows,total,user]=await Promise.all([
-    db().prepare("SELECT id,name,payload,revision,updated_at AS updatedAt FROM cases ORDER BY updated_at DESC LIMIT 500").all<{id:string,name:string,payload:string,revision:number,updatedAt:string}>(),
-    db().prepare("SELECT COUNT(*) AS totalCount FROM cases").first<{totalCount:number}>(),
+    db().prepare(`SELECT c.id,c.name,c.payload,c.revision,c.updated_at AS updatedAt FROM cases c WHERE ${allowed} ORDER BY c.updated_at DESC LIMIT 500`).bind(who,at,at).all<{id:string,name:string,payload:string,revision:number,updatedAt:string}>(),
+    db().prepare(`SELECT COUNT(*) AS totalCount FROM cases c WHERE ${allowed}`).bind(who,at,at).first<{totalCount:number}>(),
     getChatGPTUser(),
   ]);
   const cases=rows.results.map(r=>{const stored=JSON.parse(r.payload) as CaseData|{_storage?:string;caseId?:string;revision?:number;summary?:{documents:number;facts:number;status:string}};const summary=stored&&"_storage" in stored&&stored._storage==="r2-case-v1"?stored.caseId===r.id&&stored.revision===r.revision&&stored.summary?stored.summary:null:caseSummary(stored as CaseData);if(!summary)throw new Error("사건 목록 저장 상태가 올바르지 않습니다.");return {id:r.id,name:r.name,updatedAt:r.updatedAt,documents:summary.documents,facts:summary.facts,status:summary.status};});
