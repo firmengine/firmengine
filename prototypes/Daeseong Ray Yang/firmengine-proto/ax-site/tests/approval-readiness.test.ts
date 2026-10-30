@@ -103,3 +103,13 @@ test("source confirmed zero and disputed amount remain distinct",()=>{
  assert.ok(r.evidence.featureInventory.some(f=>f.id==="conflict"&&f.state==="disputed"));
  assert.equal(r.evidence.rejectedOrDisputedFacts,1);
 });
+
+test("discontinued before approval remains an in-scope pre-approval branch, not approved",()=>{
+ const d=input();d.data.workflowState!.procedureEvents.push({state:"discontinued",id:"discontinued-1",
+  occurredAt:"2026-10-30",recordedAt:"2026-10-30",actor:"clerk",courtReference:"synthetic-court",
+  reason:"synthetic pre-approval discontinuance",sourceDocumentIds:["doc-1"],relatedFields:[],artifactIds:[]});
+ const r=buildPreApprovalReadiness(d);
+ assert.equal(r.outOfScope,false);
+ assert.notEqual(r.status,"out_of_scope");
+ assert.equal(r.autoApproval,false);
+});
