@@ -781,3 +781,12 @@
 - **월별 합성**: 공식 금액 저장 DTO 모양의 BusinessSourceMoneyRow를 대상으로 실제 순수 함수 본문 V8 격리 **5/5 기대 일치**(12개월/11개월/부가세만/진짜 0원/미검증 null). 모두 법적 소득 승인이나 제출 서식 검증 아님.
 - **공식 출처**: 서울회생법원 준칙 PDF 제424호 **2026-09-23 개정** 본문 252~253쪽 제7호 네 누적요건(2년 최저임금 미만·채무 5천만원 이하·개인채권자 없음·최근 1년 채무 없음/물품구입 신용카드채무 예외)을 실제 PDF 이미지로 검증. 코드 기준 `effective_from=2026-10-01` 및 `candidate_for_human_review`와 정적 대조. 채무자회생법 2026-10-02 시행판·국세청 VAT 매출/매입세액 분리 공식 원문 확인. 법원 재량/적용일/사건별 최종 승인은 별도.
 - [**A2 첫 회차 상세 영수증**](release-audit-runs/A2/2026-10-30_1317_KST_business-source-money-and-monthly-period.md). 다음: `A2-DOC-004`, `A2-AX-004`, `A2-IT-015`, `A2-CALC-006`, `A2-LAW-016`.
+
+
+### 2026-10-30 A3 1차 — canonical #001–020, 원천 문서 라우트·법률 소비처 검증
+
+- **범위/역할/상태**: A3-DATA-001, A3-IT-002, A3-LAW-017, A3-AX-002 부분 조사. [A3 실행 영수증](docs/release-audit-runs/A3/20261030-1331-canonical-001-020.md)에 각 ID와 대상 필드의 재현·검증층 기록. 정적 조사만으로 4개 항목의 체크박스를 완료 처리하지 않는다.
+- **실제 조사**: 감사 시작 main `8fc769748650f1d8f644f0ac854b2d98246b319b`. 등록 693 canonical ID, 85 문서, 48 OCR 패밀리, 1,808 원천 슬롯의 모든 출처 선언을 GitHub JSON 독립 조인으로 검사: 고아/누락/중복 0. 첫 20개 ID의 출처문서·타입·명시적 typed·계산·서식 경로를 개별 확인.
+- **도구 개선**: [Draft PR #14](https://github.com/firmengine/firmengine/pull/14)에서 `scripts/audit-product-contracts.mjs --fields`에 693개 ID 각각의 `documentRoutes`와 `sourceRouteSlots`, 고아/중복 경로 차단 및 집중 회귀를 추가. PR의 **실제 변경된 JavaScript 본문**을 현재 GitHub JSON/파일목록 스냅샷의 격리 V8 환경으로 실행: `STATIC_CONTRACT_OK_NOT_END_TO_END_CERTIFIED`, 693/1,808/85/48, 23 migration, findings 0. **실제 Node 테스트 실행·CI·D1/R2/법원 서식·변호사 검수는 미실행**이고 PR은 미병합 draft.
+- **발견된 계약 공백**: `account_garnishment` 10개 ID는 `litigation_record` 문서, `accounting_source` 10개 ID는 `financial_statement` 문서에 출처가 있지만 **모두 명시적 typed·계산·직접 서식 토큰이 없음**. 증거·대조의 가치는 보존하고 금액을 자동 채무·순소득 합계에 더하지 않는다. 법률위험 95건 중 레거시 `required_features` 88건 공란, 7건은 등록 canonical OCR ID와 정확히 일치하는 키 0건. 새 승인형 계약의 seed는 빈 목록이며 **운영 DB의 승인된 계약은 별도 미확인**. 관련 `DOC-02`·`COND-20` 등의 정확한 증거/시행일/관할 관계는 변호사 검토 필요.
+- **다음 A3 회차**: canonical **#021–040** (`applicant_narrative_statement`/ `application_identity_venue`)의 서류·계산·법률·서식·상충 소비처 검토, 사용자·서류담당자 및 계산사무장 관점 순환. PR #14의 실제 Node 회귀·CI 확인 후 병합 여부 판단. 현재 최종 합격 ID **0개**.
