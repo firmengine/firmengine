@@ -13,7 +13,7 @@ import {legalReviewInputFingerprint} from "./legal-review-identity.ts";
 import {referenceIdentity} from "./reference-runtime.ts";
 import referenceRelease from "./reference-release.json" with {type:"json"};
 import {executeCaseNodes} from "./case-execution.ts";
-import {buildCaseWorkflowView} from "./case-workflow-view.ts";
+import {buildCurrentCaseWorkflowView} from "./case-workflow-context.ts";
 import {AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,automatedDraftEligibility,persistCaseLawgraphReview,type StoredLegalCheck} from "./case-lawgraph-store.ts";
 import {summarizeAutomaticLegalReview} from "./case-legal-automation-policy.ts";
 import {buildStoredLawgraphDocumentFields} from "./lawgraph-document-field-projection.ts";
@@ -147,7 +147,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   documentFields,complete:true,expectedCheckIds:checkIds});
  await assertCurrent(database,job);
  const processingComplete=await service.processingComplete(data);
- const workflow=data.workflowState?await buildCaseWorkflowView(data):null;
+ const workflow=data.workflowState?await buildCurrentCaseWorkflowView(database,data):null;
  const unresolvedRequired=(workflow?.requirementStates??[]).filter(r=>r.required&&!["satisfied","not_applicable_confirmed","waived_by_review","retired"].includes(r.requirementStatus));
  const projectionBlockers=data.workflowState?.projectionBlockers.length??0;
  const needed=await calculationFields(database,job.calculationRunId);
