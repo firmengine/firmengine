@@ -372,3 +372,32 @@ export const caseSubstitutionTransitionEvents=sqliteTable("case_substitution_tra
   reasonCodesJson:text("reason_codes_json").notNull(),occurredAt:text("occurred_at").notNull(),
 },t=>[unique("case_substitution_transition_events_identity").on(t.caseId,t.requirementId,t.dependencyFingerprint,t.toStatus,t.toActiveRequest),
  index("case_substitution_transitions_case_idx").on(t.caseId,t.id)]);
+
+
+/** Append-only, human-itemized actual court correction orders before approval.
+ * A stored evidence/receipt link does not confer court acceptance or legal approval. */
+export const caseCourtCorrectionItemVersions=sqliteTable("case_court_correction_item_versions",{
+ id:text("id").primaryKey().notNull(),
+ caseId:text("case_id").notNull().references(()=>cases.id),
+ courtEventId:text("court_event_id").notNull(),
+ itemNo:integer("item_no").notNull(),
+ caseRevision:integer("case_revision").notNull(),
+ sourceDataVersion:integer("source_data_version").notNull(),
+ orderDocumentId:text("order_document_id").notNull().references(()=>documents.id),
+ orderDocumentSha256:text("order_document_sha256").notNull(),
+ payloadJson:text("payload_json").notNull(),
+ actorId:text("actor_id").notNull(),
+ reason:text("reason").notNull(),
+ createdAt:text("created_at").notNull(),
+},t=>[index("case_correction_item_version_history").on(t.caseId,t.courtEventId,t.itemNo,t.createdAt)]);
+
+export const caseCourtCorrectionItemHeads=sqliteTable("case_court_correction_item_heads",{
+ caseId:text("case_id").notNull().references(()=>cases.id),
+ courtEventId:text("court_event_id").notNull(),
+ itemNo:integer("item_no").notNull(),
+ versionId:text("version_id").notNull().references(()=>caseCourtCorrectionItemVersions.id),
+ sourceCaseRevision:integer("source_case_revision").notNull(),
+ sourceDataVersion:integer("source_data_version").notNull(),
+ updatedAt:text("updated_at").notNull(),
+},t=>[primaryKey({columns:[t.caseId,t.courtEventId,t.itemNo]}),
+ index("case_correction_item_head_source_version").on(t.caseId,t.sourceDataVersion)]);
