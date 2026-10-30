@@ -54,3 +54,27 @@ test("only an actual projection diagnostic allows same-source operator repair",(
  assert.equal(projectionRepairRequired({blockers:["LEGAL_EVIDENCE_MISSING"]}),false);
  assert.equal(projectionRepairRequired(null),false);
 });
+
+test("repeating creditor row cannot mix principal from another subject",()=>{
+ const mixed=fields.map(f=>f.formCode==="D5106"&&f.token==="creditor.principal"
+   ?{...f,subjectId:"debt-2"}:f);
+ const result=assessAutomaticDraftProjection({expected,fields:mixed,claimedPersistedCount:fields.length});
+ assert.equal(result.eligible,false);
+ assert.deepEqual(result.blockers,["DOCUMENT_FIELD_PROJECTION_REPEAT_SUBJECT_MISMATCH"]);
+ assert.equal(result.readyForElectronicFiling,false);
+});
+test("repeating creditor row cannot silently mix null and verified subjects",()=>{
+ const mixed=fields.map(f=>f.formCode==="D5106"&&f.token==="creditor.principal"
+   ?{...f,subjectId:null}:f);
+ const result=assessAutomaticDraftProjection({expected,fields:mixed});
+ assert.equal(result.eligible,false);
+ assert.ok(result.blockers.includes("DOCUMENT_FIELD_PROJECTION_REPEAT_SUBJECT_MISMATCH"));
+});
+test("different repeated rows keep independent subject identities",()=>{
+ const duplicated=fields.filter(f=>f.formCode==="D5106"&&f.token.startsWith("creditor.")).map(f=>({
+   ...f,rowOrdinal:1,subjectId:"debt-2"
+ }));
+ const result=assessAutomaticDraftProjection({expected,fields:[...fields,...duplicated]});
+ assert.equal(result.eligible,true);
+ assert.equal(result.repeatedRowCount,2);
+});

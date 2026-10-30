@@ -33,7 +33,7 @@ export function assessAutomaticDraftProjection(input:AutomaticDraftProjectionInp
  if(input.claimedPersistedCount!==undefined&&input.claimedPersistedCount!==null&&
     (!Number.isSafeInteger(input.claimedPersistedCount)||input.claimedPersistedCount!==input.fields.length))
     reasons.add("DOCUMENT_FIELD_PROJECTION_STORAGE_MISMATCH");
- const observed=new Set<string>(),repeated=new Map<string,Set<string>>();
+ const observed=new Set<string>(),repeated=new Map<string,Set<string>>(),repeatSubjects=new Map<string,string|null>();
  for(const f of input.fields){
   if(typeof f.formCode!=="string"||typeof f.token!=="string"||
      f.subjectId!==undefined&&f.subjectId!==null&&typeof f.subjectId!=="string"){
@@ -47,6 +47,10 @@ export function assessAutomaticDraftProjection(input:AutomaticDraftProjectionInp
     reasons.add("DOCUMENT_FIELD_PROJECTION_REPEAT_IDENTITY_MISSING");continue;
    }
    const row=rowIdentity(f.formCode,expectedField.repeatGroup,f.rowOrdinal!);
+   const subjectId=f.subjectId??null;
+   if(repeatSubjects.has(row)&&repeatSubjects.get(row)!==subjectId)
+    reasons.add("DOCUMENT_FIELD_PROJECTION_REPEAT_SUBJECT_MISMATCH");
+   else repeatSubjects.set(row,subjectId);
    const group=repeated.get(row)??new Set<string>();group.add(f.token);repeated.set(row,group);
   }else if(f.rowOrdinal!==null&&f.rowOrdinal!==undefined||
            f.subjectId!==null&&f.subjectId!==undefined){
