@@ -80,6 +80,9 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
     { id: "no_individual_creditors", ...creditors, detail: "개인채권자 없음 및 채권자목록 완전성" },
     { id: "no_recent_year_debt_except_goods_card", ...recentDebt, detail: `최근 ${recentDebtYears}년 발생 채무 없음(물품구입 신용카드채무 제외)` },
   ];
+  // A positive substantive route is not a Seoul-court candidate until the
+  // court scope is established. Preserve the condition details for human review.
+  if (input.courtId === null) return { ...base, status: "unknown", route: null, conditions, reason: "관할법원이 확정되지 않아 서울 제424호 변제기간 단축 후보를 판정할 수 없습니다." };
   if (category16 === "yes") return { ...base, status: "candidate_for_human_review", route: "category_1_to_6", conditions, reason: "법률특정 제1~6호 요건의 별도 검토 후보입니다. §614 및 법원 판단은 남아 있습니다." };
   const seven = [wage.status, debt.status, creditors.status, recentDebt.status];
   if (seven.every((x) => x === "yes")) return { ...base, status: "candidate_for_human_review", route: "category_7", conditions, reason: "제7호 누적조건 후보입니다. §614와 법원 심사는 남아 있습니다." };
