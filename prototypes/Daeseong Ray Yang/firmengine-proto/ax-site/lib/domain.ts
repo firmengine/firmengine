@@ -273,6 +273,10 @@ export interface ExportManifest {
   requiredKinds: ArtifactKind[];
   files: ExportFile[];
   reviews: { caseworker: ReviewRecord | null; lawyer: ReviewRecord | null };
+  /** Reuse this exact request's committed files after a lost HTTP acknowledgement; never an approval. */
+  exportRequestId?: string;
+  /** Case data-version at creation, separate from the case UI revision. */
+  sourceDataVersionAtExport?: number | null;
   /** Render-time document writer receipt; preserved with the export manifest for edit authority and audit. */
   documentWriter?: DocumentWriterReceipt;
 }
