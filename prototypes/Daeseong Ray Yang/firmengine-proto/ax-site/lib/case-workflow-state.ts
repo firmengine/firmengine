@@ -3,7 +3,7 @@ import type { CaseTask } from "./case-tasks.ts";
 import type { LegalCheckDisposition } from "./legal-check-dispositions.ts";
 import type { ProcedureEvent } from "./case-procedure-events.ts";
 export interface CaseWorkflowState extends IntakeCaseWorkflow {
-  businessNetReviews:import("./business-net-reconciliation.ts").BusinessNetReview[];
+  businessNetReviews?:import("./business-net-reconciliation.ts").BusinessNetReview[];
   tasks:CaseTask[];
   legalDispositions:LegalCheckDisposition[];
   procedureEvents:ProcedureEvent[];
