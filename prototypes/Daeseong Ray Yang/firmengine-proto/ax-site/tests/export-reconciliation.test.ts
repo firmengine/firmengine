@@ -89,3 +89,17 @@ test("two SQL rows pointing to the same object key require manual review", () =>
   assert.ok(codes(out).includes("DUPLICATE_OBJECT_KEY"));
   assert.equal(out.autoDeleteAllowed,false);
 });
+
+test("duplicate object key detected even when the current row is visited first", () => {
+  const input=base();
+  const duplicate={...row("A"),objectKey:row("B").objectKey};
+  const out=reconcileExportEvidence({...input,artifactRows:[row("B"),duplicate]});
+  assert.ok(codes(out).includes("DUPLICATE_OBJECT_KEY"));
+  assert.equal(out.currentArtifactsVerified,false);
+});
+test("an SQL artifact row cannot claim a different case's R2 prefix", () => {
+  const bad={...row("B"),objectKey:"cases/case-2/artifacts/B"};
+  const out=reconcileExportEvidence({...base(),artifactRows:[bad],objectProofs:[{objectKey:bad.objectKey,exists:true,verifiedSha256:H}]});
+  assert.deepEqual(codes(out),["OBJECT_KEY_SCOPE_MISMATCH"]);
+  assert.equal(out.currentArtifactsVerified,false);
+});
