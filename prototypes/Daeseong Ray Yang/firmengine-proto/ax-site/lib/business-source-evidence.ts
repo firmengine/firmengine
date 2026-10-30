@@ -113,6 +113,7 @@ export function auditBusinessSourceEvidence(
     verifiedAndAcceptedSource:fact.state==="verified"&&fact.recognition==="accepted"&&
       fact.validation.every(check=>check.severity!=="error")&&
       fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index))&&
+      factSourceLineageIssues(data,[fact.id],index).length===0&&
       moneyValue(fact.numeric)!==null,
     periodStart:start,periodEnd:end,periodOverlap:scope,linkedBusinessIncomeIds,
     use:"source_only_not_legally_approved"};
