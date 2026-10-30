@@ -30,6 +30,8 @@ export interface SubstitutionReview {
 }
 export interface CaseRequirement {
   requirementId: string; originKey: string; intakeRunId: string; intakeDocumentTypeId: string;
+  /** Collection guidance copied from consulted catalogue; not an issuance-validity or legal-sufficiency decision. */
+  documentName?: string; issuer?: string;
   subjectLinkId: string | null; scopeKey: string; requiredPeriod: string; purposeCode: string;
   requirement: IntakeRequirement["requirement"]; alternativePolicy: IntakeRequirement["alternativePolicy"];
   intakeStatus: IntakeRequirement["status"];
@@ -78,7 +80,7 @@ export function makeCaseRequirement(input: { source: IntakeRequirement; intakeRu
   const groups = input.fieldGroups ?? [];
   const origin = { intakeDocumentTypeId: input.source.documentTypeId, subjectLinkId, scopeKey, requiredPeriod: input.source.period, purposeCode: input.source.documentTypeId, requiredFieldGroups: groups };
   return { requirementId: input.idFactory(), originKey: requirementOriginKey(origin), intakeRunId: input.intakeRunId,
-    intakeDocumentTypeId: input.source.documentTypeId, subjectLinkId, scopeKey, requiredPeriod: input.source.period,
+    intakeDocumentTypeId: input.source.documentTypeId, documentName: input.source.documentName, issuer: input.source.issuer, subjectLinkId, scopeKey, requiredPeriod: input.source.period,
     purposeCode: input.source.documentTypeId, requirement: input.source.requirement, alternativePolicy: input.source.alternativePolicy, intakeStatus: input.source.status,
     requiredFieldGroups: groups.map(g => [...g]), optionalFieldIds: [], matchedRuleIds: [...input.source.matchedRuleIds],
     mappingRequired: input.mappingRequired ?? (input.crosswalk ? input.crosswalk.reviewState!=="approved" || groups.length === 0 && input.crosswalk.coveragePolicy!=="no_required_fields" : groups.length===0),
