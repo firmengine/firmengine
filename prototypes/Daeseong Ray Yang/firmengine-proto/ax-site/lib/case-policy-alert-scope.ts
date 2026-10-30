@@ -63,10 +63,12 @@ export async function readCasePolicyAlerts(database:D1Database,courtId:string){
   // global block. Never silently clear unreviewed law changes.
   const global=await database.prepare(
    "SELECT COUNT(*) AS total,COALESCE(SUM(CASE WHEN acknowledged_at IS NULL THEN 1 ELSE 0 END),0) AS pending,MAX(created_at) AS latest FROM legal_monitor_alerts"
-  ).first<{total:number;pending:number;latest:string|null}>();
+  ).first<{total?:number;pending?:number;count?:number;latest:string|null}>();
+  // Older monitors/test projections expose only count. A missing precise
+  // scope must never turn a nonzero legacy alert into permission to draft.
   return evaluateCasePolicyAlerts({courtId,groups:[{
-   sourceId:"unknown-legacy-schema",agent:"unknown",pending:global?.pending??0,
-   total:global?.total??0,latest:global?.latest??null
+   sourceId:"unknown-legacy-schema",agent:"unknown",pending:global?.pending??global?.count??0,
+   total:global?.total??global?.count??0,latest:global?.latest??null
   }]});
  }
 }
