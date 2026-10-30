@@ -97,11 +97,19 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   return {caseId:job.caseId,status:"attention_required",...report};
  }
  if(!collected.model||!["gpt-6-luna","gpt-6.1-terra"].includes(collected.model))throw new Error("LEGAL_REVIEW_MODEL_CONTRACT_MISMATCH");
- const execution=executeCaseNodes(data,{includeDocumentBindings:true});
- const documentFields=execution.formBindings?await buildStoredLawgraphDocumentFields(database,{
-  caseData:data,calculationRunId:job.calculationRunId,bindings:execution.formBindings,
-  calculation:execution.assessment.calculation
- }):[];
+ // A missing/invalid draft projection is a separate review deficiency;
+ // it must not discard the completed and still useful legal findings.
+ const execution=executeCaseNodes(data);
+ let documentFields:Awaited<ReturnType<typeof buildStoredLawgraphDocumentFields>>=[];
+ let documentFieldProjectionError:string|null=null;
+ try{
+  const forForms=executeCaseNodes(data,{includeDocumentBindings:true});
+  if(!forForms.formBindings)throw new Error("FORM_BINDINGS_UNAVAILABLE");
+  documentFields=await buildStoredLawgraphDocumentFields(database,{
+    caseData:data,calculationRunId:job.calculationRunId,bindings:forForms.formBindings,
+    calculation:forForms.assessment.calculation
+  });
+ }catch(error){documentFieldProjectionError=error instanceof Error?error.message:"FORM_PROJECTION_UNAVAILABLE";}
  const review=await persistCaseLawgraphReview(database,{caseId:job.caseId,dataVersion:job.dataVersion,
   caseRevision:job.caseRevision,calculationRunId:job.calculationRunId,inputSha256:job.inputSha256,
   model:collected.model,checks:collected.checks,summary:collected.summary,
@@ -130,7 +138,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
  const outcome={...report,reviewRunId:review.runId,sourceVersion:job.dataVersion,
   processingComplete,pendingCourtPolicyChanges:pendingCourtPolicy?.n??0,
   unresolvedRequiredDocuments:unresolvedRequired.map(r=>({requirementId:r.requirementId,status:r.requirementStatus,missingFields:r.requiredFieldCoverage.missing})),
-  projectionBlockers,documentFieldCount:documentFields.length,
+  projectionBlockers,documentFieldCount:documentFields.length,documentFieldProjectionError,
   summary:collected.summary,
   reviewScope:"Legal advisory and REVIEW DRAFT ONLY. Official forms and human approval are separate.",
   findings:report.findings.slice(0,95)};
