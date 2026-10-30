@@ -155,7 +155,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
  // Current saved OCR amounts not reconciled into typed calculator values block
  // unattended draft generation, irrespective of AI check statuses.
  const materialGaps=execution.assessment.calculation.issues.filter(
-   issue=>/^CALC_INPUT_(?:UNCONNECTED_MATERIAL|AMOUNT_INVALID|AMOUNT_MISMATCH|SOURCE_INVALID):/.test(issue));
+   issue=>/^CALC_INPUT_(?:UNCONNECTED_MATERIAL|MULTIPLE_TYPED_MATCHES|AMOUNT_INVALID|AMOUNT_MISMATCH|SOURCE_INVALID):/.test(issue));
  const pendingCourtPolicy=await readCasePolicyAlerts(database,String(data.context.courtId??""));
  const eligible=automatedDraftEligibility({checks:collected.checks,expectedCheckIds:checkIds,
   complete:true,calculationHeadCurrent:true,
