@@ -33,6 +33,11 @@ export interface ExportArtifactTransactionInput<RecordType extends { id: string 
   deleteRecords: (records: readonly RecordType[]) => Promise<unknown>;
   /** Delete only the exact object key supplied by this invocation. */
   deleteObject: (objectKey: string) => Promise<unknown>;
+  /** Durable export opt-in: ambiguous pre-manifest R2/D1 outcomes must retain evidence.
+   * This can leave orphans; it never authorizes replay, deletion or approval. */
+  preservePreCommitFailureEvidence?: boolean;
+  /** Optional evidence-only notification for the opted-in pre-commit preserve path. */
+  onPreCommitUncertain?: (report: ExportArtifactCommitUncertainReport<RecordType>) => Promise<unknown> | unknown;
   /** Runs after the manifest commit. A failure here must never roll back artifacts. */
   afterCommit?: (result: Result) => Promise<unknown>;
   /** Receives cleanup failures. Its own failure is swallowed to preserve the original error. */
@@ -71,8 +76,9 @@ function attachCleanupErrors(originalError: unknown, cleanupErrors: readonly unk
 /**
  * Uploads and persists only the supplied invocation's artifacts before saving
  * the case manifest. Any failure before the manifest commit triggers best-effort
- * deletion of this invocation's rows and every attempted object key. Cleanup
- * failures are reported without replacing the original failure.
+ * cleanup of invocation-owned rows and attempted keys by default. Durable
+ * exports must opt into evidence preservation where R2/D1 ACKs are ambiguous;
+ * such evidence requires explicit reconciliation, not automatic reuse/deletion.
  */
 export async function commitExportArtifactTransaction<RecordType extends { id: string }, Result>(
   input: ExportArtifactTransactionInput<RecordType, Result>,
@@ -103,6 +109,18 @@ export async function commitExportArtifactTransaction<RecordType extends { id: s
         await input.onCommitUncertain?.({ originalError, records, objectKeys: attemptedObjectKeys });
       } catch {
         // Reporting cannot hide the original failure or permit data deletion.
+      }
+      throw originalError;
+    }
+    if (input.preservePreCommitFailureEvidence) {
+      // A rejected upload may have already written R2 bytes; a rejected D1
+      // batch may likewise have committed rows but lost its response. Keep
+      // both until independently reconciled. The caller must mark its receipt
+      // uncertain and MUST NOT automatically reclaim or approve it.
+      try {
+        await input.onPreCommitUncertain?.({ originalError, records, objectKeys: attemptedObjectKeys });
+      } catch {
+        // Failure to record the warning is not permission to delete evidence.
       }
       throw originalError;
     }
