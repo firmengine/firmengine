@@ -42,3 +42,7 @@ WHERE run_id = :current_calculation_run_id ORDER BY id;
 ```
 
 **등록 현황:** 18 모듈, 입력 선언 합계 91개, 서로 다른 입력 경로 78개, 출력 선언 합계 42개. 자동으로 18개 실행 완료라고 표시하지 않는다.
+
+## 원문 OCR의 실제 D1 관측도 별도 열람
+
+`GET /api/cases/:id/approval-readiness`의 `storedOcrCoverage`는 현재 활성 문서의 증빙 페이지·해시·committed run·`extraction_field_coverage`를 검사한다. **693개는 스키마 전체 등록 수이지 사건에 실제 존재해야 할 필드 수가 아니다.** 실제 계산과 연결된 값을 확인하려면 이 목록의 canonical ID와 현재 `CaseData.facts`의 원문 검증/법률상 인정 상태를 함께 확인한다. 없는 OCR/미확인 입력을 0으로 대체하지 않는다.
