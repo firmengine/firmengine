@@ -121,17 +121,28 @@ export async function listCaseExtractionRows(database:D1Database,input:{caseId:s
   const from=" FROM case_extraction_heads h JOIN extraction_runs r ON r.id=h.run_id JOIN document_instances i ON i.id=r.document_instance_id JOIN extraction_schema_versions s ON s.id=r.schema_id JOIN extraction_records e ON e.run_id=r.id WHERE h.case_id=?"+filter;
   const count=await database.prepare("SELECT COUNT(*) AS n"+from).bind(...params).first<{n:number}>();
   const selected=await database.prepare("SELECT e.*,r.case_revision,h.case_revision AS head_case_revision,r.stage,r.model,r.source_hash,r.image_hash,r.read_sha256,r.schema_id,i.source_document_id,i.page,i.shared_document_type_id,i.shared_document_type_name,i.family_id,i.boundary_status,i.catalog_version,i.catalog_sha256,s.contract_version,s.sha256 AS schema_sha256,(SELECT COUNT(*) FROM extracted_features f WHERE f.record_id=e.id) AS feature_count"+from+" ORDER BY i.source_document_id,i.page,e.ordinal LIMIT ? OFFSET ?").bind(...params,limit,offset).all<StoredRecord>();
-  const records=selected.results??[],featureLimit=2000;
-  const features=records.length?(await database.prepare(`SELECT f.*,s.datatype,s.unit AS expected_unit,s.subject_role,s.party_role,s.temporal_role,s.amount_owner_role FROM extracted_features f LEFT JOIN extraction_schema_fields s ON s.schema_id=f.schema_id AND s.canonical_field_id=f.canonical_field_id WHERE f.record_id IN (${records.map(()=>"?").join(",")}) ORDER BY f.record_id,f.ordinal LIMIT ?`).bind(...records.map(r=>r.id),featureLimit+1).all<StoredFeature>()).results??[]:[];
-  const bounded=features.slice(0,featureLimit);
+  const records=selected.results??[],featureLimit=10000,featureBatchSize=500;
+  const expectedFeatures=records.reduce((sum,row)=>sum+row.feature_count,0);
+  if(expectedFeatures>featureLimit)throw fault("EXTRACTION_ROW_TOO_MANY_FIELDS_REDUCE_LIMIT");
+  const features:StoredFeature[]=[];
+  if(records.length&&expectedFeatures){
+    const query=`SELECT f.*,s.datatype,s.unit AS expected_unit,s.subject_role,s.party_role,s.temporal_role,s.amount_owner_role FROM extracted_features f LEFT JOIN extraction_schema_fields s ON s.schema_id=f.schema_id AND s.canonical_field_id=f.canonical_field_id WHERE f.record_id IN (${records.map(()=>"?").join(",")}) ORDER BY f.record_id,f.ordinal LIMIT ? OFFSET ?`;
+    for(let offset=0;offset<expectedFeatures;offset+=featureBatchSize){
+      const portion=(await database.prepare(query).bind(...records.map(r=>r.id),Math.min(featureBatchSize,expectedFeatures-offset),offset).all<StoredFeature>()).results??[];
+      features.push(...portion);
+    }
+  }
+  if(features.length!==expectedFeatures)throw fault("EXTRACTION_ROW_FIELD_COUNT_MISMATCH");
+  const byRecord=new Map<string,StoredFeature[]>();
+  for(const item of features)byRecord.set(item.record_id,[...(byRecord.get(item.record_id)??[]),item]);
   const after=await database.prepare("SELECT revision FROM cases WHERE id=?").bind(input.caseId).first<{revision:number}>();
   if(after?.revision!==current.revision)throw fault("CASE_REVISION_MISMATCH");
   return {schemaVersion:EXTRACTION_ROW_STORE_VERSION,caseId:input.caseId,caseRevision:current.revision,sourceOnly:true,legalRecognition:"not_provided",courtApprovalInferred:false,
     currentVersionMeaning:"Active committed source read per original-document page; extraction revision and current case revision are separate.",
-    totalRecords:count?.n??0,limit,offset,nextOffset:offset+records.length<(count?.n??0)?offset+records.length:null,featureLimit,featuresTruncated:features.length>featureLimit,
+    totalRecords:count?.n??0,limit,offset,nextOffset:offset+records.length<(count?.n??0)?offset+records.length:null,featureLimit,featureBatchSize,featuresTruncated:false,
     records:records.map(row=>({recordId:row.id,recordOrdinal:row.ordinal,category:row.category,label:row.label,runId:row.run_id,
       source:{documentId:row.source_document_id,page:row.page,documentTypeId:row.shared_document_type_id,documentTypeName:row.shared_document_type_name,familyId:row.family_id,boundaryStatus:row.boundary_status,model:row.model,stage:row.stage,sourceHash:row.source_hash,imageHash:row.image_hash,readSha256:row.read_sha256,runCaseRevision:row.case_revision,headCaseRevision:row.head_case_revision,catalogVersion:row.catalog_version,catalogSha256:row.catalog_sha256,schemaId:row.schema_id,schemaSha256:row.schema_sha256,contractVersion:row.contract_version},
-      fieldCount:row.feature_count,fields:bounded.filter(f=>f.record_id===row.id).map(f=>({featureId:f.id,recordId:f.record_id,fieldOrdinal:f.ordinal,canonicalFieldId:f.canonical_field_id,key:f.field_key,label:f.label,value:JSON.parse(f.raw_value_json),unit:f.unit,projectionKey:f.projection_key,bindingVersion:f.binding_version,sourceState:f.source_state,confidence:f.confidence,quote:f.quote,bbox:JSON.parse(f.bbox_json),bindingStatus:f.binding_status,validationStatus:f.validation_status,validation:JSON.parse(f.validation_json),expected:{datatype:f.datatype,unit:f.expected_unit,subjectRole:f.subject_role,partyRole:f.party_role,temporalRole:f.temporal_role,amountOwnerRole:f.amount_owner_role}}))}))};
+      fieldCount:row.feature_count,fields:(byRecord.get(row.id)??[]).map(f=>({featureId:f.id,recordId:f.record_id,fieldOrdinal:f.ordinal,canonicalFieldId:f.canonical_field_id,key:f.field_key,label:f.label,value:JSON.parse(f.raw_value_json),unit:f.unit,projectionKey:f.projection_key,bindingVersion:f.binding_version,sourceState:f.source_state,confidence:f.confidence,quote:f.quote,bbox:JSON.parse(f.bbox_json),bindingStatus:f.binding_status,validationStatus:f.validation_status,validation:JSON.parse(f.validation_json),expected:{datatype:f.datatype,unit:f.expected_unit,subjectRole:f.subject_role,partyRole:f.party_role,temporalRole:f.temporal_role,amountOwnerRole:f.amount_owner_role}}))}))};
 }
 
 /** Records every expected schema key, even when OCR found nothing. This is
