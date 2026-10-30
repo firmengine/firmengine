@@ -25,7 +25,7 @@ const paymentSchedule=z.object({reviewed:z.boolean(),reviewReason:z.string().max
   if(phases.at(-1)&&phases.at(-1)!.lastInstallment>maximumPlanMonths())ctx.addIssue({code:z.ZodIssueCode.custom,message:`변제 회차는 최대 ${maximumPlanMonths()}회까지 입력할 수 있습니다.`});
   if(schedule.expectedInstallments!=null&&phases.at(-1)?.lastInstallment!==schedule.expectedInstallments)ctx.addIssue({code:z.ZodIssueCode.custom,message:"예상 회차와 단계 마지막 회차가 일치해야 합니다."});
   for(let i=1;i<phases.length;i++){const previous=phases[i-1],current=phases[i];if(!previous.firstPaymentDate||!current.firstPaymentDate)continue;
-    const [y,m,d]=previous.firstPaymentDate.split("-").map(Number);const months=previous.lastInstallment-previous.firstInstallment+1;const first=new Date(Date.UTC(y,m-1+months,1));const last=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();const expected=String(first.getUTCFullYear()).padStart(4,"0")+"-"+String(first.getUTCMonth()+1).padStart(2,"0")+"-"+String(Math.min(d,last)).padStart(2,"0");
+    const planAnchor=phases[0]?.firstPaymentDate;if(!planAnchor)continue;const [y,m,d]=planAnchor.split("-").map(Number);const months=current.firstInstallment-1;const first=new Date(Date.UTC(y,m-1+months,1));const last=new Date(Date.UTC(first.getUTCFullYear(),first.getUTCMonth()+1,0)).getUTCDate();const expected=String(first.getUTCFullYear()).padStart(4,"0")+"-"+String(first.getUTCMonth()+1).padStart(2,"0")+"-"+String(Math.min(d,last)).padStart(2,"0");
     if(current.firstPaymentDate!==expected)ctx.addIssue({code:z.ZodIssueCode.custom,message:"다음 단계의 첫 변제일은 회차에 맞게 월 단위로 연속되어야 합니다."});
   }
 });
