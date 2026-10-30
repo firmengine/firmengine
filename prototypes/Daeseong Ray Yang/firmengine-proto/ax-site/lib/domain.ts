@@ -910,7 +910,22 @@ export function applyExtraction(input: CaseData, extraction: ExtractionPayload):
   data.assets = merge(data.assets, extraction.assets ?? []);
   data.transactions = merge(data.transactions, extraction.transactions ?? []);
   // Reported household size may be extracted; recognized living costs are human/legal inputs.
-  if (extraction.household?.reportedMembers !== undefined) data.household.reportedMembers = extraction.household.reportedMembers;
+  if (extraction.household?.reportedMembers !== undefined) {
+    const incoming=extraction.household.reportedMembers,previous=data.household.reportedMembers;
+    const observedCounts=currentFacts(data).filter(fact=>
+      fact.key==="household.reported_members" &&
+      fact.state!=="retracted" && fact.recognition!=="rejected");
+    // Each member/period/source-row may carry a different meaning; several
+    // observations can never be treated as one reviewed household total.
+    if(observedCounts.length>1 || incoming===null ||
+        previous!==undefined && previous!==null && incoming!==previous){
+      data.household.reportedMembers=null;
+      data.household.recognition="unreviewed";
+      warnings.push("가구원 총수에 복수·상충·미판독 원문이 있어 최종 인원 산정을 보류했습니다. 원본 행과 부양관계를 검토하세요.");
+    } else {
+      data.household.reportedMembers=incoming;
+    }
+  }
   if (extraction.household?.factIds) data.household.factIds = [...new Set([...data.household.factIds, ...extraction.household.factIds.map((id) => idMap.get(id) ?? id).filter((id) => active.has(id))])];
   data.extractionWarnings = [...new Set([...(data.extractionWarnings ?? []), ...warnings])];
   return data;
