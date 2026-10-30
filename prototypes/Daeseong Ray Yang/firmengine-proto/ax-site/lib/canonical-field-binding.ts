@@ -17,7 +17,20 @@ export interface CanonicalSourceBinding {
   binding:"explicit_id"|"exact_key"|"unbound";
   definition:CanonicalSourceDefinition|undefined;issues:string[];
 }
-const prefixes=new Set(["person","income","debt","asset","transaction","household","business","statement","other","bank_account","lease","insurance","credit_report","health_insurance_arrears"]);
+/** Permit short aliases only within the source family's semantic namespace.
+ * An explicit canonical ID must never rebind e.g. asset.net_pay as payroll net.
+ */
+const familyPrefixes:Readonly<Record<string,readonly string[]>>={
+  identity_residence_record:["person","identity"],
+  payroll_payslip:["income","payroll"],
+  current_nonwage_income:["income"],
+  debt_certificate:["debt"],
+  bank_transactions:["transaction"],
+  cash_deposit_asset:["asset"],
+  insurance_policy_asset:["asset","insurance"],
+  tax_income:["income"],
+  business_sales_vat:["income","business"]
+};
 export function bindCanonicalSourceField(field:CanonicalSourceInput,contract:CanonicalSourceContract|null|undefined):CanonicalSourceBinding {
   const candidates=contract?.fields??[],explicit=typeof field.canonicalFieldId==="string"&&field.canonicalFieldId.length>0;
   const matches=candidates.filter(f=>explicit?f.global_field_id===field.canonicalFieldId:f.local_id===field.key||f.global_field_id===field.key);
@@ -27,8 +40,10 @@ export function bindCanonicalSourceField(field:CanonicalSourceInput,contract:Can
     const leaf=definition.local_id.split(".").at(-1)!;
     const uniqueLeaf=candidates.filter(f=>f.local_id.split(".").at(-1)===leaf).length===1;
     const parts=field.key.split(".");
+    const nativeRoot=definition.local_id.includes(".")?definition.local_id.split(".")[0]:null;
+    const compatibleNamespaces=new Set([nativeRoot,contract?.family_id,...(familyPrefixes[contract?.family_id??""]??[])].filter((item):item is string=>!!item));
     const compatible=field.key===definition.local_id||field.key===definition.global_field_id
-      ||uniqueLeaf&&(field.key===leaf||parts.length===2&&prefixes.has(parts[0])&&parts[1]===leaf);
+      ||uniqueLeaf&&(field.key===leaf||parts.length===2&&compatibleNamespaces.has(parts[0])&&parts[1]===leaf);
     if(!compatible){definition=undefined;issues.push("canonical_id_key_conflict");}
   }
   if(!definition)issues.push(explicit?"canonical_id_outside_family":matches.length>1?"canonical_id_ambiguous":"canonical_id_unbound");
@@ -61,6 +76,18 @@ const projections:Readonly<Record<string,Readonly<Record<string,Readonly<Record<
   cash_deposit_asset:{asset:{
     "asset_kind":"kind","gross_value":"gross_value","actual_payoff":"secured_payoff",
     "as_of_date":"as_of","valuation_basis":"valuation_basis"
+  }},
+  // A certified annual income after allowable expenses is a historical
+  // observation; neither its recurrence nor current legal recognition is inferred.
+  tax_income:{income:{
+    "income_kind":"kind","gross_receipts":"gross","necessary_expenses":"expenses",
+    "income_after_expenses":"net","period_start":"period_start","period_end":"period_end"
+  }},
+  // VAT turnover is gross receipts only. It is never net operating income.
+  // Operating costs from other documents require a separately reviewed join.
+  business_sales_vat:{income:{
+    "income.sales.business_entity":"label","income.sales.reporting_period_start":"period_start",
+    "income.sales.reporting_period_end":"period_end","income.sales.gross_sales":"gross"
   }},
   insurance_policy_asset:{asset:{"surrender_value":"surrender_value","as_of_date":"as_of"}}
 };

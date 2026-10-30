@@ -1,5 +1,6 @@
 import { renderPromptPolicy } from "./reference-prompts.ts";
 import { bindCanonicalSourceField, canonicalProjectionKey } from "./canonical-field-binding.ts";
+import { calculationSourceCellIssues } from "./ocr-calculation-input.ts";
 import { documentFieldContract } from "./document-agent-registry.ts";
 import { observeField, pageFieldCoverage, SOURCE_STATES, VERIFICATION_STATES, FIELD_OBSERVATION_INSTRUCTIONS, type ObservationInput, type VerificationState } from "./field-observation.ts";
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
@@ -266,6 +267,13 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
   read.records.forEach((r,ri)=>{
     const id=`${documentId}:p${page}:${r.category}:${ri}`,ids:string[]=[];
     const keyCache=new WeakMap<ReadField,string>();
+    const inputIssueCache=new WeakMap<ReadField,string[]>();
+    const sourceIssues=(f:ReadField)=>{
+      const cached=inputIssueCache.get(f);if(cached)return cached;
+      const bound=bindCanonicalSourceField(f,sourceContract);
+      const issues=calculationSourceCellIssues(f,bound.definition);
+      inputIssueCache.set(f,issues);return issues;
+    };
     const localKey=(f:ReadField)=>{
       const cached=keyCache.get(f);if(cached!==undefined)return cached;
       const binding=bindCanonicalSourceField(f,sourceContract);
@@ -305,7 +313,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
     const conflicting=new Set([...byKey].filter(([key,fields])=>!(r.category==="statement"&&key==="text")&&new Set(fields.filter(f=>f.value!==null).map(f=>JSON.stringify([f.value,f.unit]))).size>1).map(([key])=>key));
     // An explicit unresolved component cannot disappear behind a usable duplicate.
     if(r.category==="debt")for(const [key,fields] of byKey)if(isDebtComponentSlot(key)&&fields.length>1&&fields.some(f=>f.value===null||!f.quote?.trim()||f.confidence!=="clear"))conflicting.add(key);
-    const usable=(f:ReadField,fieldIndex?:number)=>(!f.sourceState||f.sourceState==="present")&&typeof f.value==="string"&&f.value.trim()!==""&&f.confidence==="clear"&&typeof f.quote==="string"&&!!f.quote.trim()&&!conflicting.has(localKey(f))&&!(fieldIndex!==undefined&&conflictingStatementTextIndexes.has(fieldIndex));
+    const usable=(f:ReadField,fieldIndex?:number)=>(!f.sourceState||f.sourceState==="present")&&typeof f.value==="string"&&f.value.trim()!==""&&f.confidence==="clear"&&typeof f.quote==="string"&&!!f.quote.trim()&&sourceIssues(f).length===0&&!conflicting.has(localKey(f))&&!(fieldIndex!==undefined&&conflictingStatementTextIndexes.has(fieldIndex));
     const field=(key:string)=>(byKey.get(key)??[]).find(usable);
     const chosen=new Map([...byKey].map(([key,fields])=>[key,field(key)??fields.find(f=>f.value!==null&&typeof f.quote==="string"&&!!f.quote.trim()&&f.confidence!=="unreadable")]));
     const value=(key:string)=>field(key)?.value??undefined;
@@ -343,6 +351,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       if(fieldConflict)validation.push({code:"FIELD_CONFLICT",message:repeatableStatementText?"같은 원문 영역에서 상충하는 진술문 텍스트가 판독되었습니다.":"같은 필드에 상충하는 원문값이 있습니다.",severity:"error"});
       if(r.category==="debt"&&["bank_transactions","bank_account"].includes(family))validation.push({code:"DOCUMENT_CATEGORY_MISMATCH",message:"은행 거래·계좌 문서의 이 행을 현재 채무로 분류할 원문 근거가 없습니다. 원문 사실만 보존하고 typed 채무 투영은 보류합니다.",severity:"error"});
       if(observation.issues.length)validation.push({code:"FIELD_OBSERVATION_REVIEW",message:observation.issues.join(", "),severity:"warning"});
+      for(const issue of sourceIssues(f))validation.push({code:issue,message:"원문 피처의 자료형·단위·기간·인용이 계산용 형식에 맞지 않아 투영을 보류합니다.",severity:"error"});
       if(observation.sourceState!=="present")validation.push({code:"SOURCE_STATE_UNRESOLVED",message:"원문 상태를 값 추출·비대상 결정과 구분하여 보존했습니다. 계산에 사용할 수 없습니다.",severity:"warning"});
       const monetary=observation.sourceState==="present"&&isSourceMoney(key,f.unit);
       if(monetary&&!f.unit?.trim())validation.push({code:"MONETARY_UNIT_MISSING",message:"원문 금액 단위가 확인되지 않아 원화 정규화와 계산을 보류했습니다.",severity:"warning"});
@@ -369,7 +378,30 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
         return;
       }
       if(leaseType(read.documentType)&&!(["applicant_is_landlord","income_owner_role"].some(k=>value(k)==="yes"||value(k)==="applicant"))){warnings.push(`${id}: 임대차 문서만으로 신청인 임대수입을 판단하지 않았습니다. 신청인이 임대인이라는 원문 근거가 필요합니다.`);}
-      else {if(!value("label"))warnings.push(`${id}: 인용된 소득원명이 없어 확인이 필요합니다.`);incomes.push({id,kind:known(value("kind"),["wage","business","rent","interest","dividend","pension","benefit","other"],"other"),label:value("label")||"",employer:value("employer"),payerIdentityId:value("payer_identity_id"),aggregationTreatment:"unknown",aggregationReviewed:false,gross:num("gross"),expenses:num("expenses"),net:num("net"),periodStart:value("period_start"),periodEnd:value("period_end"),periodMonths:integer("period_months"),amountBasis:sourceAmountBasis(value("amount_basis")),recurring:tri(value("recurring")),recognition:"unreviewed",factIds:ids});}
+      else {
+        const sourceFamily=sourceContract?.family_id??null;
+        const kindAliases:Record<string,IncomeSource["kind"]>={"근로소득":"wage","급여":"wage","사업소득":"business","부동산임대소득":"rent","연금소득":"pension","이자소득":"interest","배당소득":"dividend"};
+        const rawKind=value("kind");
+        const incomeKind:IncomeSource["kind"]=sourceFamily==="payroll_payslip"?"wage":
+          sourceFamily==="business_sales_vat"?"business":
+          known(kindAliases[rawKind??""]??rawKind,["wage","business","rent","interest","dividend","pension","benefit","other"],"other");
+        const start=value("period_start"),end=value("period_end");
+        const declaredBasis=sourceAmountBasis(value("amount_basis"));
+        // A net payslip/earning-period amount or annual income certificate is
+        // a total for the expressly printed period. The calculator still blocks
+        // non-calendar-month spans and unreviewed recurrence/identity.
+        const periodTotalFamily=["payroll_payslip","current_nonwage_income","tax_income"].includes(sourceFamily??"");
+        const hasSourcePeriod=!!field("period_start")&&!!field("period_end");
+        const basis=declaredBasis!=="unknown"?declaredBasis:
+          periodTotalFamily&&hasSourcePeriod&&!!field("net")?"period_total":"unknown";
+        if(basis==="unknown"&&!!field("net"))
+          warnings.push(`${id}: 금액의 월액/기간합계 기준을 확정할 근거가 없어 계산 분모를 보류했습니다.`);
+        const label=value("label")||value("employer")||rawKind||r.label;
+        incomes.push({id,kind:incomeKind,label,employer:value("employer"),payerIdentityId:value("payer_identity_id"),
+          aggregationTreatment:"unknown",aggregationReviewed:false,gross:num("gross"),expenses:num("expenses"),net:num("net"),
+          periodStart:start,periodEnd:end,periodMonths:integer("period_months"),amountBasis:basis,recurring:tri(value("recurring")),
+          recognition:"unreviewed",factIds:ids});
+      }
     }
     if(r.category==="debt"){
       if(["bank_transactions","bank_account"].includes(family)){warnings.push(`${id}: 은행 거래·계좌 문서에서 debt category가 판독되어 원문 사실은 보존했지만 typed 현재채무 생성은 보류했습니다.`);return;}
