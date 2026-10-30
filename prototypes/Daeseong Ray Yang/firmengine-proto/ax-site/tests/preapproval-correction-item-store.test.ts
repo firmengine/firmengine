@@ -155,3 +155,46 @@ test("stale source dataVersion cannot be silently rebound to an unchanged case r
  await assert.rejects(()=>upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"}),
   /CORRECTION_SOURCE_DATA_VERSION_MISMATCH/);
 });
+
+function appendSecondCourtOrder(data:CaseData,courtReference:string){
+ const first=data.workflowState!.procedureEvents.find(e=>e.state==="correction_requested")!;
+ data.documents.push({id:"court-second",name:"synthetic-second-order.pdf",sha256:"d".repeat(64),status:"active",pages:[1]});
+ data.pages.push({documentId:"court-second",page:1,role:"evidence",text:"synthetic second order requests additional asset evidence"});
+ data.workflowState!.procedureEvents.push({...first,id:"court-second-event",courtReference,
+  sourceDocumentIds:["court-second"],relatedFields:["asset.gross_value"],
+  reason:"synthetic second court order"});
+}
+test("response cannot silently attach to either of two correction orders sharing one docket",()=>{
+ const {data,draft}=setup();
+ appendSecondCourtOrder(data,"synthetic-ref");
+ // The recorded response is not explicitly linked to the first order. A shared
+ // docket number is not evidence that this reply satisfies either order.
+ const proposed={...draft,responseEventId:"received-answer",
+  responseDocumentIds:["answer"],receiptDocumentId:"receipt"};
+ assert.throws(()=>validateCorrectionItemDraft(data,proposed),/CORRECTION_RESPONSE_ORDER_AMBIGUOUS/);
+});
+test("additional same-docket court order still permits itemization without a reply",()=>{
+ const {data,draft}=setup();
+ appendSecondCourtOrder(data,"synthetic-ref");
+ assert.equal(validateCorrectionItemDraft(data,draft).payload.courtEventId,"court-order");
+});
+test("an unrelated second docket does not block a response to the only matching order",()=>{
+ const {data,draft}=setup();
+ appendSecondCourtOrder(data,"synthetic-other-docket");
+ const response={...draft,responseEventId:"received-answer",
+  responseDocumentIds:["answer"],receiptDocumentId:"receipt"};
+ assert.equal(validateCorrectionItemDraft(data,response).payload.responseEventId,"received-answer");
+});
+test("existing reply mapping is marked stale if a second same-docket order appears",async()=>{
+ const {data,db,draft}=setup();
+ const reply={...draft,responseEventId:"received-answer",
+  responseDocumentIds:["answer"],receiptDocumentId:"receipt"};
+ await upsertCourtCorrectionItem(db,{data,draft:reply,actorId:"staff-reviewer"});
+ assert.equal((await readCourtCorrectionItems(db,data)).items[0].sourceCurrent,true);
+ appendSecondCourtOrder(data,"synthetic-ref");
+ const after=await readCourtCorrectionItems(db,data);
+ assert.equal(after.items[0].sourceCurrent,false);
+ assert.equal(after.items[0].draft,null);
+ assert.equal(after.items[0].courtOrderSatisfied,false);
+ assert.equal(after.items[0].status,"stale_source_or_invalid_item");
+});
