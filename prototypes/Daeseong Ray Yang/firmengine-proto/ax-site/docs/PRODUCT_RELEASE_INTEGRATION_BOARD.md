@@ -249,7 +249,7 @@
 - [ ] **A2-IT-008** 계산 실행 중 자료 변경과 원자적 CAS 처리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-009** 관리 기준정보 수정·승인·활성화·롤백/영향분석. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-010** DB schema/migration journal와 실제 적용 테이블. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-IT-011** 저장 계산행 5,000건 한계·잘림 방지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. ****6차 코드 검토:** 저장 store는 5000행 초과 명시 거부, approval-readiness SQL은 LIMIT 5001과 <=5000 경계 감시. 실제 D1/5,001행/두 워커 실행하지 않아 [ ] 유지.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md). **7차 부분:** 실제 `inserts()` 본문 격리 5000행→834 SQL statements/최대 78 bind; `db.batch`는 Cloudflare 공식상 subrequest 1회. 결합 JSON row 2MB 위험 [Draft PR #38](https://github.com/firmengine/firmengine/pull/38)·Node 격리 5/5. D1 실제 round-trip 미실행.
+- [ ] **A2-IT-011** 저장 계산행 5,000건 한계·잘림 방지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. ****6차 코드 검토:** 저장 store는 5000행 초과 명시 거부, approval-readiness SQL은 LIMIT 5001과 <=5000 경계 감시. 실제 D1/5,001행/두 워커 실행하지 않아 [ ] 유지.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md). **7차 부분:** 실제 `inserts()` 본문 격리 5000행→834 SQL statements/최대 78 bind; `db.batch`는 Cloudflare 공식상 subrequest 1회. 결합 JSON row 2MB 위험 [Draft PR #38](https://github.com/firmengine/firmengine/pull/38)·Node 격리 5/5. D1 실제 round-trip 미실행. **7차 보완:** PR #38에 `missing_json` 등 같은 run 행의 **16개 바인드 열 전체** UTF-8 byte 합산검사 추가. 순수 함수 본문 Node22 격리 6/6; 정식 프로젝트 Node/D1 미실행.
 - [ ] **A2-IT-012** 복수행 정렬과 순서를 바꿔도 계산 재현성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-013** calculated/provisional/blocked/NA status 의미 통일. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-014** 관리 가능 법원·세무 임계값의 소스 하드코딩 추출. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -368,7 +368,7 @@
 - [ ] **A2-DATA-021** 원문 없는 합성 추정값이 운영 저장에 들어가지 않기. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-022** 독립 계산 golden과 실제 엔진 금액 비교. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-023** 반올림·절사·잔여원 순서에 무관한 재현성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** BigInt 나머지원 소수 사례 7종 독립 격리 계산 정상, 채권2건 각 10원/3회 경우 월별 [8,6,6] vs 7원 cap 첫월 초과 확인. 실제 엔진 `reconcilePlanLedger`/SQL 재독 미실행.
-- [ ] **A2-DATA-024** 실제 저장 스키마대로 합성 사건 insert→replay. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **7차 부분:** `0011` SQL/Drizzle와 계산 run JSON 저장 필드·sourceHeads 관계 정적 대조, 원문+run JSON 합계 2MB 초과 P1 [PR #38](https://github.com/firmengine/firmengine/pull/38). 실제 SQLite/D1 insert·re-read 미실행.
+- [ ] **A2-DATA-024** 실제 저장 스키마대로 합성 사건 insert→replay. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **7차 부분:** `0011` SQL/Drizzle와 계산 run JSON 저장 필드·sourceHeads 관계 정적 대조, 원문+run JSON 합계 2MB 초과 P1 [PR #38](https://github.com/firmengine/firmengine/pull/38). 실제 SQLite/D1 insert·re-read 미실행. **7차 보완:** SQL 16열의 run 단일 행 상한에 `missing_json`·기타 식별/상태 필드까지 포함하도록 PR #38 보완. 6개 격리 합성 경계 통과; 실제 D1 E2E 미인증.
 
 ### A2 AX담당자 (18개)
 
@@ -920,3 +920,5 @@
 - `case_calculation_runs`의 `raw_result_json`·`source_heads_json`을 개별로만 검사하면 단일 D1 행 2MB 초과 위험. 결합 상한/원문 그대로 유지 [Draft PR #38](https://github.com/firmengine/firmengine/pull/38), 순수 함수 동일 본문 Node22 격리 `5/5`. 해당 테스트 파일의 프로젝트 전체 회귀는 미실행.
 - SQL 13열 INSERT의 5,000행은 834 statements/최대 bind 78개임을 코드 함수본문 격리 확인했지만, D1 실제 5,000/5,001 insert·42 경로 재독은 미실행. Cloudflare D1 공식 2026-10-24 limits에서 `db.batch()` 전체는 Worker subrequest 1회라는 예외 확인.
 - **다음**: #25/#29/#37 교차 날짜·채권잔액 통합 Node 테스트, #33 출력행 누락 및 #38 결합크기 회귀, SQLite/D1 5천행/42 outputs, 36/48/60회 D5110 Word/법원서식, A2-AX 미검증 역할 순환. 법원 제424호/채무자회생법 시행일은 공식원문을 대조했으나 판본별 법률 승인 없음.
+
+- **A2 7차 PR #38 후속:** `case_calculation_runs` 16개 bound 컬럼 전체의 UTF-8 바이트 합산 및 `missing_json` 포함으로 수정안 보완, 순수 함수 동일 본문 Node22 격리 **6/6**; 정식 TypeScript 프로젝트 테스트·staging D1·공식서식·변호사 승인은 여전히 **미실행/미인증**. [후속 증빙](release-audit-runs/A2/2026-10-30_1922_KST_reviewed-due-date-and-d1-row-budget.md).
