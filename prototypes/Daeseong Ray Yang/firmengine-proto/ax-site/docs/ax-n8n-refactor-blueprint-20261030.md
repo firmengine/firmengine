@@ -1,6 +1,6 @@
 # FirmEngine AX 전체 실행감사 및 n8n·다중사건 운영 리팩토링 설계서
 검토 기준: 2026-10-30 / GitHub main c0f244b7e1e5a0cf0e8d73cc69fb06f1df7f3f0b
-문서 상태: **PROPOSED / 구현 지시서 및 인수기준**. 라이브 D1, R2, n8n 배포 인스턴스와 실제 법원 제출에 대한 통합 통과를 의미하지 않는다.
+문서 상태: **ARCHITECTURE PROPOSED / 과거 감사 스냅샷**. 현재 미해결 결함은 [활성 이슈·가상검증](current-unresolved-and-synthetic-audit-20261030.md)만 참조. 다음은 최초 설계 당시 현행 코드 기록이며 완료 여부를 그대로 승계하지 않는다. 라이브 D1, R2, n8n 배포 인스턴스와 실제 법원 제출에 대한 통합 통과를 의미하지 않는다.
 범위: ax-site의 상담·85종 문서 라우팅·OCR·정규화 피처·계산·법률 AI·LawGraph·서류작성·기준정보·검토 및 외부 연동. 기존 운영 소스는 변경하지 않음.
 
 ## A. 결론과 변경 불가 원칙
@@ -17,34 +17,33 @@
 - 사건 실행은 시작 시 고정된 법령·관할·시행일·서식·프롬프트·모델 정책의 버전 번들로만 진행한다. Git main 최신 파일을 실행 중 자동 교체하지 않는다.
 - Google Sheets는 **사건 DB의 복제·운영 대시보드**이지 법적 계산의 원본 DB가 아니다. Drive/NAS는 파일 바이트 저장소이며 원본성의 기준은 사건 DB의 문서 레지스트리와 해시다.
 
-## B. 현재 코드 기준 확정된 연결과 결함
+## B. 최초 코드감사에서 남은 구조적 결함 (현재 이행상태는 활성 이슈 문서 확인)
 
 현행 경로: DB SQL 트리거 → case_data_change_state → 10분 조용한 기간 → case_calculation_heads → case-agent-scheduler → reviewLegal(6개/회, 총95개) → analyses → persistCaseLawgraphReview → 자동 초안 후보 → automatic-review-draft → R2/artifacts → 별도 staff workflow UI.
 
-규모: DB Drizzle 테이블 53개. 법률 risk 체크 95개 중 explicit required_features가 없는 항목 88개; 모델 자동 해소 허용 0개. OCR canonical 693개, 최신 감사 기록의 명시적 typed projection 47개, 나머지 646개는 원본 전용 또는 미연결. 문서 계약 85종. GitHub 테스트 파일 132개 있으나 CI workflow run 0건(2026-10-30 현재 조회). 실제 통합 테스트 통과는 확인되지 않음.
+최초 감사 당시 확인한 범위: DB Drizzle 테이블 53개, 법률 risk 95개 중 explicit required_features 미정의 88개, OCR canonical 693개, 직접 typed 계산 projection 47개(나머지 646개는 원문 전용 또는 별도 소비처 평가), 문서 계약 85종. **그 뒤 코드/테스트가 계속 추가되었으므로 최초 테스트 파일 수 등은 최신 수치로 사용하지 않는다.** 전체 CI/운영 E2E 미검증.
 
 | ID | 심각도 | 실제 모듈/위치 | 실패 형태 및 실행상의 영향 | 변경 계약 |
 |---|---|---|---|---|
-| F01 | P0 | drizzle/0010; server-store.saveCase; legal-review-identity | cases.revision 변경 모두 source data_version 증가. 담당자 작업/법률 의견/문서 업무 갱신만으로도 10분 재대기·95개 재검토 및 사람 승인 무효화 가능 | source_revision, workflow_revision, legal_disposition_revision, artifact_revision 분리; 법적 의존성 fingerprint만 검사 |
-| F02 | P0 | intake-store.appendConsultation; case-data-watch | 상담 note 수정만 하고 active_run_id가 이미 null인 경우 consultation_heads의 revision만 바뀌어 원천 변경 감시 누락 가능. 상담 재분류는 Cron에서 자동 호출되지 않음 | consultation_change 이벤트와 intake_reanalysis_pending 별도 큐; 승인된 최신 상담 실행과 사건 workflow adoption 연결 |
-| F03 | P0 | worker/index; case-agent-scheduler; case-data-recompute | Cron limit=1, 오래된 최초 행을 처리. 조용하지 않은/영구 실패 사건이 앞으로 정렬되면 다른 사건이 기아 상태에 빠질 수 있음 | due_at<=now 필터, per-case lease, bounded retries, fair scheduling, DLQ 및 사건별 concurrency |
-| F04 | P0 | case-feature-snapshot; pipeline | 정규화 원천 head가 없는 legacy case도 warning만 남기고 계산 진행 가능. OCR 미완료/원천상충을 AI 시작 전에 일괄 차단하는 preflight가 없음 | source snapshot integrity and evidence readiness의 명시적 상태. 불완전하면 AI 재검토를 보류하고 증빙 작업 생성 |
 | F05 | P0 | risk-catalog; legal-review-packet | 95개 중 88개는 required_features 선언이 빈 값. 상태 검토 95개 완료가 사건·피처별 실질적 법률 판단 증거가 아님 | 관할·시행일·피처·증빙·적용조건·법원양식별 risk contract 검증/승인 후 적용 |
-| F06 | P0 | case-legal-automation.finalizeReview; case-lawgraph-store; document-writer | LawGraph에 checks는 기록하지만 documentFields는 공급하지 않음. 자동 작성기는 별도 derived_evaluation/formBindings에서 값을 가져옴. AI 법률 판단·반려피처가 실제 서식 필드까지 연결되지 않음 | LawGraph→document preflight blockers + reviewed proposals→exact form fields 양방향 계약; 금액은 계산 엔진 결과만 |
-| F07 | P0 | automatic-review-draft; export/route; case-workflow-server | 자동 초안은 artifacts/R2에 저장되지만 기존 exportManifest 기반의 문서 검토·편집·승인 경로로 등록되지 않음 | automatic_draft artifact를 동일 reviewer workbench의 검토·승인 대기 큐로 노출; final 승인과 인가 구분 |
+| F06 | P0 | case-legal-automation; case-lawgraph-store; final-lawgraph-readiness | 실제 form binding을 법률검토 DB에 기록하고 최종 LawGraph 문서 게이트도 생겼으나, **documentFieldProjectionError/0필드가 자동초안 자격 판단에 전달되지 않아** 투영 실패 시 후보가 허용될 수 있음(가상 T15) | 독립 판정은 보존하면서 초안 허용 판정에 정확한 서식투영 failure를 연결하고 재생성 검증 |
+| F07 | P0 | automatic-review-draft; case-workflow-server; CaseReviewActions | 자동초안 artifacts와 case_automatic_document_runs는 존재하지만 일반 exportManifest 기반 문안 편집·검토 대상에 연결되지 않음. 링크 표시는 가능하나 동일 reviewer 원장으로 승인할 수 없음 | 자동초안→공통 review artifact 등록, 직원/변호사 인계 및 재생성 처리 |
 | F08 | P0 | tests/case-legal-automation-flow.test | 정상 자동초안 draft_ready → R2 파일 → 직원 검토 → 재수정→ 재생성 성공을 관통하는 실제 통합 테스트가 없음. 테스트에서 generateDraft는 차단 stub | 최소 2개 실제 문서/3개 독립 사건의 success-path E2E 필수 |
-| F09 | P1 | case-legal-automation.finalizeReview | 법령 감시 알림을 관할·유효일/해당 서식 구분 없이 전체 COUNT로 판단하여 관련 없는 알림으로 모든 사건의 초안을 막을 수 있음 | policy_release applicability(case court/date/rule/form) 및 blocking severity 매칭 |
-| F10 | P1 | case-legal-automation; case-calculation-feature-store | calc head가 현재라는 것만 보고 legal AI 처리. 계산 상태가 missing/provisional일 때도 전량 AI 비용을 쓸 수 있음 | 계산 결과 상태·필수 산식·원천근거를 법률 AI 전 preflight에서 gate |
+| F09 | P1 | case-legal-automation; case-substitution-watch; case-workflow-server | 법령 알림을 전역 미확인 COUNT로 처리하여 다른 관할의 법령 알림으로 초안/갈음 평가까지 막을 수 있음(가상 DB10,11 재현) | 관할·시행일·법령·서식별 영향 정책과 사건별 선택 필터 |
+| F10 | P1 | case-legal-automation; case-legal-source-preflight | OCR·상담 source readiness는 사전 체크하나 **필수 계산 산식의 missing/blocked/provisional은 AI 95개 실행 전에 전체 차단하지 않음** | 법률 AI 전 계산 출력/입력 상태의 정량 preflight 강제 |
 | F11 | P1 | case-legal-automation; case-tasks; UI | missingDocuments/nextAction은 AI 결과에 존재하나 case_tasks 생성, 담당자 배정, 이메일/시트 업무 반영, SLA/중복 억제에 연결되지 않음 | review_task를 법률 finding fingerprint로 upsert, owner/due/ack/resolution 필수 |
 | F12 | P1 | case-legal-automation; n8n-reference | 신규 95체크 AI는 현재 ax-site 직접 호출. n8n-reference/의 JSON은 이전 Python 프로토타입용 inactive 참고본이므로 복사·URL 교체만으로 실행 불가 | 신규 API 계약과 별도 n8n workflow JSON/CI 생성 |
 | F13 | P1 | case-legal-automation; legal/reference | 기준정보 버전·프롬프트·모델 policy가 서로 독립적으로 바뀔 수 있고 per-run immutable bundle이 없음 | release_manifest에 Git SHA + legal SHA + schema SHA + prompt SHA + model policy SHA 동봉 |
 | F14 | P1 | automatic-review-draft; export-artifact-transaction | 생성 중 lease 만료/네트워크 실패/부분 R2 성공 후 DB 실패 시 보상정리와 파일 재사용 무결성 확인이 미완성 | prepare/upload/verify/commit state, sha+provider id 검증, sweep/reconcile, idempotent finalization |
-| F15 | P1 | case-workflow-view 호출 | 자동 판단 측에서는 catalogVersion/pageTypes/activeIntakeRunId를 주지 않고 buildCaseWorkflowView 사용. 갈음서류·서류 요건 상태가 실화면과 다르게 복원·보류될 수 있음 | 동일 컨텍스트를 제공하는 canonical requirement evaluator를 API 하나로 통합 |
+| F15 | P1 | case-legal-automation.finalizeReview; case-workflow-server | 직원 화면은 법원/관할/상담 run/페이지 종류를 넘겨 buildCaseWorkflowView를 실행하나 자동 법률 경로는 options 없는 호출을 사용 | 공통 사건 요건 evaluator 및 동일 컨텍스트 주입 |
 | F16 | P1 | worker Cron / pipelines | 6개씩 95개 검토 → 최소 16번 호출. Cron 1분·한 사건/회면 단일 사건 최소 약 16분+10분 대기, 다중사건은 선형 지연 | 단계별 큐와 case_id별 독립 checkpoint, 여러 n8n workers/백엔드 rate-limit |
 | F17 | P1 | legal-monitor-provider; worker scheduled | 법령/법원문서 정기 모니터가 현재 사건 재판단 Cron에서 자동 스케줄되는 연결 확인 안 됨 | 독립 daily compliance monitor + reviewer release approval + affected case invalidation |
 | F18 | P1 | server-store requireSameOrigin; app roles | 기존 사이트는 owner-private 실행 경계. 직원·복수사건 운용의 per-case ACL/SSO, 서비스계정 최소권한, API 인증 및 감사가 부족 | staff roles + case assignment ABAC/RBAC, mTLS/OAuth scopes, row-level security, no service fallback for human actions |
 | F19 | P1 | case-schema-services; source/typed contract | OCR 693개 중 646개가 직접 계산 변환 미설정; 18계산모듈 91선언 입력과 연결 점검 지속 중 | 시나리오별 accepted input contract + lineage coverage report와 blocker 분리 |
-| F20 | P1 | all runtime & migrations | 0017/0018 및 Cron이 실제 D1/Workers에 반영됐는지 검증 안 됨; CI 0 runs | staging migrations, build, integration, chaos, UI smoke, deployment attestation 선행 |
+| F20 | P1 | runtime / migrations / CI | 0017–0021 및 실제 D1/Cron 배포·전체 CI/법원 원서식 적합성은 합격 증빙 미확인 | staging migration 0017→0021, build/integration/chaos/UI smoke, 배포 영수증 |
+
+
+> **2026-10-30 후속 코드 상태 보정:** F01(원천/검토 변경 구분), F02(상담 revision 감시), F03(계산 Poll 공정성), F04(법률 AI 앞단 원문 준비도)는 각각 0021/0019/0020 및 서버 모듈에 코드가 반영되어 **이 표의 미구현 결함에서 제외**했다. 실제 운영 적용·E2E 검증은 F20 및 [활성 미해결 목록](current-unresolved-and-synthetic-audit-20261030.md)에서 추적한다. 최초 문서의 다른 표와 제안된 설계 단계는 실행된 n8n의 실적이 아니다.
 
 ## C. 목표 컴포넌트 구조 및 데이터 흐름
 
