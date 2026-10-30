@@ -59,10 +59,11 @@ test('explicit observed zero and unknown/null are not conflated by complete expe
     {calculationId:'income_aggregation',outputPath:'/assessment/calculation/incomeRows/0/monthlyWon'},
     {calculationId:'income_aggregation',outputPath:'/assessment/calculation/presentValueWon'},
   ];
-  const rows=[make('/assessment/calculation/incomeRows/0/monthlyWon','3000000'),make('/assessment/calculation/presentValueWon',null,{status:'missing'})];
-  const out=auditStoredCalculationReplay({execution,rows,currentFactIds:new Set(['f1']),expectedOutputs});
+  const zeroExecution={...execution,assessment:{calculation:{...execution.assessment.calculation,incomeRows:[{id:'one',monthlyWon:'0'}]}}};
+  const rows=[make('/assessment/calculation/incomeRows/0/monthlyWon','0'),make('/assessment/calculation/presentValueWon',null,{status:'missing'})];
+  const out=auditStoredCalculationReplay({execution:zeroExecution,rows,currentFactIds:new Set(['f1']),expectedOutputs});
   assert.equal(out.valid,true);
-  const corrupted=auditStoredCalculationReplay({execution,rows:[rows[0],{...rows[1],valueJson:'"0"'}],currentFactIds:new Set(['f1']),expectedOutputs});
+  const corrupted=auditStoredCalculationReplay({execution:zeroExecution,rows:[rows[0],{...rows[1],valueJson:'"0"'}],currentFactIds:new Set(['f1']),expectedOutputs});
   assert.equal(corrupted.valid,false);
   assert.equal(corrupted.issueCountByCode.OUTPUT_VALUE_MISMATCH,1);
 });
