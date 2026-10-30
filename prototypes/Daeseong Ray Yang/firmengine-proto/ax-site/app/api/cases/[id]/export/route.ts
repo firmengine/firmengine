@@ -53,6 +53,7 @@ async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getC
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),data=await getCase(id),extras=await caseExtras(data);
   const mode=body.mode==="final"?"final":"draft";
+  let finalLegalReceipt:Awaited<ReturnType<typeof inspectCurrentFinalLawgraph>>|null=null;
   if(mode==="final"&&data.workflowState){
     const workflowView=await buildCaseWorkflowView(data);
     const activeRequirementIds=new Set(data.workflowState.requirements.filter(requirement=>!requirement.retired).map(requirement=>requirement.requirementId));
@@ -74,6 +75,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       const legal=await inspectCurrentFinalLawgraph(db(),{caseId:id,caseRevision:data.context.revision,
         referenceSha256:extras.referenceSnapshot?.sha256??"",humanDispositions:legalChecks});
       if(!legal.readyForFinalReviewCopy)throw new HttpError(422,"현재 법률 검토 95개 항목 또는 법률 담당자 승인 조건을 충족하지 못했습니다: "+legal.blockers.slice(0,6).join(", "));
+      finalLegalReceipt=legal;
     }
   }
   let prepared;
@@ -105,6 +107,16 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     commitManifest:async()=>{
       // Uploads can outlast a reference update; check again at the save boundary.
       if((await loadReferenceSnapshot(db())).sha256!==prepared.receipt.referenceRelease?.sha256)throw new HttpError(409,"문서 저장 중 적용 기준이 변경되었습니다. 최신 계산과 검토 상태를 확인하세요.");
+      if(finalLegalReceipt){
+        // OCR SQL rows can change without a matching UI case revision. Never
+        // publish a final review copy on a stale legal/calculator/data head.
+        const latest=await inspectCurrentFinalLawgraph(db(),{caseId:id,caseRevision:data.context.revision,
+          referenceSha256:prepared.receipt.referenceRelease?.sha256??"",humanDispositions:await currentLegalDispositionStates(data,extras)});
+        if(!latest.readyForFinalReviewCopy||latest.currentDataVersion!==finalLegalReceipt.currentDataVersion
+          ||latest.legalReviewRunId!==finalLegalReceipt.legalReviewRunId
+          ||latest.calculationRunId!==finalLegalReceipt.calculationRunId)
+          throw new HttpError(409,"문서 작성 중 OCR·계산·법률 검토 판본이 변경되어 최종 문서 저장을 중단했습니다.");
+      }
       data.exportManifest={...newExportManifest(data.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),data,mode),documentWriter:writerReceipt} as typeof data.exportManifest;
       await saveCase(data,data.context.revision,data);
     },
