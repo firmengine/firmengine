@@ -20,7 +20,7 @@ test("business expense entity and category have exact preflight review routes wi
    "business_identity_crosswalk","business_net_preflight"]);
  assert.deepEqual(reviewIds("business_costs_and_ledgers::income.business_cost.expense_category"),[
    "business_net_preflight"]);
- assert.ok(field("business_costs_and_ledgers::income.business_cost.expense_category").sourceReviewConsumers.every(x=>!x.status.includes("approved_net")));
+ assert.ok(field("business_costs_and_ledgers::income.business_cost.expense_category").sourceReviewConsumers.every(x=>x.status==="verified_source_candidate_not_approved_net_income"));
 });
 test("business accounting basis and continuity are still unconsumed context requiring review",()=>{
  for(const key of ["accounting_basis","business_continuity_flag"]){
