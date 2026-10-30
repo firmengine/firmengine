@@ -15,6 +15,12 @@ const DERIVED:Readonly<Record<string,readonly string[]>>={
   "asset.gross_value":["asset.surrender_value"],
 };
 const CASE_TYPES=new Set(["income","debt","asset","transaction","household"]);
+/** Some declared calculation keys deliberately address validated Fact rows, NOT
+ * properties on CaseData.context or CaseData.household. Do not pretend
+ * that reading context.planApprovalDate from the context object succeeds.
+ */
+const FACT_ONLY_PATHS=new Set(["context.plan_approval_date","household.minor_children","household.single_parent"]);
+
 export function buildCalculationInputAudit(
  sourceFields:readonly Lineage[],specs:readonly CalculationSpec[]=getCalculationSpecs()
 ){
@@ -31,6 +37,7 @@ export function buildCalculationInputAudit(
    const root=path.split(".")[0];
    const category=primary.length?"direct_canonical_ocr" :
      derived.length?"derived_from_ocr_review_required":
+     FACT_ONLY_PATHS.has(key)?"source_verified_legal_fact_not_case_property":
      root==="context"?"reviewed_case_context_not_ocr":
      CASE_TYPES.has(root)?"typed_case_input_with_no_direct_canonical_ocr_mapping":
      "calculation_or_legal_decision_input_not_direct_ocr";
@@ -47,6 +54,7 @@ export function buildCalculationInputAudit(
   derivedCandidatePaths:tally("derived_from_ocr_review_required"),
   unboundTypedInputPaths:tally("typed_case_input_with_no_direct_canonical_ocr_mapping"),
   reviewedContextPaths:tally("reviewed_case_context_not_ocr"),
+  sourceVerifiedFactPaths:tally("source_verified_legal_fact_not_case_property"),
   otherLegalAndToolPaths:tally("calculation_or_legal_decision_input_not_direct_ocr"),
   completeness:"not_all_inputs_mapped_or_verified",
   automaticCalculationApproval:false,courtApprovalInferred:false,modules};

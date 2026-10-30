@@ -29,3 +29,12 @@ test("debt and asset unproven legal classification cannot become an OCR numeric 
  assert.equal(debt.declaredInputs.find(x=>x.path==="debt.classification")?.category,"typed_case_input_with_no_direct_canonical_ocr_mapping");
  assert.equal(debt.declaredInputs.find(x=>x.path==="context.asOf")?.category,"reviewed_case_context_not_ocr");
 });
+
+test("legal fact names with context/household prefixes never masquerade as typed object properties",()=>{
+ const a=audit();
+ const objection=a.modules.find(x=>x.calculationId==="objection_minimum")!;
+ assert.equal(objection.declaredInputs.find(x=>x.path==="context.planApprovalDate")?.category,"source_verified_legal_fact_not_case_property");
+ const short=a.modules.find(x=>x.calculationId==="seoul_short_term")!;
+ assert.equal(short.declaredInputs.find(x=>x.path==="household.minorChildren")?.category,"source_verified_legal_fact_not_case_property");
+ assert.equal(short.declaredInputs.find(x=>x.path==="household.singleParent")?.category,"source_verified_legal_fact_not_case_property");
+});
