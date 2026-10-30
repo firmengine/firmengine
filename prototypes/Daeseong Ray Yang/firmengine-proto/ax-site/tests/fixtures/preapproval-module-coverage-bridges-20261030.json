@@ -1,0 +1,35 @@
+{
+  "schemaVersion": "preapproval-declaration-coverage-bridges/1",
+  "cases": [
+    {
+      "id": "B01",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-020",
+      "exceptionId": "EL-45",
+      "calculation": {
+        "id": "transaction_review",
+        "inputPath": "transaction.amount",
+        "outputName": "items"
+      },
+      "sourceId": "ACT579",
+      "sourceUrl": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1023719023",
+      "description": "계좌 거래를 급여·자기이체·차입과 연결해 중복 소득 반영/미관측을 구분, transaction_review output items 및 거래원장 증거 요구",
+      "expected": "evidence_or_lawyer_review_not_court_approval"
+    },
+    {
+      "id": "B02",
+      "stage": "P5_CORRECTIONS",
+      "legalRuleId": "KR-PR-011",
+      "exceptionId": "EL-42",
+      "calculation": {
+        "id": "form_projection",
+        "inputPath": "context.planMonths",
+        "outputName": "formBindings"
+      },
+      "sourceId": "ACT589",
+      "sourceUrl": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1018130103",
+      "description": "제589조 제출서류의 서식필드와 계산원장의 원문·서식 토큰 연결, form_projection output formBindings 가 D1 계산 피처에 누락되면 기존 서식엔진에서 별도 조회하며 미연결을 차단",
+      "expected": "evidence_or_lawyer_review_not_court_approval"
+    }
+  ]
+}
