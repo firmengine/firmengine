@@ -85,3 +85,20 @@ test("monthly required evidence must cover every complete calendar month, not ju
  data.facts.push({...data.facts[0],id:"f2",logicalId:"f2",version:1,periodStart:"2026-02-01",periodEnd:"2026-02-28"});
  assert.ok(!evaluateCaseFieldLineage(data,rows).fields[0].blockerCandidates.includes("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE"));
 });
+
+test("document-route legal risk candidates do not masquerade as approved canonical evidence links",()=>{
+ const audit=buildFeatureLineageAudit(INTAKE_CATALOG_SEED,sha,{limit:1000});
+ for(const id of [
+   "asset_transfer_disposition::consideration",
+   "asset_transfer_disposition::review_status",
+   "bank_account_balance::account_holder",
+ ]){
+   const field=audit.fields.find(f=>f.canonicalFieldId===id);
+   assert.ok(field,`missing canonical field: ${id}`);
+   assert.ok(field.legal.riskCheckCandidates.length>0,`expected candidate risk routes: ${id}`);
+   assert.equal(field.legal.approvalInferred,false);
+   assert.ok(field.gaps.includes("LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED"),
+     `a risk candidate is not a legally approved exact field-to-check contract: ${id}`);
+   assert.equal(field.typedProjections.length,0,"raw legal-review observations are not typed approval");
+ }
+});
