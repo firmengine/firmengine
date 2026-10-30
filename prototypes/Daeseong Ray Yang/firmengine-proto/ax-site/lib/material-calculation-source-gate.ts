@@ -38,7 +38,7 @@ export const MATERIAL_CALCULATION_SOURCES:readonly MaterialDefinition[]=[
  ["asset_transfer_disposition::proceeds_received",null,"context_only","Disposal proceeds must be reconciled with successor assets"]
 ].map(([id,destination,policy,reason])=>({id:id as string,destination:destination as MaterialDestination|null,
  policy:policy as Policy,reason:reason as string}));
-export type MaterialIssueCode="CALC_INPUT_UNCONNECTED_MATERIAL"|"CALC_INPUT_AMOUNT_INVALID"|"CALC_INPUT_AMOUNT_MISMATCH"|"CALC_INPUT_SOURCE_INVALID";
+export type MaterialIssueCode="CALC_INPUT_UNCONNECTED_MATERIAL"|"CALC_INPUT_MULTIPLE_TYPED_MATCHES"|"CALC_INPUT_AMOUNT_INVALID"|"CALC_INPUT_AMOUNT_MISMATCH"|"CALC_INPUT_SOURCE_INVALID";
 export interface MaterialIssue {code:MaterialIssueCode;canonicalFieldId:string;factId:string;destination:MaterialDestination;reason:string;}
 /** Fail closed for the amounts required for case calculation; source-only legal
  * context remains inspectable, but is never auto-classified or auto-added. */
@@ -66,6 +66,10 @@ export function auditMaterialCalculatorSources(data:CaseData,index:CaseReadIndex
    }
    const matched=rows.filter(row=>row.item.factIds.includes(fact.id)&&field.destination!.startsWith(row.category+"."));
    if(!matched.length){add("CALC_INPUT_UNCONNECTED_MATERIAL",field,fact.id);continue;}
+   // A single exact source amount cannot license two typed financial rows.
+   // Reuse for documentary cross-check is fine; duplicating a calculator amount is not.
+   // Explicit splits need separate source-backed per-row allocations and a reviewed rule.
+   if(matched.length!==1){add("CALC_INPUT_MULTIPLE_TYPED_MATCHES",field,fact.id);continue;}
    const expected=moneyValue(fact.numeric),prop=field.destination.split(".")[1];
    const actual=matched.map(row=>moneyValue((row.item as unknown as Record<string,unknown>)[prop] as NumericInput|null|undefined));
    if(actual.some(amount=>amount===null||amount!==expected))add("CALC_INPUT_AMOUNT_MISMATCH",field,fact.id);
