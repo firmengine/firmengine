@@ -125,13 +125,20 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
         throw new HttpError(409,"문서 작성 중 사건 상태가 변경되었습니다. 현재 판본으로 다시 생성하세요.");
       const next=structuredClone(current);
       next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),documentWriter:writerReceipt} as typeof next.exportManifest;
-      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only"});
+      // Both audit records belong to the same D1 transaction as manifest CAS.
+      // Never acknowledge an export without a durable commit receipt.
+      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only",
+        auditEvents:[
+          {type:"document_writer.prepared",detail:writerReceipt},
+          {type:"export.generated",detail:{revision:data.context.revision,mode,
+            files:generated.map(file=>({id:file.id,hash:file.hash,kind:file.kind})),writerReceipt}}
+        ]});
       savedCase=next;
     },
     deleteRecords:records=>db().batch(records.map(f=>db().prepare("DELETE FROM artifacts WHERE id = ? AND case_id = ? AND object_key = ?").bind(f.id,id,f.objectKey))),
     deleteObject:key=>bucket().delete(key),
     onCleanupFailure:report=>event(id,"export.cleanup_failed",{artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,failureCount:report.cleanupErrors.length}),
   });
-  await event(id,"document_writer.prepared",writerReceipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt});
+  // Export audit events were committed atomically with the current case manifest.
   return jsonResponse(await caseResponse(savedCase??data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}
