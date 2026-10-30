@@ -1,7 +1,7 @@
 import { isProtectedCaseId } from "./protected-case.ts";
 import { getCase,caseStateFingerprint,db,actor,drainCaseRecomputeJobs,caseExtras } from "./server-store";
 import { caseWorkflow } from "./case-workflow-state.ts";
-import { currentFacts } from "./domain.ts";
+import {currentFacts,currentExportReviews,manifestFingerprint,manifestIssues} from "./domain.ts";
 import { buildCaseWorkflowView } from "./case-workflow-view.ts";
 import { scanCaseSubstitutions } from "./case-substitution-watch.ts";
 import { taskSummary } from "./case-tasks.ts";
@@ -57,6 +57,7 @@ export async function caseWorkflowResponse(caseId:string){
     }
   }
   const execution=executeCaseNodes(data);
+  const exportReview=data.exportManifest?{mode:data.exportManifest.mode??"draft",fingerprint:manifestFingerprint(data.exportManifest),issues:manifestIssues(data),reviews:currentExportReviews(data)}:{mode:null,fingerprint:null,issues:["현재 생성물 없음"],reviews:{caseworker:null,lawyer:null}};
   const writerReceipt=data.exportManifest?.documentWriter;
   const currentArtifacts=(data.exportManifest?.files??[]).filter(file=>file.status==="current");
   const artifactFormCodes=new Map((writerReceipt?.formResults??[]).map(form=>[form.artifactKind,form.formCode]));
@@ -96,7 +97,7 @@ const legalAutomation=await readCaseLegalAutomation(db(),caseId).catch(()=>({
   }));
   return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,legalAutomation,autoDraftHandoff,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
     health,
-    artifacts,fieldBases,legalRuns,legalCoverageTruncated,finalLegalReadiness,
+    artifacts,fieldBases,legalRuns,legalCoverageTruncated,finalLegalReadiness,exportReview,
     documents:data.documents.filter(d=>d.status==="active").map(d=>({id:d.id,name:d.name,sha256:d.sha256,pages:d.pages,status:d.status})),
     proofCandidates:currentFacts(data).filter(f=>f.state==="verified"&&f.recognition==="accepted"&&f.canonicalFieldId).slice(0,500).map(f=>({id:f.id,fieldId:f.canonicalFieldId,subjectId:f.subjectId,sourcePages:f.refs.map(ref=>({documentId:ref.documentId,page:ref.page}))})),
     entities:[{id:data.context.id,label:data.context.caseName,kind:"person"},...data.incomes.map(v=>({id:v.id,label:v.label,kind:"income"})),...data.debts.map(v=>({id:v.id,label:v.creditor,kind:"debt"})),...data.assets.map(v=>({id:v.id,label:v.label,kind:"asset"}))],
