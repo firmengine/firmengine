@@ -49,7 +49,7 @@ function setup(){
    requiredCanonicalFieldIds:[],unmappedRequiredFieldLabels:["채무 잔액 근거"],requiredDocumentTypeIds:[],
    requiredPeriod:"2026-10",deadline:{date:"2026-11-09",sourceFactId:"deadline-1"},
    responseEventId:null,responseDocumentIds:[],receiptDocumentId:null,
-   expectedCaseRevision:data.context.revision,expectedHeadId:null,reason:"법원 원본 문구 대조",
+   expectedCaseRevision:data.context.revision,expectedSourceDataVersion:1,expectedHeadId:null,reason:"법원 원본 문구 대조",
  };
  return {sqlite,data,db,draft};
 }
@@ -147,4 +147,11 @@ test("a real court correction order with no itemization is explicitly reported a
  assert.equal(r.actualOrderCount,1);
  assert.deepEqual(r.unitemizedCourtEventIds,["court-order"]);
  assert.equal(r.unresolvedCourtItemCount,1);
+});
+
+test("stale source dataVersion cannot be silently rebound to an unchanged case revision",async()=>{
+ const {sqlite,data,db,draft}=setup();
+ sqlite.prepare("UPDATE case_data_change_state SET data_version=2 WHERE case_id=?").run(data.context.id);
+ await assert.rejects(()=>upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"}),
+  /CORRECTION_SOURCE_DATA_VERSION_MISMATCH/);
 });
