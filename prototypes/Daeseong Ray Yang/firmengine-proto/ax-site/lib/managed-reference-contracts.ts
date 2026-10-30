@@ -27,7 +27,7 @@ export const MANAGED_REFERENCE_RECORDS=[{
  condition:null,consequence:null,requiresHumanReview:true,
  sha256:"61589e653f70565705f74433e5e673226fe7bcf20326166b3f893ca878347f1e",
  lockedSafetyInvariant:false
-,{
+},{
  id:BUSINESS_INCOME_POLICY_ID,kind:"parameter",category:"court_practice",
  title:"법원·시행일별 사업소득 경비 인정·VAT 처리 검토 기준",value:BUSINESS_INCOME_POLICY_SEED,unit:null,
  sourceIds:["SRC-CASE-BUSINESS-INCOME-REVIEW"],
