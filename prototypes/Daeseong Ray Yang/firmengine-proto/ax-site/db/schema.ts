@@ -401,3 +401,24 @@ export const caseCourtCorrectionItemHeads=sqliteTable("case_court_correction_ite
  updatedAt:text("updated_at").notNull(),
 },t=>[primaryKey({columns:[t.caseId,t.courtEventId,t.itemNo]}),
  index("case_correction_item_head_source_version").on(t.caseId,t.sourceDataVersion)]);
+
+
+/** Durable manual Export intent/receipt. Does not authorize submission or
+ * legal acceptance. Retained even if a later Export replaces the manifest. */
+export const caseExportRequestReceipts=sqliteTable("case_export_request_receipts",{
+  caseId:text("case_id").notNull().references(()=>cases.id),
+  requestId:text("request_id").notNull(),
+  requestHash:text("request_hash").notNull(),
+  mode:text("mode").notNull(),
+  caseRevision:integer("case_revision").notNull(),
+  sourceDataVersion:integer("source_data_version").notNull(),
+  referenceSha256:text("reference_sha256").notNull(),
+  status:text("status").notNull(),
+  claimToken:text("claim_token").notNull(),
+  artifactIdsJson:text("artifact_ids_json"),
+  manifestFingerprint:text("manifest_fingerprint"),
+  createdAt:text("created_at").notNull(),
+  updatedAt:text("updated_at").notNull(),
+  committedAt:text("committed_at"),
+},t=>[primaryKey({columns:[t.caseId,t.requestId]}),
+  index("case_export_request_receipts_status_idx").on(t.caseId,t.status,t.updatedAt)]);
