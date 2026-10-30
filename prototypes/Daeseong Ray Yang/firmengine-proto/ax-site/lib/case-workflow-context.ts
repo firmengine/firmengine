@@ -5,6 +5,7 @@
 import type {CaseData} from "./domain.ts";
 import {buildCaseWorkflowView} from "./case-workflow-view.ts";
 import {getIntakeCatalog} from "./intake-store.ts";
+import {readCasePolicyAlerts} from "./case-policy-alert-scope.ts";
 export interface WorkflowDocumentTypeRow {documentId:string;page:number;documentTypeId:string|null}
 export interface CaseWorkflowContext {
  catalogVersion:number;
@@ -29,20 +30,19 @@ export function collectCaseWorkflowPageTypes(rows:readonly WorkflowDocumentTypeR
  }));
 }
 export async function currentCaseWorkflowContext(database:D1Database,caseId:string,
- catalogVersion?:number):Promise<CaseWorkflowContext>{
+ catalogVersion?:number,courtId?:string):Promise<CaseWorkflowContext>{
  if(!caseId||caseId.length>300)throw new Error("INVALID_CASE_WORKFLOW_CONTEXT");
  const [catalog,documentTypes,policy,consultation]=await Promise.all([
   catalogVersion===undefined?getIntakeCatalog().then(x=>x.catalog.version):Promise.resolve(catalogVersion),
   database.prepare("SELECT source_document_id AS documentId,page,shared_document_type_id AS documentTypeId FROM document_instances WHERE case_id=?")
    .bind(caseId).all<WorkflowDocumentTypeRow>(),
-  database.prepare("SELECT (SELECT COUNT(*) FROM legal_monitor_alerts WHERE acknowledged_at IS NULL) AS count,MAX(created_at) AS latest FROM legal_monitor_alerts")
-   .first<{count:number;latest:string|null}>(),
+  readCasePolicyAlerts(database,courtId??""),
   database.prepare("SELECT h.active_run_id AS runId,r.catalog_version AS catalogVersion FROM consultation_heads h "+
    "LEFT JOIN consultation_runs r ON r.id=h.active_run_id AND r.status='complete' AND r.case_id=h.case_id WHERE h.case_id=?")
    .bind(caseId).first<{runId:string|null;catalogVersion:number|null}>()
  ]);
  if(!Number.isSafeInteger(catalog)||catalog<1)throw new Error("INVALID_INTAKE_CATALOG_VERSION");
- return {catalogVersion:catalog,pendingCourtPolicyChange:!!policy?.count,
+ return {catalogVersion:catalog,pendingCourtPolicyChange:policy.pending,
   latestCourtPolicyAlertAt:policy?.latest??null,
   activeIntakeRunId:consultation?.runId??null,
   activeIntakeCatalogVersion:consultation?.catalogVersion??null,
@@ -50,6 +50,7 @@ export async function currentCaseWorkflowContext(database:D1Database,caseId:stri
 }
 export async function buildCurrentCaseWorkflowView(database:D1Database,data:CaseData,
  catalogVersion?:number){
- const options=await currentCaseWorkflowContext(database,data.context.id,catalogVersion);
+ const options=await currentCaseWorkflowContext(database,data.context.id,catalogVersion,
+   String(data.context.courtId??""));
  return buildCaseWorkflowView(data,options);
 }

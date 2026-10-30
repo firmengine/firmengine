@@ -14,6 +14,7 @@ import {referenceIdentity} from "./reference-runtime.ts";
 import referenceRelease from "./reference-release.json" with {type:"json"};
 import {executeCaseNodes} from "./case-execution.ts";
 import {buildCurrentCaseWorkflowView} from "./case-workflow-context.ts";
+import {readCasePolicyAlerts} from "./case-policy-alert-scope.ts";
 import {AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,automatedDraftEligibility,persistCaseLawgraphReview,type StoredLegalCheck} from "./case-lawgraph-store.ts";
 import {summarizeAutomaticLegalReview} from "./case-legal-automation-policy.ts";
 import {buildStoredLawgraphDocumentFields} from "./lawgraph-document-field-projection.ts";
@@ -155,10 +156,10 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
  // unattended draft generation, irrespective of AI check statuses.
  const materialGaps=execution.assessment.calculation.issues.filter(
    issue=>/^CALC_INPUT_(?:UNCONNECTED_MATERIAL|AMOUNT_INVALID|AMOUNT_MISMATCH|SOURCE_INVALID):/.test(issue));
- const pendingCourtPolicy=await database.prepare("SELECT COUNT(*) AS n FROM legal_monitor_alerts WHERE acknowledged_at IS NULL").first<{n:number}>();
+ const pendingCourtPolicy=await readCasePolicyAlerts(database,String(data.context.courtId??""));
  const eligible=automatedDraftEligibility({checks:collected.checks,expectedCheckIds:checkIds,
   complete:true,calculationHeadCurrent:true,
-  engineCanGenerateDraft:execution.assessment.generationGate.canGenerateDraft&&processingComplete&&!(pendingCourtPolicy?.n??0),
+  engineCanGenerateDraft:execution.assessment.generationGate.canGenerateDraft&&processingComplete&&!pendingCourtPolicy.pending,
   requiredCalculationFields:needed,allowHumanReviewPendingForDraft:true,
   explicitFailures:[...(unresolvedRequired.length?["REQUIRED_DOCUMENTS_UNRESOLVED"]:[]),
     ...(projectionBlockers?["SOURCE_PROJECTION_BLOCKED"]:[]),
@@ -169,7 +170,9 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   checks:collected.checks,expectedCount:checkIds.length,draftEligibility:eligible,
   calculationIssues:execution.assessment.calculation.issues});
  const outcome={...report,reviewRunId:review.runId,sourceVersion:job.dataVersion,
-  processingComplete,pendingCourtPolicyChanges:pendingCourtPolicy?.n??0,
+  processingComplete,pendingCourtPolicyChanges:pendingCourtPolicy.pendingCount,
+  pendingCourtPolicyScopeUncertain:pendingCourtPolicy.unknownScopeBlocksAll,
+  pendingCourtPolicySignal:pendingCourtPolicy.signal,
   unresolvedRequiredDocuments:unresolvedRequired.map(r=>({requirementId:r.requirementId,status:r.requirementStatus,missingFields:r.requiredFieldCoverage.missing})),
   projectionBlockers,documentFieldCount:documentFields.length,documentFieldProjectionError,
   documentProjectionBlockers:projection.blockers,documentProjectionExpectedTokenCount:projection.expectedTokenCount,

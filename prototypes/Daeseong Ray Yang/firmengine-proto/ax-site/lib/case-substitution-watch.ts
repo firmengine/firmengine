@@ -5,6 +5,7 @@
  */
 import type { CaseData } from "./domain.ts";
 import { buildCaseWorkflowView } from "./case-workflow-view.ts";
+import {readCasePolicyAlerts} from "./case-policy-alert-scope.ts";
 import type { SubstitutionView } from "./document-substitution.ts";
 
 export const CASE_SUBSTITUTION_WATCH_VERSION="case-substitution-watch/1" as const;
@@ -35,10 +36,9 @@ async function pageTypes(database:D1Database,caseId:string){
    documentTypeId:values.size===1?[...values][0]:null
  }));
 }
-async function policy(database:D1Database){
- const row=await database.prepare("SELECT COUNT(*) AS count,MAX(created_at) AS latest FROM legal_monitor_alerts").first<{count:number;latest:string|null}>();
- const pending=await database.prepare("SELECT COUNT(*) AS count FROM legal_monitor_alerts WHERE acknowledged_at IS NULL").first<{count:number}>();
- return {pending:!!pending?.count,latest:row?.latest??null,signal:(row?.latest??"no-alerts")+":"+(pending?.count??0)};
+async function policy(database:D1Database,courtId:string){
+ const scoped=await readCasePolicyAlerts(database,courtId);
+ return {pending:scoped.pending,latest:scoped.latest,signal:scoped.signal};
 }
 async function activeIntake(database:D1Database,caseId:string){
  const row=await database.prepare("SELECT h.active_run_id AS runId,r.catalog_version AS catalogVersion FROM consultation_heads AS h LEFT JOIN consultation_runs AS r ON r.id=h.active_run_id AND r.status='complete' WHERE h.case_id=?").bind(caseId).first<{runId:string|null;catalogVersion:number|null}>();
@@ -48,9 +48,10 @@ export async function scanCaseSubstitutions(database:D1Database,input:{caseId:st
  const {caseId}=input;
  if(typeof caseId!=="string"||!caseId.trim()||caseId.length>300)throw new Error("INVALID_CASE_SUBSTITUTION_CASE");
  const before=await snapshot(database,caseId);
- const [data,catalogVersion,courtPolicy,typed,active]=await Promise.all([
-   input.source.getCase(caseId),input.source.getCatalogVersion(),policy(database),pageTypes(database,caseId),activeIntake(database,caseId)
+ const [data,catalogVersion,typed,active]=await Promise.all([
+   input.source.getCase(caseId),input.source.getCatalogVersion(),pageTypes(database,caseId),activeIntake(database,caseId)
  ]);
+ const courtPolicy=await policy(database,String(data.context.courtId??""));
  if(data.context.id!==caseId||data.context.revision!==before.caseRevision) return {caseId,status:"superseded" as const};
  const projected=await buildCaseWorkflowView(data,{
    catalogVersion,pendingCourtPolicyChange:courtPolicy.pending,pageTypes:typed,
