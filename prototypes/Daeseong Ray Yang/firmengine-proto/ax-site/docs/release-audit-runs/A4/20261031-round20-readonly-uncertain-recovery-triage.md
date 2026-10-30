@@ -15,7 +15,7 @@
 - PR #61의 `reserveExportArtifacts`는 R2 PUT **전에** 영속 요청 원장의 `artifact_ids_json`에 예정 ID를 기록한다. 이것은 R2 객체 또는 D1 SQL의 실제 존재 증명이 아니다. `claimed`·`uncertain` 상태에서 자동 재시도·삭제·`committed` 승격은 여전히 금지.
 - 기존 main `reconcileExportEvidence`는 현재 파일의 SQL/R2 증빙 위주로 확인하고 요청 `artifact_ids_json = NULL`과 `[]`, 실제 R2 성공 후 SQL 미관찰/0건, 역사 문서 A→B, 감사 이벤트의 다른 요청 ID 섞임을 요청 단위로 완결해 판단하는 모듈은 없었다. 이것은 **진단 범위의 공백**이며 실제 운영 유실 사건을 발견했다는 주장이 아니다.
 - 신규 독립 읽기 전용 `lib/export-recovery-evidence.mjs`(blob `62221fe813d8608bcb4d523a723fef8dd193a7c6`) 및 `tests/export-recovery-evidence.test.mjs`(blob `7c394cea6ef987f704bc206f5560f3bdf7b5ffd6`)를 **main**에 추가. 어떠한 API·자동 복구·승인 경로에도 연결하지 않음. 모든 판정에서 `canDelete/canReplay/canMarkCommitted/canApprove=false`를 강제.
-- 개발 중 실제 V8 부정대조에서 SQL 해시가 `null`일 때 `toLowerCase()` 오류가 발생할 수 있는 예외 경로와, SQL 입력 자체가 `null`인 경우에도 `R2_WITHOUT_SQL_ROW`(SQL 부재 확인)로 잘못 표시되는 구분 오류를 확인, 수정 후 각각 회귀 시나리오 반영. 감사 이벤트는 단순 `type` 일치가 아닌 **caseId·requestId·revision 동일성**을 요구해 다른 요청의 유사 이벤트를 합치지 않음.
+- 개발 중 소스 검토로 SQL 해시가 `null`일 때 `toLowerCase()`가 예외를 낼 수 있는 경로 및 SQL 입력 자체가 `null`이어도 `R2_WITHOUT_SQL_ROW`(SQL 부재 확인)로 표시되는 구분 오류를 발견. **수정 후 실제 V8 실행으로** 각각 null SHA 거부·미관찰 SQL과 관찰된 0행 구분을 회귀 확인했다. 수정 전 원본의 이 두 경우에 대한 별도 V8 부정대조는 미실행이다. 감사 이벤트는 단순 `type` 일치가 아닌 **caseId·requestId·revision 동일성**을 요구해 다른 요청의 유사 이벤트를 합치지 않음.
 
 ## 실제 수행: 합성 입력 → 독립 기대 → 관찰
 
