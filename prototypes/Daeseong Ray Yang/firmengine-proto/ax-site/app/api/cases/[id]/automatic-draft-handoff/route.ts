@@ -9,6 +9,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   requireSameOrigin(request);
   const {id}=await params;
   const actor=await requireAppRole("case_editor",id);
+  await requireAppRole("caseworker_review",id);
   const body=await jsonBody(request) as Record<string,unknown>;
   if(!body||Array.isArray(body)||typeof body!=="object"||
     Object.keys(body).some(key=>!["runId","expectedRevision","expectedStateFingerprint","reason"].includes(key)))
