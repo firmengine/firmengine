@@ -7,7 +7,7 @@ import type {CaseData} from "./domain.ts";
 
 export type NonSourceMutationCategory="review_only"|"artifact_only";
 export const REVIEW_ONLY_COMMANDS=new Set([
- "legalCheck.dispose","document.review","document.edit","task.update"
+ "legalCheck.dispose","document.review","document.edit","task.update","business.net.propose"
 ]);
 type RecordLike=Record<string,unknown>;
 function projected(snapshot:CaseData,category:NonSourceMutationCategory,commandType?:string):RecordLike{
@@ -22,6 +22,7 @@ function projected(snapshot:CaseData,category:NonSourceMutationCategory,commandT
    if(commandType==="legalCheck.dispose")w.legalDispositions=[];
    else if(commandType==="task.update")w.tasks=[];
    else if(commandType==="document.edit")w.documentEdits=[];
+   else if(commandType==="business.net.propose")w.businessNetReviews=[];
  }
  const manifest=state.exportManifest as RecordLike|undefined;
  if(manifest&&(commandType==="document.review"||commandType==="document.edit")){
@@ -44,6 +45,17 @@ export function assertNonSourceCaseChange(previous:CaseData,next:CaseData,
  if(category==="review_only"&&!commandType||category==="review_only"&&!REVIEW_ONLY_COMMANDS.has(commandType!))
    throw new Error("NON_SOURCE_MUTATION_COMMAND_NOT_ALLOWED");
  if(category==="artifact_only"&&commandType)throw new Error("NON_SOURCE_ARTIFACT_COMMAND_UNEXPECTED");
+ if(category==="review_only"&&commandType==="business.net.propose"){
+   const beforeReviews=previous.workflowState?.businessNetReviews??[];
+   const afterReviews=next.workflowState?.businessNetReviews??[];
+   // A proposal is only an append to the review ledger. An old approval,
+   // source, valuation, plan, or previously reviewed month cannot be edited
+   // inside an apparent no-source revision.
+   if(afterReviews.length!==beforeReviews.length+1||
+       JSON.stringify(afterReviews.slice(0,-1))!==JSON.stringify(beforeReviews)||
+       afterReviews.at(-1)?.status!=="proposed")
+     throw new Error("NON_SOURCE_BUSINESS_PROPOSAL_NOT_APPEND_ONLY");
+ }
  const before=projected(previous,category,commandType),after=projected(next,category,commandType);
  if(JSON.stringify(before)!==JSON.stringify(after))throw new Error("NON_SOURCE_MUTATION_CHANGED_EVIDENCE");
  // A review-only save must actually be an authenticated workflow change;

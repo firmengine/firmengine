@@ -199,6 +199,7 @@ test("case command keeps source facts immutable; lawyer-only adoption is persist
     costFactIds:selection.costFactIds,month:selection.month
   }),{actor:"synthetic-caseworker",roles:["case_editor"],at:"2026-10-30T00:00:00Z"});
  assert.equal(proposed.data.workflowState?.businessNetReviews?.length,1);
+ assert.equal(proposed.data.context.revision,d.context.revision,"Preparing source-backed net must not reset the 10-minute source quiet window");
  assert.equal(JSON.stringify(proposed.data.facts),beforeFacts);
  const reviewId=proposed.data.workflowState!.businessNetReviews![0].id;
  await assert.rejects(reduceCaseCommand(proposed.data,

@@ -56,3 +56,20 @@ test("migration keeps normal source notifications but excludes strictly guarded 
    assert.equal(events(),2);
  }finally{db.close();}
 });
+
+
+test("business income source proposal is an append-only workflow event, not a new source revision",()=>{
+ const a=sample();a.workflowState!.businessNetReviews=[];
+ const b=structuredClone(a);b.workflowState!.version+=1;
+ b.workflowState!.businessNetReviews=[{id:"business-review-1",status:"proposed"} as any];
+ assert.doesNotThrow(()=>assertNonSourceCaseChange(a,b,"review_only","business.net.propose"));
+ const forged=structuredClone(b);forged.facts[0].value="999999";
+ assert.throws(()=>assertNonSourceCaseChange(a,forged,"review_only","business.net.propose"),/CHANGED_EVIDENCE/);
+ const changedReview=structuredClone(b);changedReview.workflowState!.businessNetReviews=[{id:"business-review-1",status:"approved"} as any];
+ assert.throws(()=>assertNonSourceCaseChange(a,changedReview,"review_only","business.net.propose"),/NOT_APPEND_ONLY/);
+ const older=structuredClone(b),next=structuredClone(b);next.workflowState!.version+=1;
+ next.workflowState!.businessNetReviews!.push({id:"business-review-2",status:"proposed"} as any);
+ assert.doesNotThrow(()=>assertNonSourceCaseChange(older,next,"review_only","business.net.propose"));
+ next.workflowState!.businessNetReviews![0]!.status="stale";
+ assert.throws(()=>assertNonSourceCaseChange(older,next,"review_only","business.net.propose"),/NOT_APPEND_ONLY/);
+});

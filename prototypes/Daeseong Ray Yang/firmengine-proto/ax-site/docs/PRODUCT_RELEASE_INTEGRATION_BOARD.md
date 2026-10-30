@@ -96,3 +96,9 @@
 - **최신 main CI, 노드 전체 실행, D1/R2 운영, 실제 OCR/법원 폼, 변호사 독립 평가:** **미실행 / 미확인**. 본 기록이 제품 합격증은 아님.
 - **다음 순서:** G01 migration/staging 준비 상태 → G02 상담·OCR 수정 CAS → G03 사업 소득 세무기간/월별 검사 → G04 18 계산/법률/서식 필드 인수 → G05 위험 88 체크 → G06 경합/재시도.
 - **공식 대조 기준:** 채무자회생법 2026-10-02 시행 제579·589·611·614조(https://www.law.go.kr/), 법원 공개 서식모음(https://www.scourt.go.kr/nm/minwon/doc/ProDocList.work), 서울회생법원 2026-10-01 제424호 개정 공지 및 실무준칙(https://slb.scourt.go.kr/), 소득세법 제24·27·39조와 부가가치세법의 기간·총수입/필요경비 구분. 개별 관할/서식의 최신판·적용일은 케이스별 별도 승인 대상.
+
+### 2026-10-30 추가 교차 확인: 사업소득 직원 제안 시 source 버전 불필요 증가 차단
+
+- 확인된 구현 충돌: `business.net.propose`는 원문·수치·법률 인정을 바꾸지 않는 직원 **검토 제안**인데 기존 reducer의 `touchCase`로 사건 source revision을 증가시켜 10분 계산 조용한 시간을 불필요하게 초기화했다. 이후 승인 `business.net.adopt`는 정식 IncomeSource를 추가하므로 계속 source 변경이다.
+- 수정: 제안 명령만 `review_only`로 분리하고 변경 분류기에서 `businessNetReviews`가 **정확히 1개의 proposed 행을 append**한 경우에만 source 불변으로 인정. 기존 제안·승인 행 변조, 타 원문·값·서식·사건 revision 변경은 기존 검증과 새 append-only 가드로 차단. `0021`의 review-only 감시 트리거를 재사용하고 추가 SQL migration은 만들지 않음.
+- 회귀: `tests/workflow-only-source-watch.test.ts`의 정상·위조·기존행 변경/추가 4경로와 `tests/business-net-review-lifecycle.test.ts`의 제안 revision 불변 검증. **테스트 파일 Git 반영 확인과 실제 Node 실행은 구분**하며 최신 전체 테스트/스테이징 DB 실증은 미인증.

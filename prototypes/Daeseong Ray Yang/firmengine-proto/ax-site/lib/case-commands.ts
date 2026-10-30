@@ -66,7 +66,7 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
  const {patch,target,commandType:kind}=command;
  // Lawyer approvals and prose edits are workflow/manifest changes, not a
  // revision of extracted evidence. Keep the source calculation/LawGraph head.
- const reviewOnly=kind==="legalCheck.dispose"||kind==="document.edit";
+ const reviewOnly=kind==="legalCheck.dispose"||kind==="document.edit"||kind==="business.net.propose";
  let data=reviewOnly?structuredClone(previous):touchCase(previous);
  data.workflowState=caseWorkflow(previous.workflowState);const work=data.workflowState;
  if(command.sourceRefs?.length&&!(["fact.correct","decision.propose"].includes(kind)))fail("이 명령 유형에는 원문 근거 필드를 사용할 수 없습니다.");
