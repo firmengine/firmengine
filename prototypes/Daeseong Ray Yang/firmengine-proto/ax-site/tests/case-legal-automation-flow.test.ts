@@ -167,3 +167,36 @@ test("untraceable source snapshot is a legal review blocker and cannot be auto-r
   assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
  }finally{h.close();}
 });
+
+test("a queued pre-fix draft with no stored LawGraph fields is blocked before writer",async()=>{
+ const h=setup();try{
+  const input=await h.initialize("projection-legacy");
+  const fingerprint=await legalReviewInputFingerprint(input.data,release.sha256,EXECUTION_CONTRACT_VERSION);
+  const checks=RISK_CATALOG.map(r=>({id:r.id,status:"legal_review",reason:"합성 검토 대기",factIds:[],ruleIds:[],missingDocuments:[],nextAction:"확인"}));
+  const payload={checks,summary:"Synthetic-only legal review",sourceDataVersion:input.version,reviewInputFingerprint:fingerprint,
+   calculatorExecution:{inputSha256:input.hash,referenceRelease:{sha256:release.sha256},contractVersion:EXECUTION_CONTRACT_VERSION},
+   model:"gpt-6-luna"};
+  h.sqlite.prepare("INSERT INTO analyses(id,case_id,revision,type,payload,at) VALUES(?, ?,1,'legal_advisory',?,'2026-10-30')")
+   .run("projection-advisory",input.caseId,JSON.stringify(payload));
+  let draftCalls=0;
+  const services=h.services(input.data,async()=>({stage:"legal_complete",remaining:0}));
+  services.generateDraft=async()=>{draftCalls++;throw new Error("UNEXPECTED_DRAFT_WRITE");};
+  const initial=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(initial.results[0].status,"review_required");
+  const before=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.ok(before.reviewRunId);
+  // Simulate a queued job persisted by the earlier broken candidate gate.
+  h.sqlite.prepare("DELETE FROM case_document_field_values WHERE review_run_id=?").run(before.reviewRunId);
+  h.sqlite.prepare("UPDATE case_legal_automation_jobs SET status='draft_pending',next_attempt_at=NULL,outcome_json=? WHERE case_id=?")
+   .run(JSON.stringify({draftCandidate:true,documentFieldProjectionError:null,documentFieldCount:0}),input.caseId);
+  const rerun=await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services});
+  assert.equal(rerun.results[0].status,"review_required");
+  assert.equal(draftCalls,0);
+  const after=await readCaseLegalAutomation(h.db,input.caseId);
+  assert.equal(after.outcome.draftCandidate,false);
+  assert.ok(Array.isArray(after.outcome.blockers));
+  assert.ok(after.outcome.blockers.includes("LAWGRAPH_FORM_FIELD_PROJECTION_REQUIRED"));
+  assert.equal(after.autoSubmission,false);
+  assert.deepEqual(h.sqlite.prepare("PRAGMA foreign_key_check").all(),[]);
+ }finally{h.close();}
+});
