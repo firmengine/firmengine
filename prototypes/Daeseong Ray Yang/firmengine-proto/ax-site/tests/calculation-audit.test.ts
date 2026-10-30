@@ -175,9 +175,38 @@ test("같은 기간의 구성 소득 두 행은 누락된 다음 달 증빙을 �
   ],{start:"2025-01-01",end:"2025-02-28"});
   data.context.incomePeriodReviewed=true;
   const result=calculateCase(data,{id:"synthetic",status:"source_verified",sources:[]});
-  assert.equal(result.monthlyIncomeWon,"1500");
+  assert.equal(result.monthlyIncomeWon,null,"Unproven February cannot produce a case-wide final income");
+  assert.equal(result.incomeGroups[0].monthlyObservedAverageWon,"1500","Observed January remains visible for review");
   assert.equal(result.incomeGroups[0].observedMonths,1);
   assert.ok(result.issues.includes("INCOME_PERIOD_COVERAGE_INCOMPLETE"));
+});
+
+test("사업소득 12개월 자료의 단수·복수 월별 행: 11개월이면 사건 확정액을 막고 12개월이면 기간가중 평균을 낸다", () => {
+  const rows=Array.from({length:12},(_,i)=>{
+    const month=String(i+1).padStart(2,"0");
+    return {id:"business-"+month,kind:"business" as const,employer:"synthetic verified business",
+      payerIdentityId:"synthetic-business-2025",amount:String(1000000+i*100000),
+      amountBasis:"monthly" as const,periodStart:`2025-${month}-01`,
+      periodEnd:new Date(Date.UTC(2025,i+1,0)).toISOString().slice(0,10)};
+  });
+  const period={start:"2025-01-01",end:"2025-12-31"},rules={id:"synthetic",status:"source_verified" as const,sources:[]};
+  const eleven=incomeFixture(rows.slice(0,11),period);
+  eleven.context.incomePeriodReviewed=true;
+  eleven.context.approvedMonthlyPayment=normalizeMoney("500000");
+  eleven.context.planMonths=36;
+  const partial=calculateCase(eleven,rules);
+  assert.equal(partial.incomeGroups[0].observedMonths,11);
+  assert.equal(partial.incomeGroups[0].monthlyObservedAverageWon,"1500000");
+  assert.equal(partial.monthlyIncomeWon,null);
+  assert.equal(partial.monthlyPaymentWon,null,"Staff proposal cannot bypass missing business evidence");
+  assert.equal(partial.planTotalWon,null);
+  assert.ok(partial.issues.includes("INCOME_PERIOD_COVERAGE_INCOMPLETE"));
+  const complete=incomeFixture(rows,period);
+  complete.context.incomePeriodReviewed=true;
+  const all=calculateCase(complete,rules);
+  assert.equal(all.incomeGroups[0].observedMonths,12);
+  assert.equal(all.monthlyIncomeWon,"1550000");
+  assert.ok(!all.issues.includes("INCOME_PERIOD_COVERAGE_INCOMPLETE"));
 });
 
 test("명시 0원 채무와 미입력 이자는 구별된다", () => {
