@@ -11,6 +11,9 @@ import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { snapshotSha256 } from "./calculator-tools.ts";
 import { buildDerivedExecution, completeDerivedEvaluation, DERIVED_EVALUATION_INLINE_LIMIT, isDerivedEvaluation, pendingDerivedEvaluation, type DerivedEvaluationEnvelope, type ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { getCaseDataRecomputeEligibility, recomputeCaseDataUpdate } from "./case-data-recompute.ts";
+import { GUARDED_CASE_AUDIT_EVENT_INSERT_SQL, caseAuditEventBindings, type CaseExportAuditEvent } from "./case-audit-event-batch.ts";
+import { EXPORT_SOURCE_VERSION_CAS_SQL, exportSourceVersionCASParams } from "./export-source-version-guard.ts";
+import { commitExportRequest, type ExportClaim } from "./export-request-ledger.ts";
 
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 export const now=()=>new Date().toISOString();
@@ -75,11 +78,37 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string};expectedSourceDataVersion?:number;auditEvents?:readonly CaseExportAuditEvent[];exportReceipt?:{claim:ExportClaim;artifactIds:readonly string[];manifestFingerprint:string}}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
   if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
+  if(options?.expectedSourceDataVersion!==undefined&&category!=="artifact_only")throw new HttpError(409,"EXPORT_SOURCE_VERSION_GUARD_REQUIRES_ARTIFACT_ONLY");
+  let sourceCASParams:readonly [string,number]|readonly []=[];
+  if(options?.expectedSourceDataVersion!==undefined){
+    try{sourceCASParams=exportSourceVersionCASParams(data.context.id,options.expectedSourceDataVersion);}
+    catch{throw new HttpError(409,"EXPORT_SOURCE_VERSION_INVALID");}
+  }
+  const auditEvents=options?.auditEvents??[];
+  if(auditEvents.length&&(category!=="artifact_only"||auditEvents.length!==2||
+    new Set(auditEvents.map(item=>item.type)).size!==2||
+    !auditEvents.some(item=>item.type==="document_writer.prepared")||
+    !auditEvents.some(item=>item.type==="export.generated")))
+    throw new HttpError(409,"EXPORT_AUDIT_EVENT_PAIR_INVALID");
+  const auditActor=auditEvents.length?await actor():null;
+  const receipt=options?.exportReceipt;
+  if(receipt){
+    const manifest=data.exportManifest,claim=receipt.claim;
+    if(category!=="artifact_only"||auditEvents.length!==2||
+      options?.expectedSourceDataVersion!==claim.sourceDataVersion||
+      expected!==claim.caseRevision||claim.caseId!==data.context.id||
+      manifest?.exportRequestId!==claim.requestId||
+      manifest?.sourceDataVersionAtExport!==claim.sourceDataVersion||
+      !receipt.artifactIds.length||!receipt.manifestFingerprint||
+      manifest?.files.length!==receipt.artifactIds.length||
+      receipt.artifactIds.some((id,index)=>id!==manifest?.files[index]?.id))
+      throw new HttpError(409,"EXPORT_RECEIPT_AND_MANIFEST_IDENTITY_MISMATCH");
+  }
   if(category!=="source"){
     try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
@@ -117,8 +146,22 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   const headParams=expectedHeads?[expectedHeads.referenceSha256,data.context.id,
     expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
     expected,expected]:[];
+  // A zero-row receipt COMMIT cannot be accepted after a successful manifest.
+  // Its claim identity and all SQL artifact rows are therefore primary-UPDATE
+  // preconditions in the same D1 batch as audit events and receipt COMMIT.
+  const exportSourceGuard=sourceCASParams.length?` AND ${EXPORT_SOURCE_VERSION_CAS_SQL}`:"";
+  const receiptGuard=receipt?(
+    " AND EXISTS (SELECT 1 FROM case_export_request_receipts rr WHERE rr.case_id=? AND rr.request_id=? "+
+    "AND rr.request_hash=? AND rr.claim_token=? AND rr.status='claimed' "+
+    "AND rr.case_revision=? AND rr.source_data_version=? AND rr.reference_sha256=?)"+
+    " AND NOT EXISTS(SELECT 1 FROM json_each(?) ids WHERE NOT EXISTS(SELECT 1 FROM artifacts a "+
+    "WHERE a.id=ids.value AND a.case_id=? AND a.revision=?))"
+  ):"";
+  const receiptGuardParams=receipt?[receipt.claim.caseId,receipt.claim.requestId,receipt.claim.requestHash,
+    receipt.claim.claimToken,receipt.claim.caseRevision,receipt.claim.sourceDataVersion,
+    receipt.claim.referenceSha256,JSON.stringify(receipt.artifactIds),data.context.id,expected]:[];
   const batch:D1PreparedStatement[]=[
-    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard+exportSourceGuard+receiptGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams,...sourceCASParams,...receiptGuardParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
   if(mutation){
@@ -129,14 +172,28 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     for(const task of data.workflowState?.tasks??[])batch.push(db().prepare(`INSERT INTO case_tasks (id,case_id,dedupe_key,type,owner_id,due_at,waiting_on,blocked_by,status,dependency_fingerprint,payload,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard} ON CONFLICT(case_id,dedupe_key) DO UPDATE SET owner_id=excluded.owner_id,due_at=excluded.due_at,waiting_on=excluded.waiting_on,blocked_by=excluded.blocked_by,status=excluded.status,dependency_fingerprint=excluded.dependency_fingerprint,payload=excluded.payload,updated_at=excluded.updated_at`).bind(task.id,data.context.id,task.dedupeKey,task.type,task.ownerId,task.dueAt,task.waitingOn,JSON.stringify(task.blockedBy),task.status,task.dependencyFingerprint,JSON.stringify(task),task.createdAt,task.updatedAt,data.context.id,data.context.revision,token));
     batch.push(...(mutation.guardedStatements?.(token)??[]));
   }
+  // The receipt, its two audit events and the manifest share this D1 batch.
+  for(const auditEntry of auditEvents){
+    batch.push(db().prepare(GUARDED_CASE_AUDIT_EVENT_INSERT_SQL).bind(
+      ...caseAuditEventBindings({eventId:crypto.randomUUID(),caseId:data.context.id,
+        actorId:auditActor!,event:auditEntry,at,revision:data.context.revision,storageToken:token})));
+  }
+  let exportReceiptResultIndex=-1;
+  if(receipt){
+    const statement=commitExportRequest({...receipt.claim,newStorageToken:token,
+      artifactIds:receipt.artifactIds,manifestFingerprint:receipt.manifestFingerprint});
+    exportReceiptResultIndex=batch.length;
+    batch.push(db().prepare(statement.sql).bind(...statement.args));
+  }
   if(category!=="source"){
     // The trigger sees review_only/artifact_only once; clear the marker in the
     // same atomic D1 batch so later direct SQL changes remain source-watched.
     batch.push(db().prepare("UPDATE cases SET mutation_category='source' WHERE id=? AND revision=? AND storage_token=? AND mutation_category=?")
       .bind(data.context.id,data.context.revision,token,category));
   }
-  let committed=false;
-  try{const results=await db().batch(batch);committed=!!results[0].meta.changes;}
+  let committed=false,receiptCommitMismatch=false;
+  try{const results=await db().batch(batch);committed=!!results[0].meta.changes;
+    if(committed&&exportReceiptResultIndex>=0&&!results[exportReceiptResultIndex]?.meta?.changes)receiptCommitMismatch=true;}
   catch(error){
     // A transport failure may occur AFTER commit. Never delete referenced snapshots on an ambiguous acknowledgement.
     let row:{token:string}|null;
@@ -147,6 +204,7 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     else if(proof===undefined)throw new HttpError(503,"저장 영수증 확인이 지연되었습니다. 같은 명령 식별자로 조회해 주세요.");
     else {await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw error;}
   }
+  if(receiptCommitMismatch)throw new HttpError(503,"Export 영수증의 저장 확인이 불확실합니다. 파일을 삭제하지 말고 수동 대조하세요.");
   if(!committed){await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw new HttpError(409,"사건이 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");}
   caseSnapshots.delete(previous);caseSnapshots.set(data,{id:data.context.id,revision:data.context.revision,token});
   if(mutation)await drainCaseRecomputeJobs(data.context.id,1).catch(()=>{});
