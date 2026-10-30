@@ -249,7 +249,7 @@
 - [ ] **A2-IT-008** 계산 실행 중 자료 변경과 원자적 CAS 처리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-009** 관리 기준정보 수정·승인·활성화·롤백/영향분석. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-010** DB schema/migration journal와 실제 적용 테이블. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-IT-011** 저장 계산행 5,000건 한계·잘림 방지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
+- [ ] **A2-IT-011** 저장 계산행 5,000건 한계·잘림 방지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. ****6차 코드 검토:** 저장 store는 5000행 초과 명시 거부, approval-readiness SQL은 LIMIT 5001과 <=5000 경계 감시. 실제 D1/5,001행/두 워커 실행하지 않아 [ ] 유지.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
 - [ ] **A2-IT-012** 복수행 정렬과 순서를 바꿔도 계산 재현성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-013** calculated/provisional/blocked/NA status 의미 통일. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-014** 관리 가능 법원·세무 임계값의 소스 하드코딩 추출. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -276,7 +276,7 @@
 - [ ] **A2-DOC-012** 신청인·배우자·제3자 정보를 서식 칸에 혼용 금지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-013** 동일 종류의 다수 은행·계좌·보험 행 누락. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-014** 법원별 Word/PDF 서식 버전과 행·첨부 순서. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-DOC-015** 필수서류/조건부 서류 누락 및 출력 생성보류. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 P1 재현 및 수정안**: D5103 숫자 월소득+월별행0건에도 final ready; 격리 원본문 V8에서 재현, 수정 후 blocked; 신규 Node 회귀4개 소스 [Draft PR #21](https://github.com/firmengine/firmengine/pull/21). 공식 서식/실제 DOCX/CI 미인증.
+- [ ] **A2-DOC-015** 필수서류/조건부 서류 누락 및 출력 생성보류. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 P1 재현 및 수정안**: D5103 숫자 월소득+월별행0건에도 final ready; 격리 원본문 V8에서 재현, 수정 후 blocked; 신규 Node 회귀4개 소스 [Draft PR #21](https://github.com/firmengine/firmengine/pull/21). 공식 서식/실제 DOCX/CI 미인증. ****6차 부분:** 사전인가 read-only 검토에 누락 outputPath 차단 검사를 잇는 PR #33; 실제 Word/D5110·최종 writer 전체 게이트·법원 서식 인수 아님.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
 - [ ] **A2-DOC-016** 0원·해당없음·미상·미관찰의 출력 구별. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-017** 수기 금액 정정의 출처·검토자·변경사유. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-018** 생성 Word의 실제 숫자/행/문단 바이트 대조. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -314,7 +314,7 @@
 - [ ] **A2-CALC-027** 현재가치/PV 할인율·평가기준일·현금흐름. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-028** 청산가치 보장과 총 변제액 법률 비교. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-029** 담보 15억/무담보 10억 경계값 법정 판본. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-CALC-030** 산식별 정상/영/음수/null/중복/단위 오류 golden. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
+- [ ] **A2-CALC-030** 산식별 정상/영/음수/null/중복/단위 오류 golden. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. ****6차 부분:** 0 vs null, 중복, 누락, stale Fact, malformed JSON의 저장 replay 검증 V8 9/9. 18 산식 전체·91 입력 실행·세무/법률 승인 미인증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
 
 ### A2 변호사 (24개)
 
@@ -361,7 +361,7 @@
 - [ ] **A2-DATA-014** 원문 출처철회·정정·채택의 과거 이력. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-015** 95 법률검토의 기준정보 해시와 계산 run ID. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-016** 18계산/91입력 선언과 DB typed JSON pointer. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 등록명세 확인**: 최신 reference-decision-tables.json 실제 파싱 18모듈/입력 선언91(고유78)/출력 선언42. 91개 실제 typed JSON 경로/SQL/계산/서식 E2E 아직 미인증.
-- [ ] **A2-DATA-017** 모든 저장 output_path의 실행 JSON 재현 대조. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증.
+- [ ] **A2-DATA-017** 모든 저장 output_path의 실행 JSON 재현 대조. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증. ****6차 부분:** 실제 outputPath별 저장행 누락이 replay 검사에서 빠지는 P1; 계산ID+출력 포인터의 expected 실제 직렬화행을 SQL 저장값과 비교하는 [Draft PR #33](https://github.com/firmengine/firmengine/pull/33) 미병합. 18모듈/91입력(78고유)/42 이종 resultPaths 확인, DB/전체 42 E2E 미인증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
 - [ ] **A2-DATA-018** 서식 토큰별 원문·산식·법률검토·run 연결. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-019** 계산 비사용 source-only 증빙의 가치 보존. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-020** 미관찰/0/비해당/상충 결과 상태 전수 검사. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **2차 부분 재현**: sourceState/extractionState 8/8 경계. 구 레거시 Fact/typed/SQL 매핑 전수 및 실제 D1 E2E 미인증. [실행 증빙](release-audit-runs/A2/2026-10-30_1411_KST_seoul424-court-scope-and-form-semantics.md).
@@ -386,7 +386,7 @@
 - [ ] **A2-AX-012** 임시 산술값과 인정 순소득 출력 분리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-013** 동적 법률기준 승인 전 프롬프트/정규화 회귀. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-014** 모델이 존재하지 않는 금액·기한을 채워 넣지 않기. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-AX-015** 독립 산술 오라클로 실제 계산 결과 검증. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** 현재 원본 달력식/원단위 잔여원 독립 Node 22 합성 오라클, 수정안 5개 Node `test` 소스 추가(프로젝트 미실행); 법률/세무/서식 승인 아님.
+- [ ] **A2-AX-015** 독립 산술 오라클로 실제 계산 결과 검증. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** 현재 원본 달력식/원단위 잔여원 독립 Node 22 합성 오라클, 수정안 5개 Node `test` 소스 추가(프로젝트 미실행); 법률/세무/서식 승인 아님. ****6차 부분:** SQL 결과 0건/누락 1~2건이 기존 replay에서 `valid:true`인 P1을 독립 V8 예상/실측 10/10으로 재현·보완 제안. 수정 소스와 9개 테스트 케이스 V8 9/9; 전체 Node/CI/법률 미검증.** [6차 영수증](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
 - [ ] **A2-AX-016** 법적 반론/예외 검색 실패 때 검토 대기 처리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-017** 실제 법률 승인 없는 산식을 승인 완료로 표현 금지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-AX-018** 전체 시나리오 결과를 근거·판본별 품질지표로 기록. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -897,3 +897,10 @@
 - 담당 관점 **IT(A1-IT-015), AX(A1-AX-011), 계산사무장(A1-CALC-016)**. 3개 모두 `[ ]` 유지·제품 전체 인수 완료 0건. 실제 함수본문 V8 10/10·3/3, 정적 경계 7/7, 로컬 복사본 Node 1/1; 앱 CI·타입·브라우저·실 D1/R2·법원 서식/변호사 미인증.
 - P1: `case-workflow.tsx::send`가 4xx/네트워크/무명시 커밋을 결과 없이 반환해 `DocumentReviewFinalization::approve`가 저장 거절에도 검토사유를 제거. [Draft PR #32](https://github.com/firmengine/firmengine/pull/32) (미병합)는 명시적 `committed/rejected/uncertain` 및 기존 명령 ID 재시도, 검토사유/문서 편집 보존을 제안. [6차 상세 검증](release-audit-runs/A1/20261030-round06-command-ack-and-human-review-ui.md).
 - 다음 역할 순환: **서류/변호사/데이터** — A1-DOC-018, A1-LAW-017, A1-DATA-018. PR #28 사람 검수 분리, PR #32 명령 상태와 결합한 UI/HTTP 중복 처리 인수는 별도.
+
+### 2026-10-30 A2 6차 — 누락 SQL 계산행의 false PASS 검사 (부분)
+- 감사 시작 main `f71a2db75e675d91bfcfaee4945c11f96c092475`, 5역할·5체크: `A2-AX-015 / A2-DATA-017 / A2-IT-011 / A2-DOC-015 / A2-CALC-030`; **[ ] 모두 유지·제품 RELEASE_READY 0건**.
+- 실제 main 함수본문 V8: `rows:[]` 및 1/3행만 저장 → 기존 `valid:true` 재현. 동일 원문 수정 후 기대값/실제 10/10, PR 테스트 9/9 본문 V8 실행; 정식 Node runner/타입검사/CI **미실행**.
+- [Draft PR #33](https://github.com/firmengine/firmengine/pull/33)은 `preapproval-calculation-replay.ts`, `approval-readiness/route.ts`, 테스트 3파일만 변경하여 0행/예상 output 누락을 준비도 불일치로 분리 표시. 사용자가 법원에 제출한 사실·법률 승인·D1/R2/Word/D5110 출력 변경 없음.
+- 18 계산·91 선언입력(78고유)·42 이종 `resultPaths`를 실제 카탈로그에서 재계산했으며, 이를 SQL 42개 필드 합격으로 간주하지 않는다. [6차 상세 기록](release-audit-runs/A2/2026-10-30_1814_KST_output-replay-missing-rows.md).
+- 다음: PR #33 정식 Node 테스트 및 5,000/5,001행 D1 round-trip; 계산 모듈별 42 resultPaths 실제 API 실행; PR #25/#29 중복파일 병합 검증; 공식 법원 Word/D5110·법률 전문가 인수.
