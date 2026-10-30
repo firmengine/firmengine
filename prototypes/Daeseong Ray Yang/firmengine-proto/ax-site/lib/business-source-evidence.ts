@@ -77,6 +77,9 @@ export function auditBusinessSourceEvidence(
  const candidates=data.incomes.filter(source=>source.kind==="business" && source.recognition!=="rejected" &&
    source.sourceCalculationRole!=="gross_turnover_only" &&
    (moneyValue(source.net)!==null || moneyValue(source.gross)!==null&&moneyValue(source.expenses)!==null));
+ const links=new Map<string,string[]>();
+ for(const income of data.incomes)if(income.kind==="business")
+   for(const id of income.factIds)links.set(id,[...(links.get(id)??[]),income.id]);
  const all=financial.map((fact):BusinessSourceMoneyRow=>{
   const id=canonicalId(fact),family=id.split("::")[0];
   const row=bySubject.get(fact.subjectId)??[];
@@ -87,7 +90,7 @@ export function auditBusinessSourceEvidence(
   const scope:PeriodOverlap= !validWindow||!start||!end||end<start ? "unknown" :
     end<window!.start||start>window!.end ? "outside" :
     start<window!.start||end>window!.end ? "partly_outside":"inside";
-  const linkedBusinessIncomeIds=data.incomes.filter(i=>i.kind==="business"&&i.factIds.includes(fact.id)).map(i=>i.id).sort();
+  const linkedBusinessIncomeIds=[...new Set(links.get(fact.id)??[])].sort();
   return {factId:fact.id,canonicalFieldId:id,role:sourceMoneyRoles[id],sourceRecordId:fact.subjectId,
     sourceDocumentIds:[...new Set(fact.refs.map(ref=>ref.documentId))].sort(),
     sourcePages:[...new Set(fact.refs.map(ref=>ref.page))].sort((a,b)=>a-b),
