@@ -254,7 +254,8 @@ function aggregateIncomeObservations(data: CaseData, input: IncomeObservation[],
     const reasons: string[] = [];
     let rows = [...original];
     if (!rows.length) continue;
-    const identityMissing = key.startsWith("name-candidate:") && original.length > 1;
+    const reviewedSameNameSeries=key.startsWith("name-candidate:")&&original.length>1&&original.every(row=>row.source.aggregationTreatment==="series_observation"&&row.source.aggregationReviewed===true&&!!row.source.aggregationReviewReason?.trim());
+    const identityMissing = key.startsWith("name-candidate:") && original.length > 1 && !reviewedSameNameSeries;
     if (identityMissing) reasons.push("INCOME_PAYER_IDENTITY_REVIEW_REQUIRED");
     if (filing && !selected) reasons.push("INCOME_FILING_PERIOD_INVALID");
     if (filing && selected?.completeMonths) {
@@ -272,7 +273,7 @@ function aggregateIncomeObservations(data: CaseData, input: IncomeObservation[],
     }
     // A payer with no source-backed identity cannot be safely merged or silently added twice.
     const distinctSources = new Set(rows.map((row) => row.source.id));
-    if (!payerId(rows[0].source) && distinctSources.size > 1) reasons.push("INCOME_PAYER_IDENTITY_REVIEW_REQUIRED");
+    if (!payerId(rows[0].source) && distinctSources.size > 1 && !reviewedSameNameSeries) reasons.push("INCOME_PAYER_IDENTITY_REVIEW_REQUIRED");
     let total = ZERO, monthsTotal = 0;
     const overlaps = (a: IncomeObservation, b: IncomeObservation) => !!a.span && !!b.span && a.span.start <= b.span.end && b.span.start <= a.span.end;
     const sorted = [...rows].sort((a, b) => (a.span?.start ?? Number.MAX_SAFE_INTEGER) - (b.span?.start ?? Number.MAX_SAFE_INTEGER));

@@ -4,7 +4,7 @@ import { calculationSourceCellIssues } from "./ocr-calculation-input.ts";
 import { documentFieldContract } from "./document-agent-registry.ts";
 import { observeField, pageFieldCoverage, SOURCE_STATES, VERIFICATION_STATES, FIELD_OBSERVATION_INSTRUCTIONS, type ObservationInput, type VerificationState } from "./field-observation.ts";
 import { normalizeMoney,type ExtractionPayload,type Fact,type IncomeSource,type Debt,type Asset,type Transaction,type EvidencePage } from "./domain.ts";
-import { isSourceMoney,isDebtComponentSlot,debtComponentSlotKey,INSURANCE_SURRENDER_KEYS,isInsuranceSurrenderQuote,quotedInsuranceSurrenderAmount } from "./source-quantity.ts";
+import { isSourceMoney,isDebtComponentSlot,debtComponentSlotKey,INSURANCE_SURRENDER_KEYS,isInsuranceSurrenderQuote,quotedInsuranceSurrenderAmount,parseExactOwnershipBps } from "./source-quantity.ts";
 import { documentFamily } from "./document-routing.ts";
 import { SOURCE_NATURE_HANDOFF_INSTRUCTIONS } from "./source-nature-context.ts";
 import { RECORD_CATEGORIES, RECORD_CATEGORY_POLICY_INSTRUCTIONS, RECORD_CATEGORY_STATUS_PROMPT_VERSION, type RecordCategory } from "./category-contract.ts";
@@ -256,6 +256,14 @@ const sourceAmountBasis=(value:string|undefined):IncomeSource["amountBasis"]=>{
 // Unlike an explicitly KRW-labelled editor input, a source reading with no unit
 // has no defensible scale. Preserve its raw amount while blocking normalization.
 const sourceMoney=(field:ReadField)=>field.unit?.trim()?normalizeMoney(field.value,field.unit.trim()):{...normalizeMoney(field.value,"unknown"),normalizationStatus:"review_required" as const};
+/** Day-grouped transactions retain the complete timestamp in source facts. */
+function transactionDay(value:string|undefined):string{
+  if(!value)return "";
+  const found=/^(\d{4}-\d{2}-\d{2})(?:$|[T\s])/.exec(value);
+  if(!found)return value;
+  const stamp=new Date(found[1]+"T00:00:00.000Z");
+  return Number.isFinite(stamp.valueOf())&&stamp.toISOString().slice(0,10)===found[1]?found[1]:value;
+}
 /** Only clear, quoted readings enter numeric/typed projections. Ambiguous readings stay in the ledger. */
 export function projectPage(read:PageRead,documentId:string,page:number,documentHash:string):ExtractionPayload{
   const facts:Partial<Fact>[]=[],incomes:IncomeSource[]=[],debts:Debt[]=[],assets:Asset[]=[],transactions:Transaction[]=[];
@@ -365,7 +373,9 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       // calculations/forms. PageRead still preserves the raw OCR key and quote.
       const verifiedBinding=bindCanonicalSourceField(f,sourceContract);
       const verifiedCaseKey=canonicalProjectionKey(sourceContract,verifiedBinding,r.category);
-      const factKey=verifiedCaseKey&&verifiedBinding.binding!=="unbound"
+      const factKey=(strictCanonicalRoute||!!f.canonicalFieldId)&&verifiedBinding.binding==="unbound"
+        ? `${r.category}.unbound_source.${normalizedKey}`
+        :verifiedCaseKey&&verifiedBinding.binding!=="unbound"
         ? `${r.category}.${verifiedCaseKey}`
         :isCreditReport||isHealthArrears?`${factType}.${key}`:leaseField?`lease.${key}`:accountField?`bank_account.${key}`:rawPrefix?`${rawPrefix}.${rawLocal}`:`${factType}.${rawLocal}`;
       const logicalId=`${id}:${key}${repeatableStatementText?`:paragraph:${statementTextIdentity.get(fi)}`:""}${fieldConflict?`:candidate:${fi}`:""}`;
@@ -458,7 +468,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       if(field("secured_payoff")&&/채권\s*최고액|저당\s*설정액|근저당\s*설정|maximum\s*secured/i.test(field("secured_payoff")!.quote??"")){
         securedPayoff=null;warnings.push(`${id}: 담보 설정액·채권최고액은 실제 상환잔액이 아니므로 차감 계산에서 제외했습니다.`);
       }
-      assets.push({id,kind:assetKind,label:value("label")||"",grossValue,securedPayoff,securedPayoffScope:known(value("secured_payoff_scope"),["applicant_interest","entire_collateral","unknown"],"unknown"),disposalCosts:num("disposal_costs"),protectedValue:num("protected_value"),ownershipBps:integer("ownership_bps"),asOf:value("as_of"),valuationBasis:value("valuation_basis"),recognition:"unreviewed",factIds:ids});
+      assets.push({id,kind:assetKind,label:value("label")||"",grossValue,securedPayoff,securedPayoffScope:known(value("secured_payoff_scope"),["applicant_interest","entire_collateral","unknown"],"unknown"),disposalCosts:num("disposal_costs"),protectedValue:num("protected_value"),ownershipBps:integer("ownership_bps")??(sourceContract?.family_id==="cash_deposit_asset"&&field("ownership_share")?parseExactOwnershipBps({value:value("ownership_share")!,unit:field("ownership_share")!.unit}):null),asOf:value("as_of"),valuationBasis:value("valuation_basis"),recognition:"unreviewed",factIds:ids});
     }
     if(r.category==="transaction"&&num("amount")){
       const summaryPhrase=/^(?:(?:입금|출금|거래|금액)\s*(?:금액\s*)?(?:합계|소계|총계|누계)(?:금액)?|(?:합계|소계|총계|누계)(?:금액)?\s*(?:입금|출금|거래|금액)|(?:당일|기간|월간|일자별|페이지)\s*(?:입출금|거래|입금|출금)\s*(?:합계|소계|총계|누계)(?:금액)?|(?:subtotal|grand\s*total|total\s+(?:deposits|withdrawals|transactions)))(?=$|[\s:：=0-9,.([{])/iu;
@@ -478,7 +488,7 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       const quotedSummaryLabel=explicitSummaryLabel&&r.fields.some(source=>!["memo","counterparty"].includes(localKey(source))&&sourceSummary(source));
       const summaryRow=quotedSummaryLabel||explicitSummaryField||amountOrDirectionTotalQuote;
       if(summaryRow){warnings.push(`${id}: 원문 표지가 거래 소계·합계 행을 나타내므로 금액 facts는 보존하고 typed 거래와 거래 합계에서 제외했습니다.`);return;}
-      transactions.push({id,date:value("date")||"",accountId:value("account_id"),counterparty:value("counterparty"),direction:known(value("direction"),["in","out","unknown"],"unknown"),amount:num("amount")!,kind:known(value("kind"),["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"],"unknown"),factIds:ids});
+      transactions.push({id,date:transactionDay(value("date")),accountId:value("account_id"),counterparty:value("counterparty"),direction:known(value("direction"),["in","out","unknown"],"unknown"),amount:num("amount")!,kind:known(value("kind"),["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"],"unknown"),factIds:ids});
     }
     if(r.category==="household")household={reportedMembers:integer("reported_members"),factIds:ids};
   });

@@ -67,14 +67,15 @@ const projections:Readonly<Record<string,Readonly<Record<string,Readonly<Record<
   }},
   debt_certificate:{debt:{
     "creditor":"creditor","contract_id":"contract_id","principal_balance":"principal_balance",
-    "interest_balance":"interest","as_of_date":"as_of","creditor_address":"address","claim_cause":"cause"
+    "interest_balance":"interest","as_of_date":"as_of","creditor_address":"address","claim_cause":"cause",
+    "total_claim":"total","fees":"costs"
   }},
   bank_transactions:{transaction:{
     "account_id":"account_id","transaction_datetime":"date","direction":"direction",
     "amount":"amount","counterparty":"counterparty"
   }},
   cash_deposit_asset:{asset:{
-    "asset_kind":"kind","gross_value":"gross_value","actual_payoff":"secured_payoff",
+    "asset_kind":"kind","gross_value":"gross_value","ownership_share":"ownership_share","actual_payoff":"secured_payoff",
     "as_of_date":"as_of","valuation_basis":"valuation_basis"
   }},
   // A certified annual income after allowable expenses is a historical

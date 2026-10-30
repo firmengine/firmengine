@@ -47,3 +47,25 @@ export function isSourceMoney(key:string,unit?:string|null):boolean{
   return /(?:^|_)(?:amount|value|balance|premium|principal|interest|tax|cost|recovery|claim|arrears|limit|expense|gross|net|total|income|salary|payment|fee|rent|deposit|payoff|charge|benefit)(?:_|$)/i.test(local);
 }
 
+
+/** Exact ownership ratio to integral basis points. Ambiguous bare 50 stays unknown. */
+export function parseExactOwnershipBps(input:{value:string|null;unit:string|null}):number|null{
+ const raw=input.value?.normalize("NFKC").trim().replace(/,/g,"")??"";
+ const unit=input.unit?.normalize("NFKC").trim().toLowerCase()??"";
+ if(!raw)return null;
+ const percent=/^(\d+)(?:\.(\d+))?\s*%$/.exec(raw);
+ const number=/^(\d+)(?:\.(\d+))?$/.exec(raw);
+ const fraction=/^(\d+)\s*\/\s*(\d+)$/.exec(raw);
+ const ratio=/^(0|1)(?:\.(\d+))?$/.exec(raw);
+ let numerator:bigint,denominator:bigint;
+ if(percent||(["%","percent","percentage","퍼센트"].includes(unit)&&number)){
+   const n=(percent??number)!;
+   numerator=BigInt(n[1]+(n[2]??""))*100n;denominator=10n**BigInt((n[2]??"").length);
+ }else if(fraction){numerator=BigInt(fraction[1])*10000n;denominator=BigInt(fraction[2]);}
+ else if(["ratio","fraction","비율"].includes(unit)&&ratio){
+   numerator=BigInt(ratio[1]+(ratio[2]??""))*10000n;denominator=10n**BigInt((ratio[2]??"").length);
+ }else if(["bps","basis_points"].includes(unit)&&/^\d+$/.test(raw)){numerator=BigInt(raw);denominator=1n;}
+ else return null;
+ if(denominator===0n||numerator>10000n*denominator||numerator%denominator!==0n)return null;
+ return Number(numerator/denominator);
+}

@@ -148,7 +148,10 @@ export function scanTransactions(data: CaseData) {
     }
     for (const [key, objectValue, label] of [["transaction.date", tx.date, "거래일"], ["transaction.direction", tx.direction, "방향"], ["transaction.account_id", tx.accountId, "계좌"]] as const) {
       const candidates = matching(related, [key]).filter(f => readyFact(data, f));
-      const values = [...new Set(candidates.map(f => String(f.value)))];
+      const values = [...new Set(candidates.map(f => {
+        const original=String(f.value),date=original.slice(0,10);
+        return key==="transaction.date"&&validDate(date)&&/^\d{4}-\d{2}-\d{2}(?:$|[T\s])/.test(original)?date:original;
+      }))];
       if (values.length > 1 || values.length === 1 && objectValue && values[0] !== objectValue) {
         ready = false;
         add(`field-conflict:${key}:${tx.id}:${index}`, `${label} 상충`, "conflict", [tx], candidates, "객체 값과 현재 원문 사실이 맞지 않습니다.", `${label}의 대상·열·원문을 대조하세요.`);
