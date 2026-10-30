@@ -1,4 +1,5 @@
 import { shareBasisPoints } from "./reference-parameters.ts";
+import { constantCreditorMonthlyWon } from "./creditor-monthly-payment.ts";
 import documentPolicy from "./reference-document-policy.json" with { type: "json" };
 /** Public blank-form mapping. No filled sample, evaluator answer, or model output is embedded. */
 import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
@@ -159,7 +160,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
       principal: amount(row.principalWon), interest: amount(row.interestWon), claim_type: present(claimLabels[debt.classification]),
       principal_basis: row.principalWon===null?MISSING_FORM_VALUE:sourceText(debt.factIds, "debt.principal"), interest_basis: sourceText(debt.factIds, "debt.interest"),
       total_payment: amount(calculation.allocations.find((a) => a.debtId === debt.id)?.totalWon),
-      monthly_payment: (()=>{if(!ledger||ledger.status==="blocked"||reconciliation?.status!=="reconciled")return MISSING_FORM_VALUE;const rows=ledger.rows.filter(r=>r.debtId===debt.id);if(!rows.length)return MISSING_FORM_VALUE;const months=new Map<number,bigint>();for(const r of rows)months.set(r.installment,(months.get(r.installment)??0n)+BigInt(r.principalWon)+BigInt(r.interestWon)+BigInt(r.otherComponentWon));const vals=[...months.values()];return vals.length&&vals.every(v=>v===vals[0])?amount(vals[0]!.toString()):MISSING_FORM_VALUE;})(),
+      monthly_payment: (()=>{const expected=data.context.paymentSchedule?.expectedInstallments??data.context.planMonths;const monthly=constantCreditorMonthlyWon(ledger,reconciliation,debt.id,expected);return monthly===null?MISSING_FORM_VALUE:amount(monthly);})(),
     };
     for (const key of ["cause", "content", "address", "phone", "fax", "loan_date", "original_principal", "collateral", "secured_amount", "secured_recovery", "shortfall", "dispute_reason", "disputed_amount", "undisputed_amount", "litigation", "assignment_order", "priority_basis", "due_date"]) base[key] = key === "due_date" ? present(debt.dueDate) : objectFact("debt", key, debt.id);
     if (base.loan_date === MISSING_FORM_VALUE) base.loan_date = objectFact("debt", "origination_date", debt.id);
