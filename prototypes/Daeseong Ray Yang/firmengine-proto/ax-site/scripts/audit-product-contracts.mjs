@@ -21,6 +21,8 @@ const exception=load("lib/legal-exceptions.json");
 const eform=load("docs/eform-parity-matrix.json");
 const migrations=load("drizzle/meta/_journal.json");
 const fields=new Map();
+const routes=new Map();
+let sourceRouteSlots=0;
 const track=(field,origin)=>{
   const id=field?.global_field_id;
   if(typeof id!=="string"||!id){fail("SOURCE_FIELD_ID_MISSING",origin);return;}
@@ -69,6 +71,29 @@ if(idx&&base&&shared&&ext&&wf&&risk&&law&&exception&&eform&&migrations){
   const known=new Set(canonical);
   for(const field of fields.keys())if(!known.has(field))fail("SOURCE_FIELD_NOT_IN_CANONICAL_INDEX",field);
   for(const field of known)if(!fields.has(field))fail("CANONICAL_FIELD_WITHOUT_SOURCE_DECLARATION",field);
+  // These are allowed declaration routes, NOT evidence acceptance, typed materialization,
+  // actual legal/form consumers, or deployment verification.
+  for(const [documentTypeId,document] of Object.entries(shared.documents??{})){
+    for(const familyId of document.allowedFamilyIds??[]){
+      const familyFields=base.families?.[familyId]?.fields;
+      const documentFields=document.fieldsByFamily?.[familyId]??[];
+      const supplementalFields=ext.documents?.[documentTypeId]?.[familyId]??[];
+      if(!Array.isArray(familyFields)||!Array.isArray(documentFields)||!Array.isArray(supplementalFields)){
+        fail("SOURCE_ROUTE_CONTRACT_INVALID",documentTypeId+":"+familyId);continue;
+      }
+      const seen=new Set();
+      for(const field of [...familyFields,...documentFields,...supplementalFields]){
+        const id=field?.global_field_id;
+        if(typeof id!=="string"||!id){fail("SOURCE_ROUTE_FIELD_ID_MISSING",documentTypeId+":"+familyId);continue;}
+        if(seen.has(id)){fail("SOURCE_ROUTE_DUPLICATE_FIELD",documentTypeId+":"+familyId+":"+id);continue;}
+        seen.add(id);
+        if(!known.has(id))fail("SOURCE_ROUTE_FIELD_NOT_REGISTERED",documentTypeId+":"+familyId+":"+id);
+        routes.set(id,[...(routes.get(id)??[]),{documentTypeId,familyId}]);
+        sourceRouteSlots++;
+      }
+    }
+  }
+  for(const id of canonical)if(!routes.has(id))fail("CANONICAL_FIELD_WITHOUT_DOCUMENT_ROUTE",id);
   const calc=new Set(unique(wf.calculations,"calculation")),workflows=new Set(unique(wf.workflows,"workflow"));
   for(const [workflow,ids] of Object.entries(wf.workflowCalculations??{})){
     if(!workflows.has(workflow))fail("UNKNOWN_WORKFLOW_CALCULATION_MAPPING",workflow);
@@ -95,7 +120,7 @@ if(idx&&base&&shared&&ext&&wf&&risk&&law&&exception&&eform&&migrations){
     "lib/reference-runtime.ts","lib/form-mapping.ts","lib/feature-lineage-audit.ts"
   ])if(!existsSync(join(root,p)))fail("REQUIRED_WORKFLOW_SOURCE_MISSING",p);
 }
-const counts={canonical:idx?.ids?.length??null,declaredSourceFields:fields.size,
+const counts={canonical:idx?.ids?.length??null,declaredSourceFields:fields.size,sourceRouteSlots,
  documents:shared?Object.keys(shared.documents??{}).length:null,
  workflows:wf?.workflows?.length??null,calculations:wf?.calculations?.length??null,
  legalRules:law?.rules?.length??null,legalRisks:risk?.entries?.length??null,
@@ -109,6 +134,9 @@ const report={schemaVersion:"firmengine-product-contract-audit/1",
  findings,status:findings.length?"STATIC_CONTRACT_BLOCKED":"STATIC_CONTRACT_OK_NOT_END_TO_END_CERTIFIED"};
 if(process.argv.includes("--fields"))report.fields=[...fields].sort(([a],[b])=>a.localeCompare(b))
  .map(([canonicalFieldId,row])=>({canonicalFieldId,origins:row.origins,datatype:row.definition.datatype,
+   routeScope:"declared_allowed_document_family_not_runtime_consumer",
+   documentRoutes:(routes.get(canonicalFieldId)??[]).sort((a,b)=>
+      (a.documentTypeId+":"+a.familyId).localeCompare(b.documentTypeId+":"+b.familyId)),
   individualCaseContractVerified:false,legalConsumerVerified:false,formulaConsumerVerified:false,
   officialFormParityVerified:false}));
 console.log(JSON.stringify(report,null,2));
