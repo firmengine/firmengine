@@ -6,6 +6,7 @@ import { resolveAssetRows } from "./asset-resolution.ts";
 import { createDebtSourceIntegrityResolver } from "./debt-source-integrity.ts";
 import {auditMaterialCalculatorSources} from "./material-calculation-source-gate.ts";
 import {auditBusinessSourceEvidence} from "./business-source-evidence.ts";
+import {reviewedBusinessIncomeIds} from "./business-net-reconciliation.ts";
 import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, normalizeMoney } from "./domain.ts";
 import type { Asset, CaseData, CaseReadIndex, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
 import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-proposals.ts";
@@ -356,10 +357,19 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     materialAudit.issues.some(issue=>issue.destination.startsWith(category+"."));
   const incomeRows: CalculationResult["incomeRows"] = [];
   const incomeObservations: IncomeObservation[] = [];
+  const approvedBusinessIncomeIds=reviewedBusinessIncomeIds(data,index);
+  const approvedBusinessGrossFacts=new Set((data.workflowState?.businessNetReviews??[])
+    .filter(review=>review.status==="approved"&&approvedBusinessIncomeIds.has(review.incomeId))
+    .map(review=>review.grossFactId));
   const incomeResolution = resolveIncomeRows(data);
   duplicateIds.push(...incomeResolution.duplicates);
   issues.push(...incomeResolution.issues);
   for (const source of incomeResolution.rows) {
+    // The original VAT page still has its immutable source-only IncomeSource
+    // for SQL/OCR replay. Once the lawyer-reviewed derived monthly row consumes
+    // that exact gross fact, it is documentary evidence, not a second income.
+    if(source.sourceCalculationRole==="gross_turnover_only"&&
+      source.factIds.some(id=>approvedBusinessGrossFacts.has(id)))continue;
     const monthly = monthlyIncome(source);
     const lineage = invalidLineage(data, source.factIds,index);
     const moneyConflict = [
@@ -383,7 +393,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
       const fact=index.byId.get(id),canonical=fact?.canonicalFieldId??fact?.fieldObservation?.canonicalFieldId??"";
       return canonical.startsWith("business_sales_vat::income.sales.");
     });
-    const turnoverOnly = source.sourceCalculationRole==="gross_turnover_only" || linkedVat;
+    const turnoverOnly = !approvedBusinessIncomeIds.has(source.id) && (source.sourceCalculationRole==="gross_turnover_only" || linkedVat);
     const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate || moneyConflict || historicalUnreviewed || historicalPeriodUnreviewed || turnoverOnly ? null : monthly.value;
     const reasons = [...monthly.reasons, ...lineage, ...(moneyConflict ? ["INCOME_OBJECT_FACT_CONFLICT"] : []), ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : []), ...(historicalUnreviewed ? ["INCOME_HISTORICAL_TAX_RECOGNITION_REQUIRED"] : []), ...(historicalPeriodUnreviewed ? ["INCOME_HISTORICAL_TAX_PERIOD_USE_REVIEW_REQUIRED"] : []), ...(turnoverOnly && !monthly.reasons.includes("INCOME_VAT_TURNOVER_NOT_NET_INCOME") ? ["INCOME_VAT_TURNOVER_NOT_NET_INCOME"] : [])];
     if (reviewedDuplicate) duplicateIds.push(source.id);
