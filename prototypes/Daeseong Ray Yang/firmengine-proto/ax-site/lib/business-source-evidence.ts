@@ -36,6 +36,15 @@ export const BUSINESS_SOURCE_PERIOD_FIELDS:Readonly<Record<string,readonly [stri
   ]
 };
 const canonicalId=(fact:Fact)=>fact.canonicalFieldId??fact.fieldObservation?.canonicalFieldId??"";
+const verifiedBusinessSourceMoney=(fact:Fact):bigint|null=>{
+  // The accepted Fact, preserved raw OCR cell and normalized numeric must all
+  // describe the same observed value. A stale numeric is not verified money.
+  if(typeof fact.value!=="string"||fact.rawValue!==fact.value||
+     fact.numeric?.rawValue!==fact.value||fact.sourceUnit!==fact.numeric?.unit||
+     fact.fieldObservation&&fact.fieldObservation.sourceState!=="present")return null;
+  return moneyValue(fact.numeric);
+};
+
 const exactDate=(value:unknown):value is string=>{
  if(typeof value!=="string"||!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;
  const day=new Date(value+"T00:00:00.000Z");
@@ -85,6 +94,7 @@ export function auditBusinessSourceEvidence(
    for(const id of income.factIds)links.set(id,[...(links.get(id)??[]),income.id]);
  const all=financial.map((fact):BusinessSourceMoneyRow=>{
   const id=canonicalId(fact),family=id.split("::")[0];
+   const sourceAmount=verifiedBusinessSourceMoney(fact);
   const row=bySubject.get(fact.subjectId)??[];
   const slots=BUSINESS_SOURCE_PERIOD_FIELDS[family];
   // A single valid date is required. "First matching field wins" can classify
@@ -112,14 +122,14 @@ export function auditBusinessSourceEvidence(
   return {factId:fact.id,canonicalFieldId:id,role:BUSINESS_SOURCE_MONEY_ROLES[id],sourceRecordId:fact.subjectId,
     sourceDocumentIds:[...new Set(fact.refs.map(ref=>ref.documentId))].sort(),
     sourcePages:[...new Set(fact.refs.map(ref=>ref.page))].sort((a,b)=>a-b),
-    amountWon:moneyValue(fact.numeric)?.toString()??null,
+    amountWon:sourceAmount?.toString()??null,
     observedState:fact.fieldObservation?.sourceState??"not_classified",
     reviewState:fact.recognition,
     verifiedAndAcceptedSource:fact.state==="verified"&&fact.recognition==="accepted"&&
       fact.validation.every(check=>check.severity!=="error")&&
       fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index))&&
       factSourceLineageIssues(data,[fact.id],index).length===0&&
-      moneyValue(fact.numeric)!==null,
+      sourceAmount!==null,
     periodStart:start,periodEnd:end,periodOverlap:scope,linkedBusinessIncomeIds,
     use:"source_only_not_legally_approved"};
  }).sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId)||a.factId.localeCompare(b.factId));
