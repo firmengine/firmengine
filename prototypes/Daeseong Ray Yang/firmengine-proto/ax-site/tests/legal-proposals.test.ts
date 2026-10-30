@@ -34,6 +34,27 @@ test("Seoul 424 evaluates only supported release and all cumulative conditions",
   assert.equal(evaluateSeoul424({ ...base424, noIndividualCreditors: null }).status, "unknown");
 });
 
+test("Seoul 424 candidates require a known court even when substantive routes look positive", () => {
+  const unknownCourtSeven = evaluateSeoul424({ ...base424, courtId: null });
+  assert.equal(unknownCourtSeven.status, "unknown");
+  assert.equal(unknownCourtSeven.route, null);
+  assert.equal(unknownCourtSeven.courtApprovalInferred, false);
+  assert.equal(unknownCourtSeven.conditions.find((condition) => condition.id === "court_scope")?.status, "unknown");
+
+  const positiveCategory = noCategoryRoutes.map((route, index) =>
+    index === 0 ? { ...route, status: "yes" as const } : route);
+  const unknownCourtCategory = evaluateSeoul424({
+    ...base424, courtId: null, categoryRoutes: positiveCategory,
+  });
+  assert.equal(unknownCourtCategory.status, "unknown");
+  assert.equal(unknownCourtCategory.route, null);
+  assert.equal(unknownCourtCategory.conditions.find((condition) => condition.id === "category_1_to_6")?.status, "yes");
+
+  assert.equal(evaluateSeoul424({ ...base424, courtId: "seoul", categoryRoutes: positiveCategory }).route, "category_1_to_6");
+  assert.equal(evaluateSeoul424({ ...base424, courtId: "busan", categoryRoutes: positiveCategory }).status, "not_applicable");
+  assert.equal(evaluateSeoul424({ ...base424, courtId: "seoul", firstFilingDate: "2026-09-30" }).status, "unsupported_version");
+});
+
 test("catalog fact polarity is explicit and unknowns remain unknown", () => {
   assert.equal(deriveNoPrivateCreditors(true), false);
   assert.equal(deriveNoPrivateCreditors(false), true);
