@@ -16,12 +16,13 @@
 | F01: 순수 검토/산출물 수정이 source_version을 무조건 올림 | `case-mutation-classifier.ts`, `server-store.ts`, `case-commands.ts`, `drizzle/0021_workflow_only_source_watch.sql`의 변경구분+원천오염 차단 | **0021 적용 필수**, D1/R2 원자성·사람 검토→최종 문서 E2E; 전체 독립 판본 설계는 후속 |
 | C01: LawGraph 문서 필드 투영 실패 시 초안 허용 오류 | `case-legal-automation.ts`가 projection error 및 0개 필드를 `explicitFailures`에 추가하고, 옛 `draft_pending`도 저장 필드 COUNT / 오류를 재확인 후 writer 호출을 차단 | **별도 6개 가상 후보 판정 전부 기대 결과(6/6)**; `tests/case-legal-automation-flow.test.ts`에 구 대기열 차단 회귀가 추가됨. Node 전체 회귀·실제 D1 writer E2E는 미인증 |
 
+| C02: 자동초안과 직원 검토 원장 분리 | 원본 R2 artifact ID·SHA를 검증해 `exportManifest` draft로 명시적 인계하는 API/화면, 원천·계산·법률·참조기준을 같은 D1 CAS로 묶는 안전경계, 문안 편집/재생성/최종본 직원→변호사 검수 UI 코드 추가 | 격리 handoff 8/8 + head CAS 7/7. **실제 D1/R2·권한·Word 재생성 E2E/전체 Node CI 미인증**. [상세](c01-c02-c04-cross-agent-debug-20261030.md) |
+| C04: 갈음 상태 네 경로 불일치 | 동일한 `case-workflow-context.ts` 판단 입력을 직원 화면·LawGraph·최종 export·갈음 watcher에서 사용. 실패한 단일 global policy poll을 제거하고 event/due 기반 fair scan 적용 | 페이지 충돌 3/3 + watcher due/version/알림 SQL 7/7. **실제 85종 갈음·상담 변경 통합 테스트 미인증**. [상세](c01-c02-c04-cross-agent-debug-20261030.md) |
+
 ## B. 아직 남은 충돌: 코드 확인 또는 가상입력에서 재현
 | ID/우선 | 충돌 지점 | 현행 근거 및 위험 | 다음 인수 테스트 |
 |---|---|---|---|
-| C02 / P0 | 자동 생성 초안과 직원 문서 검토 경로 분리 | `automatic-review-draft.ts`는 `case_automatic_document_runs`·`artifacts`에 기록. `case-workflow-server.ts`의 편집·검수 `artifacts`는 `data.exportManifest.files`에서 읽는다. 자동초안 목록은 `legalAutomation.outcome.drafts`에 별도 노출될 수 있지만 동일 편집/검수 원장으로는 이어지지 않음 | 초안→동일 파일ID/해시 검수큐→문안 수정→재생성→직원/변호사 검토 |
-| C03 / P1 **보류** | 다른 관할 법원의 변경 알림 전역 전파 | 현재는 **서울회생법원 기준 우선**으로 운영·검토하고 타 관할별 자동 분기는 수정하지 않는다. 기존 전역 알림의 보수적 과차단 위험은 남는다. 법원 미확정 사건을 서울 확정으로 자동 승격하지 않음 | [관할법원별 분기 후속 설계](deferred-court-routing-20261030.md): 상담 이력 revision부터 법원·판본·확인근거 매핑하는 스키마를 향후 추가. **이번 범위 코드/DB 변경 없음** |
-| C04 / P1 | 서류 충족/갈음 판단이 실행 경로마다 다른 입력 사용 | 직원 화면은 `buildCaseWorkflowView(data,{catalogVersion,pendingCourtPolicyChange,activeIntakeRunId,pageTypes,...})`, 법률 자동판단과 **최종 export 경로**는 `buildCaseWorkflowView(data)`를 옵션 없이 호출. 선택 갈음·구 상담 차단이 자동/화면에서 달라질 수 있음 | 같은 가상 사건에서 양 경로 비교; 공통 사건별 판단 컨텍스트 강제 |
+| C03 / P1 **보류** | 다른 관할 법원의 변경 알림 전역 전파 | 현재는 **서울회생법원 기준 우선**으로 운영·검토하고 타 관할별 자동 분기는 수정하지 않는다. 다른 에이전트가 확인된 알림 출처의 관할 범위를 제한하는 보수적 코드 일부를 반영했으나, 상담 단계 관할 이력·관할별 정책/서식 전체 분리는 보류 상태다. 법원 미확정 사건을 서울 확정으로 자동 승격하지 않음 | [관할법원별 분기 후속 설계](deferred-court-routing-20261030.md): 상담 이력 revision부터 법원·판본·확인근거 매핑하는 스키마를 향후 추가. **이번 범위 코드/DB 변경 없음** |
 | C05 / P1 | OCR 출처 사전검증 통과 후 계산 `missing/provisional`인데도 95개 AI 배치 호출 가능 | `sourceReadiness`는 원본·상담·정규화 완료를 검사하지만 법률 AI 시작 전에 계산 산식별 준비상태를 전부 검사하지 않는다. `finalizeReview`의 수치 게이트는 호출 후 실행 | 계산 필수 출력/근거 사전 검사→불필요한 법률 AI 호출 0회 |
 | C06 / P0 | LawGraph 95 위험 중 명시 피처 계약 미정의 88개 | `risk-catalog.json`의 기본 계약 갭; 승인 가능한 새 법률 증거 계약은 구현됐어도 88개 전문가 검토·승인은 별개. 자동 종결 차단을 유지해야 함 | 위험별 관할·시행일·source/계산·필수/OR 피처 전수 승인 |
 | C07 / P1 | 상담 revision과 active_run_id를 동시에 바꾸면 비활성화 종류가 별도로 기록되지 않음 | `0019`의 변경 이벤트는 `consultation_changed` 하나만 생성. 가상 DB07은 이를 재현. version은 증가하므로 무감지는 해결됐으나, 이벤트 종류별 구독자가 있다면 검증 필요 | `requirements_deactivated` 수신 의존 모듈 확인/원자적 중복 없는 이벤트 의미 정의 |
@@ -36,12 +37,12 @@
 - **실제 함수의 비원천 변경 검증 8개**: M01–M08. 법률 의견/문안/manifest만 변경하는 것은 허용, 금액/원본이나 revision 혼입은 명시적으로 차단됨.
 - **격리 SQLite 16개**: DB01–DB12는 이전 트리거, 상담 변경, 계산 Poll, 전역 법령 경보의 동작을 확인; DB13–DB16은 신규 `0021`에 의한 비원천 변경 제외와 실제 원천 변경 감지 보존을 확인.
 - **과거 결함과 후속 확인 구분**: T15는 수정 전 미차단을 관측했다. 이후 C01 수정본의 후보 판정 P01–P06에서 6/6 기대 동작을 재확인했다. 기존 테스트를 소급해서 통과 처리하지 않는다. DB10/DB11은 관할 불일치 전역 알림을 실제 SQL 조건으로 재현. DB07은 상담 비활성화 이벤트 분기 불일치를 재현. X01–X03에서는 **동일하게 오래된 갈음 승인**이 화면에서는 원본요청 복원, 자동판단·최종 export의 옵션 생략 시 복원 조건 미실행으로 갈릴 수 있음을 해당 코드 분기에서 관측.
-- **현재 상태**: C01은 코드가 수정됐고 기존 대기열 차단 테스트가 추가됐으나 D1/R2 E2E는 미인증. C02·C04는 후속 디버깅 대상, **C03은 사용자 결정에 따라 보류**. 미확정 값을 0/법적 충족으로 바꾸지 않는다.
+- **현재 상태**: C01·C02·C04의 핵심 코드 경계를 보완했지만 **전체 Node/운영 D1/R2·실제 문서 검수 E2E는 미인증**. C03의 관할별 전체 분리는 사용자 결정으로 보류한다. 미확정 값을 0/법적 충족으로 바꾸지 않는다.
 
 ## D. 다음 작업 시 검증 순서
 1. 0021 포함 D1 staging migration과 기존 사건/검토/출력 변경 분리 확인.
-2. C01은 새 투영 실패/0필드/옛 draft_pending **동일 사건 E2E**만 남겨두고, **C02 자동초안↔직원 검수 원장**을 다음 단일 디버깅 대상으로 진행.
-3. C04 상담/갈음 공통 컨텍스트를 화면·AI·최종 작성 세 경로에서 비교(관할법원 정책 분기와 구분).
+2. C01/C02/C04 각각 코드 수정 이후 **동일 사건 E2E**: 투영 실패/정상, 파일 R2 hash·D1 경쟁, 직원 편집/재생성/최종 검수 인계까지 인수한다.
+3. C04의 공통 컨텍스트를 상담 A→B·갈음 승인의 철회/복원과 결합해 **화면·AI·최종 export·watcher 네 경로 결과가 같은지** 통합 검증한다.
 4. C03 관할/시행일별 정책 분리는 보류. [상담단계 관할 이력 설계](deferred-court-routing-20261030.md)를 후속 인수 조건으로 남김.
 5. C05 AI 과금 전 계산 입력의 `blocked/missing/provisional` 차단 검증.
 6. 85종×693×18/91×95는 법률/원문/서식 소비처에 필요한 것만 전수 E2E, 나머지는 source-only를 유지. AI/법률 검토와 운영 승인 구분.
