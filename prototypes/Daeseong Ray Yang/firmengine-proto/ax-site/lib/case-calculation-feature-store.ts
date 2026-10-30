@@ -130,17 +130,21 @@ export async function persistCaseCalculationFeatures(db:D1Database,input:Persist
 
 interface Head {run_id:string;data_version:number;case_revision:number;input_sha256:string;status:string;rule_release_id:string;reference_id:string;reference_revision:number;reference_sha256:string;contract_version:string;source_heads_json:string;source_heads_sha256:string;missing_json:string;created_at:string;}
 interface StoredFeature {id:string;calculation_id:string;output_name:string;output_path:string;subject_id:string|null;row_ordinal:number|null;value_json:string;value_won:string|null;status:CalculationFeatureStatus;source_fact_ids_json:string;input_refs_json:string;formula:string;}
-export async function listCaseCalculationFeatures(db:D1Database,input:{caseId:string;expectedDataVersion?:number;limit?:number;offset?:number}){
+export async function listCaseCalculationFeatures(db:D1Database,input:{caseId:string;expectedDataVersion?:number;expectedRunId?:string;limit?:number;offset?:number}){
   const limit=input.limit??100,offset=input.offset??0;
-  if(!input.caseId||!Number.isSafeInteger(limit)||limit<1||limit>500||!Number.isSafeInteger(offset)||offset<0)throw error("INVALID_CALCULATION_FEATURE_QUERY");
+  if(!input.caseId||!Number.isSafeInteger(limit)||limit<1||limit>500||!Number.isSafeInteger(offset)||offset<0||(input.expectedRunId!==undefined&&!/^calculation-[a-f0-9]{64}$/i.test(input.expectedRunId)))throw error("INVALID_CALCULATION_FEATURE_QUERY");
   const current=await db.prepare("SELECT c.revision,s.data_version FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=?").bind(input.caseId).first<{revision:number;data_version:number|null}>();
   if(!current)throw error("CALCULATION_CASE_NOT_FOUND");
   if(input.expectedDataVersion!==undefined&&input.expectedDataVersion!==current.data_version)throw error("CALCULATION_VERSION_MISMATCH");
   const head=await db.prepare("SELECT h.*,r.status,r.rule_release_id,r.reference_id,r.reference_revision,r.reference_sha256,r.contract_version,r.source_heads_json,r.source_heads_sha256,r.missing_json,r.created_at FROM case_calculation_heads h JOIN case_calculation_runs r ON r.id=h.run_id WHERE h.case_id=?").bind(input.caseId).first<Head>();
+  // Bind offset pagination to one immutable run. A reference-only recalculation
+  // can replace the head without advancing the case or source data version.
+  if(input.expectedRunId!==undefined&&input.expectedRunId!==(head?.run_id??null))throw error("CALCULATION_VERSION_MISMATCH");
   const total=head?await db.prepare("SELECT COUNT(*) AS n FROM case_calculation_features WHERE run_id=?").bind(head.run_id).first<{n:number}>():null;
   const features=head?(await db.prepare("SELECT * FROM case_calculation_features WHERE run_id=? ORDER BY id LIMIT ? OFFSET ?").bind(head.run_id,limit,offset).all<StoredFeature>()).results??[]:[];
   const after=await db.prepare("SELECT c.revision,s.data_version FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=?").bind(input.caseId).first<{revision:number;data_version:number|null}>();
-  if(after?.revision!==current.revision||after?.data_version!==current.data_version)throw error("CALCULATION_VERSION_MISMATCH");
+  const afterHead=await db.prepare("SELECT run_id FROM case_calculation_heads WHERE case_id=?").bind(input.caseId).first<{run_id:string}>();
+  if(after?.revision!==current.revision||after?.data_version!==current.data_version||(afterHead?.run_id??null)!==(head?.run_id??null))throw error("CALCULATION_VERSION_MISMATCH");
   return {schemaVersion:CASE_CALCULATION_FEATURE_STORE_VERSION,caseId:input.caseId,currentDataVersion:current.data_version,currentCaseRevision:current.revision,
     runId:head?.run_id??null,dataVersion:head?.data_version??null,caseRevision:head?.case_revision??null,inputSha256:head?.input_sha256??null,
     headStale:!!head&&(head.data_version!==current.data_version||head.case_revision!==current.revision),status:head?.status??"missing",courtApprovalInferred:false,
