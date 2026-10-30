@@ -230,7 +230,10 @@ export function reviewedBusinessIncomeIds(data:CaseData,index:CaseReadIndex=crea
   if(!income||income.kind!=="business"||income.recognition!=="accepted"||
      income.sourceCalculationRole!=="period_income_observation"||
      income.periodStart!==review.month+"-01"||income.periodEnd!==datesFor(review.month).end||
-     income.amountBasis!=="period_total"||
+     income.amountBasis!=="period_total"||income.periodMonths!==1||
+     income.payerIdentityId!==review.payerIdentityId||
+     income.aggregationTreatment!=="series_observation"||income.aggregationReviewed!==true||
+     JSON.stringify(unique(income.factIds))!==JSON.stringify(review.sourceFactIds)||
      moneyValue(income.gross)?.toString()!==review.grossWon||
      moneyValue(income.expenses)?.toString()!==review.costWon||
      moneyValue(income.net)?.toString()!==review.netWon||
