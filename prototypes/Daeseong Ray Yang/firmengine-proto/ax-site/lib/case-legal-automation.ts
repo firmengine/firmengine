@@ -2,7 +2,10 @@
  * One bounded AI batch per lease. Never grants a human legal decision or files a document.
  * Source case rows are NEVER mutated by this derived-results processor.
  */
-import type {CaseData} from "./domain.ts";
+import {requiredKindsForCase,type CaseData} from "./domain.ts";
+import {BASIC_FORM_CODES} from "./form-mapping.ts";
+import {FORM_CONTRACTS} from "./form-contracts.ts";
+import {assessAutomaticDraftProjection,projectionRepairRequired,type ProjectionExpectation,type ProjectionFieldIdentity} from "./automatic-draft-projection-gate.ts";
 import type {LegalSourceReadiness} from "./case-legal-source-preflight.ts";
 import {RISK_CATALOG} from "./legal-rules.ts";
 import {EXECUTION_CONTRACT_VERSION} from "./execution-catalog.ts";
@@ -32,6 +35,30 @@ const clock=()=>new Date().toISOString();
 const later=(seconds:number)=>new Date(Date.now()+seconds*1000).toISOString();
 const id=(snapshot:Live)=>"legal-auto:"+snapshot.calculationRunId;
 const checkIds=RISK_CATALOG.map(x=>x.id);
+/** Only registered DOCX public-form tokens participate in this structural gate.
+ * Additional office artifacts (e.g., repayment worksheet) are checked by
+ * document-writer contracts and cannot be mistaken for a mapped DOCX form.
+ */
+function expectedDocumentProjection(data:CaseData):ProjectionExpectation[]{
+ const rows:ProjectionExpectation[]=[],seen=new Set<string>();
+ for(const kind of requiredKindsForCase(data)){
+  const code=BASIC_FORM_CODES[kind];if(!code||seen.has(code))continue;
+  seen.add(code);
+  const contract=FORM_CONTRACTS[code];if(!contract)continue;
+  const groups=new Set(contract.repeatGroups.map(g=>g.id));
+  for(const field of contract.fields){
+   const head=field.token.split(".")[0];
+   rows.push({formCode:code,token:field.token,valueKind:field.kind,
+     repeatGroup:groups.has(head)?head:null});
+  }
+ }
+ return rows;
+}
+async function savedDocumentProjection(database:D1Database,reviewRunId:string):Promise<ProjectionFieldIdentity[]>{
+ const result=await database.prepare("SELECT form_code AS formCode,token,value_kind AS valueKind,subject_id AS subjectId,row_ordinal AS rowOrdinal FROM case_document_field_values WHERE review_run_id=? ORDER BY ordinal LIMIT 5001")
+  .bind(reviewRunId).all<ProjectionFieldIdentity>();
+ return result.results??[];
+}
 const safeCode=(e:unknown)=>e instanceof Error&&/^(?:LEGAL_|CASE_|CALCULATION_|SOURCE_|DOCUMENT_|AUTO_|EXTRACTION_)[A-Z0-9_:]+$/.test(e.message)?e.message.slice(0,160):"LEGAL_AUTOMATION_STAGE_FAILED";
 function decode<T>(raw:string,fallback:T):T{try{return JSON.parse(raw) as T}catch{return fallback;}}
 async function latest(database:D1Database,caseId:string):Promise<Live|null>{
@@ -112,6 +139,8 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
     calculation:forForms.assessment.calculation
   });
  }catch(error){documentFieldProjectionError=error instanceof Error?error.message:"FORM_PROJECTION_UNAVAILABLE";}
+ const projection=assessAutomaticDraftProjection({expected:expectedDocumentProjection(data),
+   fields:documentFields,projectionError:documentFieldProjectionError});
  const review=await persistCaseLawgraphReview(database,{caseId:job.caseId,dataVersion:job.dataVersion,
   caseRevision:job.caseRevision,calculationRunId:job.calculationRunId,inputSha256:job.inputSha256,
   model:collected.model,checks:collected.checks,summary:collected.summary,
@@ -135,7 +164,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
     ...(projectionBlockers?["SOURCE_PROJECTION_BLOCKED"]:[]),
     ...(documentFieldProjectionError?["LAWGRAPH_FORM_FIELD_PROJECTION_FAILED"]:[]),
     ...(!documentFields.length?["LAWGRAPH_FORM_FIELD_PROJECTION_EMPTY"]:[]),
-    ...materialGaps]});
+    ...projection.blockers,...materialGaps]});
  const report=summarizeAutomaticLegalReview({
   checks:collected.checks,expectedCount:checkIds.length,draftEligibility:eligible,
   calculationIssues:execution.assessment.calculation.issues});
@@ -143,6 +172,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   processingComplete,pendingCourtPolicyChanges:pendingCourtPolicy?.n??0,
   unresolvedRequiredDocuments:unresolvedRequired.map(r=>({requirementId:r.requirementId,status:r.requirementStatus,missingFields:r.requiredFieldCoverage.missing})),
   projectionBlockers,documentFieldCount:documentFields.length,documentFieldProjectionError,
+  documentProjectionBlockers:projection.blockers,documentProjectionExpectedTokenCount:projection.expectedTokenCount,
   summary:collected.summary,
   reviewScope:"Legal advisory and REVIEW DRAFT ONLY. Official forms and human approval are separate.",
   findings:report.findings.slice(0,95)};
@@ -153,21 +183,28 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
  return {caseId:job.caseId,status,reviewRunId:review.runId,
   completedChecks:count,findings:report.findings.length,blockers:report.blockers};
 }
-async function processDraft(database:D1Database,job:Job,lease:string,service:LegalAutomationServices){
+async function processDraft(database:D1Database,job:Job,lease:string,service:LegalAutomationServices,data:CaseData){
  await assertCurrent(database,job);
  if(!job.legalReviewRunId)throw new Error("LEGAL_REVIEW_RUN_MISSING");
  const head=await database.prepare("SELECT review_run_id AS runId,data_version AS dataVersion,case_revision AS caseRevision,calculation_run_id AS calculationRunId FROM case_legal_review_heads WHERE case_id=?")
   .bind(job.caseId).first<{runId:string;dataVersion:number;caseRevision:number;calculationRunId:string}>();
  if(!head||head.runId!==job.legalReviewRunId||head.dataVersion!==job.dataVersion||head.caseRevision!==job.caseRevision||head.calculationRunId!==job.calculationRunId)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
- // Recheck stored form-field coverage for pre-fix draft_pending jobs as well.
- // Keep useful legal findings, but never run the writer for an empty or failed projection.
- const fields=await database.prepare("SELECT COUNT(*) AS n FROM case_document_field_values WHERE review_run_id=?")
-  .bind(job.legalReviewRunId).first<{n:number}>();
+ // Independent post-DB-commit verification. A legacy draft_pending job
+ // or corrupted SQL projection cannot cause a writer call merely because the
+ // review conditions/amounts were sufficient when initially queued.
+ const fields=await savedDocumentProjection(database,job.legalReviewRunId);
  const previous=decode<Record<string,unknown>>(job.outcomeJson,{});
- if(!fields?.n||previous.documentFieldProjectionError){
-  const blockers=[...new Set([...(Array.isArray(previous.blockers)?previous.blockers:[]),"LAWGRAPH_FORM_FIELD_PROJECTION_REQUIRED"])];
+ const projection=assessAutomaticDraftProjection({
+  expected:expectedDocumentProjection(data),fields,
+  projectionError:typeof previous.documentFieldProjectionError==="string"?previous.documentFieldProjectionError:null,
+  claimedPersistedCount:typeof previous.documentFieldCount==="number"?previous.documentFieldCount:-1});
+ if(!projection.eligible||previous.draftCandidate!==true){
+  const blockers=[...new Set([...(Array.isArray(previous.blockers)?previous.blockers.filter((x):x is string=>typeof x==="string"):[]),
+    ...projection.blockers,"LAWGRAPH_FORM_FIELD_PROJECTION_REQUIRED",
+    ...(previous.draftCandidate!==true?["DOCUMENT_DRAFT_PREVIOUSLY_NOT_ELIGIBLE"]:[])])];
   await transition(database,job,lease,"review_required",{outcome:{...previous,draftCandidate:false,
-    disposition:"review_required",documentFieldCount:fields?.n??0,blockers,
+    disposition:"review_required",documentFieldCount:fields.length,
+    documentProjectionBlockers:projection.blockers,blockers,
     humanReviewRequired:true,canFinalize:false,courtApprovalInferred:false}});
   return {caseId:job.caseId,status:"review_required",blockers};
  }
@@ -209,7 +246,13 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
        dataVersion:job.dataVersion,requiresHumanReview:!readiness.retryable,courtApprovalInferred:false}});
    return {caseId:job.caseId,status:state,blockers:readiness.blockers};
   }
-  if(job.legalReviewRunId&&["draft_pending","retry_wait","running"].includes(candidate.jobStatus??""))return await processDraft(database,job,lease,services);
+  if(job.legalReviewRunId&&["draft_pending","retry_wait","running"].includes(candidate.jobStatus??"")){
+   const outcome=decode<Record<string,unknown>>(job.outcomeJson,{});
+   // Operator-initiated repair must reproject from saved 95 findings WITHOUT
+   // another model call. It cannot jump directly to a draft writer.
+   if(projectionRepairRequired(outcome))return await finalizeReview(database,job,lease,services);
+   return await processDraft(database,job,lease,services,source);
+  }
   const response=await services.reviewLegal(job.caseId);
   await assertCurrent(database,job);
   if(response.stage==="legal_snapshot_changed")throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
@@ -256,14 +299,18 @@ export async function retryFailedCaseLegalAutomation(database:D1Database,input:{
  if(!input.caseId||!Number.isSafeInteger(input.expectedDataVersion)||input.expectedDataVersion<1)throw new Error("LEGAL_AUTOMATION_RETRY_INVALID_INPUT");
  const current=await latest(database,input.caseId);
  if(!current||current.dataVersion!==input.expectedDataVersion)throw new Error("LEGAL_AUTOMATION_RETRY_STALE_VERSION");
- const row=await database.prepare("SELECT id,status,attempts,data_version AS dataVersion,case_revision AS caseRevision,calculation_run_id AS calculationRunId FROM case_legal_automation_jobs WHERE case_id=? AND data_version=? AND calculation_run_id=?")
-  .bind(input.caseId,current.dataVersion,current.calculationRunId).first<{id:string;status:string;attempts:number;dataVersion:number;caseRevision:number;calculationRunId:string}>();
- if(!row||row.status!=="failed"||row.caseRevision!==current.caseRevision)throw new Error("LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB");
- const updated=await database.prepare("UPDATE case_legal_automation_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,updated_at=? WHERE id=? AND status='failed' AND case_revision=? AND data_version=?")
-  .bind(clock(),clock(),row.id,current.caseRevision,current.dataVersion).run();
+ const row=await database.prepare("SELECT id,status,attempts,data_version AS dataVersion,case_revision AS caseRevision,calculation_run_id AS calculationRunId,legal_review_run_id AS legalReviewRunId,outcome_json AS outcomeJson FROM case_legal_automation_jobs WHERE case_id=? AND data_version=? AND calculation_run_id=?")
+  .bind(input.caseId,current.dataVersion,current.calculationRunId).first<{id:string;status:string;attempts:number;dataVersion:number;caseRevision:number;calculationRunId:string;legalReviewRunId:string|null;outcomeJson:string}>();
+ const projectionRetry=!!row&&row.status==="review_required"&&!!row.legalReviewRunId&&
+   projectionRepairRequired(decode(row.outcomeJson,{}));
+ if(!row||row.status!=="failed"&&!projectionRetry||row.caseRevision!==current.caseRevision)
+  throw new Error("LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB");
+ const updated=await database.prepare("UPDATE case_legal_automation_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,updated_at=? WHERE id=? AND status=? AND case_revision=? AND data_version=?")
+  .bind(clock(),clock(),row.id,row.status,current.caseRevision,current.dataVersion).run();
  if(!updated.meta.changes)throw new Error("LEGAL_AUTOMATION_RETRY_CONFLICT");
  await database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) VALUES(?,?,?,?,?,?)")
-  .bind(input.caseId,row.id,current.dataVersion,"manual_retry_requested",JSON.stringify({previousStatus:"failed",newStatus:"retry_wait",courtApprovalInferred:false}),clock()).run();
+  .bind(input.caseId,row.id,current.dataVersion,"manual_retry_requested",JSON.stringify({
+    previousStatus:row.status,newStatus:"retry_wait",projectionOnly:projectionRetry,courtApprovalInferred:false}),clock()).run();
  return {caseId:input.caseId,dataVersion:current.dataVersion,status:"retry_wait",jobId:row.id,automaticCourtApproval:false};
 }
 export async function readCaseLegalAutomation(database:D1Database,caseId:string){
