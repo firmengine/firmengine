@@ -1,4 +1,5 @@
 import { canUseRescueRole } from "../../../../../../lib/classification-recovery";
+import { validEvidencePageImageLength } from "../../../../../../lib/evidence-page-upload";
 import { createHash } from "node:crypto";
 import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
@@ -61,7 +62,7 @@ export async function PUT(request:Request,{params}:Context){try{
     const expected=rescueSpecs({reason:activePlan.reason,boxes:activePlan.boxes,sourceHash,baseImageHash:baseHash,recipeVersion:activePlan.recipeVersion}).find(spec=>spec.variant===variant);
     const legacyNeutral=expected?.recipeVersion==="neutral-v1"&&tx.recipeVersion===undefined&&tx.tone===undefined;
     if(!expected||JSON.stringify(expected.bbox)!==JSON.stringify(bbox)||expected.rotation!==tx.rotation||expected.contrast!==tx.contrast||(!legacyNeutral&&(tx.recipeVersion!==expected.recipeVersion||tx.tone!==expected.tone)))throw new HttpError(400,"후보는 저장된 재판독 계획의 위치·회전·대비·톤 레시피와 일치해야 합니다.");
-    const bytes=await request.arrayBuffer();if(bytes.byteLength<1||bytes.byteLength>8_000_000)throw new HttpError(413,"후보 이미지는 8MB까지 지원합니다.");
+    const bytes=await request.arrayBuffer();if(!validEvidencePageImageLength(bytes.byteLength))throw new HttpError(413,"후보 이미지는 1바이트 이상 8MB 이하여야 합니다.");
     const contentType=request.headers.get("content-type")||"";if(!["image/jpeg","image/png","image/webp"].includes(contentType))throw new HttpError(415,"후보는 JPEG·PNG·WEBP 이미지여야 합니다.");
     // The same crop bytes may legitimately occupy distinct rescue slots. Bind
     // both the row identity and object key to the validated slot so one slot
@@ -82,7 +83,7 @@ export async function PUT(request:Request,{params}:Context){try{
     return Response.json({stored:true,variant,variantHash});
   }
   const contentType=request.headers.get("content-type")||"";if(!["image/jpeg","image/png","image/webp"].includes(contentType))throw new HttpError(415,"페이지는 JPEG·PNG·WEBP 이미지여야 합니다.");
-  const bytes=await request.arrayBuffer();if(bytes.byteLength>8_000_000)throw new HttpError(413,"페이지 이미지는 8MB까지 지원합니다.");
+  const bytes=await request.arrayBuffer();if(!validEvidencePageImageLength(bytes.byteLength))throw new HttpError(413,"페이지 이미지는 1바이트 이상 8MB 이하여야 합니다.");
   const hash=await sha256(bytes),key=`cases/${id}/documents/${doc}/pages/${page}/${hash}`;
   if(job.image_hash===hash)return Response.json({stored:true,page,idempotent:true});
   if(job.image_hash)throw new HttpError(409,"기존 페이지 이미지를 덮어쓸 수 없습니다. 원본 변경은 새 문서로 올리고 이전 문서를 철회하세요.");
