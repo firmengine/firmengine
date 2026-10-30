@@ -19,12 +19,18 @@ const json=(v:unknown)=>JSON.stringify(v);
 const sha=async(value:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(value)))].map(v=>v.toString(16).padStart(2,"0")).join("");
 const stable=(v:unknown):string=>v===null||typeof v!=="object"?JSON.stringify(v)??"null":Array.isArray(v)?`[${v.map(stable).join(",")}]`:`{${Object.keys(v).sort().filter(k=>(v as Record<string,unknown>)[k]!==undefined).map(k=>`${JSON.stringify(k)}:${stable((v as Record<string,unknown>)[k])}`).join(",")}}`;
 const error=(code:string)=>Object.assign(new Error(code),{code});
-/** Two JSON columns share one D1 row; individual limits alone can exceed its 2 MB row cap.
- * Reserve 100 KB for row metadata and keep existing per-column limits. */
-export function assertCalculationRunPayloadSize(rawResultJson:string,sourceHeadsJson:string){
- const rawBytes=new TextEncoder().encode(rawResultJson).length;
- const sourceBytes=new TextEncoder().encode(sourceHeadsJson).length;
- if(rawBytes>1_900_000||sourceBytes>1_000_000||rawBytes+sourceBytes>1_900_000)
+/** D1's 2 MB row cap covers the entire calculation run, not only two JSON
+ * columns. Reserve 100 KB for SQLite overhead and enforce existing JSON caps. */
+export function assertCalculationRunPayloadSize(
+ rawResultJson:string,sourceHeadsJson:string,
+ otherRunFields:readonly (string|number|null|undefined)[]=[]
+){
+ const encoder=new TextEncoder();
+ const rawBytes=encoder.encode(rawResultJson).length;
+ const sourceBytes=encoder.encode(sourceHeadsJson).length;
+ const otherBytes=otherRunFields.reduce((total,value)=>
+  total+encoder.encode(value==null?"":String(value)).length,0);
+ if(rawBytes>1_900_000||sourceBytes>1_000_000||rawBytes+sourceBytes+otherBytes>1_900_000)
   throw error("CALCULATION_FEATURE_RESULT_SIZE_LIMIT");
 }
 
@@ -129,7 +135,15 @@ export async function persistCaseCalculationFeatures(db:D1Database,input:Persist
   const knownMoney=rows.filter(f=>f.valueWon!==null&&["computed","provisional"].includes(f.status)).length;
   const status:CalculationFeatureStatus=!knownMoney&&missing.length?"missing":rows.some(f=>f.status==="provisional")||missing.length?"provisional":"computed";
   const at=new Date().toISOString(),runId="calculation-"+await sha(stable({caseId:input.caseId,dataVersion:input.dataVersion,caseRevision:input.caseRevision,inputSha256:input.inputSha256,ruleReleaseId:e.ruleReleaseId,reference,contractVersion,sourceHeadsSha,rawResultSha:await sha(rawResultJson)}));
-  const statements:D1PreparedStatement[]=[db.prepare("INSERT OR IGNORE INTO case_calculation_runs (id,case_id,data_version,case_revision,input_sha256,rule_release_id,reference_id,reference_revision,reference_sha256,contract_version,status,missing_json,raw_result_json,source_heads_json,source_heads_sha256,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(runId,input.caseId,input.dataVersion,input.caseRevision,input.inputSha256,e.ruleReleaseId,reference.id,reference.revision,reference.sha256,contractVersion,status,json({features:missing,engineIssues:e.assessment.calculation.issues}),rawResultJson,sourceHeadsJson,sourceHeadsSha,at),
+  const missingJson=json({features:missing,engineIssues:e.assessment.calculation.issues});
+  // Account for every serialized value in the same case_calculation_runs row,
+  // including potentially large missing_json, not only the two main JSON fields.
+  assertCalculationRunPayloadSize(rawResultJson,sourceHeadsJson,[
+   runId,input.caseId,input.dataVersion,input.caseRevision,input.inputSha256,e.ruleReleaseId,
+   reference.id,reference.revision,reference.sha256,contractVersion,status,
+   missingJson,sourceHeadsSha,at
+  ]);
+  const statements:D1PreparedStatement[]=[db.prepare("INSERT OR IGNORE INTO case_calculation_runs (id,case_id,data_version,case_revision,input_sha256,rule_release_id,reference_id,reference_revision,reference_sha256,contract_version,status,missing_json,raw_result_json,source_heads_json,source_heads_sha256,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)").bind(runId,input.caseId,input.dataVersion,input.caseRevision,input.inputSha256,e.ruleReleaseId,reference.id,reference.revision,reference.sha256,contractVersion,status,missingJson,rawResultJson,sourceHeadsJson,sourceHeadsSha,at),
     ...inserts(db,"case_calculation_features",["id","run_id","calculation_id","output_name","output_path","subject_id","row_ordinal","value_json","value_won","status","source_fact_ids_json","input_refs_json","formula"],rows.map((f,index)=>[`${runId}:feature:${String(index).padStart(8,"0")}`,runId,f.calculationId,f.outputName,f.outputPath,f.subjectId,f.rowOrdinal,json(f.value),f.valueWon,f.status,json(f.sourceFactIds),json({...f.inputRefs as object,sourceHeadsSha256:sourceHeadsSha,reasons:f.reasons}),f.formula])),
     db.prepare("INSERT INTO case_calculation_heads (case_id,run_id,data_version,case_revision,input_sha256,updated_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=?) ON CONFLICT(case_id) DO UPDATE SET run_id=excluded.run_id,data_version=excluded.data_version,case_revision=excluded.case_revision,input_sha256=excluded.input_sha256,updated_at=excluded.updated_at WHERE excluded.data_version>=case_calculation_heads.data_version AND excluded.case_revision>=case_calculation_heads.case_revision").bind(input.caseId,runId,input.dataVersion,input.caseRevision,input.inputSha256,at,input.caseId,input.caseRevision,input.dataVersion)];
   const result=await db.batch(statements);
