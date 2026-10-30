@@ -56,7 +56,8 @@ export interface BusinessSourceAudit {
   caseRevision:number;total:number;offset:number;limit:number;nextOffset:number|null;
   summary:{
     sourceMoneyFacts:number;currentlyRelevant:number;outsideSelectedPeriod:number;
-    notYetLinked:number;noCurrentBusinessIncomeCandidate:boolean;
+    notYetLinked:number;unreconciledCurrentSourceFacts:number;
+    noCurrentBusinessIncomeCandidate:boolean;
     zeroIncomeWouldBeUnsupported:boolean;
   };
   rows:BusinessSourceMoneyRow[];
@@ -123,12 +124,19 @@ export function auditBusinessSourceEvidence(
     use:"source_only_not_legally_approved"};
  }).sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId)||a.factId.localeCompare(b.factId));
  const relevant=all.filter(row=>row.periodOverlap!=="outside"&&row.observedState!=="explicit_none"&&row.reviewState!=="rejected");
- const zeroIncomeWouldBeUnsupported=candidates.length===0&&relevant.length>0;
+ // An accepted net row for another business or a different source does NOT
+ // account for new, unlinked VAT/cost observations. This is a coverage check,
+ // not a legal statement that all raw costs are deductible.
+ const candidateIds=new Set(candidates.map(candidate=>candidate.id));
+ const unreconciledCurrentSourceFacts=relevant.filter(row=>
+   !row.linkedBusinessIncomeIds.some(id=>candidateIds.has(id))).length;
+ const zeroIncomeWouldBeUnsupported=unreconciledCurrentSourceFacts>0;
  return {schemaVersion:"business-source-money-review/1",caseRevision:data.context.revision,
   total:all.length,offset,limit,nextOffset:offset+limit<all.length?offset+limit:null,
   summary:{sourceMoneyFacts:all.length,currentlyRelevant:relevant.length,
     outsideSelectedPeriod:all.filter(x=>x.periodOverlap==="outside").length,
     notYetLinked:relevant.filter(x=>x.linkedBusinessIncomeIds.length===0).length,
+    unreconciledCurrentSourceFacts,
     noCurrentBusinessIncomeCandidate:candidates.length===0,
     zeroIncomeWouldBeUnsupported},
   rows:all.slice(offset,offset+limit),automaticNetCalculation:false};
