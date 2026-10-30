@@ -547,8 +547,8 @@
 - [ ] **A4-IT-002** 동일 이벤트 재전달에도 idempotent 실행 1회. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-IT-003** 동일 job 두 워커 claim의 DB 원자성/CAS. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **2026-10-30 A4 1차: V1 후보가 V2 활성 lease를 탈취하는 SQL 반례 확인. [PR #16](https://github.com/firmengine/firmengine/pull/16) 제안·미병합, staging/전체 CI 미인증; [실행증빙](release-audit-runs/A4/20261030-round01-poll-race-and-draft-subject.md).**
 - [ ] **A4-IT-004** 두 사건 동시처리에서 테넌트/사건 정보 격리. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
-- [ ] **A4-IT-005** 응답 소실 후 완료 receipt 재조회 및 재사용. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
-- [ ] **A4-IT-006** R2 저장 성공/D1 저장 실패와 반대 방향 복구. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
+- [ ] **A4-IT-005** 응답 소실 후 완료 receipt 재조회 및 재사용. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **3차 부분검증**: 문서 원본 업로드 D1 COMMIT 응답유실 → 재조회하여 성공확인/파일보존; 기존 제어흐름은 포인터가 존재하는 R2 파일을 삭제하는 결함. 합성 baseline SQL ready1/R2 없음 vs 수정 SQL ready1/R2 있음. [Draft PR #23](https://github.com/firmengine/firmengine/pull/23), helper Node 9/9, staging/전체 CI 미실행. [회차 영수증](release-audit-runs/A4/20261030-round03-original-upload-lost-ack.md).
+- [ ] **A4-IT-006** R2 저장 성공/D1 저장 실패와 반대 방향 복구. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **3차 P0 결함 재현·수정안**: `PUT original` R2 성공 뒤 D1 ACK 유실 시 무조건 finally DELETE한 증빙 원본이 DB 포인터와 불일치. [Draft PR #23](https://github.com/firmengine/firmengine/pull/23)에서 D1 pointer 재조회/확정·불확실성별 R2 보존·503. 독립 Node 9/9, PR 미병합, D1/R2 통합 미실행. [영수증](release-audit-runs/A4/20261030-round03-original-upload-lost-ack.md).
 - [ ] **A4-IT-007** 10분 quiet window 중 원본 변경의 재계산 타이머. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-IT-008** 검토·문안-only 변경의 원본버전 불필요 증가 방지. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-IT-009** Cron limit 1에서 오래된 실패 사건 기아 방지. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
@@ -651,7 +651,7 @@
 - [ ] **A4-DATA-010** sourceDataVersion 단독 변경 후 보정항목 stale. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-011** review-only 수정과 source mutation 분리. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-012** 이벤트 순서변경/중복/지연 전달 결과 재현. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **A4 2차 부분검증: 같은 법원 사건번호의 후발 보정명령이 생겨도 기존 답변 draft current=true인 상태 재현. PR #19 read 함수 격리 재생에서 current=false·draft=null. 저장원장 D1/Cron 이벤트 역순 전수 미인증. [A4 2차 영수증](release-audit-runs/A4/20261030-round02-court-response-identity.md).**
-- [ ] **A4-DATA-013** D1/R2 저장 원자성 또는 보상트랜잭션. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
+- [ ] **A4-DATA-013** D1/R2 저장 원자성 또는 보상트랜잭션. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록. **3차 일부**: D1 ready=1/R2 bytes 삭제 부정 반례를 로컬 인메모리 state로 재현, 원본복구 helper 신규. SQL·R2 실환경 보상은 미검증, D1 결과 미확정으로 남긴 orphan의 안전 정리 프로세스 별도 P1. [Draft PR #23](https://github.com/firmengine/firmengine/pull/23), [영수증](release-audit-runs/A4/20261030-round03-original-upload-lost-ack.md).
 - [ ] **A4-DATA-014** 실패/보류/DLQ 기록의 조회·복구 경로. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-015** 필드 누락/상충/미승인/미사용 지표 계산. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
 - [ ] **A4-DATA-016** 개인정보 없는 합성 fixture와 goldens 저장. 합격: 이벤트순서/상태/재시도/동시성·인증 게이트의 실제 실행 기록.
@@ -740,7 +740,7 @@
 - [ ] **X-044** 기한 확인자료 철회 후 과거 보정항목 stale. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 2차 정적 확인: 기한 Fact 철회 시 기존 read 상태 stale 가드·테스트 존재. 이번 회차 원본 Node/D1 실제 실행하지 않았으므로 완료 아님. [A4 2차 영수증](release-audit-runs/A4/20261030-round02-court-response-identity.md).**
 - [ ] **X-045** 두 사용자 동시 검수와 비동일 승인자. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-046** 두 워커 동시 claim/다른 사건 교차 경합. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **A4 부분재현: 원본 V1→V2 사이 늦은 poll의 신규 lease 탈취. PR #16 후 격리 sqlite 차단 확인, staging 2-worker 미인증. [증빙](release-audit-runs/A4/20261030-round01-poll-race-and-draft-subject.md).**
-- [ ] **X-047** R2 업로드 완료 뒤 D1 실패/응답 유실. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
+- [ ] **X-047** R2 업로드 완료 뒤 D1 실패/응답 유실. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록. **3차 부분재현**: 실제 파일 없이 합성 식별자로 'R2 성공→D1 COMMIT→응답유실' baseline SQL 포인터 유효·R2 객체 삭제, PR 수정 후 객체 보존. `git hash-object` 일치 테스트 9/9; staging/전체 라우트 미실행. [영수증](release-audit-runs/A4/20261030-round03-original-upload-lost-ack.md).
 - [ ] **X-048** 모델 429/503/timeout·잘못된 JSON/빈답변. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-049** PDF 프롬프트 인젝션·악성 입력·파일명 공격. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
 - [ ] **X-050** 관계없는 사건 원본 읽기/권한상승/개인정보 누출. 합격: 합성 입력 JSON·기대/실제 결과·검토/차단·재시도·최신 SHA 기록.
@@ -837,3 +837,10 @@
 - **정적 실측**: 693 canonical/85문서/48패밀리/1,808슬롯 재대조, 대상 20 ID·97슬롯·등록 불일치 0. 20개 직접 typed/계산/정확 서식/정확 canonical legacy-risk 결합 0. **14개는 workflow를 통한 위험 검토 후보가 있으나 정식 법률 필드계약을 의미하지 않음**. 전체 정적 seed 693개 중 441개에 법률 검토 후보 존재; 동적 관리기준 승인 상태와 별개.
 - **재현한 감사 기능 결함**: `feature-lineage-audit.ts`가 위험후보 존재만으로 정확 법률 증거 미연결 경고를 숨김. 후보 9/3/0 합성 분기에 기존 2개 false-negative, 수정 분기 3/3 기대 일치. [Draft PR #22](https://github.com/firmengine/firmengine/pull/22)에 작은 수정/회귀 테스트를 제출했으나 **Node 전체·CI 체크(현재 상태 0건)·staging D1/R2·공식 양식/변호사 승인 미실행**으로 병합 보류.
 - **다음 A3**: canonical #061–080 잔액금액·기준일·통화·은행거래 일부 typed 변환과 자산 이중산입/원문기간을 심층감사. 법률/회계 자동인정 및 source-only 무단 합산 금지.
+
+
+### 2026-10-30 A4 3차 — 원본 R2 업로드 후 D1 응답유실의 증빙 파괴 차단
+
+- 역할: IT(`A4-IT-005/006`), 데이터(`A4-DATA-013`), 교차 `X-047`. **최종 합격 0개**, 개별 체크 [ ] 유지. [로컬 실제 실행/PR #23/미인증 단계 영수증](release-audit-runs/A4/20261030-round03-original-upload-lost-ack.md).
+- P0 재현: D1의 `documents.original_key` COMMIT 후 응답유실시 기존 `finally`가 실제 참조 R2 원본을 삭제(합성 SQL ready=1, R2 없음). 수정: D1 pointer readback 일치면 객체 보존, 조회 자체 실패면 보수적 보존/503. helper 원본 Git blob·테스트 SHA 동일, **Node 9/9 + tsc 대상 helper 0 진단**, 전체 저장소 CI/staging D1/R2·실제 PDF 미인증.
+- [Draft PR #23](https://github.com/firmengine/firmengine/pull/23) **미병합**; 별도 export manifest 후 event 실패에 따른 중복 산출 위험은 **정적 의심·미실행**으로 다음 회차. 외부 법률·법원 제출 검증과 무관.
