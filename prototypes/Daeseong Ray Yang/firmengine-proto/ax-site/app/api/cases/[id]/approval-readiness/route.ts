@@ -9,6 +9,7 @@ import {legalEvidenceInventory} from "../../../../../lib/legal-evidence-criteria
 import {getCalculationSpecs} from "../../../../../lib/execution-catalog.ts";
 import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.ts";
 import {auditFivePreapprovalStages,type StoredCalcFeature} from "../../../../../lib/preapproval-stage-audit.ts";
+import {inspectPreapprovalOcrStorage} from "../../../../../lib/preapproval-ocr-storage-audit.ts";
 import legalExceptions from "../../../../../lib/legal-exceptions.json" with {type:"json"};
 import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
 import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
@@ -75,6 +76,12 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
       calculationReplayIssues=["CALCULATION_FEATURE_STORE_UNAVAILABLE"];
     }
   }
+  const physicalOcr=await inspectPreapprovalOcrStorage(database,data)
+    .catch(error=>({schemaVersion:"preapproval-ocr-storage-audit/1",caseId:id,
+      status:"unavailable_fail_closed",reason:error instanceof Error?error.message:"UNKNOWN_OCR_SOURCE_ERROR",
+      legalAcceptanceInferred:false,sourceVerificationInferred:false}));
+  if(!("registeredCanonicalCount" in physicalOcr)||physicalOcr.status!=="observed_page_coverage_only")
+    calculationCurrent=false;
   const sourceIndex=createCaseReadIndex(data),facts=currentFacts(data,sourceIndex);
   // Source state alone does not establish a valid original document or legal recognition.
   const acceptedFactIds=new Set(facts.filter(fact=>fact.state==="verified"&&fact.recognition==="accepted"
@@ -110,7 +117,10 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
     ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[]),
     ...calculationReplayIssues,
-    ...(!featureReadComplete?["FULL_CALCULATION_FEATURE_READ_INCOMPLETE"]:[])
+    ...(!featureReadComplete?["FULL_CALCULATION_FEATURE_READ_INCOMPLETE"]:[]),
+    ...(physicalOcr.status==="unavailable_fail_closed"?["CURRENT_OCR_COVERAGE_STORAGE_UNAVAILABLE"]:
+      physicalOcr.status==="source_integrity_or_page_gap"?["CURRENT_OCR_PAGE_OR_SOURCE_INTEGRITY_GAP"]:
+      physicalOcr.status==="no_active_documents"?["NO_ACTIVE_OCR_SOURCE_DOCUMENTS"]:[])
   ];
   const graph=buildApprovalIssueGraph({
     risks:RISK_CATALOG,
@@ -131,6 +141,6 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     documents:requirements.status==="fulfilled"?requirements.value:null,
     validSourceFactIds:acceptedFactIds,
   });
-  return Response.json({...output,judgmentGraph:graph,stageAudit,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
 }
