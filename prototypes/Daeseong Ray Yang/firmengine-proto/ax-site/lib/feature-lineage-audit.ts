@@ -10,6 +10,8 @@ import {bindCanonicalSourceField,canonicalProjectionKey} from "./canonical-field
 import {OCR_DECLARED_FORM_TARGETS} from "./ocr-chain-matrix.ts";
 import {FORM_CONTRACTS} from "./form-contracts.ts";
 import {WORKFLOW_RULES} from "./workflow-rules.ts";
+import {MATERIAL_CALCULATION_SOURCES} from "./material-calculation-source-gate.ts";
+import {BUSINESS_SOURCE_MONEY_ROLES} from "./business-source-evidence.ts";
 import {RISK_CATALOG} from "./legal-rules.ts";
 import practice from "./court-practice-gap-catalog.json" with {type:"json"};
 
@@ -50,6 +52,23 @@ function calculatedFrom(typed:{recordCategory:string;key:string}[]){
   if(t.recordCategory==="asset"&&["gross_value","kind","as_of","secured_payoff","valuation_basis"].includes(t.key))ids.push("asset_liquidation","liquidationValueWon");
  }
  return distinct(ids);
+}
+const BUSINESS_COST_PREFLIGHT_CONTEXT=new Set([
+  "business_entity","expense_category","gross_amount","period_start","period_end"
+].map(key=>"business_costs_and_ledgers::income.business_cost."+key));
+/** Exact source-consumer candidates; never a typed value, statutory deduction or form token. */
+function sourceReviewConsumers(id:string){
+  const consumers:{id:string;status:string}[]=[];
+  const material=MATERIAL_CALCULATION_SOURCES.find(row=>row.id===id);
+  if(material)consumers.push({id:"material_calculation_source_gate",status:material.policy==="context_only"
+    ?"source_context_only_no_automatic_inclusion":"requires_exact_source_to_typed_reconciliation"});
+  if(Object.hasOwn(BUSINESS_SOURCE_MONEY_ROLES,id))
+    consumers.push({id:"business_source_evidence_audit",status:"source_observation_only_not_legally_approved"});
+  if(id==="business_costs_and_ledgers::income.business_cost.business_entity")
+    consumers.push({id:"business_identity_crosswalk",status:"candidate_needs_independent_human_identity_review"});
+  if(BUSINESS_COST_PREFLIGHT_CONTEXT.has(id))
+    consumers.push({id:"business_net_preflight",status:"verified_source_candidate_not_approved_net_income"});
+  return consumers;
 }
 function formCandidates(id:string,forms:string[]){
  const exact=OCR_DECLARED_FORM_TARGETS[id]?.forms??[];
@@ -113,6 +132,7 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
     database:{recordTable:"extraction_records",featureTable:"extracted_features",missingTable:"extraction_field_coverage",
       rawColumn:"raw_value_json",fieldIdColumn:"canonical_field_id",identity:"document_id/page/record_ordinal/field_ordinal/source_sha256"},
     typedProjections:typed,
+    sourceReviewConsumers:sourceReviewConsumers(id),
     legal:{referenceReviewCandidates:scope.laws,workflowRouteCandidates:workflow,riskCheckCandidates:risks,
       approvalInferred:false,legalRequiredness:"case_condition_and_court_review_needed"},
     calculations:calc.map(calcId=>({id:calcId,status:"depends_on_verified_case_objects_not_raw_ocr" as const})),
