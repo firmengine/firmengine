@@ -165,14 +165,20 @@ export function evaluateCaseFieldLineage(data:CaseData,rows:ReadonlyArray<{
    const start=monthIndex(parts[1]),end=monthIndex(parts[2]);
    return start<=end&&end-start<120?{start,end}:null;
  };
- const referenced=(fact:typeof facts[number],requirement:typeof requirements[number])=>fact.refs.some(ref=>{
+ const referenced=(fact:typeof facts[number],requirement:typeof requirements[number])=>{
+   // An accepted document/page is not proof for every person on that page.
+   // Mirror the reviewed typed-entity boundary used for substitution proofs.
+   const subjectLink=(data.workflowState?.subjectLinks??[]).find(link=>link.linkId===requirement.subjectLinkId);
+   if(!subjectLink||subjectLink.status!=="confirmed"||!subjectLink.typedEntityId||fact.subjectId!==subjectLink.typedEntityId)return false;
+   return fact.refs.some(ref=>{
    const doc=data.documents.find(d=>d.id===ref.documentId&&d.status==="active");
    if(!doc||doc.sha256!==ref.sourceHash||!validSourceRef(data,ref,sourceIndex))return false;
    const matches=(data.workflowState?.documentMatches??[]).filter(m=>
      m.requirementId===requirement.requirementId&&m.subjectLinkId===requirement.subjectLinkId
        &&m.state==="accepted"&&m.sourceDocumentHash===doc.sha256&&m.documentId===doc.id);
    return matches.some(m=>m.pageIds.includes(ref.documentId+":"+ref.page));
- });
+   });
+ };
  const sourceValid=(fact:typeof facts[number])=>fact.state==="verified"&&fact.recognition==="accepted"&&
    fact.fieldObservation?.sourceState==="present"&&
    !fact.validation.some(v=>v.severity!=="info")&&
