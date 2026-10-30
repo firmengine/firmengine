@@ -112,7 +112,12 @@ export function assembleBusinessMonthEvidence(rows:readonly BusinessSourceMoneyR
   // Arithmetic preview is allowed only for a single verified gross total and
   // fully verified, individually located cost lines within the same exact month.
   // It is NOT legal income and cannot be automatically projected into CaseData.
-  const arithmetic=grossValue!==null&&costValue!==null&&
+  // A VAT document's revenue and a separate expense ledger are not proven
+  // to belong to the same business merely because their month agrees.
+  // Only same-record arithmetic may be shown before staff crosswalk review.
+  const sameSourceRow=gross.length===1&&cost.length>0&&
+    cost.every(row=>row.sourceRecordId===gross[0].sourceRecordId);
+  const arithmetic=grossValue!==null&&costValue!==null&&sameSourceRow&&
     entries.every(row=>row.verifiedAndAcceptedSource)&&
     !refunds.length ? (BigInt(grossValue)-BigInt(costValue)).toString():null;
   return {month,selectedSourceFactIds:unique(entries.map(row=>row.factId)),
@@ -137,7 +142,8 @@ export function assembleBusinessMonthEvidence(rows:readonly BusinessSourceMoneyR
    "BUSINESS_MONTH_NO_SOURCE_ROWS","BUSINESS_GROSS_TOTAL_MISSING","BUSINESS_GROSS_TOTAL_MULTIPLE",
    "BUSINESS_COST_EVIDENCE_MISSING","BUSINESS_COST_TOTAL_AND_LINES_OVERLAP",
    "BUSINESS_COST_ROW_AMOUNT_AMBIGUOUS","BUSINESS_SOURCE_VALUE_UNVERIFIED",
-   "BUSINESS_PERIOD_PARTIAL_OR_UNKNOWN","BUSINESS_RETURNS_NOT_REVIEWED"].includes(gap))) || unmatched.length>0};
+   "BUSINESS_PERIOD_PARTIAL_OR_UNKNOWN","BUSINESS_RETURNS_NOT_REVIEWED",
+   "BUSINESS_IDENTITY_NOT_CROSSWALKED"].includes(gap))) || unmatched.length>0};
 }
 export function buildBusinessMonthlyWorkbench(data:CaseData,index:CaseReadIndex=createCaseReadIndex(data)):BusinessMonthWorkbench{
  if(index.owner!==data)throw Error("BUSINESS_MONTH_WRONG_CASE");
