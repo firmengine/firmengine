@@ -90,3 +90,29 @@ test("context-only third-party observations must not become typed balances or ze
  assert.equal(c.totalDebtWon,"0");
  assert.equal(c.liquidationValueWon,"0");
 });
+
+test("one source row may not be counted as two assets merely because both typed values match",()=>{
+ const data=setup("bank_account_balance::balance","1000000");
+ data.context.inventoryComplete.asset="yes";
+ data.assets=[
+  {id:"asset-1",kind:"deposit",label:"synthetic first",grossValue:normalizeMoney("1000000"),factIds:["fact-1"],recognition:"unreviewed"},
+  {id:"asset-2",kind:"deposit",label:"synthetic second",grossValue:normalizeMoney("1000000"),factIds:["fact-1"],recognition:"unreviewed"}
+ ];
+ const audit=auditMaterialCalculatorSources(data);
+ assert.equal(audit.issueCount,1);
+ assert.equal(audit.issues[0].code,"CALC_INPUT_MULTIPLE_TYPED_MATCHES");
+ const calculation=calculateCase(data,rules);
+ assert.equal(calculation.liquidationValueWon,null);
+ assert.equal(calculation.liquidationComparison,"unknown");
+});
+test("one exact net payroll observation cannot support two independent typed income rows",()=>{
+ const data=setup("payroll_payslip::income.payroll.net_pay","2000000");
+ data.context.inventoryComplete.income="yes";
+ data.incomes=[
+  {id:"income-A",kind:"wage",label:"synthetic A",net:normalizeMoney("2000000"),amountBasis:"monthly",factIds:["fact-1"]},
+  {id:"income-B",kind:"wage",label:"synthetic B",net:normalizeMoney("2000000"),amountBasis:"monthly",factIds:["fact-1"]}
+ ];
+ const report=auditMaterialCalculatorSources(data);
+ assert.equal(report.issues[0].code,"CALC_INPUT_MULTIPLE_TYPED_MATCHES");
+ assert.equal(calculateCase(data,rules).monthlyIncomeWon,null);
+});
