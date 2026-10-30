@@ -91,7 +91,8 @@ export function assembleBusinessMonthEvidence(rows:readonly BusinessSourceMoneyR
   const byRole=(role:BusinessSourceMoneyRow["role"])=>
     entries.filter(entry=>entry.role===role);
   const gross=byRole("turnover_total"),cost=byRole("cost_line"),summaries=byRole("cost_summary"),
-   components=byRole("turnover_component"),refunds=byRole("returns_refunds"),tax=byRole("vat_collected"),
+   components=byRole("turnover_component"),refunds=byRole("returns_refunds"),
+   tax=[...byRole("vat_collected"),...byRole("input_vat")],
    receipts=[...byRole("gross_receivable"),...byRole("net_cash_received"),...byRole("withheld_tax")];
   const gaps:MonthlyGap[]=[];
   if(!entries.length)gaps.push("BUSINESS_MONTH_NO_SOURCE_ROWS");
@@ -133,8 +134,10 @@ export function assembleBusinessMonthEvidence(rows:readonly BusinessSourceMoneyR
  return {expectedMonths:expected.length,months,unassignedSourceFacts:unmatched,
   outsideSelectedPeriodFactIds:unique(outside),
   incompleteSourceCoverage:expected.length===0 || months.some(row=>row.gaps.some(gap=>[
-   "BUSINESS_MONTH_NO_SOURCE_ROWS","BUSINESS_GROSS_TOTAL_MISSING","BUSINESS_COST_EVIDENCE_MISSING",
-   "BUSINESS_SOURCE_VALUE_UNVERIFIED"].includes(gap))) || unmatched.length>0};
+   "BUSINESS_MONTH_NO_SOURCE_ROWS","BUSINESS_GROSS_TOTAL_MISSING","BUSINESS_GROSS_TOTAL_MULTIPLE",
+   "BUSINESS_COST_EVIDENCE_MISSING","BUSINESS_COST_TOTAL_AND_LINES_OVERLAP",
+   "BUSINESS_COST_ROW_AMOUNT_AMBIGUOUS","BUSINESS_SOURCE_VALUE_UNVERIFIED",
+   "BUSINESS_PERIOD_PARTIAL_OR_UNKNOWN","BUSINESS_RETURNS_NOT_REVIEWED"].includes(gap))) || unmatched.length>0};
 }
 export function buildBusinessMonthlyWorkbench(data:CaseData,index:CaseReadIndex=createCaseReadIndex(data)):BusinessMonthWorkbench{
  if(index.owner!==data)throw Error("BUSINESS_MONTH_WRONG_CASE");
