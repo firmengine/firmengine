@@ -12,6 +12,7 @@ import {executeCaseNodes} from "./case-execution.ts";
 import {buildCaseWorkflowView} from "./case-workflow-view.ts";
 import {AUTOMATIC_DRAFT_REQUIRED_OUTPUTS,automatedDraftEligibility,persistCaseLawgraphReview,type StoredLegalCheck} from "./case-lawgraph-store.ts";
 import {summarizeAutomaticLegalReview} from "./case-legal-automation-policy.ts";
+import {buildStoredLawgraphDocumentFields} from "./lawgraph-document-field-projection.ts";
 
 export const LEGAL_AUTOMATION_VERSION="case-legal-reassessment/1" as const;
 export const LEGAL_AUTOMATION_LEASE_MS=180_000;
@@ -96,15 +97,20 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   return {caseId:job.caseId,status:"attention_required",...report};
  }
  if(!collected.model||!["gpt-6-luna","gpt-6.1-terra"].includes(collected.model))throw new Error("LEGAL_REVIEW_MODEL_CONTRACT_MISMATCH");
+ const execution=executeCaseNodes(data,{includeDocumentBindings:true});
+ const documentFields=execution.formBindings?await buildStoredLawgraphDocumentFields(database,{
+  caseData:data,calculationRunId:job.calculationRunId,bindings:execution.formBindings,
+  calculation:execution.assessment.calculation
+ }):[];
  const review=await persistCaseLawgraphReview(database,{caseId:job.caseId,dataVersion:job.dataVersion,
   caseRevision:job.caseRevision,calculationRunId:job.calculationRunId,inputSha256:job.inputSha256,
-  model:collected.model,checks:collected.checks,summary:collected.summary,complete:true,expectedCheckIds:checkIds});
+  model:collected.model,checks:collected.checks,summary:collected.summary,
+  documentFields,complete:true,expectedCheckIds:checkIds});
  await assertCurrent(database,job);
  const processingComplete=await service.processingComplete(data);
  const workflow=data.workflowState?await buildCaseWorkflowView(data):null;
  const unresolvedRequired=(workflow?.requirementStates??[]).filter(r=>r.required&&!["satisfied","not_applicable_confirmed","waived_by_review","retired"].includes(r.requirementStatus));
  const projectionBlockers=data.workflowState?.projectionBlockers.length??0;
- const execution=executeCaseNodes(data);
  const needed=await calculationFields(database,job.calculationRunId);
  // Current saved OCR amounts not reconciled into typed calculator values block
  // unattended draft generation, irrespective of AI check statuses.
@@ -124,7 +130,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
  const outcome={...report,reviewRunId:review.runId,sourceVersion:job.dataVersion,
   processingComplete,pendingCourtPolicyChanges:pendingCourtPolicy?.n??0,
   unresolvedRequiredDocuments:unresolvedRequired.map(r=>({requirementId:r.requirementId,status:r.requirementStatus,missingFields:r.requiredFieldCoverage.missing})),
-  projectionBlockers,
+  projectionBlockers,documentFieldCount:documentFields.length,
   summary:collected.summary,
   reviewScope:"Legal advisory and REVIEW DRAFT ONLY. Official forms and human approval are separate.",
   findings:report.findings.slice(0,95)};

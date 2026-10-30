@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {finalLawgraphBlockers,type FinalLegalInputs} from "../lib/final-lawgraph-readiness.ts";
 const ready=():FinalLegalInputs=>({
  review:{runId:"legal-1",complete:true,headStale:false,currentDataVersion:2,currentCaseRevision:3,caseRevision:3,
-  calculationRunId:"calc-1",inputSha256:"a".repeat(64),expectedCheckIds:["R1","R2"],
+  calculationRunId:"calc-1",inputSha256:"a".repeat(64),expectedCheckIds:["R1","R2"],documentFieldCount:3,
   checks:[{id:"R1",status:"pass",factIds:["f1"]},{id:"R2",status:"legal_review",factIds:["f2"]}]},
  currentCaseRevision:3,calculationRunId:"calc-1",calculationInputSha256:"a".repeat(64),
  currentReferenceSha256:"b".repeat(64),calculationReferenceSha256:"b".repeat(64),
@@ -21,4 +21,9 @@ test("AI-only manual checks cannot replace lawyer review, rejected/stale human r
  const a=ready();a.humanDispositions=[];assert.ok(finalLawgraphBlockers(a).some(v=>v==="LAWGRAPH_HUMAN_DECISION_REQUIRED:R2"));
  const b=ready();b.humanDispositions=[{checkId:"R2",state:"stale",disposition:"accepted"}];assert.ok(finalLawgraphBlockers(b).length);
  const c=ready();c.review.checks[1].status="fail";assert.ok(finalLawgraphBlockers(c).some(v=>v==="LAWGRAPH_CHECK_UNRESOLVED:R2:fail"));
+});
+
+test("empty persisted form-token lineage blocks final even with passing legal findings",()=>{
+ const a=ready();a.review.documentFieldCount=0;
+ assert.ok(finalLawgraphBlockers(a).includes("LAWGRAPH_FORM_FIELD_PROJECTION_MISSING"));
 });

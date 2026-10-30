@@ -10,7 +10,7 @@ export type FinalHumanDisposition = {checkId:string;state:string;disposition:str
 export type FinalExpectedCheck = {id:string;required_features?:readonly string[];implementation?:{may_auto_clear?:boolean}};
 export interface FinalLegalInputs {
  review:{runId:string|null;complete:boolean;headStale:boolean;currentDataVersion:number|null;currentCaseRevision:number;
-    caseRevision:number|null;calculationRunId:string|null;inputSha256:string|null;expectedCheckIds:string[];checks:FinalLegalCheck[]};
+    caseRevision:number|null;calculationRunId:string|null;inputSha256:string|null;expectedCheckIds:string[];checks:FinalLegalCheck[];documentFieldCount:number};
  currentCaseRevision:number;calculationRunId:string|null;calculationInputSha256:string|null;
  currentReferenceSha256:string;calculationReferenceSha256:string|null;
  expected:readonly FinalExpectedCheck[];humanDispositions:readonly FinalHumanDisposition[];
@@ -20,6 +20,7 @@ export function finalLawgraphBlockers(input:FinalLegalInputs):string[]{
  const {review}=input,blocks:string[]=[];
  if(!review.runId)return ["LAWGRAPH_RUN_MISSING"];
  if(!review.complete)blocks.push("LAWGRAPH_REVIEW_INCOMPLETE");
+ if(review.documentFieldCount===0)blocks.push("LAWGRAPH_FORM_FIELD_PROJECTION_MISSING");
  if(review.headStale||review.caseRevision!==input.currentCaseRevision||review.currentCaseRevision!==input.currentCaseRevision)blocks.push("LAWGRAPH_SOURCE_VERSION_STALE");
  if(!input.calculationRunId||review.calculationRunId!==input.calculationRunId||!input.calculationInputSha256||review.inputSha256!==input.calculationInputSha256)
    blocks.push("LAWGRAPH_CALCULATION_RUN_MISMATCH");
@@ -60,7 +61,7 @@ export async function inspectCurrentFinalLawgraph(database:D1Database,input:{
   review:{runId:snapshot.runId,complete:snapshot.complete,headStale:snapshot.headStale,
    currentDataVersion:snapshot.currentDataVersion,currentCaseRevision:snapshot.currentCaseRevision,
    caseRevision:snapshot.caseRevision,calculationRunId:snapshot.calculationRunId,inputSha256:snapshot.inputSha256,
-   expectedCheckIds:snapshot.expectedCheckIds,checks:snapshot.checks},
+   expectedCheckIds:snapshot.expectedCheckIds,checks:snapshot.checks,documentFieldCount:snapshot.totalDocumentFields},
   currentCaseRevision:input.caseRevision,calculationRunId:calc?.runId??null,
   calculationInputSha256:calc?.inputSha256??null,
   currentReferenceSha256:input.referenceSha256,calculationReferenceSha256:calc?.referenceSha256??null,
