@@ -253,7 +253,7 @@
 - [ ] **A2-IT-012** 복수행 정렬과 순서를 바꿔도 계산 재현성. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-013** calculated/provisional/blocked/NA status 의미 통일. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-014** 관리 가능 법원·세무 임계값의 소스 하드코딩 추출. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-IT-015** D1 재독→typed 객체→재계산 round trip. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 부분실행**: 현재 schema/0011 SQL과 계산 head CAS를 격리 Python SQLite in-memory에서 재현, 0/null·외래키·구판본 거부 등 9/9. 실제 Node/D1/원문→typed 전체 재계산 미인증.
+- [ ] **A2-IT-015** D1 재독→typed 객체→재계산 round trip. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 부분실행**: 현재 schema/0011 SQL과 계산 head CAS를 격리 Python SQLite in-memory에서 재현, 0/null·외래키·구판본 거부 등 9/9. 실제 Node/D1/원문→typed 전체 재계산 미인증. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증.
 - [ ] **A2-IT-016** 계산 API와 법원 서식 토큰의 금액 정밀도. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-017** 필수 서식 필드 미확정 때 초안 생성 게이트. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-IT-018** 법률·서식·세무 시행일 변경의 스냅샷 고정. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -266,7 +266,7 @@
 - [ ] **A2-DOC-002** 개인회생 채권자목록의 여러 채권자/별제권 부속. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-003** 재산목록의 종류·지분·담보·가액·면제증빙. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-004** 수입 및 지출에 관한 목록의 소득/경비/생계비. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **2차 부분 재현**: D5103 완전 월/윤년/연간·부분월 귀속 8/8, D5110 별도 monthly/approved scalar 확인; Word/공식 전자소송 서식 동등성 미인증. [실행 증빙](release-audit-runs/A2/2026-10-30_1411_KST_seoul424-court-scope-and-form-semantics.md).
-- [ ] **A2-DOC-005** 변제계획안의 기초원금/기간/월변제/배분표. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** D5110 관련 `payment-schedule`/`repayment-plan-model`/`document-annexes` 날짜 불일치 P1; 수정 [PR #25](https://github.com/firmengine/firmengine/pull/25) 미병합. 실제 DOCX 반복행/법원 원본·직원/변호사 검수 미인증.
+- [ ] **A2-DOC-005** 변제계획안의 기초원금/기간/월변제/배분표. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** D5110 관련 `payment-schedule`/`repayment-plan-model`/`document-annexes` 날짜 불일치 P1; 수정 [PR #25](https://github.com/firmengine/firmengine/pull/25) 미병합. 실제 DOCX 반복행/법원 원본·직원/변호사 검수 미인증. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증.
 - [ ] **A2-DOC-006** 진술서 서술사실과 추정·변호사 의견 분리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-007** 신청일 기준 발급서류 유효기간/서류본 분리. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DOC-008** 급여명세/원천징수/실입금 금액의 역할 구분. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -310,7 +310,7 @@
 - [ ] **A2-CALC-023** 보험 해약환급금·퇴직금·임대보증금·차량 가액. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-024** 가구수·중위소득·추가생계비 적용연도. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-025** 가용소득·보수·우선/재단비용·일반채권 변제액. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
-- [ ] **A2-CALC-026** 36/48/60개월·단축 회차·잔여원 분배. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** 1/31→2/28→3/31 일정을 phase 분할하면 기존 달력이 3/28로 변형되는 P1 반례. 최초 변제일 앵커 수정안 [Draft PR #25](https://github.com/firmengine/firmengine/pull/25). 원화 잔여원 BigInt 격리 검산·월별 예산 초과 정적 guard 확인, 36/48/60 전수/실제 Node 미인증.
+- [ ] **A2-CALC-026** 36/48/60개월·단축 회차·잔여원 분배. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[4차 영수증](release-audit-runs/A2/2026-10-30_1617_KST_phase_month_end_and_won_remainder.md)**. **4차 일부:** 1/31→2/28→3/31 일정을 phase 분할하면 기존 달력이 3/28로 변형되는 P1 반례. 최초 변제일 앵커 수정안 [Draft PR #25](https://github.com/firmengine/firmengine/pull/25). 원화 잔여원 BigInt 격리 검산·월별 예산 초과 정적 guard 확인, 36/48/60 전수/실제 Node 미인증. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증.
 - [ ] **A2-CALC-027** 현재가치/PV 할인율·평가기준일·현금흐름. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-028** 청산가치 보장과 총 변제액 법률 비교. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-CALC-029** 담보 15억/무담보 10억 경계값 법정 판본. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -338,7 +338,7 @@
 - [ ] **A2-LAW-018** 제614조 공정·형평·수행가능성·최저 변제 기준. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-LAW-019** 서울·부산 등 법원별 준칙의 타관할 자동 복사 금지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-LAW-020** 공식 전자소송 서식과 적법한 필수 첨부 확인. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 일부 공식 원문 확인**: 서울회생법원 회생위원 직무편람 재민2004-4 제2조(PDF 441쪽) D5103 수입·지출목록/D5110·11 변제계획 확인. D5103 필수항목 최신 전자소송 판본 및 법률상 서식 충족은 미인증, [PR #21](https://github.com/firmengine/firmengine/pull/21)은 내부 차단만.
-- [ ] **A2-LAW-021** 공식법령·판례·실무준칙의 개정일과 관할 기록. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
+- [ ] **A2-LAW-021** 공식법령·판례·실무준칙의 개정일과 관할 기록. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증.
 - [ ] **A2-LAW-022** 법률상 미확정 계산을 확정으로 표시하지 않는지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-LAW-023** 변호사 승인 없는 법적 인정·최종인가 단정 금지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-LAW-024** 미관찰 금액을 인가가능성 판단에 사용 금지. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
@@ -361,7 +361,7 @@
 - [ ] **A2-DATA-014** 원문 출처철회·정정·채택의 과거 이력. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-015** 95 법률검토의 기준정보 해시와 계산 run ID. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-016** 18계산/91입력 선언과 DB typed JSON pointer. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. [3차 영수증](release-audit-runs/A2/2026-10-30_1513_KST_d5103-empty-month-sql-18calc.md). **3차 등록명세 확인**: 최신 reference-decision-tables.json 실제 파싱 18모듈/입력 선언91(고유78)/출력 선언42. 91개 실제 typed JSON 경로/SQL/계산/서식 E2E 아직 미인증.
-- [ ] **A2-DATA-017** 모든 저장 output_path의 실행 JSON 재현 대조. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
+- [ ] **A2-DATA-017** 모든 저장 output_path의 실행 JSON 재현 대조. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **[5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)** — 채권 원금·이자 미관찰/오인식·원문-typed 상충 내부 변제원장의 완료 오판 P1, Draft PR #29. 함수 본문 V8 합성 15/15 및 월예산 초과 실제 reconciliation 분기 1/1. [ ] 유지: Node 전체·D1/R2·D5110 Word/법률승인 미인증.
 - [ ] **A2-DATA-018** 서식 토큰별 원문·산식·법률검토·run 연결. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-019** 계산 비사용 source-only 증빙의 가치 보존. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록.
 - [ ] **A2-DATA-020** 미관찰/0/비해당/상충 결과 상태 전수 검사. 합격: 입력 JSON/독립 기댓값/실제 산식·저장값·서식값/공식출처·시행일 기록. **2차 부분 재현**: sourceState/extractionState 8/8 경계. 구 레거시 Fact/typed/SQL 매핑 전수 및 실제 D1 E2E 미인증. [실행 증빙](release-audit-runs/A2/2026-10-30_1411_KST_seoul424-court-scope-and-form-semantics.md).
@@ -875,3 +875,11 @@
 - **P1 수정 제안**: 일반 `PUT page`가 빈 바이트를 받아 R2·D1 pending으로 보낼 수 있는 문제. [Draft PR #27](https://github.com/firmengine/firmengine/pull/27), 페이지/재판독 크기 guard 통일, Node helper 회귀 3/3·TS 검사 0. main 미병합 및 실제 D1/R2 미실행. 기존 같은 라우트 수정 PR #23과 충돌 검토 필요.
 - **P1 추가 결함 재현**: 성공한 export manifest 뒤 독립 event 로그 INSERT 실패가 API 오류를 반환하고, 같은 POST 재시도는 새 UUID/SQL/R2 artifact를 만든다. 실제 main `export-artifact-transaction.ts`의 Git blob 동일 복사본과 합성 라우트 제어흐름 Node **1/1**(결함 재현), [독립 실행 fixture](release-audit-runs/A4/20261030-round04-export-retry-repro.test.ts). A1 Draft PR #24의 **manifest ACK 보호**와는 별개이며 무검증 event 무시 patch 금지; durable receipt/idempotency/outbox·staging fault injection이 필요하다.
 - 실제 전체 CI/빌드, Cloudflare D1/R2/Cron, Word 출력·법원서식·변호사 검토·사이트 배포 **미실행**. 다음 A4는 계산 source-version 무효화, 동일 Export 재시도 영수증, 실제 페이지 업로드 불능/동시 실패를 확인.
+
+### 2026-10-30 A2 5차 — 채권잔액 결측 0원 대체·금액 정규화 위조 P1
+
+- 검토 A2 5역할 ID: `A2-LAW-021 / A2-DATA-017 / A2-IT-015 / A2-CALC-026 / A2-DOC-005`. 모두 **[ ] 부분검증 / RELEASE_READY 0건**. **[A2 5차 영수증](release-audit-runs/A2/2026-10-30_1710_KST_claim-balance-typed-failclosed.md)**.
+- 실제 main `lib/repayment-plan-model.ts`에서 `BigInt(debt.principal?.amountWon??"0")+BigInt(debt.interest?.amountWon??"0")` 때문에 채권 원금/이자 누락을 0으로 대체해 reviewed 일정이 `complete` 상태, malformed 수치는 BigInt throw, raw와 typed 상충도 `complete`. 수정안은 `moneyValue`로 원문·단위·통화/정규화 일치 및 음수 차단 후 `CLAIM_BALANCE_MISSING:<id>`로 `blocked` 처리. 0원은 결측과 구분. **[Draft PR #29](https://github.com/firmengine/firmengine/pull/29)** 미병합, 수정 scope 2파일 `ax-site/` 안. 동일 파일 월말 날짜 수정 [Draft PR #25](https://github.com/firmengine/firmengine/pull/25)와 사전 충돌/통합 회귀 필요.
+- **실제 테스트 수준**: GitHub 원본 `domain.normalizeMoney/moneyValue` + 수정 전/후 `buildRepaymentPlanModel` 함수 본문 TypeScript 제거 V8 격리 **15/15**. 정상·0·null·raw/typed mismatch·invalid·negative·36/48/60·거액 BigInt. 별도 실제 `reconcilePlanLedger` 함수를 V8 격리 실행해 2채권×10원/3회 `[8,6,6]` vs cap7일 때 `status=blocked`·초과 3이슈 확인. **새 Node 회귀 9개는 소스만 작성, 정식 Node CI·빌드·실제 staging D1/R2·Word/PDF·변호사 승인 전부 미실행**.
+- 계약 최신 등록수 18 계산, 91 입력(78 고유), 42 outputs/42 resultPaths 확인. 실제 42개 output 재실행·SQL insert/replay·법원 문서 인수는 미완. 국가법령정보센터 2026-10-02 시행법 제589조와 서울회생법원 2026-10-01 제424호 개정 공지 원문/공식 게시 확인, 사례별 적용·법률/회계 적합성 최종 승인 아님.
+- **다음 A2**: `A2-DATA-017` 실제 저장/42 paths, `A2-IT-015` D1 실측, `A2-CALC-026` 36/48/60 전체-다채권, `A2-DOC-005` D5110 Word/배분/날짜, `A2-LAW-021` 공식 시행/법원관할 변호사 승인 및 PR #25/#29 상호 비파괴 병합검증.
