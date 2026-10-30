@@ -169,6 +169,10 @@ function monthSpan(start: string | undefined, end: string | undefined): { start:
 
 export function monthlyIncome(source: IncomeSource): { value: bigint | null; reasons: string[]; formula: string } {
   const reasons: string[] = [];
+  // VAT sales are a turnover observation, never a standalone net-income row.
+  // Even a manually entered net/expense field cannot turn this source role
+  // into a legally reviewed monthly operating-profit reconciliation.
+  if(source.sourceCalculationRole==="gross_turnover_only")reasons.push("INCOME_VAT_TURNOVER_NOT_NET_INCOME");
   const gross = moneyValue(source.gross), expenses = nonnegative(source.expenses), net = moneyValue(source.net);
   let amount = net;
   let formula = referenceFormula("income_monthly");
@@ -364,8 +368,18 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     // independent current monthly payer; only explicit human recognition or
     // reviewed duplicate treatment can use/exclude it safely.
     const historicalUnreviewed = source.sourceCalculationRole==="historical_tax_comparison" && source.recognition!=="accepted";
-    const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate || moneyConflict || historicalUnreviewed ? null : monthly.value;
-    const reasons = [...monthly.reasons, ...lineage, ...(moneyConflict ? ["INCOME_OBJECT_FACT_CONFLICT"] : []), ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : []), ...(historicalUnreviewed ? ["INCOME_HISTORICAL_TAX_RECOGNITION_REQUIRED"] : [])];
+    const historicalPeriodUnreviewed = source.sourceCalculationRole==="historical_tax_comparison" && !historicalUnreviewed &&
+      (source.aggregationReviewed!==true || !source.aggregationReviewReason?.trim() ||
+       !["series_observation","independent_source"].includes(source.aggregationTreatment??"unknown"));
+    // Exact VAT canonical source facts cannot turn into current net income simply
+    // by modifying a typed object's label, kind or calculation role.
+    const linkedVat = source.factIds.some(id=>{
+      const fact=index.byId.get(id),canonical=fact?.canonicalFieldId??fact?.fieldObservation?.canonicalFieldId??"";
+      return canonical.startsWith("business_sales_vat::income.sales.");
+    });
+    const turnoverOnly = source.sourceCalculationRole==="gross_turnover_only" || linkedVat;
+    const value = lineage.length || source.recognition === "rejected" || reviewedDuplicate || moneyConflict || historicalUnreviewed || historicalPeriodUnreviewed || turnoverOnly ? null : monthly.value;
+    const reasons = [...monthly.reasons, ...lineage, ...(moneyConflict ? ["INCOME_OBJECT_FACT_CONFLICT"] : []), ...(source.recognition === "rejected" ? ["INCOME_RECOGNITION_REJECTED"] : []), ...(reviewedDuplicate ? ["INCOME_DUPLICATE_REVIEWED_EXCLUDED"] : []), ...(historicalUnreviewed ? ["INCOME_HISTORICAL_TAX_RECOGNITION_REQUIRED"] : []), ...(historicalPeriodUnreviewed ? ["INCOME_HISTORICAL_TAX_PERIOD_USE_REVIEW_REQUIRED"] : []), ...(turnoverOnly && !monthly.reasons.includes("INCOME_VAT_TURNOVER_NOT_NET_INCOME") ? ["INCOME_VAT_TURNOVER_NOT_NET_INCOME"] : [])];
     if (reviewedDuplicate) duplicateIds.push(source.id);
     incomeRows.push({ id: source.id, label: source.label, monthlyWon: asMoney(value), reasons });
     incomeObservations.push({ source: meta, value, span: monthSpan(source.periodStart, source.periodEnd) });
@@ -658,6 +672,8 @@ function issueTitle(code: string): string {
   if (code.includes("ASSET_VALUATION_DATE_MISSING")) return "재산 평가 기준일 입력";
   if (code.includes("ASSET_VALUATION_DATE_INVALID")) return "재산 평가 기준일 확인";
   if (code === "PRIORITY_CLAIM_SCHEDULE_COVERAGE_REQUIRED") return "채권별 우선·재단 변제 일정 확인";
+  if (code.includes("INCOME_VAT_TURNOVER")) return "사업 매출·순소득 구분 및 월별 경비 대조";
+  if (code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE")) return "과거 신고소득의 현재 대표기간 적용 검토";
   if (code.includes("INCOME_PAYER_IDENTITY")) return "소득 지급자 식별 확인";
   if (code.includes("INCOME_OVERLAPPING") || code.includes("INCOME_COMPONENT") || code.includes("INCOME_DUPLICATE")) return "같은 기간 소득 관측 중복·구성 확인";
   if (code.includes("INCOME_REPRESENTATIVE_PERIOD") || code.includes("INCOME_FILING_PERIOD")) return "소득 대표기간 선택·검토";
@@ -683,6 +699,8 @@ function issueTitle(code: string): string {
   return "입력·산식 대조";
 }
 function issueExplanation(code: string): string {
+  if(code.includes("INCOME_VAT_TURNOVER"))return "부가가치세 관련 매출금액은 사업 순소득이 아닙니다. 다른 서류의 필요경비·입금·환급과 같은 사업자·월·원문 행을 대조하고 이중 집계 여부를 검토해야 합니다.";
+  if(code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE"))return "과거 소득금액증명은 현재 계속 소득과 기간이 다를 수 있어 인정 여부뿐 아니라 현재 대표기간에 사용할 방법 및 중복 여부의 명시적 검토가 필요합니다.";
   if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "하나의 원문 금액 피처를 둘 이상의 계산 객체에 동일하게 연결했습니다. 두 행이 별개 소득·채무·재산이라는 원문 근거와 배분 기준 없이 중복 합산할 수 없습니다.";
   if(code.includes("DEBT_SOURCE_TOTAL_CONFLICT"))return "같은 채무 원문 행의 별도 총액이 계산한 원금+이자와 다릅니다. 비용이나 미분류 금액을 원금·이자에 자동 섞지 않고 행 총액·구성 근거를 대조합니다.";
   if(code.includes("DEBT_SOURCE_TOTAL_INVALID"))return "같은 행에 총액 필드가 있으나 단위·값·인용·검증 상태가 유효하지 않거나 상충합니다. 해당 슬롯을 누락으로 취급하지 않고 총액 계산을 보류합니다.";
@@ -721,6 +739,8 @@ function issueExplanation(code: string): string {
   return "미확인 값·분류·목록 완전성을 0 또는 비해당으로 대체하지 않았습니다. 확인 항목: " + code.split(":")[0];
 }
 function issueAction(code: string): string {
+  if(code.includes("INCOME_VAT_TURNOVER"))return "매출·환불·부가세·필요경비를 동일 사업자·발생월·원문 근거로 묶은 별도 순소득 검토안을 생성하고 담당자 승인을 받으세요. VAT 매출 행에 임의의 순소득을 덧씌우지 마세요.";
+  if(code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE"))return "동일 사업자의 신고 소득과 최신 월별 매출·비용을 비교하고 대표기간, 중복 제거, 채택 이유를 명시적으로 검토하세요.";
   if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "연결된 각 계산행의 문서 ID·페이지·원문 행·계약 또는 자산 식별자를 대조하고, 동일 행 복제는 제거하거나 별도 금액 배분을 문서 근거와 담당자 검토로 등록하세요.";
   if(code.includes("DEBT_SOURCE_TOTAL"))return "같은 원문 행의 현재 원금, 이자, 채권 총액, 별도 비용과 각각의 단위·기준일을 대조하고, 총액 근거를 확인하세요. 비용을 원금·이자로 재분류하지 마세요.";
   if(code.includes("DEBT_SEPARATE_COST"))return "별도 법률·추심·집행·기타 비용의 현재성·단위·채권자 청구와 원문 포함 범위를 검토하고, 채무 구성·분류를 별도로 결정하세요.";
