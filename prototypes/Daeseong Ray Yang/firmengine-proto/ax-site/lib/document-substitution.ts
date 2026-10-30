@@ -13,6 +13,7 @@ import type { DocumentMatch } from "./document-fulfillment.ts";
 import type { EvidenceDocument, EvidencePage, Fact } from "./domain.ts";
 import type { IntakeCatalog } from "./intake-types.ts";
 import { substitutionFactFingerprint } from "./substitution-fingerprint.ts";
+import {activeSubstitutionPolicy,matchPublishedSubstitutionRoute} from "./substitution-policy.ts";
 
 export const DOCUMENT_SUBSTITUTION_VERSION = "document-substitution/1" as const;
 export type SubstitutionStatus = "original_required" | "review_required" | "partial" | "inactive_by_substitution" | "restored";
@@ -78,19 +79,13 @@ function minimumMonths(start:string,end:string):number {
   const count=(b.getUTCFullYear()-a.getUTCFullYear())*12+b.getUTCMonth()-a.getUTCMonth()+1;
   return count>120?0:count;
 }
-function allowedPublishedPath(requirement:CaseRequirement,review:SubstitutionReview,courtId:string):string|null {
-  if(!["seoul","busan"].includes(courtId))return null;
-  const source=courtId==="seoul"?"SRC-INTAKE-SEOUL-402":"SRC-INTAKE-BUSAN-402";
-  if(!requirement.sourceIds.includes(source))return null;
-  if(review.originalDocumentTypeId==="salary_withholding"&&review.alternativeDocumentTypeIds.every(t=>["salary_statement","salary_bank_statement"].includes(t))){
-    if(review.exceptionReason.trim().length<10)return null; // court §402(2)(3)(a): unavoidable absence
-    if(review.alternativeDocumentTypeIds.includes("salary_statement")&&!review.employerSigned)return null;
-    if(review.alternativeDocumentTypeIds.includes("salary_bank_statement")&&minimumMonths(review.periodStart,review.periodEnd)<6)return null;
-    return source;
-  }
-  if(review.originalDocumentTypeId==="business_income_report"&&review.alternativeDocumentTypeIds.length===1&&review.alternativeDocumentTypeIds[0]==="financial_statement")
-    return source; // §402(2)(3)(b), still needs exact full-field proof
-  return null; // "or similar" does not authorize arbitrary automatic acceptance
+function allowedPublishedPath(requirement:CaseRequirement,review:SubstitutionReview,courtId:string,asOf:string):string|null {
+ const route=matchPublishedSubstitutionRoute({policy:activeSubstitutionPolicy(),
+   courtId,applicationDate:asOf,sourceIds:requirement.sourceIds,
+   originalDocumentTypeId:review.originalDocumentTypeId,alternativeDocumentTypeIds:review.alternativeDocumentTypeIds,
+   periodStart:review.periodStart,periodEnd:review.periodEnd,
+   employerSigned:review.employerSigned,exceptionReason:review.exceptionReason});
+ return route?.sourceId??null;
 }
 function usable(fact:Fact):boolean {
   if(fact.state!=="verified"||fact.recognition!=="accepted")return false;
@@ -124,7 +119,7 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   else if(review.periodStart>originalPeriod.start||review.periodEnd<originalPeriod.end)problems.push("ORIGINAL_PERIOD_NOT_FULLY_COVERED");
   if(input.catalogVersion===undefined||input.catalogVersion===null||review.catalogVersion!==input.catalogVersion||input.pendingCourtPolicyChange)problems.push("COURT_POLICY_RECHECK_REQUIRED");
   if(input.latestCourtPolicyAlertAt&&(!Number.isFinite(Date.parse(review.reviewedAt))||Date.parse(input.latestCourtPolicyAlertAt)>Date.parse(review.reviewedAt)))problems.push("COURT_POLICY_CHANGED_AFTER_APPROVAL");
-  if(!allowedPublishedPath(r,review,input.courtId))problems.push("PUBLISHED_SUBSTITUTION_POLICY_NOT_CONFIRMED");
+  if(!allowedPublishedPath(r,review,input.courtId,input.asOf))problems.push("PUBLISHED_SUBSTITUTION_POLICY_NOT_CONFIRMED");
   if(!input.subjectLink||input.subjectLink.status!=="confirmed"||!input.subjectLink.typedEntityId)problems.push("SUBJECT_NOT_CONFIRMED");
   if(fields.length!==review.proofs.length||uniq(review.proofs.map(p=>p.requiredField)).length!==fields.length||fields.some(f=>!review.proofs.some(p=>p.requiredField===f)))problems.push("PROOF_SLOTS_INCOMPLETE");
   if(uniq(review.proofs.flatMap(p=>p.factIds)).length!==review.proofs.reduce((sum,p)=>sum+p.factIds.length,0))problems.push("PROOF_FACT_REUSED_ACROSS_UNRELATED_FIELDS");

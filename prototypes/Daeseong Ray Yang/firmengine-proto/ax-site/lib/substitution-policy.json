@@ -1,0 +1,135 @@
+{
+  "schemaVersion": "court-substitution-criteria/1",
+  "routes": [
+    {
+      "id": "seoul.salary_withholding.salary_statement",
+      "courtId": "seoul",
+      "sourceId": "SRC-INTAKE-SEOUL-402",
+      "sourceUrl": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf",
+      "originalDocumentTypeId": "salary_withholding",
+      "alternativeDocumentTypeIds": [
+        "salary_statement"
+      ],
+      "minimumCalendarMonths": 0,
+      "employerSignatureRequired": true,
+      "exceptionReasonRequired": true,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "seoul.salary_withholding.salary_bank_statement",
+      "courtId": "seoul",
+      "sourceId": "SRC-INTAKE-SEOUL-402",
+      "sourceUrl": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf",
+      "originalDocumentTypeId": "salary_withholding",
+      "alternativeDocumentTypeIds": [
+        "salary_bank_statement"
+      ],
+      "minimumCalendarMonths": 6,
+      "employerSignatureRequired": false,
+      "exceptionReasonRequired": true,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "seoul.salary_withholding.salary_statement_plus_bank",
+      "courtId": "seoul",
+      "sourceId": "SRC-INTAKE-SEOUL-402",
+      "sourceUrl": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf",
+      "originalDocumentTypeId": "salary_withholding",
+      "alternativeDocumentTypeIds": [
+        "salary_statement",
+        "salary_bank_statement"
+      ],
+      "minimumCalendarMonths": 6,
+      "employerSignatureRequired": true,
+      "exceptionReasonRequired": true,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "seoul.business_income_report.financial_statement",
+      "courtId": "seoul",
+      "sourceId": "SRC-INTAKE-SEOUL-402",
+      "sourceUrl": "https://slb.scourt.go.kr/rel/information/qna/practice_rule.pdf",
+      "originalDocumentTypeId": "business_income_report",
+      "alternativeDocumentTypeIds": [
+        "financial_statement"
+      ],
+      "minimumCalendarMonths": 0,
+      "employerSignatureRequired": false,
+      "exceptionReasonRequired": false,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "busan.salary_withholding.salary_statement",
+      "courtId": "busan",
+      "sourceId": "SRC-INTAKE-BUSAN-402",
+      "sourceUrl": "https://bsb.scourt.go.kr/bsb/info/info_01/practice_rule_bsb.pdf",
+      "originalDocumentTypeId": "salary_withholding",
+      "alternativeDocumentTypeIds": [
+        "salary_statement"
+      ],
+      "minimumCalendarMonths": 0,
+      "employerSignatureRequired": true,
+      "exceptionReasonRequired": true,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "busan.salary_withholding.salary_bank_statement",
+      "courtId": "busan",
+      "sourceId": "SRC-INTAKE-BUSAN-402",
+      "sourceUrl": "https://bsb.scourt.go.kr/bsb/info/info_01/practice_rule_bsb.pdf",
+      "originalDocumentTypeId": "salary_withholding",
+      "alternativeDocumentTypeIds": [
+        "salary_bank_statement"
+      ],
+      "minimumCalendarMonths": 6,
+      "employerSignatureRequired": false,
+      "exceptionReasonRequired": true,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "busan.salary_withholding.salary_statement_plus_bank",
+      "courtId": "busan",
+      "sourceId": "SRC-INTAKE-BUSAN-402",
+      "sourceUrl": "https://bsb.scourt.go.kr/bsb/info/info_01/practice_rule_bsb.pdf",
+      "originalDocumentTypeId": "salary_withholding",
+      "alternativeDocumentTypeIds": [
+        "salary_statement",
+        "salary_bank_statement"
+      ],
+      "minimumCalendarMonths": 6,
+      "employerSignatureRequired": true,
+      "exceptionReasonRequired": true,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    },
+    {
+      "id": "busan.business_income_report.financial_statement",
+      "courtId": "busan",
+      "sourceId": "SRC-INTAKE-BUSAN-402",
+      "sourceUrl": "https://bsb.scourt.go.kr/bsb/info/info_01/practice_rule_bsb.pdf",
+      "originalDocumentTypeId": "business_income_report",
+      "alternativeDocumentTypeIds": [
+        "financial_statement"
+      ],
+      "minimumCalendarMonths": 0,
+      "employerSignatureRequired": false,
+      "exceptionReasonRequired": false,
+      "effectiveFrom": null,
+      "effectiveTo": null,
+      "authorityStatus": "reviewed_official_route_case_proof_required"
+    }
+  ]
+}

@@ -1,6 +1,8 @@
 import data from "./reference-data.json" with { type: "json" };
 import release from "./reference-release.json" with { type: "json" };
 import { readReferenceValue, currentReferenceSnapshot, freezeReferenceValue } from "./reference-runtime.ts";
+import {MANAGED_REFERENCE_RECORDS} from "./managed-reference-contracts.ts";
+import {SUBSTITUTION_POLICY_REFERENCE_ID,validateSubstitutionPolicy} from "./substitution-policy.ts";
 
 export interface ReferenceConsumer { path: string; symbol: string; line?: number; jsonPointer?: string; sha256?: string; fileSha256?: string }
 export interface ReferenceRecord {
@@ -14,7 +16,8 @@ export interface ReferenceRecord {
 }
 export const REFERENCE_RELEASE = freezeReferenceValue(release);
 export const REFERENCE_RECORDS = freezeReferenceValue(data.records as unknown as readonly ReferenceRecord[]);
-const records = new Map(REFERENCE_RECORDS.map(record => [record.id, record]));
+const allRecords:readonly ReferenceRecord[]=[...REFERENCE_RECORDS,...MANAGED_REFERENCE_RECORDS];
+const records = new Map(allRecords.map(record => [record.id, record]));
 export function referenceRecord(id: string): ReferenceRecord | undefined { return records.get(id); }
 export function currentReferenceRecord(id: string): ReferenceRecord | undefined {
   const row = records.get(id);
@@ -24,7 +27,7 @@ export function currentReferenceRecord(id: string): ReferenceRecord | undefined 
 }
 export function referenceRecordsPage(input: { kind?: string; q?: string; offset?: number; limit?: number }) {
   const q=(input.q??"").trim().toLowerCase();
-  const filtered=REFERENCE_RECORDS.filter(row => (!input.kind || row.kind===input.kind) && (!q || [row.id,row.title,row.category,...row.sourceIds,...row.sourceUrls,...row.consumers.map(c=>c.path)].join(" ").toLowerCase().includes(q)));
+  const filtered=allRecords.filter(row => (!input.kind || row.kind===input.kind) && (!q || [row.id,row.title,row.category,...row.sourceIds,...row.sourceUrls,...row.consumers.map(c=>c.path)].join(" ").toLowerCase().includes(q)));
   const offset=Math.max(0,Math.floor(input.offset??0)),limit=Math.min(100,Math.max(1,Math.floor(input.limit??50)));
   return {items:filtered.slice(offset,offset+limit).map(row=>currentReferenceRecord(row.id)!),total:filtered.length,nextOffset:offset+limit<filtered.length?offset+limit:null};
 }
@@ -50,6 +53,10 @@ function sameShape(original:unknown,value:unknown,depth=0):boolean {
   return typeof value==="boolean";
 }
 export function validateReferenceValue(record: ReferenceRecord, value: unknown): void {
+  if(record.id===SUBSTITUTION_POLICY_REFERENCE_ID){
+    if(!record.editable||record.lockedSafetyInvariant)throw new Error("REFERENCE_RECORD_REQUIRES_CODE_RELEASE");
+    validateSubstitutionPolicy(value);return;
+  }
   if(!record.editable || record.lockedSafetyInvariant || record.id.startsWith("param.compiled_policy.") || record.id.startsWith("param.formula.") || !["parameter","prompt"].includes(record.kind))throw new Error("REFERENCE_RECORD_REQUIRES_CODE_RELEASE");
   if(record.id==="param.seoul.living.median_income_tables") {
     if(!value||typeof value!=="object"||Array.isArray(value)||!Object.keys(value).length||Object.entries(value).some(([year,table])=>!/^20\d\d$/.test(year)||!Array.isArray(table)||table.length!==7||table.some(v=>typeof v!=="string"||!/^\d{1,15}$/.test(v)||BigInt(v)<=0n)))throw new Error("INVALID_REFERENCE_VALUE");

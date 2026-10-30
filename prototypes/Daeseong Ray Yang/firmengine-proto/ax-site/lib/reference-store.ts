@@ -1,4 +1,5 @@
 import { REFERENCE_RECORDS, REFERENCE_RELEASE, referenceRecord, validateReferenceValue } from "./reference-registry.ts";
+import {SUBSTITUTION_POLICY_REFERENCE_ID} from "./substitution-policy.ts";
 import { referenceSnapshotHash, type ReferenceSnapshot } from "./reference-runtime.ts";
 import { loadReferenceSnapshot } from "./reference-context.ts";
 
@@ -124,9 +125,9 @@ export async function activateReferenceChange(database:D1Database,proposalId:str
   if(!row||row.status!=="pending_review")throw new Error("REFERENCE_PROPOSAL_NOT_PENDING");
   const candidate=JSON.parse(row.payload) as ReferenceProposal;
   const actualFingerprint=await fingerprintReferenceProposal(candidate);
-  if(policy.fourEyesRequired&&candidate.actor===actor)throw new Error("REFERENCE_FOUR_EYES_REQUIRED");
   if(!candidate.proposalFingerprint||candidate.proposalFingerprint!==actualFingerprint||!expectedProposalFingerprint||expectedProposalFingerprint!==actualFingerprint)throw new Error("REFERENCE_PROPOSAL_FINGERPRINT_CONFLICT");
   const record=referenceRecord(candidate.referenceId);if(!record)throw new Error("UNKNOWN_REFERENCE_ID");validateReferenceValue(record,candidate.value);validateApplicationContract(candidate.applicationContract);
+  if((policy.fourEyesRequired||record.id===SUBSTITUTION_POLICY_REFERENCE_ID)&&candidate.actor===actor)throw new Error("REFERENCE_FOUR_EYES_REQUIRED");
   const legalSourceRequired=["statute","court_practice"].includes(record.category);
   if(typeof candidate.reason!=="string"||candidate.reason.trim().length<5||!Array.isArray(candidate.sourceUrls)||candidate.sourceUrls.length>20||legalSourceRequired&&!candidate.sourceUrls.length||candidate.sourceUrls.some(url=>!official(url)))throw new Error("OFFICIAL_REFERENCE_SOURCE_REQUIRED");
   if(candidate.effectiveFrom&&(!/^\d{4}-\d{2}-\d{2}$/.test(candidate.effectiveFrom)||Number.isNaN(Date.parse(candidate.effectiveFrom))||new Date(candidate.effectiveFrom).toISOString().slice(0,10)!==candidate.effectiveFrom))throw new Error("INVALID_REFERENCE_EFFECTIVE_DATE");
