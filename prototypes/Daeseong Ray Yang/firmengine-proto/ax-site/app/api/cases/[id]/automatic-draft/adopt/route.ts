@@ -70,10 +70,14 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   }});}catch(error){
    throw new HttpError(409,error instanceof Error?error.message:"AUTO_DRAFT_REVIEW_INTEGRITY_FAILED");
   }
-  // HEAD checks precede both the initial and idempotent adoption path. The
-  // worker's originally generated R2 bytes are never duplicated or replaced.
-  for(const file of validated.artifacts)if(!await bucket().head(file.objectKey))
-    throw new HttpError(409,"자동 생성 파일의 원본 저장소 내용이 누락되었습니다.");
+  // Hash-check the actual R2 object bytes; HEAD existence alone is insufficient.
+  // Original IDs and contents remain immutable, with no re-upload.
+  for(const file of validated.artifacts){
+    const object=await bucket().get(file.objectKey);
+    if(!object)throw new HttpError(409,"자동 생성 파일의 원본 저장소 내용이 누락되었습니다.");
+    if(await sha256(await object.arrayBuffer())!==file.hash)
+      throw new HttpError(409,"AUTO_DRAFT_R2_HASH_MISMATCH");
+  }
   if(active.length){
    if(sameActive)return Response.json({adopted:true,alreadyAdopted:true,mode:"draft",
        courtApprovalInferred:false,canFinalize:false,readyForElectronicFiling:false,
@@ -81,6 +85,8 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
        {headers:{"Cache-Control":"no-store"});
    throw new HttpError(409,"기존 검토 중인 생성물이 있습니다. 현재 문서를 처리한 뒤 새 검토본을 가져오세요.");
   }
+  if(data.exportManifest?.mode==="final"||data.workflowState?.documentEdits?.length)
+    throw new HttpError(409,"기존 최종 검토 또는 문서 편집 기록이 있습니다. 자동초안으로 덮어쓰지 말고 현재 문서를 다시 생성하세요.");
   const latestRoles=await rolesForActor(user,caseId);
   if(!latestRoles.includes("case_editor")||!latestRoles.includes("caseworker_review"))
     throw new HttpError(403,"검토 권한이 변경되어 작업을 중단했습니다.");
@@ -96,7 +102,9 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     ...newExportManifest(data.context.revision,manifestFiles,next,"draft"),
     documentWriter:validated.writerReceipt
   };
-  await saveCase(next,data.context.revision,data,undefined,{mutationCategory:"artifact_only"});
+  await saveCase(next,data.context.revision,data,undefined,{mutationCategory:"artifact_only",
+    expectedHeads:{dataVersion:heads.dataVersion,calculationRunId:heads.calculationRunId,
+      legalReviewRunId:heads.legalReviewRunId,referenceSha256:snapshot.sha256}});
   return Response.json({adopted:true,alreadyAdopted:false,mode:"draft",courtApprovalInferred:false,
     canFinalize:false,readyForElectronicFiling:false,documentRunId:run.id,
     files:manifestFiles.map(f=>({id:f.id,kind:f.kind,hash:f.hash})),
