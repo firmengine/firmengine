@@ -118,7 +118,7 @@
 - [ ] **A1-IT-007** 한 PDF 다중 유형/한 유형 다중 PDF/암호·손상 파일 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-008** R2 파일 성공 뒤 D1 실패 시 유령 파일·이중저장 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-009** D1 성공 뒤 파일 저장 실패 시 성공으로 위장 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-IT-010** 동시 브라우저 두 개의 동일 사건 CAS 저장 안전성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-IT-010** 동시 브라우저 두 개의 동일 사건 CAS 저장 안전성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 기존 SQL CAS 4개 격리 SQLite 정상·리뷰-only 동일 revision 토큰 경합 정상. 실제 브라우저/D1 미인증. [영수증](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 - [ ] **A1-IT-011** 기존 사건 구판본 JSON·null 필드의 역호환 읽기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-012** 마이그레이션 0000~0022 중 누락·순서·불일치 검증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-013** OCR/법률/문서 페이지네이션이 대량행을 자르지 않는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -168,7 +168,7 @@
 - [ ] **A1-CALC-015** 계산 sourceVersion·referenceSHA 변경 때 stale 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-016** 공식 서식 입력값과 저장 계산 결과 원단위 일치. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-017** 계산 오류에서 문서 생성과 법률 AI 조기 시작 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-CALC-018** 영업소득 변호사 승인 뒤 기존 법률 검토 재평가. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-CALC-018** 영업소득 변호사 승인 뒤 기존 법률 검토 재평가. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: business.net.adopt→touchCase→resetReviews 정적 연결 확인, 도메인 실제 함수 V8 변환 합성 5조건 정상. 영업소득 채택 전체 DB/법률·서식 E2E 미인증. [증빙](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 
 ### A1 변호사 (18개)
 
@@ -227,7 +227,7 @@
 - [ ] **A1-AX-011** 사람 승인이 필요한 객체 자동 채택 우회 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-012** 모델 timeout/retry에 중복 과금·사건 오염 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-013** 증빙 누락 시 서류요청과 사람 역질문 연계. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-AX-014** 법률/계산 미확정 시 자동초안 writer 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-AX-014** 법률/계산 미확정 시 자동초안 writer 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 마지막 자동초안 완료 batch의 구판본 sourceVersion/worker lease 미검증 결함을 격리 SQL로 재현(기대 완료0/실제완료1). [수정 Draft PR #17](https://github.com/firmengine/firmengine/pull/17), 새 9건 합성 SQLite 9/9; 미병합·D1/R2/전체 CI 미인증. [증빙](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 - [ ] **A1-AX-015** 자동초안 artifact→직원편집→변호사검수 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-016** 실제 n8n 참조 문서와 배포 실행 모듈 구분. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-017** 운영 오류 원인·영향·복구 조치 직원에게 명료 표시. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -790,3 +790,12 @@
 - **도구 개선**: [Draft PR #14](https://github.com/firmengine/firmengine/pull/14)에서 `scripts/audit-product-contracts.mjs --fields`에 693개 ID 각각의 `documentRoutes`와 `sourceRouteSlots`, 고아/중복 경로 차단 및 집중 회귀를 추가. PR의 **실제 변경된 JavaScript 본문**을 현재 GitHub JSON/파일목록 스냅샷의 격리 V8 환경으로 실행: `STATIC_CONTRACT_OK_NOT_END_TO_END_CERTIFIED`, 693/1,808/85/48, 23 migration, findings 0. **실제 Node 테스트 실행·CI·D1/R2/법원 서식·변호사 검수는 미실행**이고 PR은 미병합 draft.
 - **발견된 계약 공백**: `account_garnishment` 10개 ID는 `litigation_record` 문서, `accounting_source` 10개 ID는 `financial_statement` 문서에 출처가 있지만 **모두 명시적 typed·계산·직접 서식 토큰이 없음**. 증거·대조의 가치는 보존하고 금액을 자동 채무·순소득 합계에 더하지 않는다. 법률위험 95건 중 레거시 `required_features` 88건 공란, 7건은 등록 canonical OCR ID와 정확히 일치하는 키 0건. 새 승인형 계약의 seed는 빈 목록이며 **운영 DB의 승인된 계약은 별도 미확인**. 관련 `DOC-02`·`COND-20` 등의 정확한 증거/시행일/관할 관계는 변호사 검토 필요.
 - **다음 A3 회차**: canonical **#021–040** (`applicant_narrative_statement`/ `application_identity_venue`)의 서류·계산·법률·서식·상충 소비처 검토, 사용자·서류담당자 및 계산사무장 관점 순환. PR #14의 실제 Node 회귀·CI 확인 후 병합 여부 판단. 현재 최종 합격 ID **0개**.
+
+
+### 2026-10-30 A1 2차 — 자동초안 완료 batch가 과거 source head를 채택하는 결함
+
+- **세부 실행 영수증**: [A1 2차 — SQL CAS/법률 초안 충돌](release-audit-runs/A1/20261030-round02-draft-commit-cas.md). 체크: `A1-IT-010`, `A1-AX-014`, `A1-CALC-018` (IT·AX·계산사무장 관점).
+- **검증된 결함**: 자동초안 `commitManifest`의 기존 `INSERT analyses`가 무조건 실행되고, `UPDATE case_automatic_document_runs`가 현재 원본·사건 revision·worker lease를 묶지 않았다. source revision/dataVersion 4/5→5/6 변경 뒤 과거 heads를 보존한 격리 SQLite 반례에서 receipt 1건 및 완료 1건으로 잘못 기록됨. 법적 승인이나 실제 Cloudflare exploit은 입증하지 않았음.
+- **능동 수정**: [Draft PR #17](https://github.com/firmengine/firmengine/pull/17) — 최신 사건/원천/계산/법률/기준/lease를 같은 D1 batch CAS로 묶고 receipt도 조건부로만 삽입. Node 22 격리 helper 9/9 합성 통과. 전체 Node CI/빌드·staging D1/R2·실제 Word E2E **미실행, 미병합**.
+- **같은 회차 추가**: 동시 두 작성자 `revision+storage_token` SQL CAS 합성 4조건 기대일치; `touchCase`의 source 변경→최종 문서/직원·변호사 승인 무효화 V8 격리 5조건 기대일치. 모두 운영 통합 인수 전 단계.
+- **다음 A1 역할**: 서류담당자→변호사→데이터담당자. 우선 `A1-DOC-015`(PR #12 회귀 미병합), `A1-LAW-016`(사업소득 채택 후 법률 승인 무효화 실제 연동), `A1-DATA-017`(서류 재분류/원문 정정의 전체 소비처 재투영). 추가 미확인 위험: DB batch 커밋 후 ACK 소실 시 R2 cleanup이 정당한 문서를 삭제할 수 있는지.
