@@ -109,3 +109,44 @@ test("unverified source fact blocks a paid income calculation despite a number i
  assert.equal(result.monthlyIncomeWon,null);
  assert.ok(result.issues.some(x=>x.includes("DISPUTED_OR_REJECTED_FACT")));
 });
+
+test("S21 excessive adopted repayment is blocked even when typed monthly income exists",()=>{
+ const data=goldenCase();
+ data.context.approvedMonthlyPayment=normalizeMoney("2000000");
+ const r=calculateCase(data,CURRENT_RULESET);
+ assert.equal(r.monthlyIncomeWon,"3000000");
+ assert.equal(r.ordinaryRepaymentBudgetWon,"1500000");
+ assert.equal(r.monthlyPaymentWon,null);
+ assert.equal(r.planTotalWon,null);
+ assert.ok(r.issues.includes("PAYMENT_EXCEEDS_DISPOSABLE_INCOME"));
+});
+test("S22 hypothetical 24-month duration only changes arithmetic and is not a court-approved shortened term",()=>{
+ const data=goldenCase();
+ const r=simulatePreapprovalCase(data,[{path:"context.planMonths",candidateMonths:24,
+  basisFactIds:[],reason:"synthetic 24-month candidate"}],executeCaseNodes);
+ assert.equal(r.differences.find(x=>x.outputName==="planTotalWon")?.original,"36000000");
+ assert.equal(r.differences.find(x=>x.outputName==="planTotalWon")?.hypothetical,"24000000");
+ assert.equal(r.legallyRecognizedAmounts,false);
+ assert.equal(r.courtApprovalInferred,false);
+});
+test("S23 PV below liquidation value is a numerical shortfall, not automatic court rejection",()=>{
+ const d=goldenCase();d.context.approvedPresentValue=normalizeMoney("500000");
+ const r=calculateCase(d,CURRENT_RULESET);
+ assert.equal(r.presentValueWon,"500000");
+ assert.equal(r.liquidationValueWon,"1000000");
+ assert.equal(r.liquidationComparison,"not_met");
+});
+test("S11 unknown secured debt classification leaves both limit totals unknown, not 0",()=>{
+ const d=goldenCase();d.debts[0].secured="unknown";
+ const r=calculateCase(d,CURRENT_RULESET);
+ assert.equal(r.securedDebtWon,null);
+ assert.equal(r.unsecuredDebtWon,null);
+ assert.ok(r.issues.includes("DEBT_CAP_CLASSIFICATION_INCOMPLETE"));
+});
+test("S20 sale assumptions retain separate secured payoff and disposal costs",async()=>{
+ const {calculateDisposal}=await import("../lib/assessment.ts");
+ const r=calculateDisposal({saleAmount:normalizeMoney("1000000"),
+  securedPayoff:normalizeMoney("1100000"),costs:normalizeMoney("100000")});
+ assert.equal(r.shortfallWon,"200000");
+ assert.equal(r.status,"calculated");
+});
