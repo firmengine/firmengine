@@ -23,6 +23,11 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  const schedule=data.context.paymentSchedule;
  const issues:string[]=[],rows:PlanLedgerRow[]=[], debts=new Map(data.debts.map(d=>[d.id,d]));
  const months=data.context.planMonths;
+ // Missing or malformed claim money must never become a zero balance (or
+ // throw inside BigInt) when the repayment schedule is marked reviewed.
+ // This is a typed-money integrity gate, not legal recognition of a claim.
+ const invalidClaimBalances=data.debts.filter(debt=>!nat(debt.principal?.amountWon)||!nat(debt.interest?.amountWon)).map(debt=>"CLAIM_BALANCE_MISSING:"+debt.id);
+ if(invalidClaimBalances.length)return {status:"blocked",rows:[],issues:[...new Set(invalidClaimBalances)]};
  if(!schedule||schedule.phases.length===0){
   if(!Number.isSafeInteger(months)||months!<1||calculation.planTotalWon===null)return {status:"blocked",rows:[],issues:["DEFAULT_PLAN_INPUTS_MISSING"]};
   const balances=new Map(data.debts.map(d=>[d.id,(BigInt(d.principal?.amountWon??"0")+BigInt(d.interest?.amountWon??"0"))]));
