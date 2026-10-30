@@ -4,9 +4,7 @@
  * human-reviewed mapping rows can connect precise canonical OCR evidence.
  */
 import riskCatalog from "./risk-catalog.json" with {type:"json"};
-import sourceFamilies from "./document-agent-field-contracts.json" with {type:"json"};
-import sharedFields from "./shared-document-field-contracts.json" with {type:"json"};
-import supplements from "./ocr-field-supplements.json" with {type:"json"};
+import canonicalIds from "./canonical-field-id-index.json" with {type:"json"};
 import {readReferenceValue} from "./reference-runtime.ts";
 export const LEGAL_EVIDENCE_POLICY_REFERENCE_ID="policy.legal_review.evidence_contracts";
 export type LegalEvidenceGroup=string[];
@@ -23,11 +21,7 @@ export interface LegalEvidencePolicy {
 }
 export const LEGAL_EVIDENCE_POLICY_SEED:LegalEvidencePolicy={schemaVersion:"legal-risk-evidence-contracts/1",checks:[]};
 const known=new Set((riskCatalog.entries as {id:string}[]).map(item=>item.id));
-const ids=new Set<string>();
-for(const family of Object.values(sourceFamilies.families))for(const field of family.fields)ids.add(field.global_field_id);
-for(const document of Object.values(sharedFields.documents))
- for(const fields of Object.values(document.fieldsByFamily))for(const field of fields)ids.add(field.global_field_id);
-for(const doc of Object.values(supplements.documents))for(const fields of Object.values(doc))for(const field of fields)ids.add(field.global_field_id);
+const ids=new Set<string>(canonicalIds.ids);
 const record=(value:unknown):value is Record<string,any>=>!!value&&typeof value==="object"&&!Array.isArray(value);
 const date=(s:string)=>/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s+"T00:00:00Z"))&&new Date(s+"T00:00:00Z").toISOString().slice(0,10)===s;
 const official=(raw:string)=>{try{const u=new URL(raw);return u.protocol==="https:"&&!u.username&&!u.password&&(u.hostname==="law.go.kr"||u.hostname.endsWith(".go.kr")||u.hostname.endsWith(".scourt.go.kr"));}catch{return false;}};

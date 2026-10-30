@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {LEGAL_EVIDENCE_POLICY_REFERENCE_ID,LEGAL_EVIDENCE_POLICY_SEED,legalEvidenceCriterion,legalEvidenceInventory,validateLegalEvidencePolicy} from "../lib/legal-evidence-criteria.ts";
 import {referenceRecord,validateReferenceValue} from "../lib/reference-registry.ts";
+import canonicalIds from "../lib/canonical-field-id-index.json" with {type:"json"};
 const criterion={checkId:"DOC-01",reviewStatus:"approved_for_evidence_routing",requiredCanonicalFieldGroups:[["payroll_payslip::income.payroll.net_pay"]],requiredCalculationOutputs:["monthlyIncomeWon"],
  sourceUrls:["https://www.law.go.kr/"],courtIds:["seoul"],effectiveFrom:null,effectiveTo:null,
  reason:"법률 전문가가 원문·사건별 요건·피처를 대조한 계약"} as const;
@@ -27,4 +28,10 @@ test("unknown canonical id, duplicate checks and untrusted authority must fail c
  const url=JSON.parse(JSON.stringify({schemaVersion:"legal-risk-evidence-contracts/1",checks:[criterion]}));
  url.checks[0].sourceUrls=["https://example.com"];
  assert.throws(()=>validateLegalEvidencePolicy(url),/INVALID_/);
+});
+
+test("canonical field validation index preserves exactly 693 unique source IDs",()=>{
+ assert.equal(canonicalIds.ids.length,693);
+ assert.equal(new Set(canonicalIds.ids).size,693);
+ assert.ok(canonicalIds.ids.every(x=>x.includes("::")));
 });
