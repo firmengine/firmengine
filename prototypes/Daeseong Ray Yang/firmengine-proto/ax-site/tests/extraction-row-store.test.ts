@@ -5,6 +5,10 @@ import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { createHash } from "node:crypto";
 import { persistPageExtractionRows,listCaseExtractionRows,listCaseExtractionCoverage,type PersistPageExtractionRowsInput } from "../lib/extraction-row-store.ts";
 import type { PageRead } from "../lib/extraction.ts";
+import {projectPage} from "../lib/extraction.ts";
+import {createCase,applyExtraction} from "../lib/domain.ts";
+import {calculateCase} from "../lib/assessment.ts";
+import {CURRENT_RULESET} from "../lib/legal-rules.ts";
 
 const hash="a".repeat(64),imageHash="b".repeat(64);
 function setup(){
@@ -139,4 +143,76 @@ test("canonical ID disagreeing with OCR key is rejected consistently across stor
     assert.equal(view.records[0].fields[0].projectionKey,null);
     assert.ok(view.records[0].fields[0].validation.includes("CANONICAL_ID_KEY_CONFLICT"));
   }finally{h.close();}
+});
+
+
+test("physically stored two-month OCR payroll rows roundtrip through SQL source cells and deterministic monthly calculator",async()=>{
+ const h=setup();try{
+  const sourceField=(key:string,id:string,value:string,unit:string|null)=>({
+   key,canonicalFieldId:id,label:key,value,unit,quote:key+" "+value,
+   bbox:[0.1,0.1,0.4,0.2],confidence:"clear" as const,sourceState:"present" as const
+  });
+  const wageRow=(month:string,last:string,net:string)=>({category:"income" as const,label:month,fields:[
+    sourceField("income.payroll.employer","payroll_payslip::income.payroll.employer","Employer A",null),
+    sourceField("income.payroll.net_pay","payroll_payslip::income.payroll.net_pay",net,"KRW"),
+    sourceField("income.payroll.pay_period_start","payroll_payslip::income.payroll.pay_period_start",month+"-01",null),
+    sourceField("income.payroll.pay_period_end","payroll_payslip::income.payroll.pay_period_end",month+"-"+last,null),
+  ]});
+  const read:PageRead={documentType:"shared-document:salary_statement@payroll_payslip",complete:true,warnings:[],records:[
+   wageRow("2026-09","30","2000000"),wageRow("2026-10","31","2500000")
+  ]};
+  await persistPageExtractionRows(h.database,input(read,{
+   classification:{documentTypeId:"salary_statement",documentTypeName:"Synthetic salary",familyId:"payroll_payslip",
+    documentCatalogVersion:2,documentCatalogSha256:"c".repeat(64)}
+  }));
+  const stored=await listCaseExtractionRows(h.database,{caseId:"case-1",documentTypeId:"salary_statement",expectedRevision:1});
+  assert.equal(stored.totalRecords,2);
+  assert.deepEqual(stored.records.map(r=>r.fields.find(f=>f.key==="income.payroll.net_pay")?.value),["2000000","2500000"]);
+  assert.ok(stored.records.every(r=>r.fields.some(f=>f.canonicalFieldId==="payroll_payslip::income.payroll.net_pay"&&f.projectionKey==="net")));
+  const reconstructed:PageRead={documentType:read.documentType,complete:true,warnings:[],records:stored.records.map(r=>({
+   category:r.category as "income",label:r.label,fields:r.fields.map(f=>({
+    key:f.key,label:f.label,value:f.value as string|null,unit:f.unit,quote:f.quote,
+    confidence:f.confidence as "clear"|"uncertain"|"unreadable",bbox:f.bbox as number[]|null,
+    canonicalFieldId:f.canonicalFieldId,sourceState:f.sourceState as "present"
+   }))
+  }))};
+  const documentPageQuotes=read.records.flatMap(r=>r.fields.map(f=>f.quote)).join(" | ");
+  let data=createCase("SQL roundtrip synthetic","case-1","2026-10-27");
+  data.documents=[{id:"doc-1",name:"Synthetic salary.pdf",sha256:hash,status:"active",pages:[1]}];
+  data.pages=[{documentId:"doc-1",page:1,role:"evidence",text:documentPageQuotes}];
+  const projected=projectPage(reconstructed,"doc-1",1,hash);
+  assert.deepEqual(projected.incomes.map(x=>x.net?.amountWon),["2000000","2500000"]);
+  assert.deepEqual(projected.incomes.map(x=>x.periodStart),["2026-09-01","2026-10-01"]);
+  data=applyExtraction(data,projected);
+  data.facts=data.facts.map(f=>({...f,state:"verified",recognition:"accepted"}));
+  data.incomes=data.incomes.map(s=>({...s,recognition:"accepted"}));
+  data.context.inventoryComplete.income="yes";
+  const cannotMerge=calculateCase(data,CURRENT_RULESET);
+  assert.equal(cannotMerge.monthlyIncomeWon,null,"same employer name alone is not an approved payer identity");
+  data.incomes=data.incomes.map(s=>({...s,aggregationTreatment:"series_observation",aggregationReviewed:true,aggregationReviewReason:"Synthetic review verified two sequential months belong to the same employer"}));
+  const result=calculateCase(data,CURRENT_RULESET);
+  assert.equal(result.monthlyIncomeWon,"2250000");
+  assert.equal(result.incomeGroups.length,1);
+  assert.equal(result.incomeGroups[0].observedMonths,2);
+  assert.deepEqual(result.incomeRows.map(x=>x.monthlyWon),["2000000","2500000"]);
+ }finally{h.close();}
+});
+
+test("stored unknown-unit money remains in the source SQL but cannot become a transaction amount",async()=>{
+ const h=setup();try{
+  const raw:PageRead={documentType:"shared-document:bank_statement@bank_transactions",complete:true,warnings:[],records:[{
+   category:"transaction",label:"unscaled-amount",fields:[
+    {key:"amount",canonicalFieldId:"bank_transactions::amount",label:"amount",
+     value:"1000000",unit:null,quote:"거래금액 1000000",bbox:[0.1,0.1,0.3,0.2],confidence:"clear",sourceState:"present"}
+   ]
+  }]};
+  await persistPageExtractionRows(h.database,input(raw));
+  const result=await listCaseExtractionRows(h.database,{caseId:"case-1"});
+  assert.equal(result.records.length,1);
+  const amount=result.records[0].fields.find(f=>f.key==="amount")!;
+  assert.equal(amount.value,"1000000");
+  assert.equal(amount.validationStatus,"source_review_required");
+  assert.ok(amount.validation.includes("SOURCE_MONETARY_UNIT_MISSING"));
+  assert.equal(projectPage(raw,"doc-1",1,hash).transactions.length,0);
+ }finally{h.close();}
 });
