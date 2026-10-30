@@ -1,0 +1,583 @@
+{
+  "schemaVersion": "firmengine-preapproval-official-reconstruction/1",
+  "asOf": "2026-10-30",
+  "description": "법령·관할 실무준칙·공개판례의 논점을 합성 사건에 재구성한 테스트 명세. 실제 개인 사건/판결의 수치복제 아님. 현행 적용 및 법원 재량은 별도 확인",
+  "scope": "application_through_approval_no_postapproval",
+  "sources": {
+    "ACT579": {
+      "url": "https://www.law.go.kr/LSW/lsLinkCommonInfo.do?lsJoLnkSeq=1023719001",
+      "kind": "statute",
+      "courtScope": "nationwide_case_date_check"
+    },
+    "ACT589": {
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?lsJoLnkSeq=1018130103",
+      "kind": "statute",
+      "courtScope": "nationwide_case_date_check"
+    },
+    "ACT595": {
+      "url": "https://www.law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1028276231",
+      "kind": "statute",
+      "courtScope": "nationwide_case_date_check"
+    },
+    "ACT610_614": {
+      "url": "https://law.go.kr/LSW/LsiJoLinkP.do?docType=JO&joNo=062400000&languageType=KO&lsNm=채무자 회생 및 파산에 관한 법률&paras=1",
+      "kind": "statute",
+      "courtScope": "nationwide_case_date_check"
+    },
+    "ACT614": {
+      "url": "https://law.go.kr/lsLinkCommonInfo.do?chrClsCd=010202&lsJoLnkSeq=1024710759",
+      "kind": "statute",
+      "courtScope": "nationwide_case_date_check"
+    },
+    "SEOUL424_20261001": {
+      "url": "https://slb.scourt.go.kr/dcboard/new/DcNewsListAction.work?gubun=172",
+      "kind": "court_practice",
+      "courtScope": "seoul_only_20261001"
+    },
+    "SUWON402_431_2025": {
+      "url": "https://swb.scourt.go.kr/swb/info/info_02/practice_rule_swb.pdf?v20251001=",
+      "kind": "court_practice",
+      "courtScope": "suwon_case_only_version_recheck"
+    },
+    "CASE2011MA201": {
+      "url": "https://www.law.go.kr/LSW/precInfoP.do?precSeq=152392",
+      "kind": "official_public_case",
+      "courtScope": "nationwide_case_date_check"
+    },
+    "CASE2023MA6207": {
+      "url": "https://scourt.go.kr/portal/news/NewsViewAction.work?gubun=4&seqnum=9491",
+      "kind": "official_public_case",
+      "courtScope": "nationwide_case_date_check"
+    }
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "stage": "P1_DOCUMENTS",
+      "legalRuleId": "KR-PR-011",
+      "exceptionId": "EL-42",
+      "calculation": null,
+      "sourceId": "ACT589",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "법 제589조에 따른 기본 첨부서류와 신청서 피처 대조"
+    },
+    {
+      "id": "S02",
+      "stage": "P1_DOCUMENTS",
+      "legalRuleId": "KR-PR-009",
+      "exceptionId": "EL-33",
+      "calculation": null,
+      "sourceId": "ACT589",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "신청 전 10년 관련 절차자료(신청 사실/사건/종국일) 조사"
+    },
+    {
+      "id": "S03",
+      "stage": "P1_DOCUMENTS",
+      "legalRuleId": "KR-PR-008",
+      "exceptionId": "EL-33",
+      "calculation": null,
+      "sourceId": "ACT595",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "면책일/최근 5년 기각 검토, 재신청 자체로 자동 불성실 판단 금지"
+    },
+    {
+      "id": "S04",
+      "stage": "P1_DOCUMENTS",
+      "legalRuleId": "KR-PR-014",
+      "exceptionId": "EL-42",
+      "calculation": {
+        "id": "income_average",
+        "inputPath": "income.net",
+        "outputName": "incomeRows"
+      },
+      "sourceId": "SUWON402_431_2025",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "수원 2025 준칙 제402호 급여자료 기본·갈음 경로; 2026 현행판 적용 별도 확인"
+    },
+    {
+      "id": "S05",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-014",
+      "exceptionId": "EL-42",
+      "calculation": {
+        "id": "income_average",
+        "inputPath": "income.net",
+        "outputName": "incomeRows"
+      },
+      "sourceId": "ACT589",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "급여명세 OCR 추출됐어도 지급자/월/실수령 사실과 법적 인정은 분리"
+    },
+    {
+      "id": "S06",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-016",
+      "exceptionId": "EL-19",
+      "calculation": {
+        "id": "income_average",
+        "inputPath": "income.expenses",
+        "outputName": "incomeRows"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "사업 총매출·필요비·순소득 중복 및 기간 일치"
+    },
+    {
+      "id": "S07",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-020",
+      "exceptionId": "EL-45",
+      "calculation": {
+        "id": "income_aggregation",
+        "inputPath": "income.payerIdentityId",
+        "outputName": "monthlyIncomeWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "급여 입금·자기이체·차입금 중복소득 검출"
+    },
+    {
+      "id": "S08",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-027",
+      "exceptionId": "EL-28",
+      "calculation": {
+        "id": "asset_liquidation",
+        "inputPath": "asset.grossValue",
+        "outputName": "liquidationValueWon"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "보험 가입과 해약환급금 및 보험대출을 별도 출처로 확인"
+    },
+    {
+      "id": "S09",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-028",
+      "exceptionId": "EL-16",
+      "calculation": {
+        "id": "asset_liquidation",
+        "inputPath": "asset.ownershipBps",
+        "outputName": "liquidationValueWon"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "배우자 명의 재산을 자동 채무자 지분으로 판단하지 않음"
+    },
+    {
+      "id": "S10",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-010",
+      "exceptionId": "EL-30",
+      "calculation": {
+        "id": "debt_total",
+        "inputPath": "debt.contractId",
+        "outputName": "totalDebtWon"
+      },
+      "sourceId": "ACT589",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "채권양도·대위변제에 따른 채권자 동일성과 중복 원금 확인"
+    },
+    {
+      "id": "S11",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-006",
+      "exceptionId": "EL-04",
+      "calculation": {
+        "id": "debt_cap",
+        "inputPath": "debt.secured",
+        "outputName": "securedDebtWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "담보부 채무 15억원 기준 및 이중 계산/시점 분리"
+    },
+    {
+      "id": "S12",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-007",
+      "exceptionId": "EL-05",
+      "calculation": {
+        "id": "debt_cap",
+        "inputPath": "debt.classification",
+        "outputName": "unsecuredDebtWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "무담보 채무 10억원 기준 및 분류 미확정 보류"
+    },
+    {
+      "id": "S13",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-010",
+      "exceptionId": "EL-06",
+      "calculation": {
+        "id": "debt_cap",
+        "inputPath": "debt.guaranteeDetails",
+        "outputName": "securedDebtWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "보증·연대채무를 주채무 잔액과 중복 합산 금지"
+    },
+    {
+      "id": "S14",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-015",
+      "exceptionId": "EL-20",
+      "calculation": {
+        "id": "income_aggregation",
+        "inputPath": "context.filingPeriod",
+        "outputName": "monthlyIncomeWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "신규취업 12개월 전자료와 대표기간의 기간 차이"
+    },
+    {
+      "id": "S15",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-021",
+      "exceptionId": "EL-17",
+      "calculation": {
+        "id": "available_income",
+        "inputPath": "household.recognizedLivingCost",
+        "outputName": "disposableIncomeWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "가구원 증빙 및 생계비 인정이 계산 결과에 미치는 영향"
+    },
+    {
+      "id": "S16",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-024",
+      "exceptionId": "EL-41",
+      "calculation": {
+        "id": "available_income",
+        "inputPath": "household.additionalLivingCost",
+        "outputName": "recognizedLivingCostWon"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "월 25만원 의료비 가정은 원본 변경 없이 시뮬레이션"
+    },
+    {
+      "id": "S17",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-036",
+      "exceptionId": "EL-07",
+      "calculation": {
+        "id": "ordinary_budget",
+        "inputPath": "context.monthlyPriorityPayment",
+        "outputName": "ordinaryRepaymentBudgetWon"
+      },
+      "sourceId": "ACT611_614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "조세 우선권·월 변제예산 누락/0 구분"
+    },
+    {
+      "id": "S18",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-035",
+      "exceptionId": "EL-08",
+      "calculation": {
+        "id": "ordinary_budget",
+        "inputPath": "context.monthlyEstatePayment",
+        "outputName": "ordinaryRepaymentBudgetWon"
+      },
+      "sourceId": "ACT611_614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "재단채권 지급은 일반채권 배분과 구분"
+    },
+    {
+      "id": "S19",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-032",
+      "exceptionId": "EL-11",
+      "calculation": {
+        "id": "asset_liquidation",
+        "inputPath": "asset.securedPayoffScope",
+        "outputName": "liquidationValueWon"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "공유 담보물 상환액 귀속과 청산가치 계산"
+    },
+    {
+      "id": "S20",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-030",
+      "exceptionId": "EL-23",
+      "calculation": {
+        "id": "disposal_conservation",
+        "inputPath": "saleAmount",
+        "outputName": "netProceedsWon"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "재산매각 대금·비용·담보상환과 잔존재산 연결"
+    },
+    {
+      "id": "S21",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-048",
+      "exceptionId": "EL-38",
+      "calculation": {
+        "id": "ordinary_budget",
+        "inputPath": "context.approvedMonthlyPayment",
+        "outputName": "monthlyPaymentWon"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "제안 변제금이 미확정 소득·생계비를 우회할 수 없음"
+    },
+    {
+      "id": "S22",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-041",
+      "exceptionId": "EL-38",
+      "calculation": {
+        "id": "nominal_plan",
+        "inputPath": "context.planMonths",
+        "outputName": "planTotalWon"
+      },
+      "sourceId": "ACT611_614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "36개월/예외기간·명목 총액과 PV를 구분"
+    },
+    {
+      "id": "S23",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-043",
+      "exceptionId": "EL-37",
+      "calculation": {
+        "id": "liquidation_comparison",
+        "inputPath": "context.approvedPresentValue",
+        "outputName": "liquidationComparison"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "청산가치 현재가치 비교 미달을 법원 기각확정으로 표시하지 않음"
+    },
+    {
+      "id": "S24",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-044",
+      "exceptionId": "EL-36",
+      "calculation": {
+        "id": "objection_minimum",
+        "inputPath": "context.courtObjection",
+        "outputName": "objectionMinimum"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "이의 여부 확인 근거 없이 제614조 제2항을 비해당 처리 금지"
+    },
+    {
+      "id": "S25",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-045",
+      "exceptionId": "EL-36",
+      "calculation": {
+        "id": "objection_minimum",
+        "inputPath": "claims.presentValue",
+        "outputName": "objectionMinimum"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "이의 사건의 채권 총액 PV와 변제 PV 분리"
+    },
+    {
+      "id": "S26",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-042",
+      "exceptionId": "EL-35",
+      "calculation": {
+        "id": "seoul_short_term",
+        "inputPath": "applicant.age",
+        "outputName": "termCandidate"
+      },
+      "sourceId": "SEOUL424_20261001",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "서울 2026.10.1 단축 후보 - 청년 여부/인가요건은 별도 승인"
+    },
+    {
+      "id": "S27",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-042",
+      "exceptionId": "EL-35",
+      "calculation": {
+        "id": "seoul_short_term",
+        "inputPath": "vulnerable.wageHistory",
+        "outputName": "termCandidate"
+      },
+      "sourceId": "SEOUL424_20261001",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "신규 취약채무자 단축 후보: 2년 임금·채무 5천만원·개인채권자·최근 차입"
+    },
+    {
+      "id": "S28",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-046",
+      "exceptionId": "EL-39",
+      "calculation": null,
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "인가 전 비용·수수료 납부 영수증 부재 시 자동 통과 금지"
+    },
+    {
+      "id": "S29",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-048",
+      "exceptionId": "EL-44",
+      "calculation": {
+        "id": "payment_schedule",
+        "inputPath": "context.paymentSchedule.phases",
+        "outputName": "status"
+      },
+      "sourceId": "CASE2023MA6207",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "급여 압류적립액이 있는 경우 납입지연만으로 수행불능 단정 금지"
+    },
+    {
+      "id": "S30",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-008",
+      "exceptionId": "EL-33",
+      "calculation": null,
+      "sourceId": "CASE2011MA201",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "과거 기각 횟수만으로 신청 불성실 단정 금지"
+    },
+    {
+      "id": "S31",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-040",
+      "exceptionId": "EL-31",
+      "calculation": {
+        "id": "allocation",
+        "inputPath": "debt.priority",
+        "outputName": "allocations"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "동종 채권 변제 형평·별도 채권 분류 확인"
+    },
+    {
+      "id": "S32",
+      "stage": "P5_CORRECTIONS",
+      "legalRuleId": "KR-PR-047",
+      "exceptionId": "EL-42",
+      "calculation": null,
+      "sourceId": "ACT610_614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "변제계획 제출 14일/법원 연장/수정 명령 기한은 근거 문서 확인"
+    },
+    {
+      "id": "S33",
+      "stage": "P5_CORRECTIONS",
+      "legalRuleId": "KR-PR-049",
+      "exceptionId": "EL-42",
+      "calculation": null,
+      "sourceId": "ACT595",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "실제 법원 보정명령 원문·항목·기한·응답·접수 확인 분리"
+    },
+    {
+      "id": "S34",
+      "stage": "P5_CORRECTIONS",
+      "legalRuleId": "KR-PR-038",
+      "exceptionId": "EL-36",
+      "calculation": {
+        "id": "installment_distribution",
+        "inputPath": "context.paymentSchedule",
+        "outputName": "documentPayloads"
+      },
+      "sourceId": "SUWON402_431_2025",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "수원 2025 준칙 제431호 집회 후 이의 답변서/미송달/변경 송달 확인"
+    },
+    {
+      "id": "S35",
+      "stage": "P5_CORRECTIONS",
+      "legalRuleId": "KR-PR-048",
+      "exceptionId": "EL-44",
+      "calculation": {
+        "id": "payment_schedule",
+        "inputPath": "context.paymentSchedule.phases",
+        "outputName": "status"
+      },
+      "sourceId": "CASE2023MA6207",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "인가 전 적립금 미납과 압류보관 급여의 수행가능성 대조"
+    },
+    {
+      "id": "S36",
+      "stage": "P5_CORRECTIONS",
+      "legalRuleId": "KR-PR-049",
+      "exceptionId": "EL-42",
+      "calculation": null,
+      "sourceId": "SUWON402_431_2025",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "법원 보정명령은 실제 발부가 없는 한 내부 예상 쟁점과 구분"
+    },
+    {
+      "id": "S37",
+      "stage": "P2_EVIDENCE",
+      "legalRuleId": "KR-PR-029",
+      "exceptionId": "EL-22",
+      "calculation": {
+        "id": "asset_liquidation",
+        "inputPath": "asset.valuationBasis",
+        "outputName": "assetRows"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "투자 손실과 현재 잔존 투자자산 0원을 동일시 금지"
+    },
+    {
+      "id": "S38",
+      "stage": "P3_CALCULATIONS",
+      "legalRuleId": "KR-PR-048",
+      "exceptionId": "EL-34",
+      "calculation": {
+        "id": "payment_schedule",
+        "inputPath": "context.paymentSchedule.expectedInstallments",
+        "outputName": "phaseTotals"
+      },
+      "sourceId": "ACT611_614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "계절 소득과 불균등 납입계획의 월별 지급 가능성"
+    },
+    {
+      "id": "S39",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-022",
+      "exceptionId": "EL-17",
+      "calculation": {
+        "id": "living_cost_proposal",
+        "inputPath": "household.recognizedMembers",
+        "outputName": "livingCost"
+      },
+      "sourceId": "ACT579",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "단순 동거를 실제 부양으로 인정하지 않고 부양·소득 자료 요청"
+    },
+    {
+      "id": "S40",
+      "stage": "P4_LEGAL",
+      "legalRuleId": "KR-PR-045",
+      "exceptionId": "EL-36",
+      "calculation": {
+        "id": "objection_minimum",
+        "inputPath": "plan.repaymentPresentValue",
+        "outputName": "objectionMinimum"
+      },
+      "sourceId": "ACT614",
+      "expected": "evidence_or_lawyer_review_not_court_approval",
+      "description": "변제계획 PV·채권 PV·적용시점 구분"
+    }
+  ]
+}
