@@ -19,7 +19,7 @@
 | income_aggregation | `context.inventoryComplete.income` | — | 사건 설정·법률 검토 입력 |
 | debt_total | `debt.creditor` | `debt_certificate::creditor` | 직접 ID 연결 (검증·인정 별도) |
 | debt_total | `debt.contractId` | `debt_certificate::contract_id` | 직접 ID 연결 (검증·인정 별도) |
-| debt_total | `debt.principal` | — | **계산 입력의 표준 OCR 경로 미연결** |
+| debt_total | `debt.principal` | 유도 후보: `debt_certificate::principal_balance` → 검증된 `Debt.principal` | **검증된 현재 잔액에서 typed 변환** |
 | debt_total | `debt.interest` | `debt_certificate::interest_balance` | 직접 ID 연결 (검증·인정 별도) |
 | debt_total | `debt.asOf` | `debt_certificate::as_of_date` | 직접 ID 연결 (검증·인정 별도) |
 | debt_total | `context.inventoryComplete.debt` | — | 사건 설정·법률 검토 입력 |
@@ -98,6 +98,6 @@
 
 ### 검증 합계
 
-- 18모듈의 선언 입력 슬롯 91개: 직접 21, 유도 3, 사건 설정 33, 객체 계산 입력 미연결 19, 명시 검증된 Fact 입력 3, 별도 의사결정/도구 입력 12.
+- 18모듈의 선언 입력 슬롯 91개: 직접 21, 유도 4, 사건 설정 33, 객체 계산 입력 미연결 18, 명시 검증된 Fact 입력 3, 별도 의사결정/도구 입력 12.
 - 월평균/채무총액/재산청산가치 외 변제 예산·채권 배분·선택기간·규칙판본은 OCR 값만으로 계산할 수 없다.
 - 실제 실행 리그레션은 `tests/ocr-calculator-input-integration.test.ts`와 `tests/ocr-calculation-db-contract.test.ts`에 정의됨. 이 문서는 테스트 실행결과가 아닌 **현재 코드 키 계약 대조**다.
