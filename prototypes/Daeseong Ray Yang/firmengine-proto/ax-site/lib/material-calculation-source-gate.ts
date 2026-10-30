@@ -44,7 +44,7 @@ export interface MaterialIssue {code:MaterialIssueCode;canonicalFieldId:string;f
  * context remains inspectable, but is never auto-classified or auto-added. */
 export function auditMaterialCalculatorSources(data:CaseData,index:CaseReadIndex=createCaseReadIndex(data)){
  const catalog=new Map(MATERIAL_CALCULATION_SOURCES.map(c=>[c.id,c]));
- const rows=[...data.incomes.map(x=>({category:"income" as const,item:x})),
+ const rows=[...data.incomes.filter(x=>x.sourceCalculationRole!=="gross_turnover_only").map(x=>({category:"income" as const,item:x})),
    ...data.debts.map(x=>({category:"debt" as const,item:x})),
    ...data.assets.map(x=>({category:"asset" as const,item:x}))];
  const issues:MaterialIssue[]=[],observed=new Set<string>(),contextOnly=new Set<string>();
