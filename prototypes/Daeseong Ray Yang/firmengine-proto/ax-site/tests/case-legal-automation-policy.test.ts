@@ -25,3 +25,24 @@ test("incomplete AI batch and missing calculation never authorize draft",()=>{
   draftEligibility:{eligible:false,reasons:["CALCULATION_VALUE_MISSING:presentValueWon"]}});
  assert.equal(result.disposition,"incomplete");assert.ok(result.blockers.includes("LEGAL_REVIEW_INCOMPLETE"));
 });
+
+test("an unconnected material OCR amount blocks unattended drafts despite AI pass",()=>{
+ const issue="CALC_INPUT_UNCONNECTED_MATERIAL:bank_account_balance::balance:f1";
+ const r=summarizeAutomaticLegalReview({checks:[c("pass")],expectedCount:1,
+  draftEligibility:{eligible:true,reasons:[]},calculationIssues:[issue]});
+ assert.equal(r.draftCandidate,false);assert.equal(r.disposition,"attention_required");
+ assert.equal(r.humanReviewRequired,true);
+ assert.ok(r.blockers.includes("CALCULATION_SOURCE_RECONCILIATION_REQUIRED"));
+});
+test("source amount mismatch, invalid money and invalid source link block unattended drafting",()=>{
+ for(const code of ["CALC_INPUT_AMOUNT_INVALID","CALC_INPUT_AMOUNT_MISMATCH","CALC_INPUT_SOURCE_INVALID"]){
+  const r=summarizeAutomaticLegalReview({checks:[c("pass")],expectedCount:1,
+   draftEligibility:{eligible:true,reasons:[]},calculationIssues:[code+":debt_certificate::principal_balance:f1"]});
+  assert.equal(r.draftCandidate,false,code);
+ }
+});
+test("nonmaterial calculation notes do not create a false mismatch blocker",()=>{
+ const r=summarizeAutomaticLegalReview({checks:[c("pass")],expectedCount:1,
+  draftEligibility:{eligible:true,reasons:[]},calculationIssues:["INCOME_REPRESENTATIVE_PERIOD_NOT_SELECTED"]});
+ assert.equal(r.draftCandidate,true);
+});

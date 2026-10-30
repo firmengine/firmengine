@@ -106,13 +106,18 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
  const projectionBlockers=data.workflowState?.projectionBlockers.length??0;
  const execution=executeCaseNodes(data);
  const needed=await calculationFields(database,job.calculationRunId);
+ // Current saved OCR amounts not reconciled into typed calculator values block
+ // unattended draft generation, irrespective of AI check statuses.
+ const materialGaps=execution.assessment.calculation.issues.filter(
+   issue=>/^CALC_INPUT_(?:UNCONNECTED_MATERIAL|AMOUNT_INVALID|AMOUNT_MISMATCH|SOURCE_INVALID):/.test(issue));
  const pendingCourtPolicy=await database.prepare("SELECT COUNT(*) AS n FROM legal_monitor_alerts WHERE acknowledged_at IS NULL").first<{n:number}>();
  const eligible=automatedDraftEligibility({checks:collected.checks,expectedCheckIds:checkIds,
   complete:true,calculationHeadCurrent:true,
   engineCanGenerateDraft:execution.assessment.generationGate.canGenerateDraft&&processingComplete&&!(pendingCourtPolicy?.n??0),
   requiredCalculationFields:needed,allowHumanReviewPendingForDraft:true,
   explicitFailures:[...(unresolvedRequired.length?["REQUIRED_DOCUMENTS_UNRESOLVED"]:[]),
-    ...(projectionBlockers?["SOURCE_PROJECTION_BLOCKED"]:[])]});
+    ...(projectionBlockers?["SOURCE_PROJECTION_BLOCKED"]:[]),
+    ...materialGaps]});
  const report=summarizeAutomaticLegalReview({
   checks:collected.checks,expectedCount:checkIds.length,draftEligibility:eligible,
   calculationIssues:execution.assessment.calculation.issues});

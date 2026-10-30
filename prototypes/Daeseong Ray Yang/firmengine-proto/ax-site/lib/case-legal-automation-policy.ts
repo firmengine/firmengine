@@ -14,12 +14,16 @@ export function summarizeAutomaticLegalReview(input:{
  for(const c of input.checks)counts[c.status]++;
  const complete=input.checks.length===input.expectedCount
    &&new Set(input.checks.map(c=>c.id)).size===input.expectedCount;
- const hardBlock=counts.fail+counts.missing+counts.conflict>0;
+ // A missing or incorrect OCR financial input must not be hidden by a legal AI pass.
+ const materialGaps=[...new Set((input.calculationIssues??[]).filter(
+   issue=>/^CALC_INPUT_(?:UNCONNECTED_MATERIAL|AMOUNT_INVALID|AMOUNT_MISMATCH|SOURCE_INVALID):/.test(issue)))];
+ const hardBlock=counts.fail+counts.missing+counts.conflict>0||materialGaps.length>0;
  const reviewPending=counts.legal_review>0;
  const blockers=[...(complete?[]:["LEGAL_REVIEW_INCOMPLETE"]),
    ...(counts.fail?["LEGAL_CONDITION_FAILED"]:[]),
    ...(counts.conflict?["LEGAL_FACT_CONFLICT"]:[]),
    ...(counts.missing?["LEGAL_EVIDENCE_MISSING"]:[]),
+   ...(materialGaps.length?["CALCULATION_SOURCE_RECONCILIATION_REQUIRED"]:[]),
    ...(!input.draftEligibility?.eligible?(input.draftEligibility?.reasons??["DRAFT_ELIGIBILITY_NOT_CHECKED"]):[])];
  const draftCandidate=complete&&!hardBlock&&input.draftEligibility?.eligible===true;
  const findings=input.checks.filter(c=>!["pass","not_applicable"].includes(c.status)).map(c=>({
