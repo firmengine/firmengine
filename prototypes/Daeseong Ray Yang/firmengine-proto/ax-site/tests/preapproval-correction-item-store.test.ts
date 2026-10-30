@@ -120,3 +120,23 @@ test("non-human actor and synthetic provenance are forbidden to grant item revie
  data.structuredTest={mode:"assumed_extracted_synthetic",sourceRecords:[]};
  assert.throws(()=>validateCorrectionItemDraft(data,draft),/CORRECTION_SYNTHETIC_CASE_WRITE_FORBIDDEN/);
 });
+
+test("mutated court deadline source is invalidated on read without deleting historical item",async()=>{
+ const {data,db,draft}=setup();
+ await upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"});
+ data.facts[0].recognition="unreviewed";
+ const stored=await readCourtCorrectionItems(db,data);
+ assert.equal(stored.count,1);
+ assert.equal(stored.items[0].sourceCurrent,false);
+ assert.equal(stored.items[0].courtOrderSatisfied,false);
+});
+test("revoked response receipt event invalidates current court-correction mapping",async()=>{
+ const {data,db,draft}=setup();
+ await upsertCourtCorrectionItem(db,{data,draft:{
+  ...draft,responseEventId:"received-answer",responseDocumentIds:["answer"],receiptDocumentId:"receipt"
+ },actorId:"staff-reviewer"});
+ data.workflowState!.procedureEvents=data.workflowState!.procedureEvents.filter(e=>e.id!=="received-answer");
+ const stored=await readCourtCorrectionItems(db,data);
+ assert.equal(stored.items[0].sourceCurrent,false);
+ assert.equal(stored.items[0].courtOrderSatisfied,false);
+});
