@@ -773,3 +773,11 @@
 
 
 **A1 회차 영수증(2026-10-30 13:09 KST)**: [기존 법률승인·문안 편집 이력변조 반례 및 수정 PR #12](release-audit-runs/A1/2026-10-30_1309_KST_review-only-append-guard.md). 증거: 기존 함수 V8 합성 2건 예상거부인데 실제 허용, 수정 후보 함수 합성 6/6 기대일치. **별도 초안 PR 미병합**, Node 전체 테스트·D1/R2/법원·배포 인수 미확인. 다음 A1-IT-010, A1-AX-014, A1-CALC-018.
+
+### 2026-10-30 A2 첫 회차 — 사업 금액 원문/typed 불일치 독립감사 (부분 실행만)
+
+- **체크 ID**: `A2-IT-004`, `A2-DATA-005`, `A2-CALC-005`, `A2-CALC-016`, `A2-LAW-015`. **[ ] 유지**: 코드 본문 격리 합성 실행/공식 원문 대조는 완료, 최신 전체 Node·D1/R2·공식 서식·변호사 인수는 미완료.
+- **결함 재현**: business source evidence에서 원문 1,200,000원과 typed 700,000원이 상충해도 검증=true·조회금액=700,000원, 원문 raw 변조/명시적 없음도 검증=true. 실제 Github 함수 body V8 격리 반례 **수정 전 1/4→수정 후 4/4** 기대 일치. **[Draft PR #13](https://github.com/firmengine/firmengine/pull/13)** 로 원문 Fact·raw·numeric·unit·sourceState 3중검증과 Node 회귀 테스트 작성했으며 **아직 main 미병합·전체 Node 미실행**.
+- **월별 합성**: 공식 금액 저장 DTO 모양의 BusinessSourceMoneyRow를 대상으로 실제 순수 함수 본문 V8 격리 **5/5 기대 일치**(12개월/11개월/부가세만/진짜 0원/미검증 null). 모두 법적 소득 승인이나 제출 서식 검증 아님.
+- **공식 출처**: 서울회생법원 준칙 PDF 제424호 **2026-09-23 개정** 본문 252~253쪽 제7호 네 누적요건(2년 최저임금 미만·채무 5천만원 이하·개인채권자 없음·최근 1년 채무 없음/물품구입 신용카드채무 예외)을 실제 PDF 이미지로 검증. 코드 기준 `effective_from=2026-10-01` 및 `candidate_for_human_review`와 정적 대조. 채무자회생법 2026-10-02 시행판·국세청 VAT 매출/매입세액 분리 공식 원문 확인. 법원 재량/적용일/사건별 최종 승인은 별도.
+- [**A2 첫 회차 상세 영수증**](release-audit-runs/A2/2026-10-30_1317_KST_business-source-money-and-monthly-period.md). 다음: `A2-DOC-004`, `A2-AX-004`, `A2-IT-015`, `A2-CALC-006`, `A2-LAW-016`.
