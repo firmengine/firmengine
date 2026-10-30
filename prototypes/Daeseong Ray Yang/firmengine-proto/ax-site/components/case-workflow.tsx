@@ -5,6 +5,7 @@ import { AlertCircle, ArrowLeft, CheckCircle2, Clock3, FileCheck2, FileText, Loa
 import type { LucideIcon } from "lucide-react";
 import type { CaseCommand, CommandType } from "@/lib/case-command-contract";
 import CaseReviewActions, { type ReviewArtifact,type ReviewFieldBase,type CurrentLegalRun } from "./case-review-actions";
+import DocumentReviewFinalization,{type ExportReviewView} from "./document-review-finalization";
 import type { CaseWorkflowState } from "@/lib/case-workflow-state";
 import type { WorkflowHealth } from "@/lib/workflow-health";
 import SubstitutionReviewForm, {type SubstitutionProofCandidate} from "./substitution-review-form";
@@ -19,6 +20,7 @@ type WorkflowResponse = {
   tasks: { items: CaseWorkflowState["tasks"]; count: number; byStatus: Record<string, number> };
   roles: string[]; recomputeJobs: unknown[]; planReconciliation?: { status?: string; issues?: unknown[] } | null;
   artifacts:ReviewArtifact[];fieldBases:ReviewFieldBase[];legalRuns:CurrentLegalRun[];
+  exportReview?:ExportReviewView;finalLegalReadiness?:{readyForFinalReviewCopy:boolean;blockers?:string[]};
   diagnostics: Record<string, unknown>;
   health?:WorkflowHealth;
   legalAutomation?:{
@@ -217,6 +219,10 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
       <Panel title="담당 작업" icon={Clock3}>
         {data.tasks.count === 0 ? <p className="workflow-muted">열린 작업이 없습니다.</p> : <div className="workflow-list">{data.tasks.items.map(task => <article className="workflow-card" key={task.id}><div className="workflow-card-head"><div><strong>{task.title}</strong><p>{task.blockedBy.length ? `선행 항목 ${task.blockedBy.length}개` : "선행 항목 없음"}</p></div><span className="badge badge-neutral">{label(task.status)}</span></div><form className="workflow-form" onSubmit={submit(form => command("task.update", { taskId: task.id }, { status: String(form.get("status")), ownerId: String(form.get("ownerId") ?? "") || null, dueAt: String(form.get("dueAt") ?? "") || null, waitingOn: String(form.get("waitingOn") ?? "") || null }, reason(form)))}><div className="form-grid"><FormField label="진행 상태">{select("status", [["open", "열림"], ["in_progress", "진행 중"], ["waiting", "대기"], ["resolved", "완료"], ["dismissed", "취소"]])}</FormField><FormField label="담당자" hint="담당자를 지정하려면 확인된 담당자 식별자를 입력하세요.">{input("ownerId", "text", false, task.ownerId ?? "", "담당자 식별자")}</FormField><FormField label="기한">{input("dueAt", "date", false, task.dueAt ?? "")}</FormField><FormField label="대기 사유">{input("waitingOn", "text", false, task.waitingOn ?? "", "필요한 응답이나 자료")}</FormField></div><ReasonField /><Submit busy={busy}>작업 상태 저장</Submit></form></article>)}</div>}
       </Panel>
+      <DocumentReviewFinalization caseId={caseId} review={data.exportReview} roles={data.roles}
+        finalReady={data.finalLegalReadiness?.readyForFinalReviewCopy===true}
+        pendingEdits={Boolean(data.workflow?.documentEdits?.length)} busy={busy||!!pendingCommand}
+        onCommand={send} onRefresh={load}/>
       <CaseReviewActions revision={data.revision} stateFingerprint={data.stateFingerprint} artifacts={data.artifacts??[]} fieldBases={data.fieldBases??[]} legalRuns={data.legalRuns??[]} roles={data.roles} onCommand={send} onError={setError} busy={busy} />
        {data.legalAutomation&&<Panel title="DB 변경 후 자동 법률 재판단" icon={ShieldCheck}>
          <p className="workflow-muted">마지막 변경 후 10분 안정화 → 계산 → 법률 AI 재검토 → 오류 분석 → 검토용 초안. 법원 제출·승인은 자동 처리하지 않습니다.</p>
