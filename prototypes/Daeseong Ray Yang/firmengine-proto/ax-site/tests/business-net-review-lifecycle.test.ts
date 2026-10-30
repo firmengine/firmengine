@@ -93,10 +93,10 @@ function appendMonth(d:CaseData,month:number,existingRegistration?:string):Busin
 }
 async function adopt(d:CaseData,s:BusinessNetSelection){
  const proposal=await proposeBusinessNet(d,s,"담당자 원문 대조 후 법률 검토 제안","staff","2026-10-30T00:00:00Z");
- d.workflowState!.businessNetReviews.push(proposal);
+ d.workflowState!.businessNetReviews!.push(proposal);
  const {review,income}=adoptBusinessNet(d,proposal.id,"synthetic-lawyer",
   "해당 등록사업자와 매출·경비 원문행 동일성 및 부가세·공제 인정 기준 확인","2026-10-30T00:00:01Z");
- d.workflowState!.businessNetReviews[d.workflowState!.businessNetReviews.length-1]=review;
+ d.workflowState!.businessNetReviews![d.workflowState!.businessNetReviews!.length-1]=review;
  d.incomes.push(income);
  return {proposal,review,income};
 }
@@ -137,7 +137,7 @@ test("one registration ID may support 12 approved distinct months but one money 
   const monthSelection=appendMonth(d,month,selection.businessRegistrationFactId);
   await adopt(d,monthSelection);
  }
- assert.equal(d.workflowState!.businessNetReviews.length,12);
+ assert.equal(d.workflowState!.businessNetReviews!.length,12);
  assert.equal(reviewedBusinessIncomeIds(d).size,12);
  const c=calculateCase(d,rules);
  assert.equal(c.monthlyIncomeWon,"1500000",JSON.stringify(c.issues));
@@ -195,15 +195,15 @@ test("case command keeps source facts immutable; lawyer-only adoption is persist
     businessRegistrationFactId:selection.businessRegistrationFactId,grossFactId:selection.grossFactId,
     costFactIds:selection.costFactIds,month:selection.month
   }),{actor:"synthetic-caseworker",roles:["case_editor"],at:"2026-10-30T00:00:00Z"});
- assert.equal(proposed.data.workflowState?.businessNetReviews.length,1);
+ assert.equal(proposed.data.workflowState?.businessNetReviews?.length,1);
  assert.equal(JSON.stringify(proposed.data.facts),beforeFacts);
- const reviewId=proposed.data.workflowState!.businessNetReviews[0].id;
+ const reviewId=proposed.data.workflowState!.businessNetReviews![0].id;
  await assert.rejects(reduceCaseCommand(proposed.data,
   command("business.net.adopt",{reviewId},{}),{actor:"caseworker",roles:["case_editor","caseworker_review"],at:"2026-10-30T00:00:01Z"}),/지정된 사람 검토 권한/);
  const adopted=await reduceCaseCommand(proposed.data,
   command("business.net.adopt",{reviewId},{}),
   {actor:"synthetic-lawyer",roles:["case_editor","lawyer_review"],at:"2026-10-30T00:00:02Z"});
- assert.equal(adopted.data.workflowState!.businessNetReviews[0].status,"approved");
+ assert.equal(adopted.data.workflowState!.businessNetReviews![0].status,"approved");
  assert.equal(adopted.data.incomes.filter(x=>x.sourceCalculationRole==="period_income_observation").length,1);
  assert.equal(JSON.stringify(adopted.data.facts),beforeFacts);
  assert.equal(reviewedBusinessIncomeIds(adopted.data).size,1);
