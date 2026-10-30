@@ -2,7 +2,7 @@
  * All matching is by exact canonical ID and linked source fact ID, never labels.
  * A missing link blocks final review, NOT a claim that a third party owns a debt/asset.
  */
-import {createCaseReadIndex,currentFacts,moneyValue,validSourceRef,type CaseData,type CaseReadIndex,type NumericInput} from "./domain.ts";
+import {createCaseReadIndex,currentFacts,moneyValue,normalizeMoney,validSourceRef,type CaseData,type CaseReadIndex,type NumericInput} from "./domain.ts";
 export type MaterialDestination="income.net"|"income.gross"|"debt.principal"|"debt.interest"|"asset.grossValue";
 type Policy="must_reconcile"|"context_only";
 export interface MaterialDefinition {id:string;destination:MaterialDestination|null;policy:Policy;reason:string;}
@@ -38,7 +38,7 @@ export const MATERIAL_CALCULATION_SOURCES:readonly MaterialDefinition[]=[
  ["asset_transfer_disposition::proceeds_received",null,"context_only","Disposal proceeds must be reconciled with successor assets"]
 ].map(([id,destination,policy,reason])=>({id:id as string,destination:destination as MaterialDestination|null,
  policy:policy as Policy,reason:reason as string}));
-export type MaterialIssueCode="CALC_INPUT_UNCONNECTED_MATERIAL"|"CALC_INPUT_MULTIPLE_TYPED_MATCHES"|"CALC_INPUT_AMOUNT_INVALID"|"CALC_INPUT_AMOUNT_MISMATCH"|"CALC_INPUT_SOURCE_INVALID";
+export type MaterialIssueCode="CALC_INPUT_UNCONNECTED_MATERIAL"|"CALC_INPUT_MULTIPLE_TYPED_MATCHES"|"CALC_INPUT_AMOUNT_INVALID"|"CALC_INPUT_AMOUNT_MISMATCH"|"CALC_INPUT_SOURCE_VALUE_MISMATCH"|"CALC_INPUT_SOURCE_INVALID";
 export interface MaterialIssue {code:MaterialIssueCode;canonicalFieldId:string;factId:string;destination:MaterialDestination;reason:string;}
 /** Fail closed for the amounts required for case calculation; source-only legal
  * context remains inspectable, but is never auto-classified or auto-added. */
@@ -59,6 +59,18 @@ export function auditMaterialCalculatorSources(data:CaseData,index:CaseReadIndex
    if(field.policy==="context_only"||!field.destination){contextOnly.add(field.id);continue;}
    if(fact.fieldObservation?.sourceState!=="present"||moneyValue(fact.numeric)===null){
      add("CALC_INPUT_AMOUNT_INVALID",field,fact.id);continue;
+   }
+   // The preserved OCR reading and the cached normalized amount are independent evidence.
+   // Source correction cannot silently inherit an old typed amount. This is not legal approval.
+   const rawReadings=[
+     ...(typeof fact.rawValue==="string"?[{raw:fact.rawValue,unit:fact.sourceUnit??fact.numeric?.unit}]:[]),
+     ...(typeof fact.fieldObservation?.rawValue==="string"?[{raw:fact.fieldObservation.rawValue,unit:fact.fieldObservation.rawUnit??fact.sourceUnit??fact.numeric?.unit}]:[])
+   ];
+   if(rawReadings.some(read=>{
+     const amount=normalizeMoney(read.raw,read.unit??"unknown",fact.numeric?.currency??"KRW");
+     return amount.normalizationStatus!=="exact"||amount.amountWon!==fact.numeric?.amountWon;
+   })){
+     add("CALC_INPUT_SOURCE_VALUE_MISMATCH",field,fact.id);continue;
    }
    if(fact.state==="disputed"||fact.recognition==="rejected"||!fact.refs.length||
      fact.refs.some(ref=>!validSourceRef(data,ref,index))){
