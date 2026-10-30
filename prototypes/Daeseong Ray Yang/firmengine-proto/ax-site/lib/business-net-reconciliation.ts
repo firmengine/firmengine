@@ -236,7 +236,7 @@ export function adoptBusinessNet(
  data:CaseData,reviewId:string,actor:string,reason:string,at:string
 ):{income:IncomeSource;review:BusinessNetReview}{
  const record=data.workflowState?.businessNetReviews?.find(x=>x.id===reviewId);
- if(!record||record.status!=="proposed"||!actor.trim()||reason.trim().length<15||
+ if(!record||record.status!=="proposed"||!actor.trim()||record.proposer===actor||reason.trim().length<15||
     !Number.isFinite(Date.parse(at)))throw Error("BUSINESS_REVIEW_APPROVAL_INVALID");
  if(!exactReview(data,record,createCaseReadIndex(data)))
   throw Error("BUSINESS_REVIEW_SOURCE_OR_POLICY_STALE");
