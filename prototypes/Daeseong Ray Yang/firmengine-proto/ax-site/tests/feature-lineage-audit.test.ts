@@ -49,3 +49,39 @@ test("shared extension IDs repeated across distinct OCR families are merged, not
  assert.equal(result.summary.canonicalFieldIds,693);
  assert.equal(result.summary.sourceSlots,1808);
 });
+
+test("current case required-source scope excludes an identical amount from another uploaded document",()=>{
+ const data={
+  context:{id:"synthetic-case",revision:1},
+  documents:[{id:"A",status:"active",sha256:"a".repeat(64),pages:[1]},{id:"B",status:"active",sha256:"b".repeat(64),pages:[1]}],
+  pages:[{documentId:"A",page:1,role:"evidence",text:"source A"},{documentId:"B",page:1,role:"evidence",text:"source B"}],
+  facts:[{id:"fB",logicalId:"fB",version:1,subjectId:"income-b",canonicalFieldId:"payroll_payslip::income.payroll.net_pay",key:"income.net",
+    value:"100",numeric:null,state:"verified",recognition:"accepted",refs:[{documentId:"B",page:1,quote:"source B",sourceHash:"b".repeat(64)}],
+    fieldObservation:{sourceState:"present"},validation:[],periodStart:"2026-01-01",periodEnd:"2026-01-31"}],
+  workflowState:{subjectLinks:[],requirements:[{requirementId:"R",subjectLinkId:"linkA",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
+    crosswalkReview:{reviewer:"staff",periodPolicy:"any"},requiredFieldGroups:[["payroll_payslip::income.payroll.net_pay"]]}],
+   documentMatches:[{requirementId:"R",subjectLinkId:"linkA",documentId:"A",state:"accepted",sourceDocumentHash:"a".repeat(64),pageIds:["A:1"]}]}
+ } as unknown as Parameters<typeof evaluateCaseFieldLineage>[0];
+ const rows=[{canonicalFieldId:"payroll_payslip::income.payroll.net_pay",datatype:"money",sourceRequirements:{periodIdentity:true}}];
+ const result=evaluateCaseFieldLineage(data,rows);
+ assert.ok(result.fields[0].blockerCandidates.includes("REQUIRED_FIELD_WRONG_SOURCE_SCOPE_OR_NO_ACCEPTED_MATCH"));
+});
+test("monthly required evidence must cover every complete calendar month, not just one accepted payslip",()=>{
+ const data={
+  context:{id:"synthetic",revision:1},
+  documents:[{id:"A",status:"active",sha256:"a".repeat(64),pages:[1]}],
+  pages:[{documentId:"A",page:1,role:"evidence",text:"month 1"}],
+  facts:[{id:"f1",logicalId:"f1",version:1,subjectId:"wage1",canonicalFieldId:"payroll_payslip::income.payroll.net_pay",key:"income.net",
+    value:"100",state:"verified",recognition:"accepted",refs:[{documentId:"A",page:1,quote:"month 1",sourceHash:"a".repeat(64)}],
+    fieldObservation:{sourceState:"present"},validation:[],periodStart:"2026-01-01",periodEnd:"2026-01-31"}],
+  workflowState:{subjectLinks:[],requirements:[{requirementId:"R",subjectLinkId:"owner",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
+    requiredPeriod:"2026-01-01 ~ 2026-02-28",crosswalkReview:{periodPolicy:"monthly",reviewer:"staff"},
+    requiredFieldGroups:[["payroll_payslip::income.payroll.net_pay"]]}],
+   documentMatches:[{requirementId:"R",subjectLinkId:"owner",documentId:"A",state:"accepted",sourceDocumentHash:"a".repeat(64),pageIds:["A:1"]}]}
+ } as unknown as Parameters<typeof evaluateCaseFieldLineage>[0];
+ const rows=[{canonicalFieldId:"payroll_payslip::income.payroll.net_pay",datatype:"money",sourceRequirements:{periodIdentity:true}}];
+ const first=evaluateCaseFieldLineage(data,rows).fields[0];
+ assert.ok(first.blockerCandidates.includes("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE"));
+ data.facts.push({...data.facts[0],id:"f2",logicalId:"f2",version:1,periodStart:"2026-02-01",periodEnd:"2026-02-28"});
+ assert.ok(!evaluateCaseFieldLineage(data,rows).fields[0].blockerCandidates.includes("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE"));
+});

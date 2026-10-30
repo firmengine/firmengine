@@ -4,7 +4,7 @@
  */
 import type {IntakeCatalog} from "./intake-types.ts";
 import type {CaseData} from "./domain.ts";
-import {currentFacts} from "./domain.ts";
+import {createCaseReadIndex,currentFacts,factSourceLineageIssues,validSourceRef} from "./domain.ts";
 import {buildSharedDocumentCatalog,sharedDocumentFieldContract} from "./shared-document-catalog.ts";
 import {bindCanonicalSourceField,canonicalProjectionKey} from "./canonical-field-binding.ts";
 import {OCR_DECLARED_FORM_TARGETS} from "./ocr-chain-matrix.ts";
@@ -137,35 +137,94 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
   officialEformParity:"not_verified" as const,legalApprovalInferred:false as const,
   total:selection.length,offset,limit,nextOffset:offset+page.length<selection.length?offset+page.length:null,fields:page};
 }
-export function evaluateCaseFieldLineage(data:CaseData,rows:ReadonlyArray<{canonicalFieldId:string;sourceRequirements:{periodIdentity:boolean}}>,input:{limit?:number;offset?:number}={}){
- const current=currentFacts(data),index=new Map<string,typeof current>();
- for(const fact of current){const id=fact.canonicalFieldId??fact.fieldObservation?.canonicalFieldId;
-  if(id){const old=index.get(id)??[];old.push(fact);index.set(id,old);}
+/** Case-scoped check. Identical canonical keys from another applicant, another
+ * document, another page or another month cannot clear a reviewed obligation.
+ * This adds source precision to the existing document requirement workflow;
+ * it never turns 693 catalog fields into mandatory fields for every case.
+ */
+export function evaluateCaseFieldLineage(data:CaseData,rows:ReadonlyArray<{
+ canonicalFieldId:string;datatype?:string;temporalRole?:string;sourceRequirements:{periodIdentity:boolean}
+}>,input:{limit?:number;offset?:number}={}){
+ const sourceIndex=createCaseReadIndex(data),facts=currentFacts(data,sourceIndex),byId=new Map<string,typeof facts>();
+ for(const fact of facts){
+   const id=fact.canonicalFieldId??fact.fieldObservation?.canonicalFieldId;
+   if(id)byId.set(id,[...(byId.get(id)??[]),fact]);
  }
  const requirements=(data.workflowState?.requirements??[]).filter(r=>!r.retired&&!r.waivedByReview&&!r.notApplicableConfirmed);
- const required=new Map<string,string[]>();
- for(const r of requirements)if(!r.mappingRequired&&r.crosswalkReview)
-  for(const group of r.requiredFieldGroups??[])for(const id of group)required.set(id,[...(required.get(id)??[]),r.requirementId]);
+ const required=new Map<string,typeof requirements>();
+ for(const requirement of requirements){
+   if(requirement.mappingRequired||!requirement.crosswalkReview)continue;
+   for(const group of requirement.requiredFieldGroups??[])for(const id of group)
+     required.set(id,[...(required.get(id)??[]),requirement]);
+ }
+ const dateOK=(text:string)=>{const d=new Date(text+"T00:00:00.000Z");return /^\d{4}-\d{2}-\d{2}$/.test(text)&&!Number.isNaN(d.valueOf())&&d.toISOString().slice(0,10)===text;};
+ const monthIndex=(date:string)=>{const d=new Date(date+"T00:00:00.000Z");return d.getUTCFullYear()*12+d.getUTCMonth();};
+ const monthScope=(requirement:typeof requirements[number]):{start:number;end:number}|null=>{
+   const parts=String(requirement.requiredPeriod??"").match(/(\d{4}-\d{2}-\d{2})\s*(?:~|～|–|—|\.\.|\bto\b|\s+-\s+)\s*(\d{4}-\d{2}-\d{2})/i);
+   if(!parts||!dateOK(parts[1])||!dateOK(parts[2]))return null;
+   const start=monthIndex(parts[1]),end=monthIndex(parts[2]);
+   return start<=end&&end-start<120?{start,end}:null;
+ };
+ const referenced=(fact:typeof facts[number],requirement:typeof requirements[number])=>fact.refs.some(ref=>{
+   const doc=data.documents.find(d=>d.id===ref.documentId&&d.status==="active");
+   if(!doc||doc.sha256!==ref.sourceHash||!validSourceRef(data,ref,sourceIndex))return false;
+   const matches=(data.workflowState?.documentMatches??[]).filter(m=>
+     m.requirementId===requirement.requirementId&&m.subjectLinkId===requirement.subjectLinkId
+       &&m.state==="accepted"&&m.sourceDocumentHash===doc.sha256&&m.documentId===doc.id);
+   return matches.some(m=>m.pageIds.includes(ref.documentId+":"+ref.page));
+ });
+ const sourceValid=(fact:typeof facts[number])=>fact.state==="verified"&&fact.recognition==="accepted"&&
+   fact.fieldObservation?.sourceState==="present"&&
+   !fact.validation.some(v=>v.severity!=="info")&&
+   !factSourceLineageIssues(data,[fact.id],sourceIndex).some(code=>
+     ["STALE_OR_RETRACTED_FACT","DISPUTED_OR_REJECTED_FACT","SOURCE_REFERENCE_INVALID","SOURCE_VERIFICATION_RECEIPT_INVALID"].includes(code));
+ const periodPresent=(fact:typeof facts[number],row:typeof rows[number])=>{
+   if(fact.periodStart||fact.periodEnd||fact.asOf)return true;
+   const v=String(fact.value??"");
+   return ["date","datetime","period"].includes(row.datatype??"")&&/^\d{4}-\d{2}-\d{2}/.test(v)
+     ||(row.temporalRole??"").includes("year")&&/^\d{4}$/.test(v);
+ };
+ const monthCoverage=(facts:typeof sourceIndex.current,scope:{start:number;end:number})=>{
+   const observed=new Set<number>();
+   for(const fact of facts){
+     const from=fact.periodStart,to=fact.periodEnd;
+     if(!from||!to||!dateOK(from)||!dateOK(to))continue;
+     const first=new Date(from+"T00:00:00.000Z"),last=new Date(to+"T00:00:00.000Z");
+     if(first.getUTCDate()!==1||last.getUTCDate()!==new Date(Date.UTC(last.getUTCFullYear(),last.getUTCMonth()+1,0)).getUTCDate())continue;
+     const start=monthIndex(from),end=monthIndex(to);
+     if(end<start||end-start>120)continue;
+     for(let month=Math.max(start,scope.start);month<=Math.min(end,scope.end);month++)observed.add(month);
+   }
+   return observed.size;
+ };
  const result=rows.map(row=>{
-  const observed=index.get(row.canonicalFieldId)??[],needed=distinct(required.get(row.canonicalFieldId)??[]);
-  const accepted=observed.filter(f=>f.state==="verified"&&f.recognition==="accepted"
-   &&f.fieldObservation?.sourceState==="present"&&!f.validation.some(v=>v.severity!=="info"));
-  const conflict=observed.some(f=>f.state==="disputed"||f.fieldObservation?.sourceState==="conflicting");
-  const blockers:string[]=[];
-  if(needed.length){
-   if(!observed.length)blockers.push("REQUIRED_CANONICAL_FIELD_NOT_OBSERVED");
-   else if(!accepted.length)blockers.push("REQUIRED_FIELD_NOT_SOURCE_VERIFIED_AND_LEGALLY_REVIEWED");
-   if(conflict)blockers.push("REQUIRED_FIELD_CONFLICT");
-   if(row.sourceRequirements.periodIdentity&&accepted.some(f=>!f.periodStart&&!f.periodEnd&&!f.asOf))blockers.push("REQUIRED_FIELD_PERIOD_UNSCOPED");
-  }
-  return {canonicalFieldId:row.canonicalFieldId,sourceObservations:observed.length,acceptedVerifiedFacts:accepted.length,
-   currentReviewedRequirementIds:needed,blockerCandidates:blockers,
-   state:blockers.length?"required_review_blocked":accepted.length?"reviewed_source":observed.length?"source_review_pending":"not_observed_unknown"};
+   const all=byId.get(row.canonicalFieldId)??[],need=required.get(row.canonicalFieldId)??[];
+   const blockers=new Set<string>(),scoped=new Set<typeof facts[number]>(),accepted=new Set<typeof facts[number]>();
+   for(const req of need){
+     const current=all.filter(fact=>referenced(fact,req)),usable=current.filter(sourceValid);
+     current.forEach(fact=>scoped.add(fact));usable.forEach(fact=>accepted.add(fact));
+     if(!all.length)blockers.add("REQUIRED_CANONICAL_FIELD_NOT_OBSERVED");
+     else if(!current.length)blockers.add("REQUIRED_FIELD_WRONG_SOURCE_SCOPE_OR_NO_ACCEPTED_MATCH");
+     else if(!usable.length)blockers.add("REQUIRED_FIELD_NOT_SOURCE_VERIFIED_AND_LEGALLY_REVIEWED");
+     if(current.some(f=>f.state==="disputed"||f.fieldObservation?.sourceState==="conflicting"))blockers.add("REQUIRED_FIELD_CONFLICT");
+     if(row.sourceRequirements.periodIdentity&&usable.some(f=>!periodPresent(f,row)))
+       blockers.add("REQUIRED_FIELD_PERIOD_UNSCOPED");
+     if(req.crosswalkReview?.periodPolicy?.toLowerCase().includes("monthly")){
+       const range=monthScope(req);
+       if(!range)blockers.add("REQUIRED_MONTHLY_PERIOD_SCOPE_REVIEW");
+       else if(monthCoverage(usable,range)<range.end-range.start+1)
+         blockers.add("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE");
+     }
+   }
+   return {canonicalFieldId:row.canonicalFieldId,sourceObservations:all.length,
+     acceptedVerifiedFacts:accepted.size,currentReviewedRequirementIds:distinct(need.map(x=>x.requirementId)),
+     matchedSourceFacts:scoped.size,blockerCandidates:[...blockers].sort(),
+     state:blockers.size?"required_review_blocked":accepted.size?"reviewed_source":all.length?"source_review_pending":"not_observed_unknown"};
  });
  const limit=input.limit??100,offset=input.offset??0;
  if(!Number.isSafeInteger(limit)||limit<1||limit>1000||!Number.isSafeInteger(offset)||offset<0)throw new Error("INVALID_CASE_LINEAGE_PAGE");
  const page=result.slice(offset,offset+limit);
- return {schemaVersion:"case-feature-lineage/1",caseId:data.context.id,caseRevision:data.context.revision,
+ return {schemaVersion:"case-feature-lineage/2",caseId:data.context.id,caseRevision:data.context.revision,
   summary:{catalogFields:rows.length,sourceObserved:result.filter(x=>x.sourceObservations).length,
    requiredFieldIds:required.size,requiredBlocked:result.filter(x=>x.blockerCandidates.length).length,
    unreviewedRequirementMappings:requirements.filter(r=>r.mappingRequired||!r.crosswalkReview).length},
