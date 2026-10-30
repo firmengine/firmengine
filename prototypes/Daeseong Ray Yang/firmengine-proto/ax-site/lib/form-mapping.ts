@@ -204,7 +204,14 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     };
   });
   const business = calculation.incomeGroups.filter((group) => group.sourceIds.some(id=>data.incomes.find(s=>s.id===id)?.kind==="business"));
-  scalars.monthly_business_income = data.context.inventoryComplete.income === "yes" && (business.length>0||!data.incomes.some(s=>s.kind==="business")) && business.every((r) => r.monthlyObservedAverageWon !== null) ? amount(business.reduce((sum,row)=>sum+BigInt(row.monthlyObservedAverageWon!),0n).toString()) : MISSING_FORM_VALUE;
+  // The source group may have a plausible observed average while another
+  // money source/selected month is still missing. Never render it as a court
+  // form income amount when the case-wide calculation is explicitly blocked.
+  scalars.monthly_business_income = calculation.monthlyIncomeWon !== null &&
+    data.context.inventoryComplete.income === "yes" &&
+    (business.length>0||!data.incomes.some(s=>s.kind==="business")) &&
+    business.every((r) => r.monthlyObservedAverageWon !== null) ?
+    amount(business.reduce((sum,row)=>sum+BigInt(row.monthlyObservedAverageWon!),0n).toString()) : MISSING_FORM_VALUE;
   for (const prefix of ["career", "enforcement", "prior", "family"]) {
     const grouped = new Map<string, Record<string, string>>();
     for (const fact of facts) {
