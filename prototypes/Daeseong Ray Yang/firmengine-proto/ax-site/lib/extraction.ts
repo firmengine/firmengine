@@ -272,6 +272,7 @@ export function projectPage(read:PageRead,documentId:string,page:number,document
   const sourceContract=documentFieldContract(read.documentType),strictCanonicalRoute=read.documentType.startsWith("shared-document:");
 const namespaces=new Set(["person","income","debt","asset","transaction","household","case","applicant","spouse","court","business","statement","family","tax","procedure","credit_report","health_insurance_arrears","bank_account","lease","insurance"]);
   let household:ExtractionPayload["household"];
+  const householdTotalCountRows:Array<{recordId:string;value:number|null}>=[];
   read.records.forEach((r,ri)=>{
     const id=`${documentId}:p${page}:${r.category}:${ri}`,ids:string[]=[];
     const keyCache=new WeakMap<ReadField,string>();
@@ -492,8 +493,20 @@ const namespaces=new Set(["person","income","debt","asset","transaction","househ
       if(summaryRow){warnings.push(`${id}: 원문 표지가 거래 소계·합계 행을 나타내므로 금액 facts는 보존하고 typed 거래와 거래 합계에서 제외했습니다.`);return;}
       transactions.push({id,date:transactionDay(value("date")),accountId:value("account_id"),counterparty:value("counterparty"),direction:known(value("direction"),["in","out","unknown"],"unknown"),amount:num("amount")!,kind:known(value("kind"),["income","expense","transfer","debt_payment","asset_disposal","tax","unknown"],"unknown"),factIds:ids});
     }
-    if(r.category==="household")household={reportedMembers:integer("reported_members"),factIds:ids};
+    if(r.category==="household"){
+      // A PageRead record represents one source row, not an entire household.
+      // Preserve evidence from ALL rows instead of silently taking the last row.
+      if(!household)household={factIds:[]};
+      household.factIds=[...new Set([...household.factIds,...ids])];
+      if(byKey.has("reported_members"))householdTotalCountRows.push({recordId:id,value:integer("reported_members")});
+    }
   });
+  if(household&&householdTotalCountRows.length){
+    // Two individually extracted member counts must never impersonate a proven
+    // household total. Keep all source facts and require an explicit review.
+    household.reportedMembers=householdTotalCountRows.length===1?householdTotalCountRows[0].value:null;
+    if(household.reportedMembers===null)warnings.push("가구원 수 원문이 누락·오인식되었거나 복수 행에 분산되어 총원을 자동 선택하지 않았습니다. 모든 행을 보존하고 담당자 확인이 필요합니다.");
+  }
   const p:EvidencePage={documentId,page,role:"evidence",documentType:read.documentType,fieldCoverage:pageFieldCoverage(read,{documentId,page,sourceSha256:documentHash})};
   return {facts,incomes,debts,assets,transactions,household,pages:[p],warnings,...(read.complete?{replacesPages:[{documentId,page}]}:{})};
 }
