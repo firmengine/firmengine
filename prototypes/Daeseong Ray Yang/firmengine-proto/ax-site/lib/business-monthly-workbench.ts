@@ -57,8 +57,7 @@ const fullMonth=(start:string|null,end:string|null):string|null=>{
  return end===last?start.slice(0,7):null;
 };
 function selectedMonths(period:{start:string;end:string}|null):string[]{
- if(!period||!validDate(period.start)||!validDate(period.end)||period.start>period.end ||
-    fullMonth(period.start,period.start.slice(0,7)+"-01")!==null)
+ if(!period||!validDate(period.start)||!validDate(period.end)||period.start>period.end)
    return [];
  const first=new Date(period.start+"T00:00:00.000Z");
  const last=new Date(period.end+"T00:00:00.000Z");
@@ -87,7 +86,7 @@ export function assembleBusinessMonthEvidence(rows:readonly BusinessSourceMoneyR
   groups.set(key,[...(groups.get(key)??[]),row]);
  }
  const periods=expected.length?expected:unique([...groups.keys()]);
- const months:MonthEvidenceSummary[]=periods.map(month=>{
+ const months:MonthEvidenceSummary[]=periods.map((month):MonthEvidenceSummary=>{
   const entries=groups.get(month)??[];
   const byRole=(role:BusinessSourceMoneyRow["role"])=>
     entries.filter(entry=>entry.role===role);
