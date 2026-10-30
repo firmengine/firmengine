@@ -10,6 +10,7 @@ import {getCalculationSpecs} from "../../../../../lib/execution-catalog.ts";
 import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.ts";
 import {auditFivePreapprovalStages,type StoredCalcFeature} from "../../../../../lib/preapproval-stage-audit.ts";
 import {inspectPreapprovalOcrStorage} from "../../../../../lib/preapproval-ocr-storage-audit.ts";
+import {auditStoredCalculationReplay} from "../../../../../lib/preapproval-calculation-replay.ts";
 import legalExceptions from "../../../../../lib/legal-exceptions.json" with {type:"json"};
 import {referenceIdentity} from "../../../../../lib/reference-runtime.ts";
 import referenceRelease from "../../../../../lib/reference-release.json" with {type:"json"};
@@ -92,15 +93,19 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   let persistedFeatures:StoredCalcFeature[]|null=null,featureReadComplete=false;
   try{
     if(before.calculationRunId){
-      const result=await database.prepare("SELECT calculation_id AS calculationId,output_name AS outputName,output_path AS outputPath,status,value_json AS valueJson,source_fact_ids_json AS sourceFactIdsJson,formula FROM case_calculation_features WHERE run_id=? ORDER BY id LIMIT 5001")
+      const result=await database.prepare("SELECT id,calculation_id AS calculationId,output_name AS outputName,output_path AS outputPath,status,value_json AS valueJson,value_won AS valueWon,source_fact_ids_json AS sourceFactIdsJson,formula FROM case_calculation_features WHERE run_id=? ORDER BY id LIMIT 5001")
         .bind(before.calculationRunId).all<StoredCalcFeature>();
       persistedFeatures=result.results??[];
-      featureReadComplete=persistedFeatures.length<5000;
+      featureReadComplete=persistedFeatures.length<=5000;
     }
   }catch{
     persistedFeatures=null;featureReadComplete=false;
   }
   if(!featureReadComplete)calculationCurrent=false;
+  const storedCalculationReplay=persistedFeatures&&featureReadComplete
+    ?auditStoredCalculationReplay({execution,rows:persistedFeatures,currentFactIds:new Set(facts.map(f=>f.id))})
+    :null;
+  if(storedCalculationReplay&&!storedCalculationReplay.valid)calculationCurrent=false;
   const after=await database.prepare(headSql).bind(id).first<Head>();
   if(!after||JSON.stringify(after)!==JSON.stringify(before))
    throw new HttpError(409,"검토 중 원본 또는 계산판본이 변경되었습니다. 재조회하세요.");
@@ -117,6 +122,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
     ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[]),
     ...calculationReplayIssues,
+    ...(!storedCalculationReplay?.valid&&storedCalculationReplay?["CALCULATION_ALL_STORED_ROWS_REPLAY_MISMATCH"]:[]),
     ...(!featureReadComplete?["FULL_CALCULATION_FEATURE_READ_INCOMPLETE"]:[]),
     ...(physicalOcr.status==="unavailable_fail_closed"?["CURRENT_OCR_COVERAGE_STORAGE_UNAVAILABLE"]:
       physicalOcr.status==="source_integrity_or_page_gap"?["CURRENT_OCR_PAGE_OR_SOURCE_INTEGRITY_GAP"]:
@@ -141,6 +147,6 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     documents:requirements.status==="fulfilled"?requirements.value:null,
     validSourceFactIds:acceptedFactIds,
   });
-  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,storedCalculationReplay,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
 }
