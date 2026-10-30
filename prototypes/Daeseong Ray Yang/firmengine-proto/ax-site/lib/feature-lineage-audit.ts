@@ -16,7 +16,10 @@ import practice from "./court-practice-gap-catalog.json" with {type:"json"};
 export const FEATURE_LINEAGE_VERSION="ocr-feature-lineage/1";
 const categories=["person","income","debt","asset","transaction","household","business","statement","other"] as const;
 const distinct=(values:string[])=>[...new Set(values)].sort();
-const hasPeriod=(role:string,family:string)=>role!=="not_applicable"||/income|payroll|tax|contribution|transaction|accounting|ledger|medical|education/.test(family);
+// A document family may be time-scoped while a party, relationship or category field is not.
+// Preserve period checks for explicitly temporal fields and numeric evidence with family-level scope.
+const hasPeriod=(role:string,family:string,datatype:string)=>role!=="not_applicable"||
+  (/income|payroll|tax|contribution|transaction|accounting|ledger|medical|education/.test(family)&&hasUnit(datatype));
 const hasUnit=(type:string)=>/money|amount|quantity|ratio|decimal|integer/.test(type);
 type CandidateStatus="review_candidate_not_proven";
 function reviewScope(family:string){
@@ -96,7 +99,7 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
     existing.legal.referenceReviewCandidates=distinct([...existing.legal.referenceReviewCandidates,...scope.laws]);
     for(const item of workflow)if(!existing.legal.workflowRouteCandidates.some((x:any)=>x.id===item.id))existing.legal.workflowRouteCandidates.push(item);
     for(const item of risks)if(!existing.legal.riskCheckCandidates.some((x:any)=>x.id===item.id))existing.legal.riskCheckCandidates.push(item);
-    existing.sourceRequirements.periodIdentity ||= hasPeriod(f.temporal_role,route.familyId);
+    existing.sourceRequirements.periodIdentity ||= hasPeriod(f.temporal_role,route.familyId,f.datatype);
     existing.gaps=[...(existing.typedProjections.length?[]:["CASE_TYPED_CONSUMER_NOT_DECLARED"]),
       ...(existing.forms.some((x:any)=>x.token)?[]:["OFFICIAL_FORM_TOKEN_NOT_EXPLICITLY_LINKED"]),
       ...(existing.legal.riskCheckCandidates.length?[]:["LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED"]),
@@ -116,7 +119,7 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
     legal:{referenceReviewCandidates:scope.laws,workflowRouteCandidates:workflow,riskCheckCandidates:risks,
       approvalInferred:false,legalRequiredness:"case_condition_and_court_review_needed"},
     calculations:calc.map(calcId=>({id:calcId,status:"depends_on_verified_case_objects_not_raw_ocr" as const})),
-    forms, sourceRequirements:{recordIdentity:true,subjectIdentity:true,periodIdentity:hasPeriod(f.temporal_role,route.familyId),
+    forms, sourceRequirements:{recordIdentity:true,subjectIdentity:true,periodIdentity:hasPeriod(f.temporal_role,route.familyId,f.datatype),
       explicitAmountUnit:hasUnit(f.datatype),sourceLocator:true,legalRecognitionSeparate:true},
     blockerPolicy:{unobserved:"not_observed_not_zero_or_inapplicable",contradiction:"requires_review",
       final:"block_only_if_a_current_reviewed_case_requirement_depends_on_this_field"},
