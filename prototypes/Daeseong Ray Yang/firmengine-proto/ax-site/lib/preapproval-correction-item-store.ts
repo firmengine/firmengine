@@ -135,10 +135,23 @@ export async function readCourtCorrectionItems(database:D1Database,data:CaseData
   const event=data.workflowState?.procedureEvents.find(e=>e.id===row.courtEventId&&e.state==="correction_requested");
   let payload:CorrectionItemDraft|null=null;
   try{payload=JSON.parse(row.payloadJson) as CorrectionItemDraft;}catch{/* stored record is invalid */}
+  const liveFacts=currentFacts(data);
+  const dateStillSupported=!payload?.deadline||liveFacts.some(f=>f.id===payload.deadline?.sourceFactId&&
+     f.value===payload.deadline?.date&&["court.correctionDeadline","corrections.deadline"].includes(f.key)&&
+     linkedFact(data,f,row.orderDocumentId));
+  const relatedResponse=payload?.responseEventId===null?
+      !payload?.responseDocumentIds.length&&payload?.receiptDocumentId===null:
+      (data.workflowState?.procedureEvents??[]).some(e=>e.id===payload?.responseEventId&&
+       ["submitted","received","amended"].includes(e.state)&&e.courtReference===event?.courtReference&&
+       (payload?.responseDocumentIds??[]).every(id=>e.sourceDocumentIds.includes(id)&&
+         data.documents.some(d=>d.id===id&&d.status==="active"))&&
+       (!payload?.receiptDocumentId||(e.sourceDocumentIds.includes(payload.receiptDocumentId)&&
+         data.documents.some(d=>d.id===payload.receiptDocumentId&&d.status==="active"))));
   const currentSource=!!doc&&doc.sha256===row.orderDocumentSha256&&!!event&&
    event.sourceDocumentIds.includes(row.orderDocumentId)&&
    row.sourceCaseRevision===current.revision&&row.sourceDataVersion===current.dataVersion&&
-   !!payload&&payload.courtEventId===row.courtEventId&&payload.itemNo===row.itemNo;
+   !!payload&&payload.courtEventId===row.courtEventId&&payload.itemNo===row.itemNo&&
+   dateStillSupported&&relatedResponse;
   return {courtEventId:row.courtEventId,itemNo:row.itemNo,versionId:row.versionId,
    sourceCurrent:currentSource,draft:currentSource?payload:null,
    status:currentSource?"itemized_needs_lawyer_and_court_receipt_review":"stale_source_or_invalid_item",
