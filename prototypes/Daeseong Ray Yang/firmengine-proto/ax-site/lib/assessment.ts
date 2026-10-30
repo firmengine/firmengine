@@ -747,7 +747,7 @@ function issueExplanation(code: string): string {
   return "미확인 값·분류·목록 완전성을 0 또는 비해당으로 대체하지 않았습니다. 확인 항목: " + code.split(":")[0];
 }
 function issueAction(code: string): string {
-  if(code.includes("INCOME_BUSINESS_SOURCE_ONLY"))return "사건 데이터의 business_source_audit에서 원문 행별 날짜·사업자·금액을 검토하고 현재 사업의 매출·경비·계속성·누락 증빙을 소득원으로 연결하세요. 과거 자료 또는 제3자 자료는 법률상 적용 여부를 기록하세요.";
+  if(code.includes("INCOME_BUSINESS_SOURCE_ONLY"))return "business_source_audit·business_monthly_workbench·business_identity_crosswalk에서 원문 행·사업자·기간·금액과 미연결 항목을 확인하세요. 동일사업자 관계 및 필요경비/VAT 법적 처리를 검토·승인하기 전 순소득·서식에 합산하지 마세요.";
   if(code.includes("INCOME_VAT_TURNOVER"))return "매출·환불·부가세·필요경비를 동일 사업자·발생월·원문 근거로 묶은 별도 순소득 검토안을 생성하고 담당자 승인을 받으세요. VAT 매출 행에 임의의 순소득을 덧씌우지 마세요.";
   if(code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE"))return "동일 사업자의 신고 소득과 최신 월별 매출·비용을 비교하고 대표기간, 중복 제거, 채택 이유를 명시적으로 검토하세요.";
   if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "연결된 각 계산행의 문서 ID·페이지·원문 행·계약 또는 자산 식별자를 대조하고, 동일 행 복제는 제거하거나 별도 금액 배분을 문서 근거와 담당자 검토로 등록하세요.";
