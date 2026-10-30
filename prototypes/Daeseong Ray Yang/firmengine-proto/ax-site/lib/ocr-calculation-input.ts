@@ -44,7 +44,12 @@ export function calculationSourceCellIssues(cell:CalculationSourceCell,definitio
  }
  if(datatype==="date"&&!validDate(raw))issues.push("SOURCE_DATE_INVALID");
  if(datatype==="datetime"&&!validTime(raw))issues.push("SOURCE_DATETIME_INVALID");
- if(datatype==="integer"&&!/^[+-]?\d+$/.test(raw.replace(/,/g,"")))issues.push("SOURCE_INTEGER_FORMAT_REVIEW");
+ if(datatype==="integer"){
+  // Match the typed projector: ungrouped, non-negative, safe base-10 integers only.
+  // Do not alter raw evidence or silently strip OCR punctuation.
+  if(!/^\d+$/.test(cell.value))issues.push("SOURCE_INTEGER_FORMAT_REVIEW");
+  else if(!Number.isSafeInteger(Number(cell.value)))issues.push("SOURCE_INTEGER_UNSAFE_RANGE");
+ }
  if(cell.confidence&&cell.confidence!=="clear")issues.push("SOURCE_READ_UNCERTAIN");
  return [...new Set(issues)];
 }
