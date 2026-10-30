@@ -69,7 +69,8 @@ export interface ApprovalReadinessInput {
   riskTitles?: Readonly<Record<string, string>>;
 }
 const RESOLVED = new Set(["satisfied", "not_applicable_confirmed", "waived_by_review", "retired"]);
-const AFTER_APPROVAL = new Set(["approved", "discontinued", "discharged"]);
+// Discontinuance may occur BEFORE approval. Never misclassify it as post-approval.
+const AFTER_APPROVAL = new Set(["approved", "discharged"]);
 const unique = (xs: readonly string[]) => [...new Set(xs.filter(Boolean))];
 const priorityWeight = { urgent: 0, high: 1, normal: 2 } as const;
 
