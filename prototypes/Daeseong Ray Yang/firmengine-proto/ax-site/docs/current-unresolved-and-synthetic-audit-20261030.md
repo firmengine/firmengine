@@ -14,7 +14,6 @@
 | F03: 계산 Poll의 첫 사건 기아·실패 반복 | `drizzle/0020_calculation_poll_fairness.sql`, `case-data-recompute.ts` due-filter/사건별 lease·백오프·격리, 재시도 API | 실제 D1 동시 워커/장애 테스트 |
 | F04: 미검증 증거로 95개 법률 AI 실행 | `case-legal-source-preflight.ts`와 `case-legal-automation.ts`의 증거·상담·정규화 head 검사 | 실제 OCR → D1 → AI 연쇄 E2E |
 | F01: 순수 검토/산출물 수정이 source_version을 무조건 올림 | `case-mutation-classifier.ts`, `server-store.ts`, `case-commands.ts`, `drizzle/0021_workflow_only_source_watch.sql`의 변경구분+원천오염 차단 | **0021 적용 필수**, D1/R2 원자성·사람 검토→최종 문서 E2E; 전체 독립 판본 설계는 후속 |
-
 | C01: LawGraph 문서 필드 투영 실패 시 초안 허용 오류 | `case-legal-automation.ts`가 projection error 및 0개 필드를 `explicitFailures`에 추가하고, 옛 `draft_pending`도 저장 필드 COUNT / 오류를 재확인 후 writer 호출을 차단 | **별도 6개 가상 후보 판정 전부 기대 결과(6/6)**; `tests/case-legal-automation-flow.test.ts`에 구 대기열 차단 회귀가 추가됨. Node 전체 회귀·실제 D1 writer E2E는 미인증 |
 
 ## B. 아직 남은 충돌: 코드 확인 또는 가상입력에서 재현
