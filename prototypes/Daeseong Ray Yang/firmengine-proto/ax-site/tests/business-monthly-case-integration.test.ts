@@ -47,10 +47,10 @@ test("12 months of valid money/period facts yield 12 source-only diagnostics but
  assert.equal(result.months.length,12);
  assert.equal(result.sourceMoneyFactCount,24);
  assert.equal(result.unassignedSourceFacts.length,0);
- assert.ok(result.months.every(month=>month.arithmeticDifferenceWon==="2000000"));
+ assert.ok(result.months.every(month=>month.arithmeticDifferenceWon===null,"Different source families have no reviewed business identity crosswalk"));
  assert.ok(result.months.every(month=>!month.legalNetApproved));
  assert.equal(result.legalIncomeApproved,false);
- assert.equal(result.incompleteSourceCoverage,false);
+ assert.equal(result.incompleteSourceCoverage,true,"Cross-document identity not approved");
  const calculated=calculateCase(data,RULES);
  assert.equal(calculated.monthlyIncomeWon,null);
  assert.ok(calculated.issues.includes("INCOME_BUSINESS_SOURCE_ONLY_REQUIRES_RECONCILIATION"));
