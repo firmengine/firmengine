@@ -11,6 +11,7 @@ import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.t
 import {auditFivePreapprovalStages,type StoredCalcFeature} from "../../../../../lib/preapproval-stage-audit.ts";
 import {inspectPreapprovalOcrStorage} from "../../../../../lib/preapproval-ocr-storage-audit.ts";
 import {auditStoredCalculationReplay} from "../../../../../lib/preapproval-calculation-replay.ts";
+import {calculationFeatureRows} from "../../../../../lib/case-calculation-feature-store.ts";
 import {auditPreapprovalLegalCatalog} from "../../../../../lib/preapproval-legal-coverage-audit.ts";
 import {readCourtCorrectionItems} from "../../../../../lib/preapproval-correction-item-store.ts";
 import legalExceptions from "../../../../../lib/legal-exceptions.json" with {type:"json"};
@@ -105,7 +106,8 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   }
   if(!featureReadComplete)calculationCurrent=false;
   const storedCalculationReplay=persistedFeatures&&featureReadComplete
-    ?auditStoredCalculationReplay({execution,rows:persistedFeatures,currentFactIds:new Set(facts.map(f=>f.id))})
+    ?auditStoredCalculationReplay({execution,rows:persistedFeatures,currentFactIds:new Set(facts.map(f=>f.id)),
+      expectedOutputs:calculationFeatureRows(execution).map(row=>({calculationId:row.calculationId,outputPath:row.outputPath}))})
     :null;
   if(storedCalculationReplay&&!storedCalculationReplay.valid)calculationCurrent=false;
   const legalCatalogCoverage=auditPreapprovalLegalCatalog({
