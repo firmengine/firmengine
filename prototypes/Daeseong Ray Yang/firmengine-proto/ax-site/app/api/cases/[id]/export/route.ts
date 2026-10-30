@@ -53,6 +53,14 @@ async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getC
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),data=await getCase(id),extras=await caseExtras(data);
   const mode=body.mode==="final"?"final":"draft";
+  // OCR and source facts can change independently of the case UI revision.
+  // Pin the exact SQL source version used to prepare this export and require
+  // the SAME version inside the final D1 manifest CAS (not just a SELECT).
+  const sourceVersionRow=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
+    .bind(id).first<{version:number}>();
+  if(!sourceVersionRow||!Number.isSafeInteger(sourceVersionRow.version)||sourceVersionRow.version<0)
+    throw new HttpError(409,"원문 데이터 버전을 확인할 수 없습니다. 검증된 사건 자료로 다시 시도하세요.");
+  const expectedSourceDataVersion=sourceVersionRow.version;
   let finalLegalReceipt:Awaited<ReturnType<typeof inspectCurrentFinalLawgraph>>|null=null;
   if(mode==="final"&&data.workflowState){
     const workflowView=await buildCurrentCaseWorkflowView(db(),data);
@@ -125,7 +133,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
         throw new HttpError(409,"문서 작성 중 사건 상태가 변경되었습니다. 현재 판본으로 다시 생성하세요.");
       const next=structuredClone(current);
       next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),documentWriter:writerReceipt} as typeof next.exportManifest;
-      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only"});
+      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only",expectedSourceDataVersion});
       savedCase=next;
     },
     deleteRecords:records=>db().batch(records.map(f=>db().prepare("DELETE FROM artifacts WHERE id = ? AND case_id = ? AND object_key = ?").bind(f.id,id,f.objectKey))),

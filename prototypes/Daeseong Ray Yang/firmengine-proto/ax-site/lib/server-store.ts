@@ -11,6 +11,7 @@ import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { snapshotSha256 } from "./calculator-tools.ts";
 import { buildDerivedExecution, completeDerivedEvaluation, DERIVED_EVALUATION_INLINE_LIMIT, isDerivedEvaluation, pendingDerivedEvaluation, type DerivedEvaluationEnvelope, type ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { getCaseDataRecomputeEligibility, recomputeCaseDataUpdate } from "./case-data-recompute.ts";
+import { EXPORT_SOURCE_VERSION_CAS_SQL, exportSourceVersionCASParams } from "./export-source-version-guard.ts";
 
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 export const now=()=>new Date().toISOString();
@@ -75,11 +76,17 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string};expectedSourceDataVersion?:number}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
   if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
+  if(options?.expectedSourceDataVersion!==undefined&&category!=="artifact_only")throw new HttpError(409,"EXPORT_SOURCE_VERSION_GUARD_REQUIRES_ARTIFACT_ONLY");
+  let exportSourceParams:readonly [string,number]|readonly []=[];
+  if(options?.expectedSourceDataVersion!==undefined){
+    try{exportSourceParams=exportSourceVersionCASParams(data.context.id,options.expectedSourceDataVersion);}
+    catch{throw new HttpError(409,"EXPORT_SOURCE_VERSION_INVALID");}
+  }
   if(category!=="source"){
     try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
@@ -117,8 +124,11 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   const headParams=expectedHeads?[expectedHeads.referenceSha256,data.context.id,
     expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
     expected,expected]:[];
+  // OCR/SQL data_version can advance without a cases.revision change.
+  // Keep this predicate in the same atomic statement as the export manifest.
+  const exportSourceGuard=exportSourceParams.length?` AND ${EXPORT_SOURCE_VERSION_CAS_SQL}`:"";
   const batch:D1PreparedStatement[]=[
-    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard+exportSourceGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams,...exportSourceParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
   if(mutation){
