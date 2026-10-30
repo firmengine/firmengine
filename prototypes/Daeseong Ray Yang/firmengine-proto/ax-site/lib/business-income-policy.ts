@@ -44,7 +44,7 @@ export function validateBusinessIncomePolicy(value:unknown):asserts value is Bus
      typeof x.id!=="string"||!/^[A-Za-z0-9_.:-]{3,90}$/.test(x.id)||seen.has(x.id)||
      typeof x.courtId!=="string"||!/^[a-z0-9_-]{2,50}$/.test(x.courtId)||
      !validDate(x.effectiveFrom)||(x.effectiveTo!==null&&!validDate(x.effectiveTo))||
-     x.effectiveTo!==null&&x.effectiveTo<x.effectiveFrom||
+     typeof x.effectiveTo==="string"&&typeof x.effectiveFrom==="string"&&x.effectiveTo<x.effectiveFrom||
      x.vatTreatment!=="gross_and_costs_as_source_stated_after_human_vat_review"||
      !Array.isArray(x.approvedCostCategories)||x.approvedCostCategories.length<1||x.approvedCostCategories.length>40||
      x.approvedCostCategories.some((c:unknown)=>typeof c!=="string"||c.trim().length<2||c.length>100)||
