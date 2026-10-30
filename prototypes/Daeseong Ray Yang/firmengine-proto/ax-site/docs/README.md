@@ -28,6 +28,8 @@
 
 - [상담 기반 사건별 서류·필수 확인항목·OCR 상태](consultation-case-field-plans.md) — 저장 구조, 조회, 운영 적용 조건.
 
+- [가상 시나리오 46개 상세 결과](synthetic-scenario-results-20261030.md) — 실제 실행한 코드분기·SQLite 격리 검증 결과와 미인증 범위.
+
 - [OCR 693개 피처 및 법령·실무준칙 연계 감사](feature-lineage-audit-v45.md)
 
 - [693개 OCR canonical 피처 전수 등록표](ocr-693-field-register.md)
