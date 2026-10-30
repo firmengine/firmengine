@@ -9,6 +9,8 @@ import type {CaseCommand} from "../lib/case-command-contract.ts";
 import {proposeBusinessNet,adoptBusinessNet,preflightBusinessNet,reviewedBusinessIncomeIds,type BusinessNetSelection} from "../lib/business-net-reconciliation.ts";
 import {calculateCase} from "../lib/assessment.ts";
 import {buildFormBindings,MISSING_FORM_VALUE} from "../lib/form-mapping.ts";
+import {buildRepaymentPlanModel} from "../lib/repayment-plan-model.ts";
+import {reconcilePlanLedger} from "../lib/plan-reconciliation.ts";
 
 let reference:ReferenceSnapshot|undefined;
 installReferenceProvider(()=>reference);
@@ -240,4 +242,64 @@ test("a staff proposal cannot also be adopted by the same actor, even if the act
  assert.throws(()=>adoptBusinessNet(d,proposal.id,"same-user",
    "No self-review permitted under source and legal policy",
    "2026-10-30T00:00:01Z"),/BUSINESS_REVIEW_APPROVAL_INVALID/);
+});
+
+test("twelve approved business source-months reconcile D5103, D5110, creditor allocation and liquidation without inventing money",async()=>{
+ setPolicy();
+ const {d,selection}=input(1);
+ await adopt(d,selection);
+ for(let month=2;month<=12;month++)await adopt(d,appendMonth(d,month,selection.businessRegistrationFactId));
+ const refDoc="creditor-proof",refQuote="Synthetic verified principal, interest and financial asset";
+ d.documents.push({id:refDoc,name:"synthetic-claim-asset.pdf",sha256:SHA,status:"active",pages:[1]});
+ d.pages.push({documentId:refDoc,page:1,role:"evidence",text:refQuote});
+ const moneyFact=(id:string,subject:string,key:string,won:string)=>{
+  const f:Fact={id,logicalId:id,version:1,subjectId:subject,key,value:won,rawValue:won,
+    numeric:normalizeMoney(won),sourceUnit:"KRW",state:"verified",recognition:"accepted",
+    refs:[{documentId:refDoc,page:1,quote:refQuote,sourceHash:SHA}],validation:[]};
+  d.facts.push(f);return id;
+ };
+ const principal=moneyFact("debt-principal","debt-1","debt.principal_balance","100000000");
+ const interest=moneyFact("debt-interest","debt-1","debt.interest","0");
+ d.debts=[{id:"debt-1",creditor:"Synthetic bank",contractId:"A-1",principal:normalizeMoney("100000000"),
+  interest:normalizeMoney("0"),secured:"no",classification:"ordinary",priority:"ordinary",asOf:d.context.asOf,
+  legalReview:"accepted",factIds:[principal,interest]}];
+ const gross=moneyFact("asset-gross","asset-1","asset.gross_value","1000000");
+ const payoff=moneyFact("asset-payoff","asset-1","asset.secured_payoff","0");
+ const costs=moneyFact("asset-cost","asset-1","asset.disposal_costs","0");
+ const exempt=moneyFact("asset-exempt","asset-1","asset.protected_value","0");
+ d.assets=[{id:"asset-1",kind:"deposit",label:"Synthetic deposit",grossValue:normalizeMoney("1000000"),
+  securedPayoff:normalizeMoney("0"),disposalCosts:normalizeMoney("0"),protectedValue:normalizeMoney("0"),
+  ownershipBps:10000,asOf:d.context.asOf,valuationBasis:"source-reviewed synthetic valuation",
+  recognition:"accepted",factIds:[gross,payoff,costs,exempt]}];
+ d.context.approvedPresentValue=normalizeMoney("30000000");
+ d.context.presentValueBasis="Synthetic independently reviewed present value";
+ d.context.presentValueReviewed=true;
+ d.context.assetValuationBasisReviewed=true;
+ d.context.allocationBasis="principal_then_interest_pro_rata";
+ d.context.allocationBasisReviewed=true;
+ d.context.ruleApplicationReviewed=true;
+ d.context.incomePeriodReviewed=true;
+ const calculation=calculateCase(d,rules);
+ assert.equal(calculation.monthlyIncomeWon,"1500000",JSON.stringify(calculation.issues));
+ assert.equal(calculation.planTotalWon,"36000000");
+ assert.equal(calculation.totalDebtWon,"100000000");
+ assert.equal(calculation.liquidationValueWon,"1000000");
+ assert.equal(calculation.presentValueWon,"30000000");
+ assert.equal(calculation.liquidationComparison,"met");
+ assert.equal(calculation.allocations.length,1);
+ assert.equal(calculation.allocations[0].totalWon,"36000000");
+ const ledger=buildRepaymentPlanModel(d,calculation);
+ const reconciliation=reconcilePlanLedger(d,calculation,ledger);
+ const forms=buildFormBindings(d,calculation,undefined,ledger,reconciliation);
+ assert.equal(forms.rows.month.length,12);
+ assert.ok(forms.rows.month.every(row=>row.net_income==="1,500,000"));
+ assert.equal(forms.scalars.monthly_business_income,"1,500,000");
+ assert.equal(forms.scalars.approved_monthly_income,"1,500,000");
+ assert.equal(forms.scalars.monthly_payment,"1,000,000");
+ assert.equal(forms.scalars.total_repayment,"36,000,000");
+ assert.equal(forms.scalars.total_principal,"100,000,000");
+ assert.equal(forms.scalars.liquidation_value,"1,000,000");
+ assert.equal(forms.rows.creditor.length,1);
+ assert.equal(forms.rows.creditor[0].total_payment,"36,000,000");
+ assert.equal(reconciliation.status,"reconciled",JSON.stringify(reconciliation.issues));
 });
