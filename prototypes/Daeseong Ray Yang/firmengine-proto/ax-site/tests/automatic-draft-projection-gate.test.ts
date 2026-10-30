@@ -49,6 +49,8 @@ test("only an actual projection diagnostic allows same-source operator repair",(
  assert.equal(projectionRepairRequired({documentProjectionBlockers:["DOCUMENT_FIELD_PROJECTION_EMPTY"]}),true);
  assert.equal(projectionRepairRequired({documentFieldProjectionError:"UNAVAILABLE"}),true);
  assert.equal(projectionRepairRequired({blockers:["LAWGRAPH_FORM_FIELD_PROJECTION_REQUIRED"]}),true);
+ assert.equal(projectionRepairRequired({documentFieldCount:0,reviewRunId:"legal-review-1"}),true);
+ assert.equal(projectionRepairRequired({documentFieldCount:0,reviewRunId:null}),false);
  assert.equal(projectionRepairRequired({blockers:["LEGAL_EVIDENCE_MISSING"]}),false);
  assert.equal(projectionRepairRequired(null),false);
 });

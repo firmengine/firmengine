@@ -77,6 +77,10 @@ export function assessAutomaticDraftProjection(input:AutomaticDraftProjectionInp
 export function projectionRepairRequired(outcome:unknown):boolean{
  if(!outcome||typeof outcome!=="object"||Array.isArray(outcome))return false;
  const o=outcome as Record<string,unknown>;
+ // Historical review_required jobs may predate documentProjectionBlockers.
+ // A *saved* 95-check run with zero form fields is repairable without another
+ // advisory model call; an unsaved or missing review is never auto-approved.
+ if(o.documentFieldCount===0&&typeof o.reviewRunId==="string"&&o.reviewRunId.length>0)return true;
  return typeof o.documentFieldProjectionError==="string"&&o.documentFieldProjectionError.length>0
    ||Array.isArray(o.documentProjectionBlockers)&&o.documentProjectionBlockers.some(
       (v:unknown)=>typeof v==="string"&&v.startsWith("DOCUMENT_FIELD_"))
