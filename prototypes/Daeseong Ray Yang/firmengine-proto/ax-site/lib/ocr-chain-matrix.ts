@@ -12,6 +12,7 @@ export const OCR_DECLARED_FORM_TARGETS:Record<string,{forms:string[];calculation
  "identity_residence_record::identity.registration_id":{forms:["D5100.resident_id"],calculation:null},
  "payroll_payslip::income.payroll.net_pay":{forms:["D5103.month.net_income","D5110.approved_monthly_income"],calculation:"monthlyIncomeWon_reviewed_group"},
  "salary_statement::gross_total":{forms:["D5103.month.revenue"],calculation:"monthlyIncomeWon_reviewed_group"},
+ "salary_statement::total_deductions":{forms:["D5103.month.expense"],calculation:"monthlyIncomeWon_reviewed_group"},
  "debt_certificate::creditor":{forms:["D5106.creditor.entity"],calculation:null},
  "debt_certificate::creditor_address":{forms:["D5106.creditor.address"],calculation:null},
  "debt_certificate::claim_cause":{forms:["D5106.creditor.cause"],calculation:null},

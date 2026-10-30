@@ -70,3 +70,13 @@ test("unknown typed amount ID remains only a raw observation",()=>{
  assert.equal(result.transactions.length,0);
  assert.ok(result.facts?.some(x=>String(x.key).includes("unbound_source")));
 });
+
+test("salary total deductions are an exact, review-only income expense and form candidate",()=>{
+ const c=documentFieldContract("shared-document:salary_statement@payroll_payslip")!;
+ const id="salary_statement::total_deductions";
+ const item=c.fields.find(f=>f.global_field_id===id)!;
+ const bound=bindCanonicalSourceField({key:"total_deductions",canonicalFieldId:id},c);
+ assert.equal(canonicalProjectionKey(c,bound,"income"),"expenses");
+ const result=buildOcrChainMatrix(INTAKE_CATALOG_SEED,"a".repeat(64),{documentTypeId:"salary_statement"});
+ assert.ok(result.documents.some(d=>d.routes.some(r=>r.fields.some(f=>f.canonicalFieldId===id&&f.formCandidates.includes("D5103.month.expense"))));
+});

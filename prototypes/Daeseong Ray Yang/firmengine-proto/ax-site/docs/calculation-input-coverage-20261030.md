@@ -6,7 +6,7 @@
 | --- | --- | --- | --- |
 | income_average | `income.kind` | `current_nonwage_income::income.other.income_kind`, `tax_income::income_kind` | 직접 ID 연결 (검증·인정 별도) |
 | income_average | `income.gross` | `business_sales_vat::income.sales.gross_sales`, `current_nonwage_income::income.other.gross_amount`, `salary_statement::gross_total`, `tax_income::gross_receipts` | 직접 ID 연결 (검증·인정 별도) |
-| income_average | `income.expenses` | `current_nonwage_income::income.other.deductions`, `tax_income::necessary_expenses` | 직접 ID 연결 (검증·인정 별도) |
+| income_average | `income.expenses` | `current_nonwage_income::income.other.deductions`, `tax_income::necessary_expenses`, `salary_statement::total_deductions` | 직접 ID 연결 (검증·인정 별도) |
 | income_average | `income.net` | `current_nonwage_income::income.other.net_received`, `payroll_payslip::income.payroll.net_pay`, `tax_income::income_after_expenses` | 직접 ID 연결 (검증·인정 별도) |
 | income_average | `income.amountBasis` | 유도 후보: income.period_start + income.period_end | 유도/사람 검토 필요 |
 | income_average | `income.periodStart` | `business_sales_vat::income.sales.reporting_period_start`, `current_nonwage_income::income.other.earning_period_start`, `payroll_payslip::income.payroll.pay_period_start`, `tax_income::period_start` | 직접 ID 연결 (검증·인정 별도) |

@@ -1,6 +1,6 @@
 # OCR 693개 canonical 피처 — 계산 입력·SQL 계약 전수 적합성 (2026-10-30)
 
-**GitHub main 피처 계약에서 자동 생성한 현재 판본.** 문서 85종, 패밀리 48개, 피처 슬롯 1,808개, 고유 피처 693개. 실제 실행코드의 `canonicalProjectionKey`에 명시된 사건 키는 **46개**, 미설정은 **647개**. 이 숫자는 전체 코드의 '미사용' 건수나 법률 정확도가 아니라 정확한 표준 키 변환 정의 건수다. 18개 계산 모듈의 선언 입력과 **키 동일성**이 있는 피처는 34개다. 원문 source_only 값은 함부로 더하지 않는다.
+**GitHub main 피처 계약에서 자동 생성한 현재 판본.** 문서 85종, 패밀리 48개, 피처 슬롯 1,808개, 고유 피처 693개. 실제 실행코드의 `canonicalProjectionKey`에 명시된 사건 키는 **47개**, 미설정은 **646개**. 이 숫자는 전체 코드의 '미사용' 건수나 법률 정확도가 아니라 정확한 표준 키 변환 정의 건수다. 18개 계산 모듈의 선언 입력과 **키 동일성**이 있는 피처는 35개다. 원문 source_only 값은 함부로 더하지 않는다.
 
 | # | canonical OCR field ID | 서류 패밀리/문서 | 원본 타입·단위·기간 | 정확한 CaseData 키 변환 | 연결된 계산 모듈 선언 입력 | 공식 서식 직접 토큰 | 현재 처리 |
 | ---: | --- | --- | --- | --- | --- | --- | --- |
@@ -603,7 +603,7 @@
 | 597 | `salary_statement::employer_confirmation_status` | payroll_payslip / salary_statement (1 슬롯) | enum / not_applicable / not_applicable | **없음** | 없음 | 직접 토큰 없음 | 원문 관측·계산용 표준변환 미연결 |
 | 598 | `salary_statement::employer_signature_date` | payroll_payslip / salary_statement (1 슬롯) | date / YYYY-MM-DD / source_date_time_or_period | **없음** | 없음 | 직접 토큰 없음 | 원문 관측·계산용 표준변환 미연결 |
 | 599 | `salary_statement::gross_total` | payroll_payslip / salary_statement (1 슬롯) | money / KRW / not_applicable | `income.gross` | `income_average` | D5103.month.revenue | 계산 입력 키 일치·원문/인정 검토 필요 |
-| 600 | `salary_statement::total_deductions` | payroll_payslip / salary_statement (1 슬롯) | money / KRW / not_applicable | **없음** | 없음 | 직접 토큰 없음 | 원문 관측·계산용 표준변환 미연결 |
+| 600 | `salary_statement::total_deductions` | payroll_payslip / salary_statement (1 슬롯) | money / KRW / not_applicable | `income.expenses` | `income_average` | D5103.month.expense | 계산 입력 키 일치·원문/인정 검토 필요 |
 | 601 | `secured_claim_security::actual_payoff` | secured_claim_security / mortgage_balance,security_register (2 슬롯) | money / currency and exact source unit if monetary / not_applicable | **없음** | 없음 | 직접 토큰 없음 | 원문 관측·계산용 표준변환 미연결 |
 | 602 | `secured_claim_security::collateral_id` | secured_claim_security / mortgage_balance,security_register (2 슬롯) | identifier / not_applicable / not_applicable | **없음** | 없음 | 직접 토큰 없음 | 원문 관측·계산용 표준변환 미연결 |
 | 603 | `secured_claim_security::discharge_date` | secured_claim_security / mortgage_balance,security_register (2 슬롯) | date / source date format normalized to ISO without loss / discharge_effective_date | **없음** | 없음 | 직접 토큰 없음 | 원문 관측·계산용 표준변환 미연결 |
