@@ -43,8 +43,8 @@ export async function inspectLegalAutomationSourceReadiness(database:D1Database,
  const caseId=data.context.id;
  const [calculation,consultation]=await Promise.all([
   database.prepare("SELECT r.source_heads_json AS sourceHeadsJson FROM case_calculation_heads h JOIN case_calculation_runs r ON r.id=h.run_id WHERE h.case_id=?").bind(caseId).first<{sourceHeadsJson:string}>(),
-  database.prepare("SELECT active_run_id AS activeRunId,revision FROM consultation_heads WHERE case_id=?")
-   .bind(caseId).first<{activeRunId:string|null;revision:number}>(),
+  database.prepare("SELECT h.active_run_id AS activeRunId,h.revision,r.consultation_revision AS analyzedRevision,r.status AS runStatus FROM consultation_heads h LEFT JOIN consultation_runs r ON r.id=h.active_run_id AND r.case_id=h.case_id WHERE h.case_id=?")
+   .bind(caseId).first<{activeRunId:string|null;revision:number;analyzedRevision:number|null;runStatus:string|null}>(),
  ]);
  let source:CaseCalculationSourceHeads={};
  try{source=JSON.parse(calculation?.sourceHeadsJson??"{}") as CaseCalculationSourceHeads;}catch{}
@@ -53,11 +53,11 @@ export async function inspectLegalAutomationSourceReadiness(database:D1Database,
  const normalizedPages=(source.featureSnapshot?.sourceHeads??[]).map(p=>p.documentId+":"+p.page);
  const workflow=data.workflowState;
  const adopted=workflow?.requirements?.filter(r=>!r.retired)??[];
- const workflowIntakeMismatch=!!consultation?.activeRunId&&adopted.some(r=>r.intakeRunId!==consultation.activeRunId);
+ const workflowIntakeMismatch=adopted.length>0&&(!consultation?.activeRunId||adopted.some(r=>r.intakeRunId!==consultation.activeRunId));
  return evaluateLegalSourceReadiness({
   activeDocumentCount:activeDocs.size,evidencePages,normalizedPages,
   processingComplete,legacySnapshotFallback:source.featureSnapshot?.legacySnapshotFallback!==false,
-  consultationPending:!!consultation&&consultation.revision>0&&!consultation.activeRunId,
+  consultationPending:!!consultation&&consultation.revision>0&&(!consultation.activeRunId||consultation.analyzedRevision!==consultation.revision||consultation.runStatus!=="complete"),
   workflowIntakeMismatch
  });
 }
