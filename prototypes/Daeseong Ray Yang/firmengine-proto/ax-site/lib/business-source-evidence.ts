@@ -7,7 +7,7 @@ import {createCaseReadIndex,currentFacts,moneyValue,validSourceRef,factSourceLin
 
 export type BusinessMoneyRole =
   "turnover_total"|"turnover_component"|"returns_refunds"|"vat_collected"|
-  "cost_line"|"cost_summary"|"gross_receivable"|"net_cash_received"|"withheld_tax";
+  "cost_line"|"cost_summary"|"input_vat"|"gross_receivable"|"net_cash_received"|"withheld_tax";
 const sourceMoneyRoles:Readonly<Record<string,BusinessMoneyRole>>={
   "business_sales_vat::income.sales.gross_sales":"turnover_total",
   "business_sales_vat::income.sales.taxable_sales":"turnover_component",
@@ -15,7 +15,7 @@ const sourceMoneyRoles:Readonly<Record<string,BusinessMoneyRole>>={
   "business_sales_vat::income.sales.returns_refunds":"returns_refunds",
   "business_sales_vat::income.sales.vat_collected":"vat_collected",
   "business_costs_and_ledgers::income.business_cost.gross_amount":"cost_line",
-  "business_costs_and_ledgers::income.business_cost.tax_component":"vat_collected",
+  "business_costs_and_ledgers::income.business_cost.tax_component":"input_vat",
   "business_current_income_summary::income.self_employment.business_costs":"cost_summary",
   "business_current_income_summary::income.self_employment.gross_receivable":"gross_receivable",
   "business_current_income_summary::income.self_employment.net_receipt":"net_cash_received",
@@ -98,8 +98,12 @@ export function auditBusinessSourceEvidence(
       dateFact.refs.length>0&&dateFact.refs.every(ref=>validSourceRef(data,ref,index))&&
       exactDate(dateFact.value)?dateFact.value:null;
   };
-  const start=slots?fieldDate(slots[0]):null;
-  const end=slots?fieldDate(slots[1]):null;
+  // The net_receipt canonical field has the schema temporal role "event_date".
+  // A service period or invoice date cannot establish when cash was actually received.
+  // Do not silently assign a cash receipt to an accrual month.
+  const receiptEventDateMissing=sourceMoneyRoles[id]==="net_cash_received";
+  const start=!receiptEventDateMissing&&slots?fieldDate(slots[0]):null;
+  const end=!receiptEventDateMissing&&slots?fieldDate(slots[1]):null;
   const scope:PeriodOverlap= !validWindow||!start||!end||end<start ? "unknown" :
     end<window!.start||start>window!.end ? "outside" :
     start<window!.start||end>window!.end ? "partly_outside":"inside";
