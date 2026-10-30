@@ -35,7 +35,9 @@ export type ExportEvidenceIssueCode =
   | "CLAIMED_REQUEST_PRESERVE" | "UNREFERENCED_SQL_PRESERVE"
   | "CURRENT_MANIFEST_EMPTY" | "DUPLICATE_OBJECT_KEY" | "OBJECT_KEY_SCOPE_MISMATCH"
   | "R2_PROOF_CONFLICT" | "R2_UNTRACKED_OBJECT_PRESERVE" | "R2_UNTRACKED_PROOF_UNKNOWN"
-  | "ARTIFACT_EVIDENCE_CONFLICT" | "FOREIGN_CASE_OBJECT_KEY_ALIAS";
+  | "ARTIFACT_EVIDENCE_CONFLICT" | "FOREIGN_CASE_OBJECT_KEY_ALIAS"
+  | "CURRENT_MANIFEST_DUPLICATE_ID" | "CURRENT_MANIFEST_HASH_INVALID"
+  | "CURRENT_SQL_HASH_INVALID" | "R2_BYTES_SHA_INVALID";
 export interface ExportEvidenceIssue {
   code: ExportEvidenceIssueCode;
   artifactId?: string;
@@ -57,6 +59,8 @@ export function reconcileExportEvidence(input: {
   receipts: readonly ExportRequestEvidence[];
   objectProofs: readonly ExportObjectEvidence[];
 }): ExportEvidenceAudit {
+  const isSha256 = (value: unknown): value is string =>
+    typeof value === "string" && /^[0-9a-f]{64}$/i.test(value);
   const issues: ExportEvidenceIssue[] = [];
   const add = (code: ExportEvidenceIssueCode, artifactId?: string, requestId?: string) => {
     issues.push({ code, ...(artifactId ? { artifactId } : {}), ...(requestId ? { requestId } : {}), autoDeleteAllowed: false });
@@ -93,7 +97,18 @@ export function reconcileExportEvidence(input: {
   const referenced = new Set(input.manifest.map(file => file.id));
   let currentArtifactsVerified = current.length > 0;
   if (!current.length) add("CURRENT_MANIFEST_EMPTY");
-  const currentIds = new Set(current.map(file => file.id));
+  const currentIds = new Set<string>();
+  for (const file of current) {
+    if (currentIds.has(file.id)) {
+      add("CURRENT_MANIFEST_DUPLICATE_ID", file.id);
+      currentArtifactsVerified = false;
+    }
+    currentIds.add(file.id);
+    if (!isSha256(file.hash)) {
+      add("CURRENT_MANIFEST_HASH_INVALID", file.id);
+      currentArtifactsVerified = false;
+    }
+  }
   for (const id of conflictingRowIds) {
     // Report only IDs belonging to the requested case or its provided receipts;
     // unrelated foreign-case evidence must not be disclosed by the diagnostic.
@@ -107,6 +122,7 @@ export function reconcileExportEvidence(input: {
     if (!row) { add("CURRENT_SQL_MISSING", file.id); currentArtifactsVerified = false; continue; }
     if (row.caseId !== input.caseId) { add("CURRENT_OTHER_CASE", file.id); currentArtifactsVerified = false; continue; }
     if (row.revision !== input.currentRevision) { add("CURRENT_REVISION_MISMATCH", file.id); currentArtifactsVerified = false; }
+    if (!isSha256(row.hash)) { add("CURRENT_SQL_HASH_INVALID", file.id); currentArtifactsVerified = false; }
     if (row.hash !== file.hash) { add("CURRENT_HASH_MISMATCH", file.id); currentArtifactsVerified = false; }
   }
   for (const receipt of input.receipts) {
@@ -164,6 +180,9 @@ export function reconcileExportEvidence(input: {
       if (isCurrent) currentArtifactsVerified = false;
     } else if (!proof.verifiedSha256) {
       add("R2_BYTES_UNVERIFIED", row.id);
+      if (isCurrent) currentArtifactsVerified = false;
+    } else if (!isSha256(proof.verifiedSha256)) {
+      add("R2_BYTES_SHA_INVALID", row.id);
       if (isCurrent) currentArtifactsVerified = false;
     } else if (proof.verifiedSha256 !== row.hash) {
       add("R2_BYTES_HASH_MISMATCH", row.id);
