@@ -137,6 +137,19 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
 }
 export const drainDueCaseDataUpdates=drainCaseDataUpdates;
 
+/** Human-triggered retry of a CURRENT failed calculation poll only.
+ * Does not change source evidence, approvals, or the 10-minute clock. */
+export async function retryFailedCaseCalculationPoll(database:D1Database,input:{caseId:string;expectedDataVersion:number}){
+ if(!input.caseId||input.caseId.length>300||!Number.isSafeInteger(input.expectedDataVersion)||input.expectedDataVersion<1)
+   throw new Error("CASE_CALCULATION_POLL_RETRY_INVALID_INPUT");
+ const state=await getCaseDataUpdateState(database,{caseId:input.caseId});
+ if(state.dataVersion!==input.expectedDataVersion)throw new Error("CASE_CALCULATION_POLL_RETRY_STALE_SOURCE");
+ const ref=referenceIdentity()?.sha256??referenceRelease.sha256,at=new Date().toISOString();
+ const changed=await database.prepare("UPDATE case_calculation_poll_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,lease_token=NULL,lease_until=NULL,updated_at=? WHERE case_id=? AND status='failed' AND data_version=? AND case_revision=? AND reference_sha256=? AND EXISTS (SELECT 1 FROM case_data_change_state s JOIN cases c ON c.id=s.case_id WHERE s.case_id=? AND s.data_version=? AND c.revision=?)")
+   .bind(at,at,input.caseId,state.dataVersion,state.currentCaseRevision,ref,input.caseId,state.dataVersion,state.currentCaseRevision).run();
+ if(!changed.meta.changes)throw new Error("CASE_CALCULATION_POLL_NO_CURRENT_FAILED_JOB");
+ return {caseId:input.caseId,dataVersion:state.dataVersion,status:"retry_wait" as const,nextAttemptAt:at};
+}
 /** Read-only operator status. No model execution or event acknowledgement. */
 export async function caseCalculationPollHealth(database:D1Database,caseId:string){
  const row=await database.prepare("SELECT p.case_id AS caseId,p.data_version AS dataVersion,p.case_revision AS caseRevision,p.reference_sha256 AS referenceSha256,p.status,p.attempts,p.lease_until AS leaseUntil,p.next_attempt_at AS nextAttemptAt,p.last_error AS error,s.data_version AS currentDataVersion,c.revision AS currentRevision FROM case_calculation_poll_jobs p JOIN cases c ON c.id=p.case_id JOIN case_data_change_state s ON s.case_id=p.case_id WHERE p.case_id=?")

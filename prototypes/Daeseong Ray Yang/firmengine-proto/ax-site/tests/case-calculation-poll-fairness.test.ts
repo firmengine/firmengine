@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {DatabaseSync,type SQLInputValue} from "node:sqlite";
 import {readFileSync,readdirSync} from "node:fs";
-import {drainCaseDataUpdates,caseCalculationPollHealth} from "../lib/case-data-recompute.ts";
+import {drainCaseDataUpdates,caseCalculationPollHealth,retryFailedCaseCalculationPoll} from "../lib/case-data-recompute.ts";
 
 const NOW=Date.parse("2026-10-30T12:00:00.000Z");
 function fixture(){
@@ -69,5 +69,19 @@ test("two schedulers cannot claim one case/version at the same instant",async()=
   const tasks=await Promise.all([f.poll("due-a"),f.poll("due-a")]);
   assert.equal(f.calls.filter(id=>id==="due-a").length,1);
   assert.equal(tasks.reduce((count,t)=>count+t.results.filter(r=>r.status==="retry_wait").length,0),1);
+ }finally{f.close();}
+});
+
+test("staff may recover a current failed calculation case without changing source version",async()=>{
+ const f=fixture();try{
+  await f.poll("due-a");
+  f.sqlite.prepare("UPDATE case_calculation_poll_jobs SET status='failed',attempts=5,next_attempt_at=NULL WHERE case_id='due-a'").run();
+  const before=f.sqlite.prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id='due-a'").get() as {version:number};
+  const recovered=await retryFailedCaseCalculationPoll(f.database,{caseId:"due-a",expectedDataVersion:before.version});
+  assert.equal(recovered.status,"retry_wait");
+  assert.equal((await caseCalculationPollHealth(f.database,"due-a")).attempts,0);
+  assert.equal((f.sqlite.prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id='due-a'").get() as {version:number}).version,before.version);
+  await assert.rejects(retryFailedCaseCalculationPoll(f.database,{caseId:"due-a",expectedDataVersion:before.version}),/CASE_CALCULATION_POLL_NO_CURRENT_FAILED_JOB/);
+  await assert.rejects(retryFailedCaseCalculationPoll(f.database,{caseId:"due-a",expectedDataVersion:before.version+1}),/CASE_CALCULATION_POLL_RETRY_STALE_SOURCE/);
  }finally{f.close();}
 });
