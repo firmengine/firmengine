@@ -47,7 +47,7 @@ function factInput(data: CaseData, facts: readonly Fact[], path: string) {
     values:exact.map(f=>({objectId:f.subjectId,value:f.numeric?.amountWon??f.value,factIds:[f.id]}))};
 }
 const sourceTable = {
-  P1_DOCUMENTS: ["consultation_heads", "case_document_requirements", "case_requirement_field_plans", "case_workflow_state", "case_document_work_events"],
+  P1_DOCUMENTS: ["consultation_heads", "case_document_requirements", "case_requirement_field_plans", "cases.payload.workflowState", "case_document_work_events"],
   P2_EVIDENCE: ["document_instances", "extraction_runs", "extraction_records", "extracted_features", "case_extraction_heads", "cases.payload.facts"],
   P3_CALCULATIONS: ["case_calculation_heads", "case_calculation_runs", "case_calculation_features", "reference_decision_tables.calculations"],
   P4_LEGAL: ["case_legal_review_heads", "case_legal_review_runs", "case_legal_conditions", "legal_catalog", "legal_exceptions"],
