@@ -46,6 +46,7 @@ export interface BusinessSourceMoneyRow {
   factId:string;canonicalFieldId:string;role:BusinessMoneyRole;
   sourceRecordId:string;sourceDocumentIds:string[];sourcePages:number[];
   amountWon:string|null;observedState:string;reviewState:string;
+  verifiedAndAcceptedSource:boolean;
   periodStart:string|null;periodEnd:string|null;periodOverlap:PeriodOverlap;
   linkedBusinessIncomeIds:string[];
   use:"source_only_not_legally_approved";
@@ -109,6 +110,10 @@ export function auditBusinessSourceEvidence(
     amountWon:moneyValue(fact.numeric)?.toString()??null,
     observedState:fact.fieldObservation?.sourceState??"not_classified",
     reviewState:fact.recognition,
+    verifiedAndAcceptedSource:fact.state==="verified"&&fact.recognition==="accepted"&&
+      fact.validation.every(check=>check.severity!=="error")&&
+      fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index))&&
+      moneyValue(fact.numeric)!==null,
     periodStart:start,periodEnd:end,periodOverlap:scope,linkedBusinessIncomeIds,
     use:"source_only_not_legally_approved"};
  }).sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId)||a.factId.localeCompare(b.factId));
