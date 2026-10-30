@@ -496,11 +496,15 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   traces.push({ id: "disposable", title: "월 가용소득", formula: referenceFormula("disposable_income"), inputs: [{label:"월평균 순소득",value:asMoney(income),factIds:data.incomes.flatMap(x=>x.factIds)},{label:"인정 생계비",value:asMoney(living),factIds:data.household.factIds}], resultWon:asMoney(disposable),status:disposable===null?"blocked":data.household.recognition==="accepted"&&traces.filter(t=>t.id.startsWith("income:")).every(t=>t.status==="calculated")?"calculated":"provisional",reasons:disposable===null?["소득 또는 생계비 입력 확인 필요"]:[] });
   const approvedPayment = nonnegative(data.context.approvedMonthlyPayment);
   const hasApprovedPayment = data.context.approvedMonthlyPayment !== undefined && data.context.approvedMonthlyPayment !== null;
-  // A manually proposed payment never repairs unknown source-backed income.
-  // Keep its input in the case context; do not promote it to a computed plan amount.
-  const payment = income === null ? null : hasApprovedPayment ? approvedPayment : (ordinaryBudget !== null && ordinaryBudget > ZERO ? ordinaryBudget : null);
+  // An adopted payment is a proposal, not evidence that income, court-reviewed
+  // living costs, or priority/estate fees are known. Never emit an apparently
+  // finalized payment/plan amount while the ordinary budget is unresolved.
+  // A proposed payment exceeding the budget remains a reviewable context input.
+  const approvedExceedsBudget=approvedPayment!==null&&ordinaryBudget!==null&&approvedPayment>ordinaryBudget;
+  const payment = ordinaryBudget===null || ordinaryBudget<ZERO || approvedExceedsBudget ? null
+    : hasApprovedPayment ? approvedPayment : ordinaryBudget>ZERO ? ordinaryBudget : null;
   if (hasApprovedPayment && approvedPayment === null) issues.push("APPROVED_PAYMENT_INVALID");
-  if (approvedPayment !== null && ordinaryBudget !== null && approvedPayment > ordinaryBudget) issues.push("PAYMENT_EXCEEDS_DISPOSABLE_INCOME");
+  if (approvedExceedsBudget) issues.push("PAYMENT_EXCEEDS_DISPOSABLE_INCOME");
   const months = data.context.planMonths;
   const termValid = Number.isSafeInteger(months) && months! > 0 && months! <= maximumCalculationMonths();
   if (!termValid) issues.push("PLAN_TERM_MISSING");
