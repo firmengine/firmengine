@@ -10,6 +10,7 @@ export interface WorkflowDocumentTypeRow {documentId:string;page:number;document
 export interface CaseWorkflowContext {
  catalogVersion:number;
  pendingCourtPolicyChange:boolean;
+ policySignal:string;
  latestCourtPolicyAlertAt:string|null;
  activeIntakeRunId:string|null;
  activeIntakeCatalogVersion:number|null;
@@ -42,7 +43,7 @@ export async function currentCaseWorkflowContext(database:D1Database,caseId:stri
    .bind(caseId).first<{runId:string|null;catalogVersion:number|null}>()
  ]);
  if(!Number.isSafeInteger(catalog)||catalog<1)throw new Error("INVALID_INTAKE_CATALOG_VERSION");
- return {catalogVersion:catalog,pendingCourtPolicyChange:policy.pending,
+ return {catalogVersion:catalog,policySignal:policy.signal,pendingCourtPolicyChange:policy.pending,
   latestCourtPolicyAlertAt:policy?.latest??null,
   activeIntakeRunId:consultation?.runId??null,
   activeIntakeCatalogVersion:consultation?.catalogVersion??null,
