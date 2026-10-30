@@ -87,3 +87,40 @@ test("source-only business facts with verified exclusions do not silently re-ent
  assert.equal(audit.summary.zeroIncomeWouldBeUnsupported,false);
  assert.equal(calculateCase(data,rules).monthlyIncomeWon,"0");
 });
+
+test("source-only business money rejects stale raw, unit and conflicting OCR without losing source blocker",()=>{
+  const {data,costRow}=fixture();
+  costRow("recheck-january","800000","2025-01-01","2025-01-31");
+  const cases:Array<{label:string;edit:(f:Fact)=>void}>=[
+    {label:"fact/raw updated without numeric",edit:f=>{f.value="700000";f.rawValue="700000";}},
+    {label:"raw updated only",edit:f=>{f.rawValue="700000";}},
+    {label:"unit changed",edit:f=>{f.sourceUnit="만원";}},
+    {label:"OCR conflicting",edit:f=>{f.fieldObservation={sourceState:"conflicting"} as NonNullable<Fact["fieldObservation"]>;}},
+    {label:"OCR not seen",edit:f=>{f.fieldObservation={sourceState:"not_seen"} as NonNullable<Fact["fieldObservation"]>;}},
+    {label:"OCR explicit none",edit:f=>{f.fieldObservation={sourceState:"explicit_none"} as NonNullable<Fact["fieldObservation"]>;}}
+  ];
+  for(const scenario of cases){
+    const altered=structuredClone(data);
+    const source=altered.facts.find(f=>f.id==="recheck-january-amount")!;
+    scenario.edit(source);
+    const audit=auditBusinessSourceEvidence(altered);
+    assert.equal(audit.rows[0].verifiedAndAcceptedSource,false,scenario.label);
+    assert.equal(audit.rows[0].amountWon,null,scenario.label);
+    assert.equal(audit.summary.zeroIncomeWouldBeUnsupported,true,scenario.label);
+    assert.equal(audit.automaticNetCalculation,false);
+  }
+});
+test("exact 0 is observed money but never legal net income",()=>{
+  const {data,costRow}=fixture();
+  costRow("zero-expense","0","2025-01-01","2025-01-31");
+  const observed=auditBusinessSourceEvidence(data);
+  assert.equal(observed.rows[0].amountWon,"0");
+  assert.equal(observed.rows[0].verifiedAndAcceptedSource,true);
+  assert.equal(observed.rows[0].use,"source_only_not_legally_approved");
+  assert.equal(observed.summary.zeroIncomeWouldBeUnsupported,true);
+  data.facts.find(f=>f.id==="zero-expense-amount")!.recognition="unreviewed";
+  const pending=auditBusinessSourceEvidence(data);
+  assert.equal(pending.rows[0].amountWon,"0");
+  assert.equal(pending.rows[0].verifiedAndAcceptedSource,false);
+  assert.equal(pending.automaticNetCalculation,false);
+});

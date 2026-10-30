@@ -109,17 +109,23 @@ export function auditBusinessSourceEvidence(
     end<window!.start||start>window!.end ? "outside" :
     start<window!.start||end>window!.end ? "partly_outside":"inside";
   const linkedBusinessIncomeIds=[...new Set(links.get(fact.id)??[])].sort();
+  // The numeric OCR value is a review candidate only when the raw source,
+  // currently stored Fact and exact unit all agree, including presence state.
+  const sourceAmountConsistent=typeof fact.value==="string"&&fact.rawValue===fact.value&&
+    fact.numeric?.rawValue===fact.value&&fact.sourceUnit===fact.numeric?.unit&&
+    (!fact.fieldObservation||fact.fieldObservation.sourceState==="present");
+  const validatedAmount=sourceAmountConsistent?moneyValue(fact.numeric):null;
   return {factId:fact.id,canonicalFieldId:id,role:BUSINESS_SOURCE_MONEY_ROLES[id],sourceRecordId:fact.subjectId,
     sourceDocumentIds:[...new Set(fact.refs.map(ref=>ref.documentId))].sort(),
     sourcePages:[...new Set(fact.refs.map(ref=>ref.page))].sort((a,b)=>a-b),
-    amountWon:moneyValue(fact.numeric)?.toString()??null,
+    amountWon:validatedAmount?.toString()??null,
     observedState:fact.fieldObservation?.sourceState??"not_classified",
     reviewState:fact.recognition,
     verifiedAndAcceptedSource:fact.state==="verified"&&fact.recognition==="accepted"&&
       fact.validation.every(check=>check.severity!=="error")&&
       fact.refs.length>0&&fact.refs.every(ref=>validSourceRef(data,ref,index))&&
       factSourceLineageIssues(data,[fact.id],index).length===0&&
-      moneyValue(fact.numeric)!==null,
+      validatedAmount!==null,
     periodStart:start,periodEnd:end,periodOverlap:scope,linkedBusinessIncomeIds,
     use:"source_only_not_legally_approved"};
  }).sort((a,b)=>a.sourceRecordId.localeCompare(b.sourceRecordId)||a.factId.localeCompare(b.factId));
