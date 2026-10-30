@@ -27,3 +27,42 @@ test('stored won field cannot disagree with stored value',()=>{
   const out=run([make('/assessment/calculation/monthlyIncomeWon','3000000',{valueWon:'3000001'})]);
   assert.equal(out.issueCountByCode.STORED_WON_MISMATCH,1);
 });
+
+test('empty persisted calculation output is not a passing replay',()=>{
+  const out=run([]);
+  assert.equal(out.valid,false);
+  assert.equal(out.issueCountByCode.EMPTY_STORED_OUTPUTS,1);
+  assert.equal(out.courtApprovalInferred,false);
+});
+test('missing one expected calculated row is detected even when all existing values match',()=>{
+  const scalar=make('/assessment/calculation/monthlyIncomeWon','3000000');
+  const expectedOutputs=[
+    {calculationId:'income_aggregation',outputPath:'/assessment/calculation/monthlyIncomeWon'},
+    {calculationId:'income_aggregation',outputPath:'/assessment/calculation/presentValueWon'},
+  ];
+  const partial=auditStoredCalculationReplay({execution,rows:[scalar],currentFactIds:new Set(['f1']),expectedOutputs});
+  assert.equal(partial.valid,false);
+  assert.equal(partial.issueCountByCode.EXPECTED_OUTPUT_NOT_PERSISTED,1);
+  const complete=auditStoredCalculationReplay({execution,rows:[scalar,make('/assessment/calculation/presentValueWon',null,{status:'missing'})],currentFactIds:new Set(['f1']),expectedOutputs});
+  assert.equal(complete.valid,true);
+  assert.equal(complete.storedRows,2);
+});
+test('expected-path identity includes calculationId and does not count duplicate declarations twice',()=>{
+  const outputPath='/assessment/calculation/monthlyIncomeWon';
+  const expectedOutputs=[{calculationId:'other_engine',outputPath},{calculationId:'other_engine',outputPath}];
+  const out=auditStoredCalculationReplay({execution,rows:[make(outputPath,'3000000')],currentFactIds:new Set(['f1']),expectedOutputs});
+  assert.equal(out.valid,false);
+  assert.equal(out.issueCountByCode.EXPECTED_OUTPUT_NOT_PERSISTED,1);
+});
+test('explicit observed zero and unknown/null are not conflated by complete expected-row replay',()=>{
+  const expectedOutputs=[
+    {calculationId:'income_aggregation',outputPath:'/assessment/calculation/incomeRows/0/monthlyWon'},
+    {calculationId:'income_aggregation',outputPath:'/assessment/calculation/presentValueWon'},
+  ];
+  const rows=[make('/assessment/calculation/incomeRows/0/monthlyWon','3000000'),make('/assessment/calculation/presentValueWon',null,{status:'missing'})];
+  const out=auditStoredCalculationReplay({execution,rows,currentFactIds:new Set(['f1']),expectedOutputs});
+  assert.equal(out.valid,true);
+  const corrupted=auditStoredCalculationReplay({execution,rows:[rows[0],{...rows[1],valueJson:'"0"'}],currentFactIds:new Set(['f1']),expectedOutputs});
+  assert.equal(corrupted.valid,false);
+  assert.equal(corrupted.issueCountByCode.OUTPUT_VALUE_MISMATCH,1);
+});
