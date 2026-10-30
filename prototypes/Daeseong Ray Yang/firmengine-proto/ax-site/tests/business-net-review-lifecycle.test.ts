@@ -4,6 +4,8 @@ import {installReferenceProvider,type ReferenceSnapshot} from "../lib/reference-
 import {BUSINESS_INCOME_POLICY_ID,BUSINESS_INCOME_POLICY_VERSION,validateBusinessIncomePolicy} from "../lib/business-income-policy.ts";
 import {createCase,normalizeMoney,type CaseData,type Fact} from "../lib/domain.ts";
 import {caseWorkflow} from "../lib/case-workflow-state.ts";
+import {reduceCaseCommand} from "../lib/case-commands.ts";
+import type {CaseCommand} from "../lib/case-command-contract.ts";
 import {proposeBusinessNet,adoptBusinessNet,preflightBusinessNet,reviewedBusinessIncomeIds,type BusinessNetSelection} from "../lib/business-net-reconciliation.ts";
 import {calculateCase} from "../lib/assessment.ts";
 import {buildFormBindings,MISSING_FORM_VALUE} from "../lib/form-mapping.ts";
@@ -174,4 +176,34 @@ test("policy validator rejects absent official sources and malformed cost approv
  validateBusinessIncomePolicy(valid);
  assert.throws(()=>validateBusinessIncomePolicy({schemaVersion:BUSINESS_INCOME_POLICY_VERSION,
   rules:[{...testRule,sourceUrls:["https://fake.example"]}]}),/INVALID_BUSINESS_INCOME_POLICY/);
+});
+
+
+test("case command keeps source facts immutable; lawyer-only adoption is persisted and auditable",async()=>{
+ setPolicy();
+ const {d,selection}=input(1,"2026-01-01","2026-01-31");
+ const beforeFacts=JSON.stringify(d.facts);
+ const command=(type:CaseCommand["commandType"],target:Record<string,unknown>,patch:Record<string,unknown>):CaseCommand=>({
+  commandId:"business-review-command-"+type.replaceAll(".","-"),
+  commandType:type,payloadVersion:1,expectedRevision:d.context.revision,
+  expectedStateFingerprint:"case-state/1:"+"f".repeat(64),
+  target,patch,reason:"Case facts, business identity and cost source evidence explicitly reviewed"
+ });
+ const proposed=await reduceCaseCommand(d,
+  command("business.net.propose",{},{
+    businessRegistrationFactId:selection.businessRegistrationFactId,grossFactId:selection.grossFactId,
+    costFactIds:selection.costFactIds,month:selection.month
+  }),{actor:"synthetic-caseworker",roles:["case_editor"],at:"2026-10-30T00:00:00Z"});
+ assert.equal(proposed.data.workflowState?.businessNetReviews.length,1);
+ assert.equal(JSON.stringify(proposed.data.facts),beforeFacts);
+ const reviewId=proposed.data.workflowState!.businessNetReviews[0].id;
+ await assert.rejects(reduceCaseCommand(proposed.data,
+  command("business.net.adopt",{reviewId},{}),{actor:"caseworker",roles:["case_editor","caseworker_review"],at:"2026-10-30T00:00:01Z"}),/지정된 사람 검토 권한/);
+ const adopted=await reduceCaseCommand(proposed.data,
+  command("business.net.adopt",{reviewId},{}),
+  {actor:"synthetic-lawyer",roles:["case_editor","lawyer_review"],at:"2026-10-30T00:00:02Z"});
+ assert.equal(adopted.data.workflowState!.businessNetReviews[0].status,"approved");
+ assert.equal(adopted.data.incomes.filter(x=>x.sourceCalculationRole==="period_income_observation").length,1);
+ assert.equal(JSON.stringify(adopted.data.facts),beforeFacts);
+ assert.equal(reviewedBusinessIncomeIds(adopted.data).size,1);
 });
