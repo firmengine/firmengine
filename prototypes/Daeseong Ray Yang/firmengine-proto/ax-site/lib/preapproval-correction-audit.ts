@@ -9,7 +9,7 @@ const uniq=(a:readonly string[])=>[...new Set(a)];
 export function auditPreapprovalCourtCorrections(data:CaseData,facts:readonly Fact[],acceptedValidFactIds:ReadonlySet<string>){
  const courtOrders=(data.workflowState?.procedureEvents??[]).filter(e=>e.state==="correction_requested");
  const recordedAmendments=(data.workflowState?.procedureEvents??[]).filter(e=>e.state==="amended");
- const active=new Set(data.documents.filter(d=>d.status==="active").map(d=>d.id));
+ const active=new Set((data.documents??[]).filter(d=>d.status==="active").map(d=>d.id));
  const deadlines=facts.filter(f=>["court.correctionDeadline","corrections.deadline"].includes(f.key));
  const orders=courtOrders.map(order=>{
   const orderSourceDocumentIds=uniq(order.sourceDocumentIds??[]);
