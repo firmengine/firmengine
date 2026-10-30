@@ -10,6 +10,7 @@ import { buildOcrChainMatrix } from "./ocr-chain-matrix.ts";
 import { getIntakeCatalog } from "./intake-store.ts";
 import { readCaseLegalAutomation } from "./case-legal-automation.ts";
 import { buildFeatureLineageAudit,evaluateCaseFieldLineage,auditLegalRiskContracts,auditCourtPracticeGaps } from "./feature-lineage-audit.ts";
+import { buildCalculationInputAudit } from "./calculation-input-audit.ts";
 
 export const CASE_SCHEMA_CONTRACT={
   version:"case-feature-storage/1",databaseBinding:"DB",databaseEngine:"Cloudflare D1 / SQLite",
@@ -55,6 +56,11 @@ export async function readCaseSchemaData(caseId:string,input:{view?:string;docum
     if(view==="feature_audit")return buildFeatureLineageAudit(active.catalog,active.sha256,{limit:input.limit,offset:input.offset});
     const all=buildFeatureLineageAudit(active.catalog,active.sha256,{limit:1000});
     return evaluateCaseFieldLineage(data,all.fields,{limit:input.limit,offset:input.offset});
+  }
+  if(view==="calculation_input_audit"){
+    const active=await getIntakeCatalog();
+    const all=buildFeatureLineageAudit(active.catalog,active.sha256,{limit:1000});
+    return buildCalculationInputAudit(all.fields);
   }
   if(view==="risk_feature_audit")return auditLegalRiskContracts();
   if(view==="court_gap_audit")return auditCourtPracticeGaps();
