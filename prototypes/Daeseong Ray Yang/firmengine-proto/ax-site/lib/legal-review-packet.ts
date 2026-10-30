@@ -5,7 +5,7 @@ import type { Finding } from "./assessment.ts";
 export const LEGAL_REVIEW_BATCH_SIZE=readPromptPolicyInteger("prompt.legal_review_packet.legal_review_batch_size");
 export const LEGAL_REVIEW_PACKET_CHAR_BUDGET=readPromptPolicyInteger("prompt.legal_review_packet.legal_review_packet_char_budget");
 const MAX_FACTS=readPromptPolicyInteger("prompt.legal_review_packet.max_facts"),MAX_FACTS_PER_FEATURE=readPromptPolicyInteger("prompt.legal_review_packet.max_facts_per_feature"),MAX_FACTS_PER_CHECK=readPromptPolicyInteger("prompt.legal_review_packet.max_facts_per_check"),MAX_FINDINGS=readPromptPolicyInteger("prompt.legal_review_packet.max_findings");
-export interface LegalReviewRisk {id:string;title:string;conditions:string;features:string[];request:string;legalRuleIds:string[];manual:boolean}
+export interface LegalReviewRisk {id:string;title:string;conditions:string;features:string[];request:string;legalRuleIds:string[];manual:boolean;canonicalFieldGroups?:string[][];requiredCalculationOutputs?:string[];evidenceContractStatus?:string}
 export interface LegalReviewPacketInput {data:CaseData;facts:Fact[];checks:LegalReviewRisk[];rules:any[];guidance:any[];findings:Finding[];transactionReview:any;executionContext?:unknown}
 export interface LegalReviewPacket {payload:Record<string,any>;text:string;providedFactIds:string[];coverage:Record<string,any>}
 const text=(value:unknown,max=500)=>String(value&&typeof value==="object"?JSON.stringify(value):value??"").slice(0,max);
@@ -32,8 +32,12 @@ function compactFact(fact:Fact,data:CaseData){const truncated:string[]=[];if(fac
 function selectedFacts(input:LegalReviewPacketInput){
   const all=input.facts,selected=new Map<string,Fact>(),counts:Record<string,{total:number;provided:number;omitted:number;axisFallbackTotal:number;axisFallbackProvided:number}>={};
   for(const check of input.checks){let checkCount=0;for(const feature of check.features){const key=`${check.id}:${feature}`,matches=all.map(fact=>({fact,tier:featureMatchTier(feature,fact)})).filter((item):item is {fact:Fact;tier:0|1|2}=>item.tier!==null).sort((a,b)=>a.tier-b.tier||priority(a.fact)-priority(b.fact));const specific=matches.filter(item=>item.tier<2).map(item=>item.fact),fallback=matches.filter(item=>item.tier===2).map(item=>item.fact),limit=Math.min(MAX_FACTS_PER_FEATURE,MAX_FACTS_PER_CHECK-checkCount),picked=specific.length?specific.slice(0,Math.max(0,limit)):fallback.slice(0,Math.max(0,limit));counts[key]={total:specific.length,provided:specific.slice(0,limit).length,omitted:Math.max(0,specific.length-limit),axisFallbackTotal:fallback.length,axisFallbackProvided:specific.length?0:picked.length};for(const fact of picked){selected.set(fact.id,fact);checkCount++;}}}
+  // Approved canonical OR groups select exact source fields, not guessed key aliases.
+  for(const check of input.checks)for(const group of check.canonicalFieldGroups??[])
+    for(const id of group)for(const fact of all.filter(f=>(f.canonicalFieldId??f.fieldObservation?.canonicalFieldId)===id).sort((a,b)=>priority(a)-priority(b)).slice(0,MAX_FACTS_PER_FEATURE))
+      selected.set(fact.id,fact);
   // Risk feature overlap is expected. Add a small shared evidence margin, never an unbounded fact prefix.
-  const ranked=[...selected.values()].sort((a,b)=>priority(a)-priority(b));const relevantIds=new Set(all.filter(fact=>input.checks.some(check=>check.features.some(feature=>factMatches(feature,fact)))).map(fact=>fact.id));return {facts:ranked.slice(0,MAX_FACTS),featureCounts:counts,totalRelevantFeatureFacts:relevantIds.size};
+  const ranked=[...selected.values()].sort((a,b)=>priority(a)-priority(b));const relevantIds=new Set(all.filter(fact=>input.checks.some(check=>check.features.some(feature=>factMatches(feature,fact))||(check.canonicalFieldGroups??[]).some(group=>group.includes(fact.canonicalFieldId??fact.fieldObservation?.canonicalFieldId??"")))).map(fact=>fact.id));return {facts:ranked.slice(0,MAX_FACTS),featureCounts:counts,totalRelevantFeatureFacts:relevantIds.size};
 }
 function compactFinding(finding:Finding){return {id:finding.id,category:finding.category,severity:finding.severity,outcome:finding.outcome,title:text(finding.title,180),detail:text(finding.detail,500),objectId:finding.objectId,factIds:finding.factIds.slice(0,12),ruleSourceIds:finding.ruleSourceIds.slice(0,8),nextAction:text(finding.nextAction,300)};}
 function transactionSummary(review:any){
@@ -44,7 +48,9 @@ function transactionSummary(review:any){
 }
 function compactRule(rule:any){const truncated:string[]=[];return {id:rule.id,title:clip(rule.title,220,"title",truncated),url:clip(rule.url??rule.source_url,500,"url",truncated),article:clip(rule.article,100,"article",truncated),effectiveFrom:rule.effective_date??rule.effectiveFrom,authorityScope:clip(rule.authority_scope,180,"authorityScope",truncated),condition:clip(rule.condition,600,"condition",truncated),effect:clip(rule.effect,600,"effect",truncated),truncatedFields:truncated};}
 function compactGuidance(item:any){const truncated:string[]=[];const list=(values:unknown[],max:number,key:string)=>{if(values.length>max)truncated.push(key);return values.slice(0,max).map(value=>typeof value==="string"?clip(value,160,key,truncated):value);};const calc=JSON.stringify(item.calculation??"");return {id:clip(item.id,100,"id",truncated),trigger:clip(item.trigger,300,"trigger",truncated),documents:Array.isArray(item.documents)?list(item.documents,8,"documents"):[],features:Array.isArray(item.features)?list(item.features,12,"features"):[],ruleIds:Array.isArray(item.ruleIds)?list(item.ruleIds,12,"ruleIds"):[],calculation:clip(calc,500,"calculation",truncated),outputTargets:Array.isArray(item.outputTargets)?list(item.outputTargets,8,"outputTargets"):[],missingAction:clip(item.missingAction,400,"missingAction",truncated),decisionBoundary:clip(item.decisionBoundary,500,"decisionBoundary",truncated),implementationGap:clip(item.implementationGap,500,"implementationGap",truncated),truncatedFields:truncated};}
-function compactRisk(check:LegalReviewRisk,providedRuleIds:Set<string>){const truncated:string[]=[];if(check.features.length>20)truncated.push("features");return {id:check.id,title:clip(check.title,220,"title",truncated),conditions:clip(check.conditions,900,"conditions",truncated),features:check.features.slice(0,20),request:clip(check.request,800,"request",truncated),legalRuleIds:check.legalRuleIds.filter(id=>providedRuleIds.has(id)),manual:check.manual,truncatedFields:truncated};}
+function compactRisk(check:LegalReviewRisk,providedRuleIds:Set<string>){const truncated:string[]=[];if(check.features.length>20)truncated.push("features");return {id:check.id,title:clip(check.title,220,"title",truncated),conditions:clip(check.conditions,900,"conditions",truncated),features:check.features.slice(0,20),request:clip(check.request,800,"request",truncated),legalRuleIds:check.legalRuleIds.filter(id=>providedRuleIds.has(id)),manual:check.manual,canonicalFieldGroups:check.canonicalFieldGroups??[],
+    requiredCalculationOutputs:check.requiredCalculationOutputs??[],
+    evidenceContractStatus:check.evidenceContractStatus??"unmapped",truncatedFields:truncated};}
 export function buildLegalReviewPacket(input:LegalReviewPacketInput):LegalReviewPacket{
   const picked=selectedFacts(input),facts=picked.facts.map(fact=>compactFact(fact,input.data)),providedFactIds=facts.map(fact=>fact.id),provided=new Set(providedFactIds);
   const findingsByRisk=input.checks.map(check=>{const evidenceIds=new Set(input.facts.filter(fact=>check.features.some(feature=>featureMatchTier(feature,fact)!==null&&featureMatchTier(feature,fact)!==2)).map(fact=>fact.id));return input.findings.filter(finding=>finding.outcome!=="pass"&&finding.factIds.some(id=>evidenceIds.has(id))).slice(0,3);});
@@ -83,7 +89,7 @@ export function currentCompletedLegalCheckIds(rows:Array<{payload:string}>,recei
   }catch{/* malformed historical rows do not suppress a current review */}}
   return completed;
 }
-export function gateLegalReviewChecks(input:{batch:LegalReviewRisk[];response:AdvisoryCheck[];providedFacts:Fact[];eligibleFactIds:Set<string>;validRuleIds:Set<string>;coverage:Record<string,any>}):AdvisoryCheck[]{
+export function gateLegalReviewChecks(input:{batch:LegalReviewRisk[];response:AdvisoryCheck[];providedFacts:Fact[];eligibleFactIds:Set<string>;validRuleIds:Set<string>;coverage:Record<string,any>;calculationValues?:Record<string,unknown>}):AdvisoryCheck[]{
   const ids=new Set(input.batch.map(check=>check.id));
   // The caller derives this allowlist from source hash / structured-record and lineage validation.
   // Never infer source eligibility from model-provided identifiers or a nonempty refs array here.
@@ -96,6 +102,12 @@ export function gateLegalReviewChecks(input:{batch:LegalReviewRisk[];response:Ad
     if(["pass","not_applicable"].includes(item.status)&&!legalCheckCoverageComplete(check,input.coverage)){item.status="missing";item.reason+=" / 이 체크의 관련 원문 사실·규칙·예외 가이드·목록 중 일부 생략 또는 문구 절단이 있어 통과·비해당으로 확정하지 않았습니다.";}
     const citedClearableFacts=input.providedFacts.filter(fact=>item.factIds.includes(fact.id)&&clearable.has(fact.id));
     const missingFeatureCitation=!check.manual&&check.features.some(feature=>!citedClearableFacts.some(fact=>{const tier=featureMatchTier(feature,fact);return tier!==null&&tier<2;}));
+    const missingCanonical=(check.canonicalFieldGroups??[]).some(group=>!group.some(id=>citedClearableFacts.some(f=>(f.canonicalFieldId??f.fieldObservation?.canonicalFieldId)===id)));
+    const missingCalculation=(check.requiredCalculationOutputs??[]).filter(name=>{
+      const value=input.calculationValues?.[name];return value===null||value===undefined||value===""||value==="unknown";
+    });
+    if(["pass","not_applicable"].includes(item.status)&&check.evidenceContractStatus!=="approved_evidence_route"){item.status="legal_review";item.reason+=" / 법원별 피처·계산 근거 계약이 미승인 상태로 자동 법률 통과 불가.";}
+    if(["pass","not_applicable"].includes(item.status)&&(missingCanonical||missingCalculation.length)){item.status="missing";item.reason+=" / 승인된 증거 피처군 또는 계산 출력의 필수 근거가 누락됨.";item.nextAction="관련 OCR 원본/계산 근거를 확보하고 재판단하세요.";}
     if(["pass","not_applicable"].includes(item.status)&&(!item.factIds.length||item.factIds.some(id=>!clearable.has(id))||missingFeatureCitation)){item.status="missing";item.reason+=" / 제공되고 검증·인정된 사실근거가 없거나 각 필수 피처의 인용 근거가 빠져 해소하지 않았습니다.";}
     if(check.manual&&["pass","not_applicable"].includes(item.status))item.status="legal_review";
     if(item.status==="not_applicable"&&!input.providedFacts.some(fact=>item.factIds.includes(fact.id)&&[false,"no","없음"].includes(fact.value as string|boolean)&&check.features.some(key=>axis(key)===axis(fact.key)))){item.status="legal_review";item.reason+=" / 제공된 해당 조건의 명시적 음성 증거가 없어 비해당으로 처리하지 않았습니다.";}

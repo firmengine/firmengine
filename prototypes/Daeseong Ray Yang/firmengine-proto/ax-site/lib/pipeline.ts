@@ -7,6 +7,7 @@ import { canRecoverClassification, recoveredClassificationRole, observedClassifi
 import { documentFamily,equivalentDocumentTypes } from "./document-routing";
 import { buildSharedDocumentCatalog, encodeDocumentRoute } from "./shared-document-catalog.ts";
 import { getIntakeCatalog } from "./intake-store.ts";
+import {legalEvidenceCriterion} from "./legal-evidence-criteria.ts";
 import { persistPageExtractionRows } from "./extraction-row-store.ts";
 import { AI_MODEL,OCR_MODEL,applyExtraction,createCaseReadIndex,currentFacts,extractionCacheKey,factHasValidStructuredRefs,factSourceLineageIssues,touchCase,validSourceRef,type CaseData,type EvidenceModel } from "./domain";
 import { callLuna,imageContent,type Usage } from "./luna";
@@ -546,7 +547,11 @@ export async function reviewLegal(caseId:string){
     .bind(caseId).first<{version:number}>();
   if(!sourceRow||!Number.isSafeInteger(sourceRow.version))throw new Error("LEGAL_SOURCE_VERSION_UNAVAILABLE");
   const sourceDataVersion=sourceRow.version;
-  const catalog=RISK_CATALOG.map(r=>({id:r.id,title:r.title,conditions:r.conditions,features:r.required_features,request:r.evidence_request,legalRuleIds:r.current_rule_ids,manual:!r.implementation.may_auto_clear}));
+  const catalog=RISK_CATALOG.map(r=>{const policy=legalEvidenceCriterion(r.id,data.context.courtId,data.context.applicationDate);
+    return {id:r.id,title:r.title,conditions:r.conditions,features:r.required_features,
+      request:r.evidence_request,legalRuleIds:r.current_rule_ids,manual:!r.implementation.may_auto_clear,
+      canonicalFieldGroups:policy.requiredCanonicalFieldGroups,requiredCalculationOutputs:policy.requiredCalculationOutputs,
+      evidenceContractStatus:policy.status};});
   const old=await db().prepare("SELECT payload FROM analyses WHERE case_id = ? AND revision = ? AND type = 'legal_advisory' AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? AND json_extract(payload,'$.sourceDataVersion') = ? ORDER BY at DESC LIMIT 1000").bind(caseId,data.context.revision,calculator.receipt.inputSha256,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION,sourceDataVersion).all<{payload:string}>();
   const completed=currentCompletedLegalCheckIds(old.results,{inputSha256:calculator.receipt.inputSha256,referenceSha256:calculator.receipt.referenceRelease.sha256,contractVersion:EXECUTION_CONTRACT_VERSION},new Set(catalog.map(item=>item.id)));
   const batch=catalog.filter(r=>!completed.has(r.id)).slice(0,LEGAL_REVIEW_BATCH_SIZE).map(r=>({id:r.id,title:r.title,conditions:r.conditions??"",features:r.features??[],request:r.request??"",legalRuleIds:r.legalRuleIds??[],manual:r.manual}));if(!batch.length)return {remaining:0,stage:"legal_complete"};
@@ -557,7 +562,7 @@ export async function reviewLegal(caseId:string){
   const {value,usage}=await callLuna<Advisory>({agent:"legal_checklist_reviewer",instructions:legalReviewInstructions(),input:[{role:"user",content:[{type:"input_text",text:packet.text}]}],schema:LEGAL_REVIEW_SCHEMA,maxOutput:9000});
   const validRuleIds=new Set<string>(packet.payload.rules.map((r:any)=>String(r.id)));
   const packetFactIds=new Set(packet.providedFactIds),providedFacts=facts.filter(f=>packetFactIds.has(f.id)&&f.state!=="disputed"&&f.state!=="retracted"&&f.recognition!=="rejected"&&(factHasValidStructuredRefs(data,f)||f.refs.length&&f.refs.every(ref=>validSourceRef(data,ref,sourceIndex)))&&!factSourceLineageIssues(data,[f.id],sourceIndex).some(issue=>["STALE_OR_RETRACTED_FACT","DISPUTED_OR_REJECTED_FACT","SOURCE_REFERENCE_INVALID","SOURCE_VERIFICATION_RECEIPT_INVALID"].includes(issue)));
-  const checks=gateLegalReviewChecks({batch,response:value.checks,providedFacts,eligibleFactIds:new Set(providedFacts.map(f=>f.id)),validRuleIds,coverage:packet.coverage});
+  const checks=gateLegalReviewChecks({batch,response:value.checks,providedFacts,eligibleFactIds:new Set(providedFacts.map(f=>f.id)),validRuleIds,coverage:packet.coverage,calculationValues:assessment.calculation as unknown as Record<string,unknown>});
   // Usage is logged separately here to avoid moving the case revision between checklist batches.
   await event(caseId,"model.call",{agent:"legal_checklist",...usage});
   const afterRow=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")

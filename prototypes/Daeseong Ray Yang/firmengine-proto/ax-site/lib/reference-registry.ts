@@ -3,6 +3,7 @@ import release from "./reference-release.json" with { type: "json" };
 import { readReferenceValue, currentReferenceSnapshot, freezeReferenceValue } from "./reference-runtime.ts";
 import {MANAGED_REFERENCE_RECORDS} from "./managed-reference-contracts.ts";
 import {SUBSTITUTION_POLICY_REFERENCE_ID,validateSubstitutionPolicy} from "./substitution-policy.ts";
+import {LEGAL_EVIDENCE_POLICY_REFERENCE_ID,validateLegalEvidencePolicy} from "./legal-evidence-criteria.ts";
 
 export interface ReferenceConsumer { path: string; symbol: string; line?: number; jsonPointer?: string; sha256?: string; fileSha256?: string }
 export interface ReferenceRecord {
@@ -53,6 +54,10 @@ function sameShape(original:unknown,value:unknown,depth=0):boolean {
   return typeof value==="boolean";
 }
 export function validateReferenceValue(record: ReferenceRecord, value: unknown): void {
+  if(record.id===LEGAL_EVIDENCE_POLICY_REFERENCE_ID){
+    if(!record.editable||record.lockedSafetyInvariant)throw Error("REFERENCE_RECORD_REQUIRES_CODE_RELEASE");
+    validateLegalEvidencePolicy(value);return;
+  }
   if(record.id===SUBSTITUTION_POLICY_REFERENCE_ID){
     if(!record.editable||record.lockedSafetyInvariant)throw new Error("REFERENCE_RECORD_REQUIRES_CODE_RELEASE");
     validateSubstitutionPolicy(value);return;
