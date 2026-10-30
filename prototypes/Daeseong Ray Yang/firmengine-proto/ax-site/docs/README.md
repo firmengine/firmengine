@@ -31,3 +31,5 @@
 
 - [693개 OCR canonical 피처 전수 등록표](ocr-693-field-register.md)
 - [법률 위험 95건 필수 피처 계약 검토표](legal-risk-95-field-contract-review.md)
+
+- [18개 법적 계산 모듈 입력·OCR 연결 상태](calculation-input-coverage-20261030.md)
