@@ -15,7 +15,7 @@ type IdentityView={registrationRows:RegistrationRow[];businessSourceRows:{
 type ReviewStatus={caseRevision:number;officialPolicyApproved:boolean;policyRuleId:string|null;
  approvedCurrent:number;receipts:{id:string;month:string;incomeId:string;status:string;current:boolean;
  proposedBy:string;reviewer:string|null}[]};
-type MoneySourceRow={factId:string;amountWon:string|null;role:string;sourceDocumentIds:string[];sourcePages:number[];verifiedAndAcceptedSource:boolean};
+type MoneySourceRow={factId:string;sourceRecordId:string;amountWon:string|null;role:string;sourceDocumentIds:string[];sourcePages:number[];verifiedAndAcceptedSource:boolean};
 type SourcesView={rows:MoneySourceRow[];total:number;nextOffset:number|null;caseRevision:number};
 type Loaded={months:MonthView;identity:IdentityView;status:ReviewStatus;sourceRows:MoneySourceRow[]};
 async function readJson<T>(url:string):Promise<T>{
@@ -77,7 +77,8 @@ export default function BusinessMonthlyReview({caseId,revision,roles,busy,review
  const money=(v:string|null)=>v===null?"확인 필요":(/^\-?\d+$/.test(v)?BigInt(v).toLocaleString("ko-KR")+"원":v);
  const sourceLabel=(id:string)=>{
   const f=byId.get(id);
-  return f?money(f.amountWon)+" · "+f.sourceDocumentIds.join(",")+" "+f.sourcePages.join(",")+"쪽":id;
+  const owner=data?.identity.businessSourceRows.find(row=>row.sourceRecordId===f?.sourceRecordId);
+  return f?money(f.amountWon)+" · "+f.sourceDocumentIds.join(",")+" "+f.sourcePages.join(",")+"쪽 · 사업체 "+(owner?.ownerNameObserved??"원문 확인 필요"):id;
  };
  return <section className="panel" aria-label="사업소득 월별 근거 검토">
   <div className="panel-heading"><div className="panel-title"><h2>사업소득 월별 원문·법률 검토</h2></div></div>
