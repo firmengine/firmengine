@@ -18,6 +18,7 @@ import referenceRelease from "./reference-release.json" with { type: "json" };
 import { workflowHealth,type HealthJob,type HealthCommand } from "./workflow-health.ts";
 import { commandHash } from "./case-command-contract.ts";
 import { readCaseLegalAutomation } from "./case-legal-automation.ts";
+import {inspectCurrentFinalLawgraph} from "./final-lawgraph-readiness.ts";
 export async function caseWorkflowResponse(caseId:string){
   await drainCaseRecomputeJobs(caseId,1);
   const data=await getCase(caseId),workflow=caseWorkflow(data.workflowState);
@@ -80,13 +81,17 @@ export async function caseWorkflowResponse(caseId:string){
   const legalRuns=projectLegalRunConflicts(rawLegalRuns).map(({id:_id,subjectFingerprint:_subject,dependencyFingerprint:_dependency,...run})=>run);
   const stateFingerprint=await caseStateFingerprint(data);
   const health=workflowHealth({data,stateFingerprint,jobs:recomputeJobs.results.slice(0,50),commands:commandRows.results.slice(0,20),jobsTruncated:recomputeJobs.results.length>50,commandsTruncated:commandRows.results.length>20,requiredUnresolved:view.requirementStates.filter(item=>!["satisfied","not_applicable_confirmed","waived_by_review","retired"].includes(item.requirementStatus)).length,reconciliationIssues:execution.planReconciliation.issues,now:new Date().toISOString()});
-  const legalAutomation=await readCaseLegalAutomation(db(),caseId).catch(()=>({
+  const finalLegalReadiness=workflow.requirements.length?await inspectCurrentFinalLawgraph(db(),{caseId,caseRevision:data.context.revision,
+  referenceSha256:legalReference,humanDispositions:legalRuns.map(run=>({checkId:run.checkId,state:"current",disposition:run.disposition??null}))})
+  .catch(error=>({readyForFinalReviewCopy:false,blockers:["LAWGRAPH_READINESS_UNAVAILABLE"],error:error instanceof Error?error.message:"UNKNOWN"}))
+  :{readyForFinalReviewCopy:false,blockers:["WORKFLOW_NOT_ADOPTED"]};
+const legalAutomation=await readCaseLegalAutomation(db(),caseId).catch(()=>({
     status:"unavailable" as const,reason:"LEGAL_AUTOMATION_STORAGE_NOT_READY",
     autoSubmission:false,automaticCourtApproval:false,humanFinalReviewRequired:true
   }));
   return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,legalAutomation,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
     health,
-    artifacts,fieldBases,legalRuns,legalCoverageTruncated,
+    artifacts,fieldBases,legalRuns,legalCoverageTruncated,finalLegalReadiness,
     documents:data.documents.filter(d=>d.status==="active").map(d=>({id:d.id,name:d.name,sha256:d.sha256,pages:d.pages,status:d.status})),
     proofCandidates:currentFacts(data).filter(f=>f.state==="verified"&&f.recognition==="accepted"&&f.canonicalFieldId).slice(0,500).map(f=>({id:f.id,fieldId:f.canonicalFieldId,subjectId:f.subjectId,sourcePages:f.refs.map(ref=>({documentId:ref.documentId,page:ref.page}))})),
     entities:[{id:data.context.id,label:data.context.caseName,kind:"person"},...data.incomes.map(v=>({id:v.id,label:v.label,kind:"income"})),...data.debts.map(v=>({id:v.id,label:v.creditor,kind:"debt"})),...data.assets.map(v=>({id:v.id,label:v.label,kind:"asset"}))],

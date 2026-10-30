@@ -17,6 +17,7 @@ import { legalReviewInputFingerprint,currentLegalDispositionOutcome } from "../.
 import { snapshotSha256 } from "../../../../../lib/calculator-tools.ts";
 import { EXECUTION_CONTRACT_VERSION } from "../../../../../lib/execution-catalog.ts";
 import { buildDocumentFieldBases } from "../../../../../lib/document-field-bases.ts";
+import { inspectCurrentFinalLawgraph } from "../../../../../lib/final-lawgraph-readiness.ts";
 async function currentLegalDispositionStates(data:Awaited<ReturnType<typeof getCase>>,extras:Awaited<ReturnType<typeof caseExtras>>){
   if(!data.workflowState?.legalDispositions?.length)return [];
   const referenceHash=extras.referenceSnapshot?.sha256;if(!referenceHash)return [];
@@ -65,6 +66,13 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
       requirements:workflowView.requirementStates.filter(requirement=>activeRequirementIds.has(requirement.requirementId)),
       legalChecks,featureGaps});
     if(blockers.length)throw new HttpError(422,"필수 증빙 처리, 투영 연결 또는 담당자 검토가 끝나야 최종 문서를 작성할 수 있습니다.");
+    // New adopted workflows require a current persisted LawGraph review and
+    // current human decisions; historical advisory batches alone cannot clear final.
+    if(data.workflowState.requirements.length){
+      const legal=await inspectCurrentFinalLawgraph(db(),{caseId:id,caseRevision:data.context.revision,
+        referenceSha256:extras.referenceSnapshot?.sha256??"",humanDispositions:legalChecks});
+      if(!legal.readyForFinalReviewCopy)throw new HttpError(422,"현재 법률 검토 95개 항목 또는 법률 담당자 승인 조건을 충족하지 못했습니다: "+legal.blockers.slice(0,6).join(", "));
+    }
   }
   let prepared;
   try{prepared=await prepareDocumentWrite({data,evaluation:extras.derivedEvaluation,processingComplete:extras.processingReadiness.complete,mode,requiredKinds:requiredKindsForCase(data),now:now()});}
