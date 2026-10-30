@@ -60,7 +60,8 @@ export function auditMaterialCalculatorSources(data:CaseData,index:CaseReadIndex
    if(fact.fieldObservation?.sourceState!=="present"||moneyValue(fact.numeric)===null){
      add("CALC_INPUT_AMOUNT_INVALID",field,fact.id);continue;
    }
-   if(fact.state==="disputed"||fact.recognition==="rejected"||!fact.refs.length||
+   // A reported/extracted amount is not a source-verified amount, even when its numeric value matches typed debt.
+   if(fact.state!=="verified"||fact.recognition==="rejected"||!fact.refs.length||
      fact.refs.some(ref=>!validSourceRef(data,ref,index))){
      add("CALC_INPUT_SOURCE_INVALID",field,fact.id);continue;
    }
