@@ -123,3 +123,14 @@ test("source-only DB change invalidates calculator/legal head without treating p
   assert.equal((await drainCaseLegalAutomation(h.db,{caseId:input.caseId,services})).scanned,0);
  }finally{h.close();}
 });
+
+test("direct source case-payload rewrite without revision still increments SQL source change version",async()=>{
+ const h=setup();try{
+  const input=await h.initialize();
+  const before=(h.sqlite.prepare("SELECT data_version AS v FROM case_data_change_state WHERE case_id=?").get(input.caseId) as {v:number}).v;
+  h.sqlite.prepare("UPDATE cases SET payload=? WHERE id=?").run(JSON.stringify({...input.data,context:{...input.data.context,caseName:"Updated directly"}}),input.caseId);
+  const after=(h.sqlite.prepare("SELECT data_version AS v FROM case_data_change_state WHERE case_id=?").get(input.caseId) as {v:number}).v;
+  assert.equal(after,before+1);
+  assert.equal((await readCaseLegalAutomation(h.db,input.caseId)).status,"waiting_for_calculation");
+ }finally{h.close();}
+});
