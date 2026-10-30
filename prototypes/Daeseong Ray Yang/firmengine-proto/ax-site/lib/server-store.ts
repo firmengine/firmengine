@@ -1,4 +1,5 @@
 import { currentReferenceSnapshot, referenceIdentity } from "./reference-runtime.ts";
+import {assertNonSourceCaseChange,REVIEW_ONLY_COMMANDS,type NonSourceMutationCategory} from "./case-mutation-classifier.ts";
 import { resolveReferenceApplicationForCase } from "./reference-application.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
 import { env } from "cloudflare:workers";
@@ -74,7 +75,14 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only"}){
+  if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
+  const category:NonSourceMutationCategory|"source"=
+    mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
+  if(category!=="source"){
+    try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
+    catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
+  }
   for(const snapshot of [previous,data])if(snapshot.workflowState&&(snapshot.workflowState.schema!=="case-workflow/1"||snapshot.workflowState.version!==undefined&&(!Number.isSafeInteger(snapshot.workflowState.version)||snapshot.workflowState.version<1)))throw new HttpError(409,"지원하지 않는 사건 업무 스키마입니다. 호환 판본에서 확인하세요.");
   if(data.workflowState&&data.workflowState.version===undefined)throw new HttpError(409,"사건 업무 형식 전환을 먼저 완료하세요.");
   const snapshot=caseSnapshots.get(previous);
@@ -94,7 +102,7 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   }catch(error){await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw error;}
   const guard="EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)";
   const batch:D1PreparedStatement[]=[
-    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")).bind(payload,data.context.revision,data.context.caseName,at,token,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[])),
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[])),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
   if(mutation){
@@ -104,6 +112,12 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     batch.push(db().prepare(`INSERT INTO case_recompute_jobs (id,case_id,job_kind,input_fingerprint,contract_fingerprint,status,result_ref,created_at,updated_at) SELECT ?,?,?,?,?,'pending',?,?,? WHERE ${guard}`).bind(jobId,data.context.id,"deterministic_evaluation",afterStateHash,`${EXECUTION_CONTRACT_VERSION}:${pending.referenceSha256}`,JSON.stringify({evaluationId,storageToken:token,inputSha256,revision:data.context.revision}),at,at,data.context.id,data.context.revision,token));
     for(const task of data.workflowState?.tasks??[])batch.push(db().prepare(`INSERT INTO case_tasks (id,case_id,dedupe_key,type,owner_id,due_at,waiting_on,blocked_by,status,dependency_fingerprint,payload,created_at,updated_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard} ON CONFLICT(case_id,dedupe_key) DO UPDATE SET owner_id=excluded.owner_id,due_at=excluded.due_at,waiting_on=excluded.waiting_on,blocked_by=excluded.blocked_by,status=excluded.status,dependency_fingerprint=excluded.dependency_fingerprint,payload=excluded.payload,updated_at=excluded.updated_at`).bind(task.id,data.context.id,task.dedupeKey,task.type,task.ownerId,task.dueAt,task.waitingOn,JSON.stringify(task.blockedBy),task.status,task.dependencyFingerprint,JSON.stringify(task),task.createdAt,task.updatedAt,data.context.id,data.context.revision,token));
     batch.push(...(mutation.guardedStatements?.(token)??[]));
+  }
+  if(category!=="source"){
+    // The trigger sees review_only/artifact_only once; clear the marker in the
+    // same atomic D1 batch so later direct SQL changes remain source-watched.
+    batch.push(db().prepare("UPDATE cases SET mutation_category='source' WHERE id=? AND revision=? AND storage_token=? AND mutation_category=?")
+      .bind(data.context.id,data.context.revision,token,category));
   }
   let committed=false;
   try{const results=await db().batch(batch);committed=!!results[0].meta.changes;}

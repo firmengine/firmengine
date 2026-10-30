@@ -100,6 +100,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     const objectKey=`cases/${id}/artifacts/${file.id}`;
     return {objectKey,bytes:file.bytes,mime:file.mime,record:{id:file.id,name:file.name,kind:file.kind,hash:file.hash,mime:file.mime,objectKey}};
   });
+  let savedCase:typeof data|undefined;
   await commitExportArtifactTransaction({
     artifacts:staged,
     upload:(key,bytes,mime)=>bucket().put(key,bytes,{httpMetadata:{contentType:mime}}),
@@ -117,13 +118,20 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
           ||latest.calculationRunId!==finalLegalReceipt.calculationRunId)
           throw new HttpError(409,"문서 작성 중 OCR·계산·법률 검토 판본이 변경되어 최종 문서 저장을 중단했습니다.");
       }
-      data.exportManifest={...newExportManifest(data.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),data,mode),documentWriter:writerReceipt} as typeof data.exportManifest;
-      await saveCase(data,data.context.revision,data);
+      // Use a fresh pre-mutation CAS snapshot, never the already-mutated
+      // rendering object as both "before" and "after".
+      const current=await getCase(id);
+      if(await snapshotSha256(current)!==await snapshotSha256(data))
+        throw new HttpError(409,"문서 작성 중 사건 상태가 변경되었습니다. 현재 판본으로 다시 생성하세요.");
+      const next=structuredClone(current);
+      next.exportManifest={...newExportManifest(next.context.revision,generated.map(f=>({id:f.id,kind:f.kind,name:f.name,hash:f.hash,status:"current"})),next,mode),documentWriter:writerReceipt} as typeof next.exportManifest;
+      await saveCase(next,current.context.revision,current,undefined,{mutationCategory:"artifact_only"});
+      savedCase=next;
     },
     deleteRecords:records=>db().batch(records.map(f=>db().prepare("DELETE FROM artifacts WHERE id = ? AND case_id = ? AND object_key = ?").bind(f.id,id,f.objectKey))),
     deleteObject:key=>bucket().delete(key),
     onCleanupFailure:report=>event(id,"export.cleanup_failed",{artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,failureCount:report.cleanupErrors.length}),
   });
   await event(id,"document_writer.prepared",writerReceipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt});
-  return jsonResponse(await caseResponse(data),request,{headers:{"Cache-Control":"no-store"}});
+  return jsonResponse(await caseResponse(savedCase??data),request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return errorResponse(e);}}
