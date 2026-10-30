@@ -9,7 +9,7 @@
 | 단계 | 실제 저장·읽기 경로 | 확인해야 할 결과와 역질문 |
 |---|---|---|
 | P1 상담·필수서류 | `consultation_heads`, `case_document_requirements`, `case_requirement_field_plans`, `case_document_work_events`, `cases.payload.workflowState`, `caseRequirementMonitor()` | 85 서류별 대상·기간·원문 OCR 후보와 실제 접수/확정/갈음 상태. 상담 결과 미연계·미접수·불명확은 완료 금지 |
-| P2 원문·피처 무결성 | `document_instances`, `case_extraction_heads`, `extraction_runs`, `extraction_records`, `extracted_features`, `cases.payload.facts`, `currentFacts()`, `factSourceLineageIssues()` | 693 canonical ID 전수 레지스트리, 실제 OCR row/page/대상/기간/원본 SHA, verified vs accepted, 중복·상충·누락 |
+| P2 원문·피처 무결성 | `inspectPreapprovalOcrStorage()` (D1 `case_extraction_heads` + `extraction_runs` + `extraction_field_coverage` + `documents`의 현행원본 SHA) 및 `cases.payload.facts`, `currentFacts()`, `factSourceLineageIssues()` | 693 canonical ID 전수 레지스트리, 실제 OCR row/page/대상/기간/원본 SHA, verified vs accepted, 중복·상충·누락 |
 | P3 계산과 저장 원장 | `executeCaseNodes()`, `getCalculationSpecs()`, `case_calculation_heads/runs/features`, `calculationFeatureRows()` | 18×91 사용 입력→출처 Fact→BigInt 산식→42 출력 선언/실제 SQL row; 선택된 모듈 미적재는 `not_persisted`, 결손 숫자=0 금지 |
 | P4 법률·인가요건 | `listCaseLawgraphReview()`, `legalEvidenceInventory()`, `case_legal_review_runs`, `case_legal_conditions`, 법률 규칙 50·위험 95·예외 46 | 제614조 법적 적합·공정/형평·수행가능·비용납부·청산가치, 이의 시 추가 조건; 확인된 값과 판본·관할/시행일 대조 후 변호사 검토 |
 | P5 실제 보정·응답 | `cases.payload.workflowState.procedureEvents`, `auditPreapprovalCourtCorrections()` | 법원 원본명령 존재 → 요청 항목 분리 → 보완 사실 → 주문별 기한 → 접수증/재보정 → 담당 변호사 적합성. **내부 예상 보완과 실제 법원 주문 분리** |
@@ -27,7 +27,7 @@ node scripts/run-preapproval-regressions.mjs --full
 GET /api/cases/{id}/approval-readiness?expectedRevision={current_revision}
 ```
 
-응답 구조: `stageAudit.stages[0..4]`, `stageAudit.coverage`, `stageAudit.stages[2].allModules`, `stageAudit.stages[4].courtOrderAudit`, `judgmentGraph`, `evidence.featureInventory`, `calculation.traces`, `legalReview`, `dependencyFailures`. 조회는 read-only, 기존 DB·판단·사람 법률승인은 수정하지 않음.
+응답 구조: `stageAudit.stages[0..4]`, `stageAudit.coverage`, `stageAudit.stages[2].allModules`, `stageAudit.stages[4].courtOrderAudit`, `storedOcrCoverage`(현재 실제 OCR D1 관측), `judgmentGraph`, `evidence.featureInventory`, `calculation.traces`, `legalReview`, `dependencyFailures`. 조회는 read-only, 기존 DB·판단·사람 법률승인은 수정하지 않음.
 
 ## C. 공식 자료에 바탕을 둔 합성 사건 42개 — 규칙 및 계산 input/output 1:1 경로
 
@@ -90,7 +90,7 @@ GET /api/cases/{id}/approval-readiness?expectedRevision={current_revision}
 
 ## E. 실제 완료/미완료
 
-- ✅ **Node v22.16 격리 테스트**: 신규 순수 분석모듈 32/32 통과. 실제 GitHub 저장소의 과거 모든 테스트를 실행했다는 주장은 아님.
+- ✅ **Node v22.16 격리 테스트**: 신규 순수 분석모듈 38/38 통과. 실제 GitHub 저장소의 과거 모든 테스트를 실행했다는 주장은 아님.
 - ✅ GitHub 원본 등록 데이터 읽기 교차감사: 85/693/18×91/42/50/95/46 등록 수와 42 사례의 모든 법률규칙·예외·계산 ID/입력/출력 대조(미연결 ID 0건).
 - 🟡 전체 저장소에서 `npm ci`, source check, lint, build, 전체 단위회귀, 기존 golden/OCR 18모듈 실제 실행: **아직 실행 인증 없음**.
 - 🟡 운영 D1/R2와 실제 모델/OCR/법원 보정 원문: 이번 테스트 **미접근**. 추가 통합 테스트와 담당 변호사의 인가 실무 검수가 필수.
@@ -105,3 +105,10 @@ GET /api/cases/{id}/approval-readiness?expectedRevision={current_revision}
 4. 모든 판본변경/후속 보완이 관련 쟁점만 재평가되도록 실행 DAG, 독립 검수·시뮬레이터를 단계적으로 운영 연결한다.
 
 기본 규칙: 기존 계산/법률/서류 생성 흐름 무변경, 저장된 실제 Fact와 가정값 분리, 법률판단/인가 책임은 변호사와 법원에 유지.
+
+## G. P2 운영 원본 OCR 실제 DB 교차대조 신규 적용
+
+- `lib/preapproval-ocr-storage-audit.ts`는 **현재 활성 문서 ID**로만 `case_extraction_heads`를 찾고, `extraction_runs.stage='committed'` 및 DB 원본 SHA와 현재 사건 문서 SHA를 확인한다. 증빙 페이지 누락 또는 변경된 SHA는 `source_integrity_or_page_gap`으로 보고한다.
+- 각 문서의 `extraction_field_coverage`를 실제 저장된 canonical ID 단위로 집계하여 `storedOcrCoverage.byCanonicalField[].schemaSlots/observed/requiresReview/notObservedSlots`를 반환한다. 등록된 693 ID 전체를 필수라 오인하지 않고 **현재 문서 OCR 스키마에 적용된 필드만 관측**한다.
+- 알 수 없는 canonical ID, 삭제된 문서/비활성 head, 예상 증빙 페이지 OCR 누락, 쿼리 오류는 fail closed. OCR 원문값이 검증된 Fact로 자동 승격되거나 법원 보정 충족으로 인정되지 않는다.
+- 관련 테스트 `tests/preapproval-ocr-storage-audit.test.ts` 6개를 추가했다. 격리 모듈 테스트 포함 총 38개 통과; 실제 운영 D1 쿼리 실행 인증은 여전히 없음.
