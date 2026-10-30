@@ -90,7 +90,7 @@ GET /api/cases/{id}/approval-readiness?expectedRevision={current_revision}
 
 ## E. 실제 완료/미완료
 
-- ✅ **Node v22.16 격리 테스트**: 신규 순수 분석모듈 38/38 통과. 실제 GitHub 저장소의 과거 모든 테스트를 실행했다는 주장은 아님.
+- ✅ **Node v22.16 격리 테스트**: 신규 순수 분석모듈 39/39 통과. 실제 GitHub 저장소의 과거 모든 테스트를 실행했다는 주장은 아님.
 - ✅ GitHub 원본 등록 데이터 읽기 교차감사: 85/693/18×91/42/50/95/46 등록 수와 42 사례의 모든 법률규칙·예외·계산 ID/입력/출력 대조(미연결 ID 0건).
 - 🟡 전체 저장소에서 `npm ci`, source check, lint, build, 전체 단위회귀, 기존 golden/OCR 18모듈 실제 실행: **아직 실행 인증 없음**.
 - 🟡 운영 D1/R2와 실제 모델/OCR/법원 보정 원문: 이번 테스트 **미접근**. 추가 통합 테스트와 담당 변호사의 인가 실무 검수가 필수.
@@ -111,4 +111,8 @@ GET /api/cases/{id}/approval-readiness?expectedRevision={current_revision}
 - `lib/preapproval-ocr-storage-audit.ts`는 **현재 활성 문서 ID**로만 `case_extraction_heads`를 찾고, `extraction_runs.stage='committed'` 및 DB 원본 SHA와 현재 사건 문서 SHA를 확인한다. 증빙 페이지 누락 또는 변경된 SHA는 `source_integrity_or_page_gap`으로 보고한다.
 - 각 문서의 `extraction_field_coverage`를 실제 저장된 canonical ID 단위로 집계하여 `storedOcrCoverage.byCanonicalField[].schemaSlots/observed/requiresReview/notObservedSlots`를 반환한다. 등록된 693 ID 전체를 필수라 오인하지 않고 **현재 문서 OCR 스키마에 적용된 필드만 관측**한다.
 - 알 수 없는 canonical ID, 삭제된 문서/비활성 head, 예상 증빙 페이지 OCR 누락, 쿼리 오류는 fail closed. OCR 원문값이 검증된 Fact로 자동 승격되거나 법원 보정 충족으로 인정되지 않는다.
-- 관련 테스트 `tests/preapproval-ocr-storage-audit.test.ts` 6개를 추가했다. 격리 모듈 테스트 포함 총 38개 통과; 실제 운영 D1 쿼리 실행 인증은 여전히 없음.
+- 관련 테스트 `tests/preapproval-ocr-storage-audit.test.ts` 6개를 추가했다. 격리 모듈 테스트 포함 총 39개 통과; 실제 운영 D1 쿼리 실행 인증은 여전히 없음.
+
+## H. 46개 예외의 '조용한 누락' 방지
+
+`stageAudit.stages[3].exceptionCoverage`는 46개 모든 예외의 원래 ID, 트리거, 후보 피처, 관련 법률규칙, 현재 실행 범위/인가 후 제외 여부를 반환한다. **선언된 예외 조건을 모두 자동 판정한다는 뜻은 아니며**, 미검증 예외는 반드시 변호사 검토 대상으로 유지한다. 기존 42개 법령·실무준칙 재구성 경로 중 **19개 법률규칙 및 20개 예외는 독립 심층 사례가 아직 없다**. 이것은 후속 테스트 구축의 명시적 결손 목록이다.
