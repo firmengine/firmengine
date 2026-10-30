@@ -38,3 +38,5 @@
 - [18개 법적 계산 모듈 입력·OCR 연결 상태](calculation-input-coverage-20261030.md)
 
 - [18개 계산모듈 실측·격리 수학 검증 및 재현 테스트 상태](calculator-18-runtime-audit-20261030.md)
+
+- [P1 보류: 서울 우선 관할법원 분기·상담 이력 스키마 설계](deferred-court-routing-20261030.md) — 기존 courtId 연결 확인, 후속 관할 확인·이력 관리 계약. 현재 코드/DB 미수정.
