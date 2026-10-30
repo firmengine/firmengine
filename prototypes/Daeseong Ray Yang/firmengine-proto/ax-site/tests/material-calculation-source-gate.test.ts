@@ -25,6 +25,8 @@ test("a saved bank balance with no typed applicant asset cannot silently become 
  assert.equal(audit.issues[0].code,"CALC_INPUT_UNCONNECTED_MATERIAL");
  const result=calculateCase(data,rules);
  assert.ok(result.issues.some(issue=>issue.includes("CALC_INPUT_UNCONNECTED_MATERIAL:bank_account_balance::balance")));
+ assert.equal(result.liquidationValueWon,null,"Unrepresented account balance cannot become zero liquidation value");
+ assert.equal(result.liquidationComparison,"unknown");
 });
 test("source-backed typed asset with exactly equal normalized numeric input resolves the gap",()=>{
  const data=setup("bank_account_balance::balance","1000000");
@@ -42,4 +44,49 @@ test("missing source money or third-party legal context never gets summed as a g
  const report=auditMaterialCalculatorSources(legal);
  assert.equal(report.issueCount,0);
  assert.deepEqual(report.contextOnlyIds,["guarantee_joint_claim::guarantee_claimed"]);
+});
+
+test("unconnected source income does not appear as zero in a completed income inventory",()=>{
+ const data=setup("current_nonwage_income::income.other.net_received","2200000");
+ data.context.inventoryComplete.income="yes";
+ const c=calculateCase(data,rules);
+ assert.ok(c.issues.some(issue=>issue.startsWith("CALC_INPUT_UNCONNECTED_MATERIAL:current_nonwage_income::income.other.net_received")));
+ assert.equal(c.monthlyIncomeWon,null);
+ assert.equal(c.disposableIncomeWon,null);
+ assert.equal(c.ordinaryRepaymentBudgetWon,null);
+ assert.equal(c.monthlyPaymentWon,null);
+});
+test("unconnected current principal must block debt totals and both debt caps",()=>{
+ const data=setup("debt_certificate::principal_balance","900000");
+ data.context.inventoryComplete.debt="yes";
+ const c=calculateCase(data,rules);
+ assert.ok(c.issues.some(issue=>issue.startsWith("CALC_INPUT_UNCONNECTED_MATERIAL:debt_certificate::principal_balance")));
+ assert.equal(c.debtPrincipalWon,null);
+ assert.equal(c.debtInterestWon,null);
+ assert.equal(c.totalDebtWon,null);
+ assert.equal(c.securedDebtWon,null);
+ assert.equal(c.unsecuredDebtWon,null);
+});
+test("bank balance not included in a reported complete asset inventory blocks liquidation comparison",()=>{
+ const data=setup("bank_account_balance::balance","1000000");
+ data.context.inventoryComplete.asset="yes";
+ data.context.approvedPresentValue=normalizeMoney("2000000");
+ data.context.presentValueBasis="Reviewer-provided present-value basis";
+ data.context.presentValueReviewed=true;
+ data.context.assetValuationBasisReviewed=true;
+ const c=calculateCase(data,rules);
+ assert.equal(c.liquidationValueWon,null);
+ assert.equal(c.liquidationComparison,"unknown");
+ assert.equal(c.traces.find(x=>x.id==="liquidation_comparison")?.status,"blocked");
+});
+test("context-only third-party observations must not become typed balances or zero blockers",()=>{
+ const data=setup("guarantee_joint_claim::guarantee_claimed","5000000");
+ data.context.inventoryComplete.income="yes";
+ data.context.inventoryComplete.debt="yes";
+ data.context.inventoryComplete.asset="yes";
+ const c=calculateCase(data,rules);
+ assert.ok(!c.issues.some(issue=>issue.includes("CALC_INPUT_UNCONNECTED_MATERIAL")));
+ assert.equal(c.monthlyIncomeWon,"0");
+ assert.equal(c.totalDebtWon,"0");
+ assert.equal(c.liquidationValueWon,"0");
 });

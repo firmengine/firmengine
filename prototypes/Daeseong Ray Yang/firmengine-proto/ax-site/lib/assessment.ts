@@ -340,6 +340,10 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   // case calculation objects remain explicit blockers, never silent zeros.
   const materialAudit=auditMaterialCalculatorSources(data,index);
   issues.push(...materialAudit.issues.map(issue=>issue.code+":"+issue.canonicalFieldId+":"+issue.factId));
+  // Exact source amounts omitted from typed rows must not appear as zero or partial totals.
+  // The object rows remain as diagnostics, but affected case aggregates become unknown.
+  const materialAggregateBlocked=(category:"income"|"debt"|"asset")=>
+    materialAudit.issues.some(issue=>issue.destination.startsWith(category+"."));
   const incomeRows: CalculationResult["incomeRows"] = [];
   const incomeObservations: IncomeObservation[] = [];
   const incomeResolution = resolveIncomeRows(data);
@@ -370,7 +374,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     issues.push(...reasons.map((r) => r + ":" + source.id));
   }
   const incomeAggregation = aggregateIncomeObservations(data, incomeObservations, issues);
-  const income = incomeAggregation.total;
+  const income = materialAggregateBlocked("income") ? null : incomeAggregation.total;
   const incomeGroups = incomeAggregation.groups;
   const hasFilingPeriod = !!data.context.filingPeriod;
   const filingPeriodValid = !data.context.filingPeriod || !!monthSpan(data.context.filingPeriod.start, data.context.filingPeriod.end)?.completeMonths;
@@ -424,7 +428,8 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     traces.push({ id: "debt:" + debt.id, title: debt.creditor + " 채무", formula: referenceFormula("debt_total"), inputs: [{ label: "원금", value: asMoney(principal), factIds: debt.factIds }, { label: "이자", value: asMoney(interest), factIds: debt.factIds }, { label: "원문 채권 총액 관측", value: asMoney(integrity.sourceTotalWon), factIds:integrity.totalFactIds }, { label: "별도 비용 관측 (원금·이자에 합산하지 않음)", value: integrity.costObservation, factIds:integrity.costFactIds }], resultWon: asMoney(total), status: total === null ? "blocked" : factSourceLineageIssues(data, [...debt.factIds,...integrityFacts],index).length ? "provisional" : "calculated", reasons });
     return { id: debt.id, creditor: debt.creditor, principalWon: asMoney(principal), interestWon: asMoney(interest), totalWon: asMoney(total), classification: debt.classification };
   });
-  const debtComplete = data.context.inventoryComplete.debt === "yes" && !deduped.issues.length;
+  const debtComplete = data.context.inventoryComplete.debt === "yes" && !deduped.issues.length
+    && !materialAggregateBlocked("debt");
   if (data.context.inventoryComplete.debt !== "yes") issues.push("DEBT_INVENTORY_INCOMPLETE");
   const debtTotalComplete=debtComplete&&debtRows.every(row=>row.totalWon!==null);
   const excludedAfterReview=(debt:(typeof deduped.rows)[number])=>debt.excludedByReview&&debt.legalReview==="accepted"&&!!debt.exclusionReason?.trim();
@@ -472,7 +477,8 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     traces.push({ id: "asset:" + asset.id, title: asset.label + " 청산가치 검토", formula: referenceFormula("asset_liquidation"), inputs: [{ label: "평가액", value: asset.grossValue?.amountWon ?? null, factIds: asset.factIds }, { label: `소유지분 (1/${shareBasisPoints().toLocaleString("en-US")})`, value: asset.ownershipBps?.toString() ?? null, factIds: asset.factIds }, { label: "담보상환액의 귀속 범위", value: asset.securedPayoffScope ?? null, factIds: scopeFact?[scopeFact.id]:[] }, { label: "담보상환액", value: asset.securedPayoff?.amountWon ?? null, factIds: asset.factIds }, { label: "처분비용", value: asset.disposalCosts?.amountWon ?? null, factIds: asset.factIds }, { label: "검토 면제액", value: asset.protectedValue?.amountWon ?? null, factIds: asset.factIds }], resultWon: asMoney(value), status: value === null ? "blocked" : scopeReview || reasons.includes("ASSET_AS_OF_RECONCILIATION_REQUIRED") || asset.recognition !== "accepted" || factSourceLineageIssues(data, asset.factIds,index).length ? "provisional" : "calculated", reasons });
     return { id: asset.id, label: asset.label, liquidationWon: asMoney(value), reasons };
   });
-  const liquidation = sumKnown(assetRows.map((a) => a.liquidationWon === null ? null : BigInt(a.liquidationWon)), data.context.inventoryComplete.asset === "yes");
+  const liquidation = sumKnown(assetRows.map((a) => a.liquidationWon === null ? null : BigInt(a.liquidationWon)),
+    data.context.inventoryComplete.asset === "yes" && !materialAggregateBlocked("asset"));
   if (data.context.inventoryComplete.asset !== "yes") issues.push("ASSET_INVENTORY_INCOMPLETE");
   const baseLiving = nonnegative(data.household.recognizedLivingCost);
   const extraLiving = data.household.livingCostIncludesAdditional === true ? ZERO : data.household.livingCostIncludesAdditional === false ? nonnegative(data.household.additionalLivingCost) : null;
