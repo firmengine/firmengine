@@ -137,6 +137,15 @@ export async function listCaseExtractionRows(database:D1Database,input:{caseId:s
   for(const item of features)byRecord.set(item.record_id,[...(byRecord.get(item.record_id)??[]),item]);
   const after=await database.prepare("SELECT revision FROM cases WHERE id=?").bind(input.caseId).first<{revision:number}>();
   if(after?.revision!==current.revision)throw fault("CASE_REVISION_MISMATCH");
+  // A committed page OCR run may be replaced without a case revision bump.
+  // Bind the returned immutable rows to heads that are STILL current at read end.
+  if(records.length){
+    const expectedHeads=[...new Map(records.map(row=>[JSON.stringify([row.source_document_id,row.page]),row])).values()];
+    const conditions=expectedHeads.map(()=>"(source_document_id=? AND page=? AND run_id=?)").join(" OR ");
+    const values=[input.caseId,...expectedHeads.flatMap(row=>[row.source_document_id,row.page,row.run_id])];
+    const live=await database.prepare("SELECT COUNT(*) AS n FROM case_extraction_heads WHERE case_id=? AND ("+conditions+")").bind(...values).first<{n:number}>();
+    if(live?.n!==expectedHeads.length)throw fault("CASE_REVISION_MISMATCH");
+  }
   return {schemaVersion:EXTRACTION_ROW_STORE_VERSION,caseId:input.caseId,caseRevision:current.revision,sourceOnly:true,legalRecognition:"not_provided",courtApprovalInferred:false,
     currentVersionMeaning:"Active committed source read per original-document page; extraction revision and current case revision are separate.",
     totalRecords:count?.n??0,limit,offset,nextOffset:offset+records.length<(count?.n??0)?offset+records.length:null,featureLimit,featureBatchSize,featuresTruncated:false,
