@@ -949,7 +949,8 @@ export function currentExportReviews(data: CaseData): ExportManifest["reviews"] 
   const fingerprint = manifestFingerprint(manifest);
   const isCurrent = (record: ReviewRecord | null | undefined): record is ReviewRecord => !!record && !!record.actor.trim() && record.actor.trim() !== "private-site-service" && record.caseRevision === data.context.revision && record.manifestFingerprint === fingerprint;
   const caseworker = isCurrent(manifest.reviews?.caseworker) ? manifest.reviews.caseworker : null;
-  const lawyer = caseworker && isCurrent(manifest.reviews?.lawyer) ? manifest.reviews.lawyer : null;
+  const lawyer = caseworker && isCurrent(manifest.reviews?.lawyer)
+    && manifest.reviews.lawyer!.actor.trim() !== caseworker.actor.trim() ? manifest.reviews.lawyer : null;
   return { caseworker, lawyer };
 }
 export function archiveExport(input: CaseData, id: string): CaseData {
@@ -969,7 +970,11 @@ export function reviewExport(input: CaseData, role: "caseworker" | "lawyer", act
   if (manifest.mode !== "final") throw new Error("최종 검토본을 생성한 뒤 검수 기록을 남길 수 있습니다.");
   const fingerprint = manifestFingerprint(manifest);
   if (fingerprint !== expectedFingerprint) throw new Error("검토한 생성물 집합이 변경되었습니다.");
-  if (role === "lawyer" && currentExportReviews(data).caseworker?.manifestFingerprint !== fingerprint) throw new Error("현재 생성물 전체의 담당자 검수가 먼저 필요합니다.");
+  if (role === "lawyer") {
+    const staffReview = currentExportReviews(data).caseworker;
+    if (staffReview?.manifestFingerprint !== fingerprint) throw new Error("현재 생성물 전체의 담당자 검수가 먼저 필요합니다.");
+    if (staffReview.actor.trim() === actor.trim()) throw new Error("최종 법률 검수자는 선행 서류 검수자와 서로 다른 사람이어야 합니다.");
+  }
   if (role === "caseworker") manifest.reviews.lawyer = null;
   manifest.reviews[role] = { actor, at: new Date().toISOString(), caseRevision: data.context.revision, manifestFingerprint: fingerprint };
   return data;
