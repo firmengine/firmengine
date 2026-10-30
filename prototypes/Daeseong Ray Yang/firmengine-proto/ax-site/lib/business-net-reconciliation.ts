@@ -76,7 +76,7 @@ export function businessNetReviewBasis(data:CaseData,proposal:Pick<BusinessNetRe
  if(facts.some(x=>!x))return null;
  const month=datesFor(proposal.month);
  return JSON.stringify([
-  BUSINESS_NET_REVIEW_VERSION,data.context.id,data.context.courtId,data.context.applicationDate,
+  BUSINESS_NET_REVIEW_VERSION,data.context.id,data.context.courtId,data.context.applicationDate,data.context.asOf,
   data.context.filingPeriod??null,month,proposal.payerIdentityId,
   proposal.grossWon,proposal.costWon,proposal.netWon,
   proposal.referenceSha256,proposal.referenceRuleId,
@@ -104,6 +104,8 @@ export function preflightBusinessNet(
     selection.costFactIds.includes(selection.grossFactId))
     throw Error("BUSINESS_REVIEW_SELECTION_INVALID");
  const period=datesFor(selection.month),window=data.context.filingPeriod;
+ if(!exactDate(data.context.asOf)||period.end>data.context.asOf)
+   throw Error("BUSINESS_SOURCE_PERIOD_AFTER_CASE_AS_OF");
  if(!window||window.start>period.start||window.end<period.end||
     !exactDate(window.start)||!exactDate(window.end))throw Error("BUSINESS_MONTH_OUTSIDE_REPRESENTATIVE_PERIOD");
  const policy=approvedBusinessIncomeRule(data.context.courtId,data.context.applicationDate);
