@@ -3,7 +3,7 @@
  * evidence only: an item can never be automatically marked court-satisfied.
  */
 import canonical from "./canonical-field-id-index.json" with {type:"json"};
-import {validSourceRef,type CaseData,type Fact} from "./domain.ts";
+import {currentFacts,validSourceRef,type CaseData,type Fact} from "./domain.ts";
 export const PREAPPROVAL_CORRECTION_ITEM_STORE_VERSION="case-court-correction-items/1" as const;
 export interface CorrectionItemDraft {
  courtEventId:string;itemNo:number;orderDocumentId:string;orderPage:number;
@@ -47,7 +47,7 @@ export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDr
  const deadline=draft.deadline;
  if(deadline!==null){
   if(!deadline||typeof deadline.sourceFactId!=="string"||typeof deadline.date!=="string"||!iso(deadline.date))throw fail("CORRECTION_DEADLINE_NOT_SOURCE_BOUND");
-  const fact=data.facts.find(f=>f.id===deadline.sourceFactId&&["court.correctionDeadline","corrections.deadline"].includes(f.key)&&
+  const fact=currentFacts(data).find(f=>f.id===deadline.sourceFactId&&["court.correctionDeadline","corrections.deadline"].includes(f.key)&&
     f.value===deadline.date&&linkedFact(data,f,draft.orderDocumentId));
   if(!fact)throw fail("CORRECTION_DEADLINE_NOT_SOURCE_BOUND");
  }
@@ -81,6 +81,10 @@ export async function upsertCourtCorrectionItem(database:D1Database,input:{data:
  const {data,draft}=input,validated=validateCorrectionItemDraft(data,draft),caseId=data.context.id;
  const current=await currentVersion(database,caseId);
  if(!current||current.revision!==draft.expectedCaseRevision)throw fail("CORRECTION_CASE_REVISION_MISMATCH");
+ const actualOrder=await database.prepare("SELECT sha256,case_id AS caseId FROM documents WHERE id=?")
+   .bind(draft.orderDocumentId).first<{sha256:string;caseId:string}>();
+ if(!actualOrder||actualOrder.caseId!==caseId||actualOrder.sha256!==validated.orderDocumentSha256)
+   throw fail("CORRECTION_ORDER_STORAGE_HASH_MISMATCH");
  const previous=await database.prepare("SELECT version_id AS versionId FROM case_court_correction_item_heads WHERE case_id=? AND court_event_id=? AND item_no=?")
   .bind(caseId,draft.courtEventId,draft.itemNo).first<Head>();
  const versionId="correction-"+await digest(stable({caseId,sourceVersion:current.dataVersion,revision:current.revision,
