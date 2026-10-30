@@ -6,6 +6,8 @@ export interface DocumentPreflightIdentity { evaluationId:string; evaluationResu
 export interface PreflightIssue { code:string; token?:string; message:string; severity:"blocker"|"warning"; }
 export interface DocumentPreflightResult { status:"ready"|"draft_with_unresolved"|"blocked"; blockers:PreflightIssue[]; warnings:PreflightIssue[]; unresolved:string[]; contractHash:string; }
 const MISSING = new Set(["","[확인 필요]","[불일치·확인 필요]","[미확정]","[검토 필요]"]);
+// Internal amount-sign integrity only; legal debt and income recognition remain human-reviewed.
+const NON_NEGATIVE_PLAN_SCALARS = new Set(["monthly_payment","monthly_trustee_fee","total_repayment"]);
 const absent=(x:unknown)=>x===undefined||x===null||MISSING.has(String(x).trim())||/^\[(?:상충|누락|오인식|판독|검토|배분|미확정)/.test(String(x).trim());
 export async function evaluateDocumentPreflight(input:{formCode:string;bindings:FormBindings;identity:DocumentPreflightIdentity;mode:DocumentMode;contract?:FormContract}):Promise<DocumentPreflightResult> {
   const contract=input.contract ?? FORM_CONTRACTS[input.formCode];
@@ -73,9 +75,11 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
       "disposal_payment_total","disposal_present_value"]){
       const raw=input.bindings.scalars[token];
       if(absent(raw))continue; // Existing requiredness gate handles missing/unknown separately.
-      if(numeric(raw)===null){
-        const issue:PreflightIssue={code:"PLAN_SCALAR_NUMERIC_INVALID",token,
-          message:"금액·회차 토큰에 원단위 정수가 아닌 값이 있어 독립 검토가 필요합니다.",
+      const parsed=numeric(raw);
+      if(parsed===null||parsed<0n&&NON_NEGATIVE_PLAN_SCALARS.has(token)){
+        const negative=parsed!==null;
+        const issue:PreflightIssue={code:negative?"PLAN_SCALAR_NEGATIVE_INVALID":"PLAN_SCALAR_NUMERIC_INVALID",token,
+          message:negative?"월변제액·회생위원 보수·총변제액에 음수 금액이 있어 확인이 필요합니다.":"금액·회차 토큰에 원단위 정수가 아닌 값이 있어 독립 검토가 필요합니다.",
           severity:input.mode==="final"?"blocker":"warning"};
         if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
       }
@@ -87,8 +91,11 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     for(const [index,row]of creditorRows.entries()){
       for(const field of ["principal","monthly_payment","total_payment"]){
         const raw=row[field];
-        if(raw===undefined||raw===null||absent(raw)||numeric(raw)!==null)continue;
-        const issue:PreflightIssue={code:"PLAN_CREDITOR_ROW_NUMERIC_INVALID",token:`creditor.${field}[${index}]`,message:"채권자 원금·월변제액·총변제액에 정수원으로 해석할 수 없는 표시가 있습니다.",severity:input.mode==="final"?"blocker":"warning"};
+        if(raw===undefined||raw===null||absent(raw))continue;
+        const parsed=numeric(raw);
+        if(parsed!==null&&parsed>=0n)continue;
+        const negative=parsed!==null;
+        const issue:PreflightIssue={code:negative?"PLAN_CREDITOR_ROW_NEGATIVE_INVALID":"PLAN_CREDITOR_ROW_NUMERIC_INVALID",token:`creditor.${field}[${index}]`,message:negative?"채권자 원금·월변제액·총변제액에 음수 금액이 있어 확인이 필요합니다.":"채권자 원금·월변제액·총변제액에 정수원으로 해석할 수 없는 표시가 있습니다.",severity:input.mode==="final"?"blocker":"warning"};
         if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
       }
     }
