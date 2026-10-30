@@ -276,3 +276,28 @@ export function buildPreApprovalReadiness(input: ApprovalReadinessInput) {
       "우선순위대로 사실·서류·계산·법률 쟁점을 보완한 뒤 현행 판본으로 재평가",
   };
 }
+
+/** Compare an existing persisted calculation run with the current deterministic engine.
+ * Matching run IDs alone cannot prove every stored output still equals the active engine.
+ * Missing, duplicate, malformed or mismatched values fail closed. Null stays null.
+ */
+export function verifyStoredApprovalCalculationOutputs(
+ calculation: Assessment["calculation"],
+ rows: readonly {outputName:string;valueJson:string;status:string}[],
+ expectedNames: readonly string[],
+){
+ const issues:string[]=[];
+ const values=calculation as unknown as Record<string,unknown>;
+ for(const name of new Set(expectedNames)){
+  if(!Object.hasOwn(values,name)){issues.push("UNKNOWN_CALCULATION_OUTPUT:"+name);continue;}
+  const candidates=rows.filter(row=>row.outputName===name);
+  if(candidates.length!==1){issues.push("MISSING_OR_DUPLICATE_STORED_CALCULATION:"+name);continue;}
+  const row=candidates[0];
+  let parsed:unknown;
+  try{parsed=JSON.parse(row.valueJson);}catch{issues.push("MALFORMED_STORED_CALCULATION:"+name);continue;}
+  if(JSON.stringify(parsed)!==JSON.stringify(values[name]))issues.push("CALCULATION_REPLAY_MISMATCH:"+name);
+  if(!["computed","provisional","blocked","missing","conflict","not_applicable"].includes(row.status))
+   issues.push("CALCULATION_STATUS_INVALID:"+name);
+ }
+ return {current:issues.length===0,issues};
+}
