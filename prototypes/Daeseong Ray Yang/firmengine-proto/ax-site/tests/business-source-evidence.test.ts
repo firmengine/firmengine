@@ -87,3 +87,29 @@ test("source-only business facts with verified exclusions do not silently re-ent
  assert.equal(audit.summary.zeroIncomeWouldBeUnsupported,false);
  assert.equal(calculateCase(data,rules).monthlyIncomeWon,"0");
 });
+
+test("source-only business money fails closed when raw Fact, typed numeric or source-state disagree",()=>{
+  const {data,costRow}=fixture();
+  costRow("expense","1200000","2025-01-01","2025-01-31");
+  const amount=data.facts.find(f=>f.id==="expense-amount")!;
+  const check=()=>auditBusinessSourceEvidence(data).rows[0];
+  assert.equal(check().amountWon,"1200000");
+  assert.equal(check().verifiedAndAcceptedSource,true);
+
+  // A stale numeric after OCR correction must not appear to be verified money.
+  amount.numeric=normalizeMoney("700000");
+  assert.equal(check().amountWon,null);
+  assert.equal(check().verifiedAndAcceptedSource,false);
+
+  // Raw-cell tampering may not retain the old normalized value either.
+  amount.numeric=normalizeMoney("1200000");
+  amount.rawValue="900000";
+  assert.equal(check().amountWon,null);
+  assert.equal(check().verifiedAndAcceptedSource,false);
+
+  // An explicitly absent observation is not an approved zero or valid amount.
+  amount.rawValue="1200000";
+  amount.fieldObservation={sourceState:"explicit_none"} as Fact["fieldObservation"];
+  assert.equal(check().amountWon,null);
+  assert.equal(check().verifiedAndAcceptedSource,false);
+});
