@@ -8,7 +8,7 @@ import { jsonResponse } from "../../../../../lib/json-response";
 import { finalizeDocumentWriterReceipt, prepareDocumentWrite } from "../../../../../lib/document-writer";
 import { loadReferenceSnapshot } from "../../../../../lib/reference-context.ts";
 import { commitExportArtifactTransaction } from "../../../../../lib/export-artifact-transaction.ts";
-import { buildCaseWorkflowView } from "../../../../../lib/case-workflow-view.ts";
+import {buildCurrentCaseWorkflowView} from "../../../../../lib/case-workflow-context.ts";
 import { finalWorkflowBlockers } from "../../../../../lib/document-workflow-gate.ts";
 import { getIntakeCatalog } from "../../../../../lib/intake-store.ts";
 import { buildFeatureLineageAudit,evaluateCaseFieldLineage } from "../../../../../lib/feature-lineage-audit.ts";
@@ -55,7 +55,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   const mode=body.mode==="final"?"final":"draft";
   let finalLegalReceipt:Awaited<ReturnType<typeof inspectCurrentFinalLawgraph>>|null=null;
   if(mode==="final"&&data.workflowState){
-    const workflowView=await buildCaseWorkflowView(data);
+    const workflowView=await buildCurrentCaseWorkflowView(db(),data);
     const activeRequirementIds=new Set(data.workflowState.requirements.filter(requirement=>!requirement.retired).map(requirement=>requirement.requirementId));
     const legalChecks=await currentLegalDispositionStates(data,extras);
     // Final review copies must not pass when a staff-approved case requirement
