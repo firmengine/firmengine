@@ -68,7 +68,14 @@ export function auditFivePreapprovalStages(input: StageAuditInput) {
   const calculationModules = input.calculationSpecs.map(spec=>{
     const inputs=spec.inputs.map(path=>factInput(data,facts,path));
     const outputs=spec.outputs.map(output=>{
-      const matches=rows.filter(row=>row.calculationId===spec.id && (row.outputName===output || row.outputName.startsWith(output+".")));
+      // The existing feature serializer namespaces three legal proposal outputs.
+      // Read the physical SQL field names, not the unprefixed planning contract.
+      const proposalPrefix=spec.id==="living_cost_proposal"?"proposals.livingCost":
+        spec.id==="objection_minimum"?"proposals.objectionMinimum":
+        spec.id==="seoul_short_term"?"proposals.termCandidate":null;
+      const matches=rows.filter(row=>row.calculationId===spec.id &&
+        (row.outputName===output || row.outputName.startsWith(output+".") ||
+        (proposalPrefix!==null&&(row.outputName===proposalPrefix||row.outputName.startsWith(proposalPrefix+".")))));
       const usable=matches.filter(row=>statusAllowed.has(row.status) && (()=>{try{JSON.parse(row.valueJson);return true;}catch{return false;}})());
       const hasUnknown=usable.some(row=>["missing","blocked","conflict"].includes(row.status));
       const state=matches.length===0?"not_persisted":usable.length!==matches.length?"invalid_persisted_row":hasUnknown?"stored_unresolved":"stored_observation_only";
