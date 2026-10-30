@@ -47,7 +47,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
   month:input.calculation.incomeRows.map(r=>r.id),
   attachment:data.documents.filter(d=>d.status==="active").map(d=>d.id)
  };
- const result:StoredDocumentField[]=[],forms=[...new Set(requiredKindsForCase(data).map(kind=>BASIC_FORM_CODES[kind]).filter((x):x is string=>!!x))];
+ const result:StoredDocumentField[]=[],forms=[...new Set(requiredKindsForCase(data).map(kind=>BASIC_FORM_CODES[kind]).filter((x):x is NonNullable<typeof x>=>!!x))];
  for(const code of forms){
   const contract=FORM_CONTRACTS[code];if(!contract)continue;
   const kind=requiredKindsForCase(data).find(k=>BASIC_FORM_CODES[k]===code);
