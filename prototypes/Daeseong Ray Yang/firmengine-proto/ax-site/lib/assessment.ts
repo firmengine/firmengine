@@ -5,6 +5,7 @@ import { resolveIncomeRows } from "./income-resolution.ts";
 import { resolveAssetRows } from "./asset-resolution.ts";
 import { createDebtSourceIntegrityResolver } from "./debt-source-integrity.ts";
 import {auditMaterialCalculatorSources} from "./material-calculation-source-gate.ts";
+import {auditBusinessSourceEvidence} from "./business-source-evidence.ts";
 import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, normalizeMoney } from "./domain.ts";
 import type { Asset, CaseData, CaseReadIndex, IncomeSource, Money, NumericInput, RuleSet } from "./domain.ts";
 import { buildLegalProposals, shortenedTermBasisFingerprint } from "./legal-proposals.ts";
@@ -344,6 +345,11 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   // case calculation objects remain explicit blockers, never silent zeros.
   const materialAudit=auditMaterialCalculatorSources(data,index);
   issues.push(...materialAudit.issues.map(issue=>issue.code+":"+issue.canonicalFieldId+":"+issue.factId));
+  // Business cost and component-sales fields can be source-only even if an
+  // income inventory is marked complete. They cannot establish zero income.
+  const businessSourceAudit=auditBusinessSourceEvidence(data,index,{limit:1});
+  if(businessSourceAudit.summary.zeroIncomeWouldBeUnsupported)
+    issues.push("INCOME_BUSINESS_SOURCE_ONLY_REQUIRES_RECONCILIATION");
   // Exact source amounts omitted from typed rows must not appear as zero or partial totals.
   // The object rows remain as diagnostics, but affected case aggregates become unknown.
   const materialAggregateBlocked=(category:"income"|"debt"|"asset")=>
@@ -398,7 +404,7 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   if (coverageIncomplete) issues.push("INCOME_PERIOD_COVERAGE_INCOMPLETE");
   // Do not publish a partial observed average as the case-wide monthly income.
   // Per-source and per-group observed values remain available for review.
-  const income = materialAggregateBlocked("income") || coverageIncomplete ? null : incomeAggregation.total;
+  const income = materialAggregateBlocked("income") || coverageIncomplete || businessSourceAudit.summary.zeroIncomeWouldBeUnsupported ? null : incomeAggregation.total;
   for (const group of incomeGroups) traces.push({ id: "income_group:" + group.id, title: group.label + " 관측기간 월평균", formula: referenceFormula("income_aggregation"), inputs: group.sourceIds.map((id) => ({ label: id + " 월평균", value: incomeRows.find((row) => row.id === id)?.monthlyWon ?? null, factIds: data.incomes.find((source) => source.id === id)?.factIds ?? [] })), resultWon: group.monthlyObservedAverageWon, status: group.monthlyObservedAverageWon === null ? "blocked" : !hasFilingPeriod || !filingPeriodValid || !periodReviewed || group.reasons.length || coverageIncomplete ? "provisional" : "calculated", reasons: [...group.reasons, ...(!hasFilingPeriod ? ["대표기간 미선택 · 관측 평균만 표시"] : []), ...(hasFilingPeriod && !filingPeriodValid ? ["선택 기간이 완전한 달력월이 아닙니다."] : []), ...(hasFilingPeriod && !periodReviewed ? ["선택한 대표기간 검토 전"] : []), ...(coverageIncomplete ? ["선택기간에 비해 관측 개월이 부족합니다."] : [])] });
   if (data.context.inventoryComplete.income !== "yes") issues.push("INCOME_INVENTORY_INCOMPLETE");
   const deduped = resolveDebtRows(data,index); issues.push(...deduped.issues); duplicateIds.push(...deduped.duplicates);
@@ -672,6 +678,7 @@ function issueTitle(code: string): string {
   if (code.includes("ASSET_VALUATION_DATE_MISSING")) return "재산 평가 기준일 입력";
   if (code.includes("ASSET_VALUATION_DATE_INVALID")) return "재산 평가 기준일 확인";
   if (code === "PRIORITY_CLAIM_SCHEDULE_COVERAGE_REQUIRED") return "채권별 우선·재단 변제 일정 확인";
+  if (code.includes("INCOME_BUSINESS_SOURCE_ONLY")) return "사업 매출·비용 원문을 현재 순소득으로 대조";
   if (code.includes("INCOME_VAT_TURNOVER")) return "사업 매출·순소득 구분 및 월별 경비 대조";
   if (code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE")) return "과거 신고소득의 현재 대표기간 적용 검토";
   if (code.includes("INCOME_PAYER_IDENTITY")) return "소득 지급자 식별 확인";
@@ -699,6 +706,7 @@ function issueTitle(code: string): string {
   return "입력·산식 대조";
 }
 function issueExplanation(code: string): string {
+  if(code.includes("INCOME_BUSINESS_SOURCE_ONLY"))return "사업 매출·경비·입금·원천공제 등 원문 수치가 관측되었으나 현재 소득 계산행의 독립적인 순소득 근거가 확인되지 않았습니다. 현재 소득이 0원이라고 단정하지 않습니다.";
   if(code.includes("INCOME_VAT_TURNOVER"))return "부가가치세 관련 매출금액은 사업 순소득이 아닙니다. 다른 서류의 필요경비·입금·환급과 같은 사업자·월·원문 행을 대조하고 이중 집계 여부를 검토해야 합니다.";
   if(code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE"))return "과거 소득금액증명은 현재 계속 소득과 기간이 다를 수 있어 인정 여부뿐 아니라 현재 대표기간에 사용할 방법 및 중복 여부의 명시적 검토가 필요합니다.";
   if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "하나의 원문 금액 피처를 둘 이상의 계산 객체에 동일하게 연결했습니다. 두 행이 별개 소득·채무·재산이라는 원문 근거와 배분 기준 없이 중복 합산할 수 없습니다.";
@@ -739,6 +747,7 @@ function issueExplanation(code: string): string {
   return "미확인 값·분류·목록 완전성을 0 또는 비해당으로 대체하지 않았습니다. 확인 항목: " + code.split(":")[0];
 }
 function issueAction(code: string): string {
+  if(code.includes("INCOME_BUSINESS_SOURCE_ONLY"))return "사건 데이터의 business_source_audit에서 원문 행별 날짜·사업자·금액을 검토하고 현재 사업의 매출·경비·계속성·누락 증빙을 소득원으로 연결하세요. 과거 자료 또는 제3자 자료는 법률상 적용 여부를 기록하세요.";
   if(code.includes("INCOME_VAT_TURNOVER"))return "매출·환불·부가세·필요경비를 동일 사업자·발생월·원문 근거로 묶은 별도 순소득 검토안을 생성하고 담당자 승인을 받으세요. VAT 매출 행에 임의의 순소득을 덧씌우지 마세요.";
   if(code.includes("INCOME_HISTORICAL_TAX_PERIOD_USE"))return "동일 사업자의 신고 소득과 최신 월별 매출·비용을 비교하고 대표기간, 중복 제거, 채택 이유를 명시적으로 검토하세요.";
   if (code.startsWith("CALC_INPUT_MULTIPLE_TYPED_MATCHES:")) return "연결된 각 계산행의 문서 ID·페이지·원문 행·계약 또는 자산 식별자를 대조하고, 동일 행 복제는 제거하거나 별도 금액 배분을 문서 근거와 담당자 검토로 등록하세요.";
