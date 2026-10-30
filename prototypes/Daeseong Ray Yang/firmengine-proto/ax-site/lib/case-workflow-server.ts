@@ -18,6 +18,7 @@ import referenceRelease from "./reference-release.json" with { type: "json" };
 import { workflowHealth,type HealthJob,type HealthCommand } from "./workflow-health.ts";
 import { commandHash } from "./case-command-contract.ts";
 import { readCaseLegalAutomation } from "./case-legal-automation.ts";
+import {readAutomaticDraftHandoff} from "./automatic-draft-handoff.ts";
 import {inspectCurrentFinalLawgraph} from "./final-lawgraph-readiness.ts";
 import {currentLegalDispositionOutcome} from "./legal-review-identity.ts";
 export async function caseWorkflowResponse(caseId:string){
@@ -88,11 +89,12 @@ export async function caseWorkflowResponse(caseId:string){
       currentLegalDispositionOutcome(d,rawLegalRuns):"needs_review"}))})
   .catch(error=>({readyForFinalReviewCopy:false,blockers:["LAWGRAPH_READINESS_UNAVAILABLE"],error:error instanceof Error?error.message:"UNKNOWN"}))
   :{readyForFinalReviewCopy:false,blockers:["WORKFLOW_NOT_ADOPTED"]};
+const autoDraftHandoff=await readAutomaticDraftHandoff(db(),data).catch(()=>({status:"unavailable" as const,canLink:false,runId:null,artifactCount:0,blockers:["AUTODRAFT_HANDOFF_READ_FAILED"]}));
 const legalAutomation=await readCaseLegalAutomation(db(),caseId).catch(()=>({
     status:"unavailable" as const,reason:"LEGAL_AUTOMATION_STORAGE_NOT_READY",
     autoSubmission:false,automaticCourtApproval:false,humanFinalReviewRequired:true
   }));
-  return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,legalAutomation,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
+  return {caseId,revision:data.context.revision,stateFingerprint,workflow,...view,substitutionWatch,legalAutomation,autoDraftHandoff,roles,intake:intake.run?{runId:intake.run.id,stale:!!intake.run.stale}:null,
     health,
     artifacts,fieldBases,legalRuns,legalCoverageTruncated,finalLegalReadiness,
     documents:data.documents.filter(d=>d.status==="active").map(d=>({id:d.id,name:d.name,sha256:d.sha256,pages:d.pages,status:d.status})),
