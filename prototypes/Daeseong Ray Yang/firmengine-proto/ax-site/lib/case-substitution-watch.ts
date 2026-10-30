@@ -115,15 +115,20 @@ export async function scanCaseSubstitutions(database:D1Database,input:{caseId:st
 export async function drainCaseSubstitutionWatch(database:D1Database,input:{caseId?:string;limit?:number;source:Source}){
  const limit=Math.max(1,Math.min(input.limit??3,5));
  const head=(await database.prepare("SELECT version AS version FROM intake_catalog_head WHERE id='default'").first<{version:number}>())?.version??0;
- const policyNow=await policy(database);
+ // Court-specific policy signals are compared when each case is scanned;
+ // a single global signal cannot match all court IDs and would requeue every
+ // case on every Cron pass. An alert born after a scan prompts one rescan,
+ // including unknown-scope changes (fail closed); otherwise periodic rescans
+ // cover acknowledgements/older metadata without causing queue starvation.
  const scanBefore=new Date(Date.now()-600_000).toISOString();
  const sql=`SELECT c.id AS caseId FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id
    LEFT JOIN case_substitution_watch_heads w ON w.case_id=c.id
    WHERE (w.case_id IS NULL OR w.case_revision<>c.revision OR w.source_data_version<>COALESCE(s.data_version,0)
-   OR w.catalog_version<>? OR w.policy_signal<>? OR w.scanned_at<?)
+   OR w.catalog_version<>? OR w.scanned_at<?
+   OR EXISTS (SELECT 1 FROM legal_monitor_alerts a WHERE a.created_at>w.scanned_at))
    ${input.caseId?"AND c.id=?":""}
-   ORDER BY c.updated_at,c.id LIMIT ?`;
- const rows=(await database.prepare(sql).bind(head,policyNow.signal,scanBefore,...(input.caseId?[input.caseId]:[]),limit).all<{caseId:string}>()).results;
+   ORDER BY COALESCE(w.scanned_at,c.updated_at),c.id LIMIT ?`;
+ const rows=(await database.prepare(sql).bind(head,scanBefore,...(input.caseId?[input.caseId]:[]),limit).all<{caseId:string}>()).results;
  const results=[];
  for(const row of rows){
   try{results.push(await scanCaseSubstitutions(database,{caseId:row.caseId,source:input.source}));}
