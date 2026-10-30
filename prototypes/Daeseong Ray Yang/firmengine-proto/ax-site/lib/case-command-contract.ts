@@ -29,4 +29,4 @@ export function canonicalJson(value:unknown):string {
   return JSON.stringify(value);
 }
 export async function commandHash(value:unknown):Promise<string>{const bytes=new TextEncoder().encode(canonicalJson(value));return [...new Uint8Array(await crypto.subtle.digest("SHA-256",bytes))].map(v=>v.toString(16).padStart(2,"0")).join("");}
-export const commandRequiredRole=(type:CommandType):string=>["fact.review","object.review","document.review","requirement.confirm","subject.link","legalCheck.dispose","business.net.adopt"].includes(type)?"caseworker_review":"case_editor";
+export const commandRequiredRole=(type:CommandType):string=>type==="business.net.adopt"?"lawyer_review":["fact.review","object.review","document.review","requirement.confirm","subject.link","legalCheck.dispose"].includes(type)?"caseworker_review":"case_editor";
