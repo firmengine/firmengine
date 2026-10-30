@@ -86,7 +86,7 @@ export function inspectExportRecoveryEvidence(input) {
       }
       const rows = (artifactRows ?? []).filter(row => row.id === id);
       if (!rows.length) { add("R2_WITHOUT_SQL_ROW"); incomplete = true; continue; }
-      if (rows.some(row => row.hash.toLowerCase() !== proof.verifiedSha256.toLowerCase())) {
+      if (rows.some(row => typeof row.hash !== "string" || row.hash.toLowerCase() !== proof.verifiedSha256.toLowerCase())) {
         add("R2_BYTES_HASH_CONFLICT"); conflict = true;
       }
     }
