@@ -47,3 +47,9 @@
 | `A2-DATA-024` 데이터 | 0011 SQL/Drizzle/원문→계산→저장 관계 조사, 실제 SQLite/D1 5천행 round-trip은 미실행 | 부분, [ ] |
 
 **다음 A2 8차 시작**: (1) #37/#38 새 회귀 실제 프로젝트 Node22 실행/빌드 가능 여부, (2) #25/#29 합본 날짜·채권잔액 경계 결합회귀, (3) `A2-DATA-024` SQLite 5,000/5,001 실제 INSERT/읽기와 PR #33 누락행 대조, (4) A2-AX와 미검증 역할 순환, (5) D5110 36·48·60회차 Word 금액/날짜 서식 대조. 기준정보 승인·법원 접수/인가를 수행하지 말 것.
+
+## 후속 검증 보완: D1 `missing_json` 포함 실제 INSERT 전 열 바이트 상한 (2026-10-30 KST)
+- 동일 `case_calculation_runs` 행에는 `raw_result_json`·`source_heads_json`뿐 아니라 `missing_json` 및 13개 기타 식별/시각/상태 필드가 들어간다. 당초 2개 JSON 합계만 비교한 가드는 `missing_json`가 큰 경우에 D1 2MB 상한을 다시 넘길 가능성이 있었다. 앞선 두 필드 합계 검사에 대한 설명은 **초기 제안 범위**이며 아래가 현재 PR #38 개선안이다.
+- [Draft PR #38](https://github.com/firmengine/firmengine/pull/38) 추가 커밋: 코드 `14c844b148a09412d10ee2755cb4f6f956ce4a85`, 테스트 `b4be3cc527dac8338b36235753639a68e4c5ea6e`. SQL INSERT의 16개 bound 값 중 `raw_result_json`·`source_heads_json` 외 14개 값을 UTF-8 byte로 함께 합산하고 **전체 1,900,000 bytes 상한**을 검사한다. 기존 두 문자열의 각각 제한도 유지하며 같은 `missingJson` 변수를 검증과 SQL 바인드에 재사용한다. 나머지 100KB는 SQLite 행 오버헤드 여유이다.
+- 새 합성 조건: raw 1,500,000 + source 200,000 + missing_json/메타 250,000 bytes는 반드시 제한 오류, 메타 100,000 bytes는 합계 1,800,000으로 허용. Node v22.16.0의 격리 동일 순수 함수 본문(`TS` 타입만 제거) `node --test /tmp/firmengine_a2_row_budget_isolated_v2.mjs` 실제 실행 **6/6 pass, 0 fail**. 생성한 GitHub TypeScript 테스트 자체는 프로젝트 의존성과 빌드 환경에서 미실행, D1 staging 2MB 경계도 실제 확인 전이다.
+- Cloudflare D1 공식 [제한 문서](https://developers.cloudflare.com/d1/platform/limits/) 최근 2026-10-24 업데이트: 한 행/문자열/BLOB 최대 2,000,000 bytes, 개별 쿼리 bind 최대 100, `db.batch()` 내부 statement 수에 무관하게 **한 Worker subrequest**로 계산. 이번 후속 패치는 계산 결과 값·법률·세무·법원 제출을 수정하지 않는다.
