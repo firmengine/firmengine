@@ -224,18 +224,21 @@ export async function retryFailedCaseLegalAutomation(database:D1Database,input:{
  return {caseId:input.caseId,dataVersion:current.dataVersion,status:"retry_wait",jobId:row.id,automaticCourtApproval:false};
 }
 export async function readCaseLegalAutomation(database:D1Database,caseId:string){
- const row=await database.prepare("SELECT c.revision AS currentRevision,s.data_version AS currentDataVersion,h.run_id AS currentCalculationRunId,j.id AS jobId,j.status,j.reference_sha256 AS referenceSha256,j.data_version AS dataVersion,j.case_revision AS caseRevision,j.calculation_run_id AS calculationRunId,j.completed_checks AS completedChecks,j.expected_checks AS expectedChecks,j.lease_until AS leaseUntil,j.next_attempt_at AS nextAttemptAt,j.outcome_json AS outcomeJson,j.last_error AS lastError,j.legal_review_run_id AS reviewRunId,j.document_run_id AS documentRunId,j.updated_at AS updatedAt FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id LEFT JOIN case_calculation_heads h ON h.case_id=c.id LEFT JOIN case_legal_automation_jobs j ON j.case_id=c.id AND j.calculation_run_id=h.run_id AND j.data_version=s.data_version WHERE c.id=?")
-  .bind(caseId).first<{currentRevision:number;currentDataVersion:number|null;currentCalculationRunId:string|null;jobId:string|null;status:string|null;referenceSha256:string|null;dataVersion:number|null;caseRevision:number|null;calculationRunId:string|null;completedChecks:number|null;expectedChecks:number|null;leaseUntil:string|null;nextAttemptAt:string|null;outcomeJson:string|null;lastError:string|null;reviewRunId:string|null;documentRunId:string|null;updatedAt:string|null}>();
+ const row=await database.prepare("SELECT c.revision AS currentRevision,s.data_version AS currentDataVersion,s.last_changed_at AS lastChangedAt,h.run_id AS currentCalculationRunId,j.id AS jobId,j.status,j.reference_sha256 AS referenceSha256,j.data_version AS dataVersion,j.case_revision AS caseRevision,j.calculation_run_id AS calculationRunId,j.completed_checks AS completedChecks,j.expected_checks AS expectedChecks,j.lease_until AS leaseUntil,j.next_attempt_at AS nextAttemptAt,j.outcome_json AS outcomeJson,j.last_error AS lastError,j.legal_review_run_id AS reviewRunId,j.document_run_id AS documentRunId,j.updated_at AS updatedAt FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id LEFT JOIN case_calculation_heads h ON h.case_id=c.id LEFT JOIN case_legal_automation_jobs j ON j.case_id=c.id AND j.calculation_run_id=h.run_id AND j.data_version=s.data_version WHERE c.id=?")
+  .bind(caseId).first<{currentRevision:number;currentDataVersion:number|null;lastChangedAt:string|null;currentCalculationRunId:string|null;jobId:string|null;status:string|null;referenceSha256:string|null;dataVersion:number|null;caseRevision:number|null;calculationRunId:string|null;completedChecks:number|null;expectedChecks:number|null;leaseUntil:string|null;nextAttemptAt:string|null;outcomeJson:string|null;lastError:string|null;reviewRunId:string|null;documentRunId:string|null;updatedAt:string|null}>();
  if(!row)throw new Error("LEGAL_AUTOMATION_CASE_NOT_FOUND");
  const expectedReference=referenceIdentity()?.sha256??referenceRelease.sha256;
  const stale=!!row.jobId&&(row.currentRevision!==row.caseRevision||row.currentCalculationRunId!==row.calculationRunId||row.currentDataVersion!==row.dataVersion||row.referenceSha256!==expectedReference);
+ const dueAt=row.lastChangedAt&&Number.isFinite(Date.parse(row.lastChangedAt))
+   ?new Date(Date.parse(row.lastChangedAt)+600_000).toISOString():null;
+ const remainingMs=dueAt?Math.max(0,Date.parse(dueAt)-Date.now()):null;
  const rawOutcome=decode<Record<string,unknown>>(row.outcomeJson??"{}",{});
  const outcome=stale?{...rawOutcome,drafts:[],previousDraftArchived:true,
   staleWarning:"법률기준 또는 사건 데이터 변경으로 기존 자동작성본을 최신 검토본으로 제시하지 않습니다."}:rawOutcome;
  const events=row.jobId?(await database.prepare("SELECT id,event_kind AS kind,payload_json AS payload,created_at AS createdAt FROM case_legal_automation_events WHERE case_id=? AND job_id=? ORDER BY id DESC LIMIT 30")
   .bind(caseId,row.jobId).all<{id:number;kind:string;payload:string;createdAt:string}>()).results??[]:[];
- return {version:LEGAL_AUTOMATION_VERSION,caseId,currentDataVersion:row.currentDataVersion,currentRevision:row.currentRevision,
-  calculationRunId:row.currentCalculationRunId,jobId:row.jobId,status:stale?"stale":row.status??"waiting_for_calculation",
+ return {version:LEGAL_AUTOMATION_VERSION,caseId,currentDataVersion:row.currentDataVersion,currentRevision:row.currentRevision,quietDueAt:dueAt,remainingMs,
+  calculationRunId:row.currentCalculationRunId,jobId:row.jobId,status:stale?"stale":row.status??(remainingMs!==null&&remainingMs>0?"debouncing":"waiting_for_calculation"),
   completedChecks:row.completedChecks??0,expectedChecks:row.expectedChecks??checkIds.length,
   leaseUntil:row.leaseUntil,nextAttemptAt:row.nextAttemptAt,reviewRunId:row.reviewRunId,
   documentRunId:row.documentRunId,lastError:row.lastError,updatedAt:row.updatedAt,
