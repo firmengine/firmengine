@@ -57,7 +57,9 @@ export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDr
    throw fail("CORRECTION_RESPONSE_DOCUMENT_UNKNOWN");
  if(draft.responseEventId!==null){
   const reply=data.workflowState?.procedureEvents.find(e=>e.id===draft.responseEventId&&
-    ["submitted","received","amended"].includes(e.state)&&e.courtReference===order.courtReference);
+    ["submitted","received","amended"].includes(e.state)&&e.courtReference===order.courtReference&&
+    Number.isFinite(Date.parse(e.occurredAt))&&Number.isFinite(Date.parse(order.occurredAt))&&
+    Date.parse(e.occurredAt)>=Date.parse(order.occurredAt));
   if(!reply||draft.responseDocumentIds.some(id=>!reply.sourceDocumentIds.includes(id))||
       draft.receiptDocumentId!==null&&!reply.sourceDocumentIds.includes(draft.receiptDocumentId))
    throw fail("CORRECTION_RESPONSE_EVENT_UNBOUND");
@@ -145,6 +147,8 @@ export async function readCourtCorrectionItems(database:D1Database,data:CaseData
       !payload?.responseDocumentIds.length&&payload?.receiptDocumentId===null:
       (data.workflowState?.procedureEvents??[]).some(e=>e.id===payload?.responseEventId&&
        ["submitted","received","amended"].includes(e.state)&&e.courtReference===event?.courtReference&&
+       Number.isFinite(Date.parse(e.occurredAt))&&Number.isFinite(Date.parse(event?.occurredAt??""))&&
+       Date.parse(e.occurredAt)>=Date.parse(event?.occurredAt??"")&&
        (payload?.responseDocumentIds??[]).every(id=>e.sourceDocumentIds.includes(id)&&
          data.documents.some(d=>d.id===id&&d.status==="active"))&&
        (!payload?.receiptDocumentId||(e.sourceDocumentIds.includes(payload.receiptDocumentId)&&
