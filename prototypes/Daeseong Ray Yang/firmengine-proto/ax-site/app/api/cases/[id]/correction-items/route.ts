@@ -27,7 +27,7 @@ export async function POST(request:Request,{params}:Params){
   const keys=["courtEventId","itemNo","orderDocumentId","orderPage","orderQuote",
     "requiredCanonicalFieldIds","unmappedRequiredFieldLabels","requiredDocumentTypeIds",
     "requiredPeriod","deadline","responseEventId","responseDocumentIds","receiptDocumentId",
-    "expectedCaseRevision","expectedHeadId","reason"];
+    "expectedCaseRevision","expectedSourceDataVersion","expectedHeadId","reason"];
   if(Object.keys(raw).some(key=>!["action","draft"].includes(key))||
       Object.keys(raw.draft).length!==keys.length||
       Object.keys(raw.draft).some(key=>!keys.includes(key)))
@@ -42,7 +42,7 @@ export async function POST(request:Request,{params}:Params){
   return Response.json({...receipt,autoApproval:false,courtAcceptanceInferred:false},
     {headers:{"Cache-Control":"no-store"},status:receipt.unchanged?200:201});
  }catch(error){
-  if(error instanceof Error&&/^(?:CORRECTION_CASE_REVISION_MISMATCH|CORRECTION_ITEM_CONCURRENT_CHANGE|CORRECTION_ORDER_STORAGE_HASH_MISMATCH)$/.test(error.message))
+  if(error instanceof Error&&/^(?:CORRECTION_CASE_REVISION_MISMATCH|CORRECTION_ITEM_CONCURRENT_CHANGE|CORRECTION_SOURCE_DATA_VERSION_MISMATCH|CORRECTION_ORDER_STORAGE_HASH_MISMATCH)$/.test(error.message))
     return errorResponse(new HttpError(409,error.message));
   if(error instanceof Error&&error.message.startsWith("CORRECTION_"))
     return errorResponse(new HttpError(400,error.message));
