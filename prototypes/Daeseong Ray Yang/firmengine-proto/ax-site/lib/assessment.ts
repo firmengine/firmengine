@@ -374,7 +374,6 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     issues.push(...reasons.map((r) => r + ":" + source.id));
   }
   const incomeAggregation = aggregateIncomeObservations(data, incomeObservations, issues);
-  const income = materialAggregateBlocked("income") ? null : incomeAggregation.total;
   const incomeGroups = incomeAggregation.groups;
   const hasFilingPeriod = !!data.context.filingPeriod;
   const filingPeriodValid = !data.context.filingPeriod || !!monthSpan(data.context.filingPeriod.start, data.context.filingPeriod.end)?.completeMonths;
@@ -383,6 +382,9 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   if (!hasFilingPeriod) issues.push("INCOME_REPRESENTATIVE_PERIOD_NOT_SELECTED");
   else if (!periodReviewed) issues.push("INCOME_REPRESENTATIVE_PERIOD_REVIEW_REQUIRED");
   if (coverageIncomplete) issues.push("INCOME_PERIOD_COVERAGE_INCOMPLETE");
+  // Do not publish a partial observed average as the case-wide monthly income.
+  // Per-source and per-group observed values remain available for review.
+  const income = materialAggregateBlocked("income") || coverageIncomplete ? null : incomeAggregation.total;
   for (const group of incomeGroups) traces.push({ id: "income_group:" + group.id, title: group.label + " 관측기간 월평균", formula: referenceFormula("income_aggregation"), inputs: group.sourceIds.map((id) => ({ label: id + " 월평균", value: incomeRows.find((row) => row.id === id)?.monthlyWon ?? null, factIds: data.incomes.find((source) => source.id === id)?.factIds ?? [] })), resultWon: group.monthlyObservedAverageWon, status: group.monthlyObservedAverageWon === null ? "blocked" : !hasFilingPeriod || !filingPeriodValid || !periodReviewed || group.reasons.length || coverageIncomplete ? "provisional" : "calculated", reasons: [...group.reasons, ...(!hasFilingPeriod ? ["대표기간 미선택 · 관측 평균만 표시"] : []), ...(hasFilingPeriod && !filingPeriodValid ? ["선택 기간이 완전한 달력월이 아닙니다."] : []), ...(hasFilingPeriod && !periodReviewed ? ["선택한 대표기간 검토 전"] : []), ...(coverageIncomplete ? ["선택기간에 비해 관측 개월이 부족합니다."] : [])] });
   if (data.context.inventoryComplete.income !== "yes") issues.push("INCOME_INVENTORY_INCOMPLETE");
   const deduped = resolveDebtRows(data,index); issues.push(...deduped.issues); duplicateIds.push(...deduped.duplicates);
@@ -494,7 +496,9 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   traces.push({ id: "disposable", title: "월 가용소득", formula: referenceFormula("disposable_income"), inputs: [{label:"월평균 순소득",value:asMoney(income),factIds:data.incomes.flatMap(x=>x.factIds)},{label:"인정 생계비",value:asMoney(living),factIds:data.household.factIds}], resultWon:asMoney(disposable),status:disposable===null?"blocked":data.household.recognition==="accepted"&&traces.filter(t=>t.id.startsWith("income:")).every(t=>t.status==="calculated")?"calculated":"provisional",reasons:disposable===null?["소득 또는 생계비 입력 확인 필요"]:[] });
   const approvedPayment = nonnegative(data.context.approvedMonthlyPayment);
   const hasApprovedPayment = data.context.approvedMonthlyPayment !== undefined && data.context.approvedMonthlyPayment !== null;
-  const payment = hasApprovedPayment ? approvedPayment : (ordinaryBudget !== null && ordinaryBudget > ZERO ? ordinaryBudget : null);
+  // A manually proposed payment never repairs unknown source-backed income.
+  // Keep its input in the case context; do not promote it to a computed plan amount.
+  const payment = income === null ? null : hasApprovedPayment ? approvedPayment : (ordinaryBudget !== null && ordinaryBudget > ZERO ? ordinaryBudget : null);
   if (hasApprovedPayment && approvedPayment === null) issues.push("APPROVED_PAYMENT_INVALID");
   if (approvedPayment !== null && ordinaryBudget !== null && approvedPayment > ordinaryBudget) issues.push("PAYMENT_EXCEEDS_DISPOSABLE_INCOME");
   const months = data.context.planMonths;
