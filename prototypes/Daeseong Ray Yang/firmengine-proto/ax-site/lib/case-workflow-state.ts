@@ -3,6 +3,7 @@ import type { CaseTask } from "./case-tasks.ts";
 import type { LegalCheckDisposition } from "./legal-check-dispositions.ts";
 import type { ProcedureEvent } from "./case-procedure-events.ts";
 export interface CaseWorkflowState extends IntakeCaseWorkflow {
+  businessNetReviews:import("./business-net-reconciliation.ts").BusinessNetReview[];
   tasks:CaseTask[];
   legalDispositions:LegalCheckDisposition[];
   procedureEvents:ProcedureEvent[];
@@ -12,5 +13,5 @@ export interface CaseWorkflowState extends IntakeCaseWorkflow {
   documentEdits:{id:string;fieldId:string;rowId:string|null;kind:"prose"|"layout";baseValue:string;value:string;artifactId:string;actor:string;reason:string;at:string}[];
   requirementConfirmations:{requirementId:string;fingerprint:string;actor:string;at:string;reason:string}[];
 }
-export function emptyCaseWorkflow():CaseWorkflowState{return {schema:"case-workflow/1",version:1,requirements:[],subjectLinks:[],documentMatches:[],tasks:[],legalDispositions:[],procedureEvents:[],projectionBlockers:[],reviewHistory:[],decisions:[],documentEdits:[],requirementConfirmations:[]};}
+export function emptyCaseWorkflow():CaseWorkflowState{return {schema:"case-workflow/1",version:1,requirements:[],subjectLinks:[],documentMatches:[],tasks:[],legalDispositions:[],procedureEvents:[],projectionBlockers:[],reviewHistory:[],decisions:[],documentEdits:[],requirementConfirmations:[],businessNetReviews:[]};}
 export const caseWorkflow=(input?:Partial<CaseWorkflowState>):CaseWorkflowState=>structuredClone({...emptyCaseWorkflow(),...input});
