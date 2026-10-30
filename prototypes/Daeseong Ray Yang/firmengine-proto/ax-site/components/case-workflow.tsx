@@ -22,7 +22,7 @@ type WorkflowResponse = {
   diagnostics: Record<string, unknown>;
   health?:WorkflowHealth;
   legalAutomation?:{
-    status:string;completedChecks?:number;expectedChecks?:number;currentDataVersion?:number|null;lastError?:string|null;updatedAt?:string|null;quietDueAt?:string|null;remainingMs?:number|null;
+    status:string;completedChecks?:number;expectedChecks?:number;currentDataVersion?:number|null;reviewRunId?:string|null;documentRunId?:string|null;lastError?:string|null;updatedAt?:string|null;quietDueAt?:string|null;remainingMs?:number|null;
     outcome?:{summary?:string;blockers?:string[];counts?:Record<string,number>;findings?:{id:string;status:string;reason:string;nextAction:string;missingDocuments:string[]}[];drafts?:{id:string;name:string;kind:string}[];reviewPending?:boolean;humanReviewRequired?:boolean;pendingCourtPolicyChanges?:number;unresolvedRequiredDocuments?:{requirementId:string;status:string;missingFields:string[]}[];projectionBlockers?:number;
       documentFieldProjectionError?:string|null;documentFieldCount?:number;documentProjectionExpectedTokenCount?:number;
       documentProjectionBlockers?:string[];};
@@ -252,7 +252,30 @@ export default function CaseWorkflow({ caseId }: { caseId: string }) {
            <div className="workflow-list">{data.legalAutomation.outcome!.findings!.slice(0,20).map(item=><article className="workflow-card" key={item.id}><strong>{item.id} · {label(item.status)}</strong><p>{item.reason}</p>
            {item.missingDocuments.length>0&&<p>필요 자료: {item.missingDocuments.join(" · ")}</p>}<p>다음 조치: {item.nextAction}</p></article>)}</div></details>}
          {Boolean(data.legalAutomation.outcome?.drafts?.length)&&<div className="workflow-list"><strong>자동 생성된 검토용 서류</strong>
-           {data.legalAutomation.outcome!.drafts!.map(item=><p key={item.id}><a href={"/api/cases/"+encodeURIComponent(caseId)+"/artifacts/"+encodeURIComponent(item.id)}>{item.name}</a> · 제출 전 검토 필요</p>)}</div>}
+           {data.legalAutomation.outcome!.drafts!.map(item=><p key={item.id}><a href={"/api/cases/"+encodeURIComponent(caseId)+"/artifacts/"+encodeURIComponent(item.id)}>{item.name}</a> · 제출 전 검토 필요</p>)}
+           {data.legalAutomation.status==="draft_ready"&&data.legalAutomation.reviewRunId&&data.legalAutomation.documentRunId&&
+             data.roles.includes("case_editor")&&data.roles.includes("caseworker_review")&&
+             !data.legalAutomation.outcome!.drafts!.every(file=>data.artifacts.some(active=>active.id===file.id))&&(
+             <div className="workflow-form">
+               <p className="workflow-muted">현재 자동초안의 원래 파일 ID와 해시를 유지하면서 직원 검토 목록에 명시적으로 연결합니다. 이 작업은 법적 승인이나 최종 제출이 아닙니다.</p>
+               <button className="button button-outline" disabled={busy} onClick={async()=>{
+                 setBusy(true);setError("");setNotice(null);
+                 try{
+                   const response=await fetch("/api/cases/"+encodeURIComponent(caseId)+"/automatic-draft/adopt",{
+                     method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
+                     body:JSON.stringify({expectedRevision:data.revision,
+                       expectedDataVersion:data.legalAutomation!.currentDataVersion,
+                       legalReviewRunId:data.legalAutomation!.reviewRunId,
+                       documentRunId:data.legalAutomation!.documentRunId})});
+                   const output=await response.json().catch(()=>({})) as {error?:string;message?:string};
+                   if(!response.ok)throw new Error(output.error||output.message||"자동초안 검토 연결 실패");
+                   await load();
+                   setNotice({kind:"success",text:"원본 파일 ID/해시를 유지해 검토용 문서 목록에 연결했습니다. 문안 검토 후 최종본을 별도로 생성해야 합니다."});
+                 }catch(cause){setError(cause instanceof Error?cause.message:"자동초안 검토 연결 실패");}
+                 finally{setBusy(false);}
+               }}>자동초안을 직원 검토 목록으로 가져오기</button>
+             </div>)}
+           </div>}
        </Panel>
       <Panel title="법률·서류 확인 기록" icon={ShieldCheck}>
         <p className="workflow-muted">이 영역은 사람이 남긴 검토 이력과 문서 변경 기록을 보여 줍니다. 자동 승인 기능은 없습니다.</p>
