@@ -2,6 +2,7 @@
 import {requiredKindsForCase} from "./domain.ts";
 import {bucket,caseExtras,db,event,getCase,now} from "./server-store.ts";
 import {prepareDocumentWrite,finalizeDocumentWriterReceipt} from "./document-writer.ts";
+import {buildDocumentFieldBases} from "./document-field-bases.ts";
 import {writeOfficePackage} from "./office-writer.ts";
 import {CURRENT_RULESET} from "./legal-rules.ts";
 import {referenceIdentity} from "./reference-runtime.ts";
@@ -47,6 +48,19 @@ export async function generateAutomaticReviewDraft(input:Input){
  if(!generated.length)fail("DOCUMENT_AUTOMATIC_DRAFT_EMPTY");
  const writerReceipt=await finalizeDocumentWriterReceipt(prepared.receipt,generated);
  if(writerReceipt.mode!=="draft"||writerReceipt.courtApprovalInferred!==false)fail("DOCUMENT_DRAFT_MODE_VIOLATION");
+ writerReceipt.fieldBases=await buildDocumentFieldBases({
+  data,execution:prepared.execution,formResults:writerReceipt.formResults,artifacts:generated
+ });
+ // Retain the exact generator + editable field bases alongside immutable R2
+ // artifact IDs. A human can explicitly adopt the review draft later without
+ // recreating a different file or confusing a draft with a final filing.
+ const handoff={schemaVersion:"automatic-draft-writer-receipt/1" as const,
+  documentRunId:runId,caseId:input.caseId,legalReviewRunId:input.legalReviewRunId,
+  dataVersion:input.dataVersion,caseRevision:input.caseRevision,
+  calculationRunId:input.calculationRunId,writerReceipt};
+ const handoffJson=JSON.stringify(handoff);
+ if(new TextEncoder().encode(handoffJson).byteLength>1_800_000)
+  fail("DOCUMENT_AUTOMATIC_REVIEW_RECEIPT_TOO_LARGE");
  await assertCurrent(input);
  if(prepared.receipt.referenceRelease?.sha256!==(referenceIdentity()?.sha256??prepared.receipt.referenceRelease?.sha256))
   fail("DOCUMENT_REFERENCE_RELEASE_STALE");
@@ -64,10 +78,14 @@ export async function generateAutomaticReviewDraft(input:Input){
    .bind(f.id,input.caseId,input.caseRevision,f.name,f.kind,f.objectKey,f.hash,f.mime,now()))),
   commitManifest:async(records)=>{
    await assertCurrent(input);
-   const receipt=await database.prepare("UPDATE case_automatic_document_runs SET status='complete',artifacts_json=?,reason=NULL,updated_at=? WHERE id=? AND case_id=? AND data_version=? AND case_revision=? AND status='pending' AND EXISTS (SELECT 1 FROM case_legal_review_heads h JOIN case_calculation_heads c ON c.case_id=h.case_id WHERE h.case_id=? AND h.review_run_id=? AND h.calculation_run_id=? AND h.data_version=?)")
-    .bind(JSON.stringify(records),now(),runId,input.caseId,input.dataVersion,input.caseRevision,
-      input.caseId,input.legalReviewRunId,input.calculationRunId,input.dataVersion).run();
-   if(!receipt.meta.changes)fail("LEGAL_AUTOMATION_DRAFT_SOURCE_STALE");
+   const committed=await database.batch([
+    database.prepare("INSERT INTO analyses(id,case_id,revision,type,payload,at) VALUES(?, ?,?,'automatic_draft_writer_receipt',?,?)")
+      .bind("auto-draft-receipt:"+runId,input.caseId,input.caseRevision,handoffJson,now()),
+    database.prepare("UPDATE case_automatic_document_runs SET status='complete',artifacts_json=?,reason=NULL,updated_at=? WHERE id=? AND case_id=? AND data_version=? AND case_revision=? AND status='pending' AND EXISTS (SELECT 1 FROM case_legal_review_heads h JOIN case_calculation_heads c ON c.case_id=h.case_id WHERE h.case_id=? AND h.review_run_id=? AND h.calculation_run_id=? AND h.data_version=?)")
+      .bind(JSON.stringify(records),now(),runId,input.caseId,input.dataVersion,input.caseRevision,
+        input.caseId,input.legalReviewRunId,input.calculationRunId,input.dataVersion)
+   ]);
+   if(!committed[1]?.meta.changes)fail("LEGAL_AUTOMATION_DRAFT_SOURCE_STALE");
    return runId;
   },
   deleteRecords:records=>database.batch(records.map(f=>database.prepare(
