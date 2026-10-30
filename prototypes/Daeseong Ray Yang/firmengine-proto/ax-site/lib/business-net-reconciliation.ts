@@ -116,7 +116,6 @@ export function preflightBusinessNet(
  const allRows=[gross,...costs];
  if(new Set(allRows.map(f=>f.subjectId)).size!==allRows.length)throw Error("BUSINESS_SOURCE_RECORD_DUPLICATED");
  const sourceIds=[reg.id];
- const ownerIds:string[]=[];
  for(const f of allRows){
   const family=f===gross?VAT:COST;
   const start=rowUnique(data,index,f.subjectId,family+(f===gross?"reporting_period_start":"period_start"));
@@ -127,7 +126,6 @@ export function preflightBusinessNet(
   if(!simpleValue(owner))throw Error("BUSINESS_SOURCE_ENTITY_UNKNOWN:"+f.id);
   // Entity names are source context. Only the human lawyer review below
   // authorizes associating them with the selected registration ID.
-  ownerIds.push(owner.id);
   sourceIds.push(f.id,start.id,end.id,owner.id);
   if(f!==gross){
    const category=rowUnique(data,index,f.subjectId,COST+"expense_category");
@@ -158,7 +156,7 @@ export function preflightBusinessNet(
  const approved=data.workflowState?.businessNetReviews??[];
  if(approved.some(review=>review.status==="approved"&&
      (review.month===selection.month&&review.payerIdentityId===normalizedId||
-      review.sourceFactIds.some(id=>sources.includes(id)))))
+      [review.grossFactId,...review.costFactIds].some(id=>[selection.grossFactId,...selection.costFactIds].includes(id)))))
     throw Error("BUSINESS_MONTH_OR_SOURCE_ALREADY_APPROVED");
  const basic={sourceFactIds:sources,month:selection.month,payerIdentityId:normalizedId,
   grossWon:totalGross.toString(),costWon:totalCost.toString(),netWon:(totalGross-totalCost).toString(),
@@ -195,7 +193,7 @@ function exactReview(data:CaseData,review:BusinessNetReview,index:CaseReadIndex)
  try{
   const recreated=preflightBusinessNetIgnoringExisting(data,{
    month:review.month,businessRegistrationFactId:review.businessRegistrationFactId,
-   grossFactId:review.grossFactId,costFactIds:review.costFactIds},index,review.id);
+   grossFactId:review.grossFactId,costFactIds:review.costFactIds},review.id);
   return recreated.grossWon===review.grossWon&&recreated.costWon===review.costWon&&
    recreated.netWon===review.netWon&&recreated.payerIdentityId===review.payerIdentityId&&
    recreated.referenceRuleId===review.referenceRuleId&&recreated.referenceSha256===review.referenceSha256&&
@@ -206,7 +204,7 @@ function exactReview(data:CaseData,review:BusinessNetReview,index:CaseReadIndex)
 // Run preflight without treating the one receipt being adopted as a duplicate.
 // This does NOT bypass any factual, period, source version or reference check.
 function preflightBusinessNetIgnoringExisting(
- data:CaseData,selection:BusinessNetSelection,index:CaseReadIndex,ignoreId:string
+ data:CaseData,selection:BusinessNetSelection,ignoreId:string
 ){
  const previous=data.workflowState?.businessNetReviews??[];
  const other=previous.filter(x=>x.id!==ignoreId);
