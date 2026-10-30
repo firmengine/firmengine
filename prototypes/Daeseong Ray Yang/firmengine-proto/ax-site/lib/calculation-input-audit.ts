@@ -12,6 +12,7 @@ const DERIVED:Readonly<Record<string,readonly string[]>>={
   "income.amount_basis":["income.period_start","income.period_end"],
   "income.period_months":["income.period_start","income.period_end"],
   "asset.ownership_bps":["asset.ownership_share"],
+  "debt.principal":["debt.principal_balance"],
   "asset.gross_value":["asset.surrender_value"],
 };
 const CASE_TYPES=new Set(["income","debt","asset","transaction","household"]);
