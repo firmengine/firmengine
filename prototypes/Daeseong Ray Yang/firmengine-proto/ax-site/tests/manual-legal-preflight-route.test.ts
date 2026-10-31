@@ -38,7 +38,7 @@ function fixture(sourceReady:boolean,calculationReady:boolean){
     failure:failed,
     HttpError
   };
-  const POST=vm.runInNewContext(code+"\\nPOST",context,{timeout:1000}) as
+  const POST=vm.runInNewContext(code+"\nPOST",context,{timeout:1000}) as
     (request:Request,ctx:{params:Promise<{id:string}>})=>Promise<{status:number;message?:string}>;
   return {calls,run:()=>POST({url:"https://example.invalid/process"} as Request,{params:Promise.resolve({id:"synthetic-case"})})};
 }
