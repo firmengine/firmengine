@@ -103,6 +103,31 @@ function checkExportGeneratedAudit(detail,receipt,sqlRows,manifest) {
     if (!record(manifest.documentWriter))
       return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_WRITER_NOT_OBSERVED");
     const storedWriter=manifest.documentWriter;
+    // A current stored Writer must independently match the receipt's source
+    // identity. Matching v2 hashes alone never proves its case or version.
+    if (storedWriter.caseId == null || storedWriter.caseRevision == null ||
+        storedWriter.mode == null || storedWriter.referenceRelease?.sha256 == null)
+      return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_WRITER_SOURCE_NOT_OBSERVED");
+    if (storedWriter.caseId !== receipt.caseId ||
+        storedWriter.caseRevision !== receipt.caseRevision ||
+        storedWriter.mode !== receipt.mode ||
+        storedWriter.referenceRelease.sha256 !== receipt.referenceSha256)
+      return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_SOURCE_CONFLICT");
+    // Check observed Manifest source/lifecycle before binding the audit event.
+    // Full required-field validity is still checked by the stored adapter.
+    if ((manifest.caseRevision != null && manifest.caseRevision !== receipt.caseRevision) ||
+        (manifest.sourceDataVersionAtExport != null &&
+          manifest.sourceDataVersionAtExport !== receipt.sourceDataVersion) ||
+        (manifest.mode != null && manifest.mode !== receipt.mode))
+      return block("conflict","D1_EXPORT_AUDIT_MANIFEST_SOURCE_CONFLICT");
+    if (Array.isArray(manifest.files)) {
+      if (manifest.files.some(file=>!record(file)))
+        return block("conflict","D1_EXPORT_AUDIT_MANIFEST_FILE_INVALID");
+      if (manifest.files.some(file=>file.status == null))
+        return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_FILE_STATUS_NOT_OBSERVED");
+      if (manifest.files.some(file=>file.status !== "current"))
+        return block("conflict","MANIFEST_FILES_NOT_CURRENT_OR_CONFLICT");
+    }
     // DocumentWriterReceipt v2 declares each field required. Omission or null
     // on EITHER side is not equality, even if the remaining fields match.
     for (const key of ["schemaVersion","inputSha256","evaluationId",
