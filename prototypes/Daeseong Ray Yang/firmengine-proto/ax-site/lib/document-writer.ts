@@ -5,6 +5,7 @@ import { BASIC_FORM_CODES } from "./form-mapping.ts";
 import type { FormBindings } from "./form-mapping.ts";
 import { FORM_CONTRACTS, FORM_CONTRACT_VERSION, type FormContract } from "./form-contracts.ts";
 import { evaluateDocumentPreflight, type DocumentPreflightResult } from "./document-preflight.ts";
+import { checkSelectedIncomePeriodCoverage } from "./income-period-coverage.ts";
 import { computeDocumentIdentity, mergeDocumentEdits, type DocumentEdit } from "./document-edits.ts";
 import { MISSING_FORM_VALUE } from "./form-mapping.ts";
 import { createCaseReadIndex, currentFacts, factHasValidStructuredRefs, factSourceLineageIssues, validSourceRef } from "./domain.ts";
@@ -162,6 +163,32 @@ export async function prepareDocumentWrite(input:{data:CaseData;evaluation:Deriv
     const formEdits=edited.documentEdits.filter(edit=>contract.fields.some(field=>field.token===edit.fieldId));
     const preliminary=await computeDocumentIdentity({formId:code,templateHash:contract.templateHash,evaluationId:evaluation.evaluationSha256??evaluation.inputSha256,evaluationResultHash:evaluation.evaluationSha256??evaluation.inputSha256,documentEdits:formEdits,requiredKinds:input.requiredKinds,generatorVersion:FORM_CONTRACT_VERSION});
     const preflight=await evaluateDocumentPreflight({formCode:code,bindings:preparedExecution.formBindings!,identity:{evaluationId:evaluation.evaluationSha256??evaluation.inputSha256,evaluationResultHash:evaluation.evaluationSha256??evaluation.inputSha256,referenceBundleHash:evaluation.referenceSha256??"",templateHash:contract.templateHash,documentEditsHash:preliminary.documentEditsHash},mode,contract});
+    // A selected representative period is an application review scope, not a
+    // universal twelve-month legal rule. Compare exact observed D5103 months
+    // against that scope before a review-only final artifact can be prepared.
+    if(code==="D5103"){
+      const coverage=checkSelectedIncomePeriodCoverage({
+        selectedPeriod:data.context.filingPeriod,
+        monthRows:preparedExecution.formBindings!.rows.month??[],
+        evidenceCutoff:data.context.evidence_cutoff??null,
+      });
+      if(coverage.status==="review_required"){
+        const detail=[
+          coverage.missingMonths.length?"missing="+coverage.missingMonths.join(","):null,
+          coverage.outsideMonths.length?"outside="+coverage.outsideMonths.join(","):null,
+          coverage.invalidRowIndices.length?"invalidRows="+coverage.invalidRowIndices.join(","):null,
+          coverage.futureMonths.length?"afterCutoff="+coverage.futureMonths.join(","):null,
+        ].filter(Boolean).join("; ");
+        for(const reason of coverage.codes){
+          if([...preflight.blockers,...preflight.warnings].some(issue=>issue.code===reason))continue;
+          const message="선택 소득 대표기간과 월별 관측자료의 일치 여부를 검토하세요"+(detail?": "+detail:"");
+          if(mode==="final")preflight.blockers.push({code:reason,message,severity:"blocker"});
+          else preflight.warnings.push({code:reason,message,severity:"warning"});
+          preflight.unresolved.push(reason);
+        }
+        preflight.status=mode==="final"?"blocked":"draft_with_unresolved";
+      }
+    }
     if(mode==="final"&&preflight.blockers.length)throw new Error("DOCUMENT_PREFLIGHT_BLOCKED:"+JSON.stringify({formCode:code,blockers:preflight.blockers}));
     const parentArtifactId=data.exportManifest?.files.find(file=>file.kind===kind&&file.status==="current")?.id??null;
     const identity=await computeDocumentIdentity({formId:code,templateHash:contract.templateHash,formContractHash:preflight.contractHash,evaluationId:evaluation.evaluationSha256??evaluation.inputSha256,evaluationResultHash:evaluation.evaluationSha256??evaluation.inputSha256,documentEdits:formEdits,requiredKinds:input.requiredKinds,generatorVersion:FORM_CONTRACT_VERSION,parentArtifactId});
