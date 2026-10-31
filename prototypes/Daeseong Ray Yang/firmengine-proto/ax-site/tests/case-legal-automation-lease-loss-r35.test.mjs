@@ -32,7 +32,7 @@ async function syntheticAttempt({changes,attempts=1,errorCode="LEGAL_SYNTHETIC_5
   const args=[new Error(errorCode),database,
     {caseId:"case-synthetic",id:"job-synthetic",attempts},"lease-A",
     (e)=>e.message,4,()=> "future-retry",()=> "synthetic-now",
-    async (_job,kind,payload)=>audits.push({kind,payload})];
+    async (_db,_job,kind,payload)=>audits.push({kind,payload})];
   let value=null,failure=null;
   try{value=await handleFailure(...args);}catch(error){failure=error;}
   assert.equal(statements.length,1);
