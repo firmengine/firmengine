@@ -11,7 +11,7 @@ const start=source.indexOf(marker);
 const end=source.indexOf("\n }\n}\nexport async function drainCaseLegalAutomation",start);
 assert.ok(start>=0&&end>start,"production catch body must be uniquely available");
 assert.equal(source.indexOf(marker,start+marker.length),-1);
-const body=source.slice(start+"}catch(error){".length,end).replace(/ as const\\b/g,"");
+const body=source.slice(start+"}catch(error){".length,end).replace(/ as const\b/g,"");
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 const handleFailure=new AsyncFunction("error","database","job","lease","safeCode",
  "RETRIES","later","clock","note",body);
@@ -35,8 +35,8 @@ async function synthetic({changes=1,audit=1,attempts=1,err="LEGAL_SYNTHETIC_503"
  }catch(e){observed=e.message;}
  assert.equal(prepared.length,2);
  assert.equal(batched.length,1);
- assert.match(prepared[0].sql,/lease_until>\\?/);
- assert.match(prepared[1].sql,/WHERE changes\\(\\)=1/);
+ assert.match(prepared[0].sql,/lease_until>\?/);
+ assert.match(prepared[1].sql,/WHERE changes\(\)=1/);
  assert.equal(prepared[0].args.at(-3),"job-synthetic");
  assert.equal(prepared[0].args.at(-2),"lease-A");
  assert.equal(prepared[1].args[1],"job-synthetic");
