@@ -25,7 +25,7 @@ const scenarios=[
  {name:"audit D1 503 exception sanitized",updated:1,audit:"throw",expected:"LEGAL_AUTOMATION_RETRY_BATCH_ACK_UNOBSERVED",steps:"update,audit"},
  {name:"retry CAS zero never inserts audit",updated:0,audit:1,expected:"LEGAL_AUTOMATION_RETRY_CONFLICT",steps:"update,audit"},
  {name:"retry CAS null never inserts audit",updated:null,audit:1,expected:"LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED",steps:"update,audit"},
- {name:"retry CAS two never inserts audit",updated:2,audit:1,expected:"LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED",steps:"update"},
+ {name:"retry CAS two never inserts audit",updated:2,audit:1,expected:"LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED",steps:"update,audit"},
  {name:"eligible projection rework is a human-only retry",updated:1,audit:1,status:"review_required",repair:true,expected:"retry_wait",steps:"update,audit"},
  {name:"ineligible projection rework is blocked",status:"review_required",repair:false,expected:"LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB",steps:""},
  {name:"stale data-version retry is blocked",version:2,expected:"LEGAL_AUTOMATION_RETRY_STALE_VERSION",steps:""},
