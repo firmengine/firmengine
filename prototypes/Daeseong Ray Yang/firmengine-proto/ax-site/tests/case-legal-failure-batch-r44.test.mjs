@@ -71,3 +71,12 @@ test("negative control: split UPDATE succeeds when audit fails",()=>{
   assert.deepEqual(current(f.b),{status:"retry_wait",events:0});
  }finally{f.close();}
 });
+
+test("negative control: main expired lease changes failure status despite expiry",()=>{
+ const f=fixture();try{
+  f.b.exec("UPDATE case_legal_automation_jobs SET lease_until='2026-10-31T00:00:00.000Z'");
+  const OLD="UPDATE case_legal_automation_jobs SET status=?,lease_token=NULL,lease_until=NULL,next_attempt_at=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running'";
+  assert.equal(f.a.prepare(OLD).run(...ARGS.slice(0,-1)).changes,1);
+  assert.deepEqual(current(f.b),{status:"retry_wait",events:0});
+ }finally{f.close();}
+});
