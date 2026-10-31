@@ -127,8 +127,14 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
      const code=error instanceof Error&&/^[A-Z][A-Z0-9_]{5,100}$/.test(error.message)
        ?error.message:"CASE_CALCULATION_AUTOMATION_FAILED";
      const retryAt=terminal?null:new Date(ms+Math.min(900_000,30_000*2**Math.max(0,attempts-1))).toISOString();
-     await database.prepare("UPDATE case_calculation_poll_jobs SET status=?,next_attempt_at=?,last_error=?,lease_token=NULL,lease_until=NULL,updated_at=? WHERE case_id=? AND lease_token=?")
+     const update=await database.prepare("UPDATE case_calculation_poll_jobs SET status=?,next_attempt_at=?,last_error=?,lease_token=NULL,lease_until=NULL,updated_at=? WHERE case_id=? AND lease_token=?")
        .bind(terminal?"failed":"retry_wait",retryAt,code,at,row.caseId,lease).run();
+     // A replacement worker may have claimed this lease while the old worker failed.
+     // A zero-row CAS is not a persisted retry or terminal failure receipt.
+     if(!update.meta.changes){
+       results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"superseded" as const});
+       continue;
+     }
      results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:terminal?"failed" as const:"retry_wait" as const,error:code,nextAttemptAt:retryAt});
    }
  }
