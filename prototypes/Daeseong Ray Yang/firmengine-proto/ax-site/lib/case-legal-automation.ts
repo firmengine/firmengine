@@ -301,10 +301,20 @@ export async function drainCaseLegalAutomation(database:D1Database,input:{
  const sql="SELECT c.id AS caseId,c.revision AS caseRevision,s.data_version AS dataVersion,h.run_id AS calculationRunId,r.input_sha256 AS inputSha256,r.reference_sha256 AS referenceSha256,j.id AS jobId,j.status AS jobStatus,j.lease_until AS jobLeaseUntil,j.next_attempt_at AS nextAttemptAt FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id JOIN case_calculation_runs r ON r.id=h.run_id LEFT JOIN case_legal_automation_jobs j ON j.case_id=c.id AND j.data_version=s.data_version AND j.calculation_run_id=h.run_id WHERE h.data_version=s.data_version AND h.case_revision=c.revision AND r.reference_sha256=? AND (j.id IS NULL OR ((j.status IN ('pending','retry_wait','draft_pending','waiting_evidence') OR j.status='running' AND j.lease_until<?) AND (j.next_attempt_at IS NULL OR j.next_attempt_at<=?)))"+filter+" ORDER BY COALESCE(j.updated_at,s.last_changed_at),c.id LIMIT ?";
  const candidates=(await database.prepare(sql).bind(ref,now,now,...(input.caseId?[input.caseId]:[]),limit).all<Candidate>()).results??[];
  const results=[];
- for(const c of candidates)results.push(await processJob(database,c,input.services));
+ for(const c of candidates){
+  try{
+   results.push(await processJob(database,c,input.services));
+  }catch(error){
+   // A thrown D1 acknowledgement does not prove the previous SQL did not commit.
+   // Continue other cases without changing an unobserved job or replaying its model call.
+   results.push({caseId:c.caseId,status:"unobserved",errorCode:safeCode(error),
+    persistence:"unobserved",needsReconciliation:true});
+  }
+ }
  return {scanned:candidates.length,reviewing:results.filter(x=>x.status==="reviewing").length,
   draftReady:results.filter(x=>x.status==="draft_ready").length,
-  attention:results.filter(x=>["attention_required","review_required","failed"].includes(x.status)).length,results};
+  attention:results.filter(x=>["attention_required","review_required","failed"].includes(x.status)).length,
+  unobserved:results.filter(x=>x.status==="unobserved").length,results};
 }
 /** Explicit operator recovery for a failed AI or drafting stage.
  * Only the same current source+calculation version may be retried. */
