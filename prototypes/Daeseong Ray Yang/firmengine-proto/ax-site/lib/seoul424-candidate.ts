@@ -57,12 +57,15 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   const debtThreshold = referenceMoney("param.seoul.shortened_term.total_debt_max_won");
   const wageYears = referencePositiveInteger("param.seoul.shortened_term.wage_history_years"), recentDebtYears = referencePositiveInteger("param.seoul.shortened_term.recent_debt_years");
   const base = { sourceUrl: referenceParameter<string>("param.seoul.shortened_term.source_url"), clause: `제424호 제2조 제2항 제7호 가목: 최근 ${wageYears}년간 최저임금 미만의 급여를 받았을 것`, neutralInterpretationReviewRequired: true as const, courtApprovalInferred: false as const };
+  const confirmedCourt = typeof input.courtId === "string" && input.courtId.trim().length > 0;
   const validAppDate = input.firstFilingDate !== null && validDate(input.firstFilingDate);
   const baseConditions = [
-    { id: "court_scope", status: input.courtId === null ? "unknown" as const : input.courtId === court ? "yes" as const : "no" as const, factIds: [], detail: "서울회생법원 관할" },
+    { id: "court_scope", status: !confirmedCourt ? "unknown" as const : input.courtId === court ? "yes" as const : "no" as const, factIds: [], detail: "서울회생법원 관할" },
     { id: "effective_date", status: !validAppDate ? "unknown" as const : input.firstFilingDate! >= effectiveFrom ? "yes" as const : "no" as const, factIds: [], detail: `${effectiveFrom} 이후 최초 접수 사건` },
   ];
-  if (input.courtId !== null && input.courtId !== court) return { ...base, status: "not_applicable", route: null, conditions: baseConditions, reason: "서울회생법원 준칙이므로 다른 관할에 적용하지 않습니다." };
+  // Unconfirmed court identity must not promote a court-specific candidate.
+  if (!confirmedCourt) return { ...base, status: "unknown", route: null, conditions: baseConditions, reason: "관할 법원이 확인되지 않아 서울회생법원 준칙의 후보 여부를 판단할 수 없습니다." };
+  if (input.courtId !== court) return { ...base, status: "not_applicable", route: null, conditions: baseConditions, reason: "서울회생법원 준칙이므로 다른 관할에 적용하지 않습니다." };
   if (!validAppDate) return { ...base, status: "unknown", route: null, conditions: baseConditions, reason: "신청접수일이 없거나 유효하지 않아 시행 버전을 확인할 수 없습니다." };
   if (input.firstFilingDate! < effectiveFrom) return { ...base, status: "unsupported_version", route: null, conditions: baseConditions, reason: `${effectiveFrom} 시행 판본부터 지원합니다. 이전 사건을 아니오로 판단하지 않습니다.` };
   const category16: Tri = input.categoryRoutes.some((r) => r.status === "yes") ? "yes" : input.categoryRoutes.length > 0 && input.categoryRoutes.every((r) => r.status === "no") ? "no" : "unknown";
