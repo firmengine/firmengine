@@ -129,7 +129,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     total_repayment: amount(calculation.planTotalWon), liquidation_value: amount(calculation.liquidationValueWon),
     present_value: amount(calculation.presentValueWon), present_value_basis: present(data.context.presentValueBasis),
     allocation_basis: data.context.allocationBasisReviewed === true ? present(allocationLabels[data.context.allocationBasis ?? ""]) : "[배분 기준 검토 필요]",
-    approved_monthly_income: data.context.inventoryComplete.income==="yes" && data.context.incomePeriodReviewed===true &&
+    // A reviewed representative period is mandatory before a computed observation may be labelled approved.
+    // This preserves source-only previews; it does not recognize income or choose a legal period.
+    approved_monthly_income: !!data.context.filingPeriod && data.context.inventoryComplete.income==="yes" && data.context.incomePeriodReviewed===true &&
       calculation.monthlyIncomeWon !== null && calculation.incomeRows.length > 0 && calculation.incomeRows.every((row) => {
       const current=data.incomes.find(s=>s.id===row.id);
       return !!current&&row.monthlyWon!==null&&current.recognition==="accepted"&&
