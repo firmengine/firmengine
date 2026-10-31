@@ -24,7 +24,7 @@ const dateParts = (value: string | undefined | null): {year:number;month:number;
 };
 const monthIndex = (year:number, month:number) => year*12+month-1;
 const monthKey = (index:number) => String(Math.floor(index/12)).padStart(4,"0")+"-"+String(index%12+1).padStart(2,"0");
-const validWon = (value:string|undefined):boolean => value !== undefined && /^(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)$/.test(value.trim());
+const validWon = (value:unknown):boolean => typeof value === "string" && /^(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)$/.test(value.trim());
 
 /** Dynamic coverage of a *selected*, reviewed period; no fixed 12-month requirement. */
 export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCoverageInput):SelectedIncomePeriodCoverageResult {
@@ -44,7 +44,12 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
   }
   const covered=new Set<number>();
   for(let i=0;i<input.monthRows.length;i++){
-    const row=input.monthRows[i]!;
+    const row=input.monthRows[i];
+    // Persisted or external bindings can violate static TypeScript row shapes.
+    // Treat malformed input as unresolved evidence, never an unhandled exception.
+    if (!row || typeof row !== "object") {
+      result.invalidRowIndices.push(i);code("D5103_MONTH_EVIDENCE_UNRESOLVED");continue;
+    }
     const ym=row.period;
     const parsed=typeof ym==="string"&&/^(\d{4})-(0[1-9]|1[0-2])$/.exec(ym);
     if(!parsed || !validWon(row.net_income)){
