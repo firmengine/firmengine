@@ -1,4 +1,5 @@
-import { integer, sqliteTable, text, index, uniqueIndex, primaryKey, unique, foreignKey } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { integer, sqliteTable, text, index, uniqueIndex, primaryKey, unique, foreignKey, check } from "drizzle-orm/sqlite-core";
 
 export const cases = sqliteTable("cases", {
   id: text("id").primaryKey(), name: text("name").notNull(),
@@ -389,7 +390,11 @@ export const caseCourtCorrectionItemVersions=sqliteTable("case_court_correction_
  actorId:text("actor_id").notNull(),
  reason:text("reason").notNull(),
  createdAt:text("created_at").notNull(),
-},t=>[index("case_correction_item_version_history").on(t.caseId,t.courtEventId,t.itemNo,t.createdAt)]);
+},t=>[
+ // Mirror SQL migration 0022: out-of-range correction item numbers must not be accepted.
+ check("case_correction_item_no_range",sql`${t.itemNo} >= 1 AND ${t.itemNo} <= 500`),
+ index("case_correction_item_version_history").on(t.caseId,t.courtEventId,t.itemNo,t.createdAt)
+]);
 
 export const caseCourtCorrectionItemHeads=sqliteTable("case_court_correction_item_heads",{
  caseId:text("case_id").notNull().references(()=>cases.id),
