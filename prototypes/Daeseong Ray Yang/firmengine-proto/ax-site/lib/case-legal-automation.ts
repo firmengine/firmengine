@@ -345,7 +345,7 @@ export async function retryFailedCaseLegalAutomation(database:D1Database,input:{
  let receipts:Array<{meta?:{changes?:number}}>;
  try{
   receipts=await database.batch([
-   database.prepare("UPDATE case_legal_automation_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,updated_at=? WHERE id=? AND status=? AND case_revision=? AND data_version=?")
+   database.prepare("UPDATE case_legal_automation_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,updated_at=? WHERE id=? AND status=? AND case_revision=? AND data_version=? AND EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id JOIN case_calculation_runs r ON r.id=h.run_id WHERE c.id=case_legal_automation_jobs.case_id AND c.revision=case_legal_automation_jobs.case_revision AND s.data_version=case_legal_automation_jobs.data_version AND h.run_id=case_legal_automation_jobs.calculation_run_id AND h.case_revision=c.revision AND h.data_version=s.data_version AND h.input_sha256=case_legal_automation_jobs.input_sha256 AND r.input_sha256=h.input_sha256 AND r.reference_sha256=case_legal_automation_jobs.reference_sha256 AND r.case_revision=c.revision AND r.data_version=s.data_version)")
     .bind(now,now,row.id,row.status,current.caseRevision,current.dataVersion),
    database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) SELECT ?,?,?,?,?,? WHERE changes()=1")
     .bind(input.caseId,row.id,current.dataVersion,"manual_retry_requested",auditPayload,now)
