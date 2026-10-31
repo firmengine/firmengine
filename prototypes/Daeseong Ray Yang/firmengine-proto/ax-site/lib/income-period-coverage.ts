@@ -1,0 +1,72 @@
+/**
+ * Application-only D5103 source-month coverage check.
+ * This is NOT a court-mandated 12-month rule or approval of recognized income.
+ */
+export interface SelectedIncomePeriodCoverageInput {
+  selectedPeriod?: { start: string; end: string } | null;
+  monthRows: ReadonlyArray<Readonly<Record<string, string>>>;
+  evidenceCutoff?: string | null;
+}
+export interface SelectedIncomePeriodCoverageResult {
+  status: "not_applicable" | "complete" | "review_required";
+  codes: string[];
+  missingMonths: string[];
+  outsideMonths: string[];
+  invalidRowIndices: number[];
+  futureMonths: string[];
+}
+
+const dateParts = (value: string | undefined | null): {year:number;month:number;day:number}|null => {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+  const d = new Date(value+"T00:00:00.000Z");
+  if (!Number.isFinite(d.valueOf()) || d.toISOString().slice(0, 10) !== value) return null;
+  return {year:d.getUTCFullYear(),month:d.getUTCMonth()+1,day:d.getUTCDate()};
+};
+const monthIndex = (year:number, month:number) => year*12+month-1;
+const monthKey = (index:number) => String(Math.floor(index/12)).padStart(4,"0")+"-"+String(index%12+1).padStart(2,"0");
+const validWon = (value:string|undefined):boolean => value !== undefined && /^(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)$/.test(value.trim());
+
+/** Dynamic coverage of a *selected*, reviewed period; no fixed 12-month requirement. */
+export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCoverageInput):SelectedIncomePeriodCoverageResult {
+  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[]};
+  const code=(x:string)=>{if(!result.codes.includes(x))result.codes.push(x);};
+  if (!input.selectedPeriod) {
+    if (!input.monthRows.length) result.status="not_applicable";
+    else {result.status="review_required";code("D5103_SELECTED_PERIOD_MISSING");}
+    return result;
+  }
+  const start=dateParts(input.selectedPeriod.start), end=dateParts(input.selectedPeriod.end);
+  const startIndex=start?monthIndex(start.year,start.month):null;
+  const endIndex=end?monthIndex(end.year,end.month):null;
+  const lastCalendarDay=end?new Date(Date.UTC(end.year,end.month,0)).getUTCDate():null;
+  if (!start||!end||start.day!==1||end.day!==lastCalendarDay||startIndex===null||endIndex===null||startIndex>endIndex||endIndex-startIndex>239){
+    result.status="review_required";code("D5103_SELECTED_PERIOD_INVALID");return result;
+  }
+  const covered=new Set<number>();
+  for(let i=0;i<input.monthRows.length;i++){
+    const row=input.monthRows[i]!;
+    const ym=row.period;
+    const parsed=typeof ym==="string"&&/^(\d{4})-(0[1-9]|1[0-2])$/.exec(ym);
+    if(!parsed || !validWon(row.net_income)){
+      result.invalidRowIndices.push(i);code("D5103_MONTH_EVIDENCE_UNRESOLVED");continue;
+    }
+    const month=monthIndex(Number(parsed[1]),Number(parsed[2]));
+    if(month<startIndex || month>endIndex) {result.outsideMonths.push(ym);code("D5103_MONTH_OUTSIDE_SELECTED_PERIOD");}
+    else covered.add(month);
+  }
+  for(let month=startIndex;month<=endIndex;month++){
+    if(!covered.has(month))result.missingMonths.push(monthKey(month));
+  }
+  if(result.missingMonths.length)code("D5103_SELECTED_PERIOD_COVERAGE_GAP");
+  if(input.evidenceCutoff!==undefined&&input.evidenceCutoff!==null){
+    const cutoff=dateParts(input.evidenceCutoff);
+    if(!cutoff)code("D5103_EVIDENCE_CUTOFF_INVALID");
+    else {
+      const lastObserved=monthIndex(cutoff.year,cutoff.month);
+      for(let month=startIndex;month<=endIndex;month++)if(month>lastObserved)result.futureMonths.push(monthKey(month));
+      if(result.futureMonths.length)code("D5103_SELECTED_PERIOD_AFTER_EVIDENCE_CUTOFF");
+    }
+  }
+  if(result.codes.length)result.status="review_required";
+  return result;
+}
