@@ -37,6 +37,19 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     const issue={code:"FIELD_UNRESOLVED",token:field.token,message:reason,severity:(input.mode==="final"&&needsValue?"blocker":"warning") as "blocker"|"warning"};
     if(input.mode==="final"&&needsValue) blockers.push(issue); else warnings.push(issue);
   }
+  // Application-level integrity gate only: displayed plan amounts must not
+  // silently imply an approved income amount. This does not establish a court
+  // requirement or replace lawyer/calculation-office review.
+  if((input.formCode==="D5110"||input.formCode==="D5111")&&
+    ["monthly_income","monthly_payment","total_repayment"].some(token=>!absent(input.bindings.scalars[token]))&&
+    absent(input.bindings.scalars.approved_monthly_income)){
+    const issue:PreflightIssue={
+      code:"PLAN_APPROVED_MONTHLY_INCOME_UNRESOLVED",token:"approved_monthly_income",
+      message:"계산 또는 변제금액이 있으나 별도 검토된 월소득이 미확정입니다. 최종본 승격 전 실무자 확인이 필요합니다.",
+      severity:input.mode==="final"?"blocker":"warning"
+    };
+    if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+  }
   const numeric = (value:unknown):bigint|null => { const text=String(value??"").replace(/[\s,₩원]/g,""); return /^-?\d+$/.test(text)?BigInt(text):null; };
   // D5103 is a month-by-month form view; rendering an annual total in one
   // month row is a monetary misstatement even when the total is numerically valid.
