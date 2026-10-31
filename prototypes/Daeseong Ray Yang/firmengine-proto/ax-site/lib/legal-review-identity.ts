@@ -16,6 +16,9 @@ export function projectLegalRunConflicts<T extends LegalReviewRunIdentity & {fac
 export function currentLegalDispositionOutcome(disposition:LegalDispositionIdentity,runs:readonly LegalReviewRunIdentity[]):"accepted"|"rejected"|"needs_review"{
   const matchingRuns=runs.filter(run=>run.checkId===disposition.checkId&&run.subjectFingerprint===disposition.subjectFingerprint),outcomes=new Set(matchingRuns.map(run=>run.status));
   if(outcomes.size>1)return "needs_review";
+  // Mixed source/calculation/reference dependencies cannot keep an older acceptance current,
+  // even when both advisory runs happen to report the same status.
+  if(disposition.status==="accepted"&&matchingRuns.some(run=>run.dependencyFingerprint!==disposition.dependencyFingerprint))return "needs_review";
   const current=matchingRuns.some(run=>run.id===disposition.runId&&run.dependencyFingerprint===disposition.dependencyFingerprint);
   return current&&disposition.status==="accepted"?"accepted":disposition.status==="rejected"?"rejected":"needs_review";
 }
