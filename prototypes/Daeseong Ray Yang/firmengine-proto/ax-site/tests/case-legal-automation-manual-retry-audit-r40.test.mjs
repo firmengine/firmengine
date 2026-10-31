@@ -4,16 +4,13 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {stripTypeScriptTypes} from "node:module";
 
 const source=readFileSync(new URL("../lib/case-legal-automation.ts",import.meta.url),"utf8");
 const start=source.indexOf("export async function retryFailedCaseLegalAutomation");
 const end=source.indexOf("export async function readCaseLegalAutomation",start);
 assert.ok(start>=0&&end>start,"real manual-retry implementation must be present");
-const body=source.slice(start,end)
- .replace("export async function","async function")
- .replace("database:D1Database,input:{caseId:string;expectedDataVersion:number}","database,input")
- .replace(/\.first<\{[\s\S]*?\}>\(\)/g,".first()")
- .replace("let auditChanges:unknown;","let auditChanges;");
+const body=stripTypeScriptTypes(source.slice(start,end).replace("export async function","async function"));
 const makeRetry=(current,projectionRepair=false)=>new Function(
  "latest","projectionRepairRequired","decode","clock",body+"\nreturn retryFailedCaseLegalAutomation;"
 )(
@@ -25,9 +22,9 @@ const scenarios=[
  {name:"audit null ACK",updated:1,audit:null,expected:"LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED",steps:"update,audit"},
  {name:"audit result missing",updated:1,audit:"missing",expected:"LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED",steps:"update,audit"},
  {name:"audit ACK unexpectedly two",updated:1,audit:2,expected:"LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED",steps:"update,audit"},
- {name:"audit D1 503 exception sanitized",updated:1,audit:"throw",expected:"LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED",steps:"update,audit"},
- {name:"retry CAS zero never inserts audit",updated:0,audit:1,expected:"LEGAL_AUTOMATION_RETRY_CONFLICT",steps:"update"},
- {name:"retry CAS null never inserts audit",updated:null,audit:1,expected:"LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED",steps:"update"},
+ {name:"audit D1 503 exception sanitized",updated:1,audit:"throw",expected:"LEGAL_AUTOMATION_RETRY_BATCH_ACK_UNOBSERVED",steps:"update,audit"},
+ {name:"retry CAS zero never inserts audit",updated:0,audit:1,expected:"LEGAL_AUTOMATION_RETRY_CONFLICT",steps:"update,audit"},
+ {name:"retry CAS null never inserts audit",updated:null,audit:1,expected:"LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED",steps:"update,audit"},
  {name:"retry CAS two never inserts audit",updated:2,audit:1,expected:"LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED",steps:"update"},
  {name:"eligible projection rework is a human-only retry",updated:1,audit:1,status:"review_required",repair:true,expected:"retry_wait",steps:"update,audit"},
  {name:"ineligible projection rework is blocked",status:"review_required",repair:false,expected:"LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB",steps:""},
@@ -44,14 +41,14 @@ for(const scenario of scenarios){
   const database={prepare(sql){
    const step=sql.startsWith("SELECT")?"select":sql.startsWith("UPDATE")?"update":"audit";
    return {bind(...args){if(step==="audit")auditPayloads.push(args[4]);return this;},
-    async first(){return row;},
-    async run(){
-     calls.push(step);
-     if(step==="update")return {meta:{changes:scenario.updated}};
-     if(scenario.audit==="throw")throw new Error("D1 503 PRIVATE_KEY");
-     if(scenario.audit==="missing")return {};
-     return {meta:{changes:scenario.audit}};
-    }};
+    async first(){return row;}};
+  },
+  async batch(_statements){
+   calls.push("update","audit");
+   if(scenario.audit==="throw")throw new Error("D1 503 PRIVATE_KEY");
+   const second=scenario.audit==="missing"?{}:
+    {meta:{changes:scenario.updated===0?0:scenario.audit}};
+   return [{meta:{changes:scenario.updated}},second];
   }};
   const retry=makeRetry(current,scenario.repair===true);
   let observed;
@@ -70,10 +67,12 @@ for(const scenario of scenarios){
   }
  });
 }
-test("the audit receipt does not pretend to make two D1 writes atomic",()=>{
+test("manual retry uses guarded atomic batch; request UUID idempotency is still not proven",()=>{
  assert.ok(source.includes("LEGAL_AUTOMATION_AUDIT_INSERT_ZERO"));
  assert.ok(source.includes("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED"));
  const retrySection=source.slice(start,end);
+ assert.ok(retrySection.includes("database.batch(["));
+ assert.ok(retrySection.includes("WHERE changes()=1"));
  assert.ok(retrySection.indexOf("UPDATE case_legal_automation_jobs")<
    retrySection.indexOf("INSERT INTO case_legal_automation_events"));
 });
