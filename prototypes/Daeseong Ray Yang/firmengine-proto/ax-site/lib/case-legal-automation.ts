@@ -80,23 +80,31 @@ async function note(database:D1Database,job:Job,kind:string,value:unknown){
  if(auditAck.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
 }
 async function transition(database:D1Database,job:Job,lease:string,status:string,fields:{
- completedChecks?:number;expectedChecks?:number;legalReviewRunId?:string|null;
- documentRunId?:string|null;outcome?:unknown;nextAttemptAt?:string|null;error?:string|null;
- }={}){
- const now=clock(),updated=await database.prepare(
-   "UPDATE case_legal_automation_jobs SET status=?,attempts=0,lease_token=NULL,lease_until=NULL,next_attempt_at=?,completed_checks=?,expected_checks=?,legal_review_run_id=COALESCE(?,legal_review_run_id),document_run_id=COALESCE(?,document_run_id),outcome_json=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running' AND lease_until>? AND EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=? AND h.run_id=? AND h.input_sha256=?)")
-   .bind(status,fields.nextAttemptAt??null,fields.completedChecks??job.completedChecks,fields.expectedChecks??job.expectedChecks,
-     fields.legalReviewRunId??null,fields.documentRunId??null,JSON.stringify(fields.outcome??decode(job.outcomeJson,{})),fields.error??null,
-     now,job.id,lease,now,job.caseId,job.caseRevision,job.dataVersion,job.calculationRunId,job.inputSha256).run();
- if(updated.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
- if(updated.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");
- try{
-  await note(database,job,status,{status,checks:fields.completedChecks??job.completedChecks});
- }catch(error){
-  // A committed state CAS plus an unknown audit INSERT is not a safe model retry.
-  if(error instanceof Error&&error.message==="LEGAL_AUTOMATION_AUDIT_INSERT_ZERO")throw error;
-  throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
- }
+  completedChecks?:number;expectedChecks?:number;legalReviewRunId?:string|null;
+  documentRunId?:string|null;outcome?:unknown;nextAttemptAt?:string|null;error?:string|null;
+  }={}){
+  // Candidate only (Draft): D1 batch must be proven transactional on staging.
+  // A lost batch receipt can mean COMMIT, never silently retry the model.
+  const now=clock();
+  let receipts:Array<{meta?:{changes?:number}}>;
+  try{
+   receipts=await database.batch([
+    database.prepare(
+     "UPDATE case_legal_automation_jobs SET status=?,attempts=0,lease_token=NULL,lease_until=NULL,next_attempt_at=?,completed_checks=?,expected_checks=?,legal_review_run_id=COALESCE(?,legal_review_run_id),document_run_id=COALESCE(?,document_run_id),outcome_json=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running' AND lease_until>? AND EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=? AND h.run_id=? AND h.input_sha256=?)")
+     .bind(status,fields.nextAttemptAt??null,fields.completedChecks??job.completedChecks,fields.expectedChecks??job.expectedChecks,
+       fields.legalReviewRunId??null,fields.documentRunId??null,JSON.stringify(fields.outcome??decode(job.outcomeJson,{})),fields.error??null,
+       now,job.id,lease,now,job.caseId,job.caseRevision,job.dataVersion,job.calculationRunId,job.inputSha256),
+    database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) SELECT ?,?,?,?,?,? WHERE changes()=1")
+     .bind(job.caseId,job.id,job.dataVersion,status,JSON.stringify({status,checks:fields.completedChecks??job.completedChecks}),now)
+   ]);
+  }catch{
+   throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");
+  }
+  if(!Array.isArray(receipts)||receipts.length!==2)throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");
+  if(receipts[0]?.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
+  if(receipts[0]?.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");
+  if(receipts[1]?.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_AUDIT_INSERT_ZERO");
+  if(receipts[1]?.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
 }
 async function gatherChecks(database:D1Database,job:Job,data:CaseData){
  const exactFingerprint=await legalReviewInputFingerprint(data,job.referenceSha256,EXECUTION_CONTRACT_VERSION);
