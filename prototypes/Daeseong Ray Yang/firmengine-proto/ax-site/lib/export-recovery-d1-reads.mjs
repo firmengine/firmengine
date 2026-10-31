@@ -46,8 +46,16 @@ const pick = (row, camel, snake) => Object.prototype.hasOwnProperty.call(row,cam
  * A positive R2 proof requires verification="r2-get-byte-sha256" AND bytesHash;
  * SQL hashes, object ETags and R2 HEAD metadata are not byte verification.
  */
-export function projectExportRecoveryD1Reads({receiptRow,artifactRows=null,
-  auditRows=null,r2BytesProofs=null}={}) {
+export function projectExportRecoveryD1Reads(input={}) {
+  // A null read and an HTTP/DB error envelope are distinct; never destructure
+  // an invalid wrapper or mislabel a 429/503/timeout as an absent receipt.
+  if (input === null) return block("inconclusive","D1_READ_INPUT_NOT_OBSERVED");
+  if (!record(input) || input instanceof Error ||
+      Object.prototype.hasOwnProperty.call(input,"error") ||
+      Object.prototype.hasOwnProperty.call(input,"status")) {
+    return block("conflict","D1_READ_INPUT_INVALID");
+  }
+  const {receiptRow,artifactRows=null,auditRows=null,r2BytesProofs=null}=input;
   if (receiptRow === undefined) return block("inconclusive","D1_RECEIPT_NOT_OBSERVED");
   if (receiptRow === null) return block("inconclusive","D1_RECEIPT_OBSERVED_ABSENT");
   if (!record(receiptRow)) return block("conflict","D1_RECEIPT_SHAPE_INVALID");
