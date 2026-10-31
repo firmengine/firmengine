@@ -87,3 +87,28 @@ test("source-only business facts with verified exclusions do not silently re-ent
  assert.equal(audit.summary.zeroIncomeWouldBeUnsupported,false);
  assert.equal(calculateCase(data,rules).monthlyIncomeWon,"0");
 });
+
+test("a historical expense with conflicting, unobserved or explicit-none period cannot suppress the current-source blocker",()=>{
+ for(const sourceState of ["conflicting","not_seen","explicit_none"] as const){
+  const {data,costRow}=fixture();
+  costRow("old-expense","800000","2024-01-01","2024-01-31");
+  const start=data.facts.find(f=>f.id==="old-expense-start")!;
+  start.fieldObservation={sourceState} as Fact["fieldObservation"];
+  const audit=auditBusinessSourceEvidence(data);
+  assert.equal(audit.rows[0].periodOverlap,"unknown",sourceState);
+  assert.equal(audit.summary.outsideSelectedPeriod,0,sourceState);
+  assert.equal(audit.summary.zeroIncomeWouldBeUnsupported,true,sourceState);
+  assert.equal(calculateCase(data,rules).monthlyIncomeWon,null,sourceState);
+ }
+});
+test("explicitly present historical period still permits the outside-period distinction",()=>{
+ const {data,costRow}=fixture();
+ costRow("old-expense","800000","2024-01-01","2024-01-31");
+ const start=data.facts.find(f=>f.id==="old-expense-start")!;
+ start.fieldObservation={sourceState:"present"} as Fact["fieldObservation"];
+ const audit=auditBusinessSourceEvidence(data);
+ assert.equal(audit.rows[0].periodOverlap,"outside");
+ assert.equal(audit.summary.outsideSelectedPeriod,1);
+ assert.equal(audit.summary.zeroIncomeWouldBeUnsupported,false);
+ assert.equal(calculateCase(data,rules).monthlyIncomeWon,"0");
+});
