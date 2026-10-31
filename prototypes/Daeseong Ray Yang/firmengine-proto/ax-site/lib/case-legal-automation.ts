@@ -74,8 +74,10 @@ async function assertCurrent(database:D1Database,version:Live){
  if(!sameVersion(current,version)||version.referenceSha256!==expectedRef)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
 }
 async function note(database:D1Database,job:Job,kind:string,value:unknown){
- await database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) VALUES(?,?,?,?,?,?)")
+ const auditAck=await database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) VALUES(?,?,?,?,?,?)")
   .bind(job.caseId,job.id,job.dataVersion,kind,JSON.stringify(value),clock()).run();
+ if(auditAck.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_AUDIT_INSERT_ZERO");
+ if(auditAck.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
 }
 async function transition(database:D1Database,job:Job,lease:string,status:string,fields:{
  completedChecks?:number;expectedChecks?:number;legalReviewRunId?:string|null;
@@ -88,7 +90,13 @@ async function transition(database:D1Database,job:Job,lease:string,status:string
      now,job.id,lease,now,job.caseId,job.caseRevision,job.dataVersion,job.calculationRunId,job.inputSha256).run();
  if(updated.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
  if(updated.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");
- await note(database,job,status,{status,checks:fields.completedChecks??job.completedChecks}).catch(()=>{});
+ try{
+  await note(database,job,status,{status,checks:fields.completedChecks??job.completedChecks});
+ }catch(error){
+  // A committed state CAS plus an unknown audit INSERT is not a safe model retry.
+  if(error instanceof Error&&error.message==="LEGAL_AUTOMATION_AUDIT_INSERT_ZERO")throw error;
+  throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
+ }
 }
 async function gatherChecks(database:D1Database,job:Job,data:CaseData){
  const exactFingerprint=await legalReviewInputFingerprint(data,job.referenceSha256,EXECUTION_CONTRACT_VERSION);
@@ -274,7 +282,7 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
   const code=safeCode(error),stale=code==="LEGAL_AUTOMATION_SUPERSEDED";
   // The prior transition may have committed despite a lost D1 acknowledgement.
   // Never turn an uncertain success into a new failure/retry or audit claim.
-  if(error instanceof Error&&error.message==="LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED")throw error;
+  if(error instanceof Error&&["LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED","LEGAL_AUTOMATION_AUDIT_INSERT_ZERO","LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED"].includes(error.message))throw error;
   const attempts=job.attempts,terminal=!stale&&attempts>=RETRIES;
   const status=stale?"superseded":terminal?"failed":"retry_wait";
   const delay=stale?null:terminal?null:later(Math.min(900,30*2**Math.max(0,attempts-1)));
