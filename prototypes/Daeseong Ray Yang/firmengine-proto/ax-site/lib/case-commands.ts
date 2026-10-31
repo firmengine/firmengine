@@ -244,6 +244,7 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
    }
    else {
     assertKeys(target,["proposalId"],["proposalId"]);assertKeys(patch,[]);review(auth);if(isSynthetic(data))fail("합성 사건의 계산 입력 승인은 금지되어 있습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");const decision=work.decisions.find(d=>d.id===target.proposalId);if(!decision||decision.status!=="proposed")fail("현재 제안을 찾을 수 없습니다.",409);
+    if(typeof decision.actor!=="string"||!decision.actor.trim()||decision.actor.trim().toLowerCase()===auth.actor.trim().toLowerCase())fail("계산 입력 제안자와 승인자는 서로 다른 담당자여야 합니다.",403,"INDEPENDENT_REVIEW_REQUIRED");
     const currentFingerprint=decision.calculationOverride?calculationBaseFingerprint(previous):await commandHash({context:{...previous.context,revision:0},incomes:previous.incomes,debts:previous.debts,household:previous.household,assets:previous.assets});if(decision.baseFingerprint!==currentFingerprint)fail("제안 이후 계산 입력이 바뀌었습니다.",409,"CASE_STATE_CONFLICT");
     if(decision.calculationOverride){const adopted=adoptCalculationOverride(previous,assessCase(previous,CURRENT_RULESET).calculation,decision.calculationOverride);if(adopted.status!=="adopted"||!adopted.context)fail("계산 입력 근거가 만료되었거나 예산 정합성을 통과하지 못했습니다: "+adopted.issues.join(", "),422,"REQUIRED_INPUT_UNRESOLVED");(data.context as unknown as Record<string,unknown>)[decision.calculationOverride.field]=adopted.context[decision.calculationOverride.field];}
     else Object.assign(data.context,parseContextPatch({[decision.path]:decision.proposedValue},previous.context));
