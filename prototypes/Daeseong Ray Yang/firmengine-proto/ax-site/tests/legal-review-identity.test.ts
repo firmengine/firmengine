@@ -66,3 +66,16 @@ test("same-subject current runs expose outcome conflict and evidence without let
  assert.equal(currentLegalDispositionOutcome(accepted,runs),"needs_review");
  assert.ok(finalWorkflowBlockers({workflowAdopted:true,legalChecks:[{checkId:"rule-1",state:"current",disposition:currentLegalDispositionOutcome(accepted,runs)}]}).some(item=>item==="legal:rule-1:needs_review"));
 });
+
+test("different legal review dependencies with identical AI status cannot retain an older human acceptance",()=>{
+  const accepted={checkId:"C01",runId:"run-original",subjectFingerprint:"same-subject",dependencyFingerprint:"source-a",status:"accepted" as const};
+  const prior={id:"run-original",checkId:"C01",subjectFingerprint:"same-subject",dependencyFingerprint:"source-a",status:"pass"};
+  const changed={...prior,id:"run-recomputed",dependencyFingerprint:"source-b"};
+  // The historical receipt is still present, but its source/calculation/reference
+  // fingerprint is not a substitute for the new review. Order must not matter.
+  assert.equal(currentLegalDispositionOutcome(accepted,[prior,changed]),"needs_review");
+  assert.equal(currentLegalDispositionOutcome(accepted,[changed,prior]),"needs_review");
+  assert.equal(currentLegalDispositionOutcome(accepted,[prior,{...prior,id:"run-same-input"}]),"accepted");
+  assert.equal(currentLegalDispositionOutcome(accepted,[prior,{...changed,subjectFingerprint:"unrelated-subject"}]),"accepted");
+  assert.equal(currentLegalDispositionOutcome({...accepted,status:"rejected"},[prior,changed]),"rejected");
+});
