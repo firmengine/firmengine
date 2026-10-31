@@ -111,7 +111,8 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
      "OR (case_calculation_poll_jobs.status='running'",
      "AND case_calculation_poll_jobs.lease_until<=excluded.updated_at)"
     ].join(" ")).bind(row.caseId,row.dataVersion,row.caseRevision,reference,lease,until,at).run();
-   if(!claim.meta.changes){results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"already_claimed" as const});continue;}
+   if(claim.meta?.changes===0){results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"already_claimed" as const});continue;}
+   if(claim.meta?.changes!==1)throw new Error("CASE_CALCULATION_POLL_CLAIM_ACK_UNOBSERVED");
    try{
      const value=await recomputeCaseDataUpdate(database,{
        caseId:row.caseId,loadCase:()=>input.loadCase(row.caseId),now:input.now
@@ -131,10 +132,11 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
        .bind(terminal?"failed":"retry_wait",retryAt,code,at,row.caseId,lease).run();
      // A replacement worker may have claimed this lease while the old worker failed.
      // A zero-row CAS is not a persisted retry or terminal failure receipt.
-     if(!update.meta.changes){
+     if(update.meta?.changes===0){
        results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:"superseded" as const});
        continue;
      }
+     if(update.meta?.changes!==1)throw new Error("CASE_CALCULATION_POLL_FAILURE_ACK_UNOBSERVED");
      results.push({caseId:row.caseId,dataVersion:row.dataVersion,status:terminal?"failed" as const:"retry_wait" as const,error:code,nextAttemptAt:retryAt});
    }
  }
@@ -153,7 +155,8 @@ export async function retryFailedCaseCalculationPoll(database:D1Database,input:{
  const ref=referenceIdentity()?.sha256??referenceRelease.sha256,at=new Date().toISOString();
  const changed=await database.prepare("UPDATE case_calculation_poll_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,lease_token=NULL,lease_until=NULL,updated_at=? WHERE case_id=? AND status='failed' AND data_version=? AND case_revision=? AND reference_sha256=? AND EXISTS (SELECT 1 FROM case_data_change_state s JOIN cases c ON c.id=s.case_id WHERE s.case_id=? AND s.data_version=? AND c.revision=?)")
    .bind(at,at,input.caseId,state.dataVersion,state.currentCaseRevision,ref,input.caseId,state.dataVersion,state.currentCaseRevision).run();
- if(!changed.meta.changes)throw new Error("CASE_CALCULATION_POLL_NO_CURRENT_FAILED_JOB");
+ if(changed.meta?.changes===0)throw new Error("CASE_CALCULATION_POLL_NO_CURRENT_FAILED_JOB");
+ if(changed.meta?.changes!==1)throw new Error("CASE_CALCULATION_POLL_RETRY_ACK_UNOBSERVED");
  return {caseId:input.caseId,dataVersion:state.dataVersion,status:"retry_wait" as const,nextAttemptAt:at};
 }
 /** Read-only operator status. No model execution or event acknowledgement. */
