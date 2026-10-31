@@ -286,15 +286,25 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
   const attempts=job.attempts,terminal=!stale&&attempts>=RETRIES;
   const status=stale?"superseded":terminal?"failed":"retry_wait";
   const delay=stale?null:terminal?null:later(Math.min(900,30*2**Math.max(0,attempts-1)));
+  // Draft A4 r44: failed-job status and audit event must be one D1 batch.
+  // An expired lease cannot publish another worker's failure.
+  // A lost batch receipt never proves a rollback.
   const at=clock();
-  const failureAck=await database.prepare("UPDATE case_legal_automation_jobs SET status=?,lease_token=NULL,lease_until=NULL,next_attempt_at=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running'")
-   .bind(status,delay,code,at,job.id,lease).run();
-  // The expired worker may have lost its lease. Never report a persisted
-  // failure or append an audit event for a zero-row compare-and-swap.
-  if(failureAck.meta?.changes===0)return {caseId:job.caseId,status:"superseded" as const,errorCode:"LEGAL_AUTOMATION_LEASE_LOST",retryAfter:null};
-  // Missing/ambiguous D1 acknowledgement is not equivalent to a committed 0.
-  if(failureAck.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_FAILURE_ACK_UNOBSERVED");
-  await note(database,job,status,{code,retryAfter:delay});
+  let receipts:Array<{meta?:{changes?:number}}>;
+  try{
+   receipts=await database.batch([
+    database.prepare("UPDATE case_legal_automation_jobs SET status=?,lease_token=NULL,lease_until=NULL,next_attempt_at=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running' AND lease_until>?")
+     .bind(status,delay,code,at,job.id,lease,at),
+    database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) SELECT ?,?,?,?,?,? WHERE changes()=1")
+     .bind(job.caseId,job.id,job.dataVersion,status,JSON.stringify({code,retryAfter:delay}),at)
+   ]);
+  }catch{
+   throw new Error("LEGAL_AUTOMATION_FAILURE_BATCH_ACK_UNOBSERVED");
+  }
+  if(!Array.isArray(receipts)||receipts.length!==2)throw new Error("LEGAL_AUTOMATION_FAILURE_BATCH_ACK_UNOBSERVED");
+  if(receipts[0]?.meta?.changes===0)return {caseId:job.caseId,status:"superseded" as const,errorCode:"LEGAL_AUTOMATION_LEASE_LOST",retryAfter:null};
+  if(receipts[0]?.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_FAILURE_BATCH_ACK_UNOBSERVED");
+  if(receipts[1]?.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_FAILURE_AUDIT_ACK_UNOBSERVED");
   return {caseId:job.caseId,status,errorCode:code,retryAfter:delay};
  }
 }
