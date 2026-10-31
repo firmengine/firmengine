@@ -58,6 +58,17 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
       const issue:PreflightIssue={code:"D5103_MONTH_ROWS_MISSING",token:"month",message:"월소득 값은 있으나 월별 원천 행이 없습니다. 서류담당자의 확인이 필요합니다.",severity:input.mode==="final"?"blocker":"warning"};
       if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
     }
+    // Internal document-integrity check, not a statutory 12-month rule.
+    // If approved monthly income is shown, an interior source-month gap needs
+    // human review; missing months are never silently converted into zero.
+    if(numeric(input.bindings.scalars.approved_monthly_income)!==null){
+      const months=[...new Set(monthRows.map(row=>String(row.period??"")).filter(month=>/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)))].sort();
+      const ordinal=(month:string)=>Number(month.slice(0,4))*12+Number(month.slice(5,7));
+      if(months.some((month,index)=>index>0&&ordinal(month)>ordinal(months[index-1]!)+1)){
+        const issue:PreflightIssue={code:"D5103_MONTH_COVERAGE_GAP",token:"month",message:"승인 월소득과 월별 표 사이에 귀속월 공백이 있습니다. 실제 무소득·휴직·증빙누락을 구분해 검토해야 합니다.",severity:input.mode==="final"?"blocker":"warning"};
+        if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+      }
+    }
     for(const [index,row]of monthRows.entries()){
       const month=String(row.period??""),amount=String(row.net_income??"");
       if(!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)||numeric(amount)===null){
