@@ -81,6 +81,51 @@ function checkExportGeneratedAudit(detail,receipt,sqlRows,manifest) {
   if (writer.caseId!==receipt.caseId || writer.caseRevision!==receipt.caseRevision ||
       writer.mode!==receipt.mode || writer.referenceRelease.sha256!==receipt.referenceSha256)
     return block("conflict","D1_EXPORT_AUDIT_WRITER_SOURCE_CONFLICT");
+
+  // Finalized writer hashes must match the actual rendered artifact multiset.
+  // Hashes alone are not R2 GET proof, but contradictions block audit binding.
+  const writerHashes=writer.artifactHashes;
+  if (writerHashes === null)
+    return block("inconclusive","D1_EXPORT_AUDIT_WRITER_HASHES_NOT_OBSERVED");
+  if (writerHashes !== undefined) {
+    if (!Array.isArray(writerHashes) || writerHashes.length!==detail.files.length ||
+        writerHashes.some(hash=>!hash64(hash)))
+      return block("conflict","D1_EXPORT_AUDIT_WRITER_HASHES_INVALID");
+    const expected=detail.files.map(file=>file.hash.toLowerCase()).sort();
+    const observed=writerHashes.map(hash=>hash.toLowerCase()).sort();
+    if (expected.some((hash,index)=>hash!==observed[index]))
+      return block("conflict","D1_EXPORT_AUDIT_WRITER_ARTIFACT_HASH_CONFLICT");
+  }
+  // Stored Manifest and export.generated both carry a writer snapshot.
+  // Matching case/revision alone is insufficient if evaluation/bindings differ.
+  if (record(manifest) && manifest.exportRequestId===receipt.requestId &&
+      record(manifest.documentWriter)) {
+    const storedWriter=manifest.documentWriter;
+    for (const key of ["schemaVersion","inputSha256","evaluationId",
+      "evaluationResultHash","bindingsSha256","documentEditsHash",
+      "generatorVersion","formContractVersion"]) {
+      if (Object.prototype.hasOwnProperty.call(writer,key) &&
+          Object.prototype.hasOwnProperty.call(storedWriter,key)) {
+        if (writer[key] == null || storedWriter[key] == null)
+          return block("inconclusive","D1_EXPORT_AUDIT_WRITER_FIELD_NOT_OBSERVED");
+        if (writer[key]!==storedWriter[key])
+          return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_CONFLICT");
+      }
+    }
+    if (writerHashes !== undefined &&
+        Object.prototype.hasOwnProperty.call(storedWriter,"artifactHashes")) {
+      if (storedWriter.artifactHashes == null)
+        return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_WRITER_HASHES_NOT_OBSERVED");
+      if (!Array.isArray(storedWriter.artifactHashes) ||
+          storedWriter.artifactHashes.length!==writerHashes.length ||
+          storedWriter.artifactHashes.some(hash=>!hash64(hash)))
+        return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_HASHES_INVALID");
+      const manifestHashes=storedWriter.artifactHashes.map(hash=>hash.toLowerCase()).sort();
+      if (writerHashes.map(hash=>hash.toLowerCase()).sort()
+          .some((hash,index)=>hash!==manifestHashes[index]))
+        return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_CONFLICT");
+    }
+  }
   if (sqlRows && detail.files.some(f=>sqlRows.some(row=>row.id===f.id &&
       typeof row.hash==="string" && row.hash.toLowerCase()!==f.hash.toLowerCase())))
     return block("conflict","D1_EXPORT_AUDIT_SQL_HASH_CONFLICT");
