@@ -15,7 +15,8 @@ export interface StoredCalculationAuditRow {
 export interface ReplayIssue {
   code: "INVALID_POINTER" | "RUNTIME_OUTPUT_MISSING" | "STORED_JSON_INVALID" |
     "OUTPUT_VALUE_MISMATCH" | "STORED_STATUS_INVALID" | "STORED_FACT_IDS_INVALID" |
-    "SOURCE_FACT_NOT_CURRENT" | "DUPLICATE_OUTPUT_PATH" | "STORED_WON_MISMATCH";
+    "SOURCE_FACT_NOT_CURRENT" | "DUPLICATE_OUTPUT_PATH" | "STORED_WON_MISMATCH" |
+    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED" | "STORED_STATUS_VALUE_CONFLICT";
   calculationId: string;
   outputPath: string;
   rowId: string | null;
@@ -39,11 +40,13 @@ export function auditStoredCalculationReplay(input: {
   rows: readonly StoredCalculationAuditRow[];
   currentFactIds: ReadonlySet<string>;
   maxReportedIssues?: number;
+  /** Exact expected persistence rows from the same engine execution, not heterogeneous catalog resultPaths. */
+  expectedOutputs?: readonly Pick<StoredCalculationAuditRow, "calculationId" | "outputPath">[];
 }) {
   const limit = input.maxReportedIssues ?? 60;
   if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw Error("INVALID_REPLAY_REPORT_LIMIT");
   const issues: ReplayIssue[] = [], counts: Record<string, number> = {};
-  const push = (code: ReplayIssue["code"], row: StoredCalculationAuditRow) => {
+  const push = (code: ReplayIssue["code"], row: Pick<StoredCalculationAuditRow,"calculationId"|"outputPath"> & {id?: string}) => {
     counts[code] = (counts[code] ?? 0) + 1;
     if (issues.length < limit) issues.push({code, calculationId: row.calculationId,
       outputPath: row.outputPath, rowId: row.id ?? null});
@@ -63,14 +66,43 @@ export function auditStoredCalculationReplay(input: {
     catch { parsedOk = false; push("STORED_JSON_INVALID", row); }
     if (pointer.found && parsedOk && JSON.stringify(pointer.value) !== JSON.stringify(parsed))
       push("OUTPUT_VALUE_MISMATCH", row);
-    if (row.valueWon !== undefined && row.valueWon !== null && parsedOk &&
-      (typeof parsed !== "string" || parsed !== row.valueWon)) push("STORED_WON_MISMATCH", row);
+    // A stored status cannot contradict whether the producer observed a value.
+    // This does not change or infer legal recognition of any financial amount.
+    if (parsedOk) {
+      const unobserved = parsed === null || parsed === "unknown";
+      if (unobserved ? row.status === "computed" || row.status === "provisional"
+                     : row.status === "missing" || row.status === "blocked")
+        push("STORED_STATUS_VALUE_CONFLICT", row);
+    }
+    // Mirror case-calculation-feature-store.won() for exact integer text and safe integer numbers.
+    // SQL NULL stays distinct from an observed 0; a nonmoney/missing value has no Won column.
+    const endName = row.outputPath.split("/").at(-1) ?? "";
+    const canonicalWon = /Won$/.test(endName) && parsedOk
+      ? typeof parsed === "string" && /^-?\d+$/.test(parsed) ? parsed
+        : typeof parsed === "number" && Number.isSafeInteger(parsed) ? String(parsed)
+        : null
+      : null;
+    if (parsedOk && row.valueWon !== undefined && row.valueWon !== canonicalWon)
+      push("STORED_WON_MISMATCH", row);
     if (row.sourceFactIdsJson !== undefined) {
       try {
         const ids: unknown = JSON.parse(row.sourceFactIdsJson);
         if (!Array.isArray(ids) || ids.some(id => typeof id !== "string")) push("STORED_FACT_IDS_INVALID", row);
         else if (ids.some(id => !input.currentFactIds.has(id))) push("SOURCE_FACT_NOT_CURRENT", row);
       } catch { push("STORED_FACT_IDS_INVALID", row); }
+    }
+  }
+  // A silent success on an empty or truncated SQL feature set is misleading.
+  // Do not require all 42 heterogeneous catalog outputs here; compare exact
+  // feature rows that calculationFeatureRows would serialize for this execution.
+  if (input.rows.length === 0) push("EMPTY_STORED_OUTPUTS", {calculationId:"calculation_store",outputPath:"/"});
+  if (input.expectedOutputs) {
+    const checked = new Set<string>();
+    for (const expected of input.expectedOutputs) {
+      const key = expected.calculationId + "\u0000" + expected.outputPath;
+      if (checked.has(key)) continue;
+      checked.add(key);
+      if (!seen.has(key)) push("EXPECTED_OUTPUT_NOT_PERSISTED", expected);
     }
   }
   return {schemaVersion: PREAPPROVAL_CALCULATION_REPLAY_VERSION,
