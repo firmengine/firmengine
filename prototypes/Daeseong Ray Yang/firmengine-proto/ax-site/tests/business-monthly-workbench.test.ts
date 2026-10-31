@@ -102,3 +102,53 @@ test("cash receipts/withholding/collected VAT never become gross sales or deduct
  assert.equal(a.arithmeticDifferenceWon,null);
  assert.equal(a.receiptAndTaxFacts.length,3);
 });
+
+test("calendar-month matching cannot approve a preview when source period overlap is unresolved",()=>{
+ const month={start:"2026-01-01",end:"2026-01-31"};
+ for(const [label,grossOverlap,costOverlap] of [
+  ["gross period unknown","unknown","inside"],
+  ["cost period partly outside","inside","partly_outside"],
+  ["both periods unknown","unknown","unknown"],
+ ] as const){
+  const rows=[
+   row(1,"turnover_total","3000000","gross-"+label,{sourceRecordId:"shared-record",periodOverlap:grossOverlap}),
+   row(1,"cost_line","1000000","cost-"+label,{sourceRecordId:"shared-record",periodOverlap:costOverlap})
+  ];
+  const result=assembleBusinessMonthEvidence(rows,month),summary=result.months[0];
+  assert.equal(summary.arithmeticDifferenceWon,null,label);
+  assert.equal(summary.status,"needs_evidence",label);
+  assert.ok(summary.gaps.includes("BUSINESS_PERIOD_PARTIAL_OR_UNKNOWN"),label);
+  assert.equal(summary.legalNetApproved,false,label);
+  assert.equal(result.incompleteSourceCoverage,true,label);
+ }
+});
+test("two verified same-record amounts support only arithmetic preview, never legal approval",()=>{
+ const rows=[
+  row(1,"turnover_total","3000000","gross",{sourceRecordId:"shared-record"}),
+  row(1,"cost_line","1000000","cost",{sourceRecordId:"shared-record"})
+ ];
+ const summary=assembleBusinessMonthEvidence(rows,{start:"2026-01-01",end:"2026-01-31"}).months[0];
+ assert.equal(summary.arithmeticDifferenceWon,"2000000");
+ assert.equal(summary.status,"arithmetic_preview_not_legal_income");
+ assert.equal(summary.legalNetApproved,false);
+ assert.ok(summary.gaps.includes("BUSINESS_IDENTITY_NOT_CROSSWALKED"));
+});
+test("two distinct businesses and several months remain separate evidence, not one net income",()=>{
+ const rows=[
+  row(1,"turnover_total","3000000","business-one-jan"),
+  row(1,"turnover_total","5000000","business-two-jan"),
+  row(1,"cost_line","1000000","business-one-cost"),
+  row(2,"turnover_total","6000000","business-one-feb"),
+  row(2,"cost_line","2000000","business-one-feb-cost")
+ ];
+ const result=assembleBusinessMonthEvidence(rows,{start:"2026-01-01",end:"2026-02-28"});
+ assert.deepEqual(result.months.map(m=>m.month),["2026-01","2026-02"]);
+ assert.equal(result.months[0].sourceGrossWon,null);
+ assert.ok(result.months[0].gaps.includes("BUSINESS_GROSS_TOTAL_MULTIPLE"));
+ assert.equal(result.months[0].arithmeticDifferenceWon,null);
+ assert.equal(result.months[1].sourceGrossWon,"6000000");
+ assert.equal(result.months[1].sumRawCostLinesWon,"2000000");
+ assert.equal(result.months[1].arithmeticDifferenceWon,null);
+ assert.ok(result.months.every(m=>m.legalNetApproved===false));
+ assert.equal(result.incompleteSourceCoverage,true);
+});
