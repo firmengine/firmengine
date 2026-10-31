@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createCase,normalizeMoney,type CaseData,type Fact} from "../lib/domain.ts";
 import {CURRENT_RULESET} from "../lib/legal-rules.ts";
-import {calculateCase} from "../lib/assessment.ts";
+import {calculateCase,assessCase} from "../lib/assessment.ts";
 import {buildRepaymentPlanModel} from "../lib/repayment-plan-model.ts";
 import {reconcilePlanLedger} from "../lib/plan-reconciliation.ts";
 import {buildFormBindings} from "../lib/form-mapping.ts";
@@ -113,6 +113,36 @@ test("liquidation_comparison: independently reviewed PV 30m - liquidation 1m is 
  assert.equal(result.liquidationComparison,"met");
  assert.equal(result.traces.find(v=>v.id==="liquidation_comparison")?.resultWon,"29000000");
 });
+test("liquidation_comparison: pending PV or asset review never becomes eligibility PASS",()=>{
+ for(const flag of ["presentValueReviewed","assetValuationBasisReviewed"] as const){
+  const data=goldenFixture();
+  data.context[flag]=false;
+  const assessment=assessCase(data,CURRENT_RULESET);
+  assert.equal(assessment.calculation.presentValueWon,"30000000","numeric PV remains a preview");
+  assert.equal(assessment.calculation.liquidationValueWon,"1000000");
+  assert.equal(assessment.calculation.liquidationComparison,"unknown");
+  assert.equal(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.status,"provisional");
+  assert.equal(assessment.findings.find(v=>v.id==="liquidation")?.outcome,"unknown");
+ }
+ const data=goldenFixture();
+ data.assets[0].recognition="unreviewed";
+ const assessment=assessCase(data,CURRENT_RULESET);
+ assert.equal(assessment.calculation.liquidationValueWon,"1000000","unreviewed asset arithmetic is not erased");
+ assert.equal(assessment.calculation.liquidationComparison,"unknown");
+ assert.equal(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.status,"provisional");
+ assert.equal(assessment.findings.find(v=>v.id==="liquidation")?.outcome,"unknown");
+});
+test("liquidation_comparison: a fully reviewed numerical shortfall remains not_met without inferring court decision",()=>{
+ const data=goldenFixture();
+ data.context.approvedPresentValue=normalizeMoney("500000");
+ const assessment=assessCase(data,CURRENT_RULESET);
+ assert.equal(assessment.calculation.presentValueWon,"500000");
+ assert.equal(assessment.calculation.liquidationComparison,"not_met");
+ assert.equal(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.resultWon,"-500000");
+ assert.equal(assessment.findings.find(v=>v.id==="liquidation")?.outcome,"fail");
+ assert.equal(assessment.generationGate.canFinalize,false);
+});
+
 test("payment_schedule + installment_distribution: source-derived plan to 36 months reconciles exactly",()=>{
  const data=goldenFixture(),calculation=calculateCase(data,CURRENT_RULESET);
  const ledger=buildRepaymentPlanModel(data,calculation);
