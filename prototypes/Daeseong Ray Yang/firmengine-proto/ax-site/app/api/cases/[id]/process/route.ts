@@ -1,9 +1,11 @@
 import { caseProgress } from "../../../../../lib/case-response";
+import { inspectLegalAutomationCalculationReadiness } from "../../../../../lib/case-legal-calculation-preflight";
+import { inspectLegalAutomationSourceReadiness } from "../../../../../lib/case-legal-source-preflight";
 import { inspectClassificationJob } from "../../../../../lib/classification-inspection";
 import { jsonResponse } from "../../../../../lib/json-response";
 import { inspectPreservedFamilyRead,inspectStoredPageJob,reprojectCasePage } from "../../../../../lib/page-job-inspection";
 import { PAGE_PROJECTION_VERSION,ReprojectionError,reprojectStoredPage } from "../../../../../lib/reprojection";
-import { actor,db,errorResponse,event,getCase,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
+import { actor,caseExtras,db,errorResponse,event,getCase,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
 import { processNext,processNextBatch,reconcileCase,retryFailed,retryPage,reverifyPage,reviewLegal } from "../../../../../lib/pipeline";
 import { clampDocumentParallelism } from "../../../../../lib/document-agent-registry";
 import { parseProcessJobIds,parseProcessJobIdsQuery,ProcessJobScopeError } from "../../../../../lib/process-job-scope";
@@ -43,7 +45,14 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   if((current.referenceTest||current.structuredTest)&&body.action!=="legal")throw new HttpError(409,"OCR, page mutation, and reconciliation are locked for this synthetic reference-test case.");
   const scoped=Object.hasOwn(body,"jobIds");
   if(scoped){if(!["next","next_batch"].includes(body.action))throw new HttpError(400,"작업 범위는 다음 증거 처리 단계에서만 사용할 수 있습니다.");jobIds=parseProcessJobIds(body.jobIds);}
-  if(body.action==="next")result=await processNext(id,jobIds);else if(body.action==="next_batch"){if(!jobIds)throw new HttpError(400,"병렬 처리할 증거 페이지 범위가 필요합니다.");let parallelism:number;try{parallelism=clampDocumentParallelism(body.parallelism);}catch(error){throw new HttpError(400,error instanceof Error?error.message:"병렬 처리 수를 확인하세요.");}result=await processNextBatch(id,jobIds,parallelism);}else if(body.action==="reconcile")result=await reconcileCase(id);else if(body.action==="legal")result=await reviewLegal(id);else if(body.action==="retry")result=await retryFailed(id);else if(body.action==="retry_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId);}else if(body.action==="refresh_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"새로 판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId,"refresh");}else if(body.action==="reverify_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재검증할 페이지가 필요합니다.");result=await reverifyPage(id,body.jobId);}else if(body.action==="reproject_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재투영할 페이지 작업 ID가 필요합니다.");result=await reprojectPage(id,body.jobId);}else throw new HttpError(400,"처리 단계를 확인하세요.");
+  if(body.action==="next")result=await processNext(id,jobIds);else if(body.action==="next_batch"){if(!jobIds)throw new HttpError(400,"병렬 처리할 증거 페이지 범위가 필요합니다.");let parallelism:number;try{parallelism=clampDocumentParallelism(body.parallelism);}catch(error){throw new HttpError(400,error instanceof Error?error.message:"병렬 처리 수를 확인하세요.");}result=await processNextBatch(id,jobIds,parallelism);}else if(body.action==="reconcile")result=await reconcileCase(id);else if(body.action==="legal"){
+    // Manual legal review must observe the same source/calculation readiness
+    // gates as unattended case processing before starting paid AI work.
+    const source=await inspectLegalAutomationSourceReadiness(db(),current,(await caseExtras(current)).processingReadiness.complete);
+    const readiness=source.ready?await inspectLegalAutomationCalculationReadiness(db(),current):source;
+    if(!readiness.ready)throw new HttpError(409,"LEGAL_REVIEW_PREFLIGHT_BLOCKED:"+readiness.blockers.join(","));
+    result=await reviewLegal(id);
+  }else if(body.action==="retry")result=await retryFailed(id);else if(body.action==="retry_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId);}else if(body.action==="refresh_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"새로 판독할 페이지가 필요합니다.");result=await retryPage(id,body.jobId,"refresh");}else if(body.action==="reverify_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재검증할 페이지가 필요합니다.");result=await reverifyPage(id,body.jobId);}else if(body.action==="reproject_page"){if(typeof body.jobId!=="string"||!body.jobId)throw new HttpError(400,"재투영할 페이지 작업 ID가 필요합니다.");result=await reprojectPage(id,body.jobId);}else throw new HttpError(400,"처리 단계를 확인하세요.");
   const progress=await caseProgress(id,result,jobIds);
   return jsonResponse(body.action==="reproject_page"?{...progress,...result}:progress,request,{headers:{"Cache-Control":"no-store"}});
 }catch(e){return failure(e);}}
