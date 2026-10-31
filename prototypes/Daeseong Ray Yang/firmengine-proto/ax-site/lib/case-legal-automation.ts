@@ -86,7 +86,8 @@ async function transition(database:D1Database,job:Job,lease:string,status:string
    .bind(status,fields.nextAttemptAt??null,fields.completedChecks??job.completedChecks,fields.expectedChecks??job.expectedChecks,
      fields.legalReviewRunId??null,fields.documentRunId??null,JSON.stringify(fields.outcome??decode(job.outcomeJson,{})),fields.error??null,
      now,job.id,lease,now,job.caseId,job.caseRevision,job.dataVersion,job.calculationRunId,job.inputSha256).run();
- if(!updated.meta.changes)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
+ if(updated.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");
+ if(updated.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");
  await note(database,job,status,{status,checks:fields.completedChecks??job.completedChecks}).catch(()=>{});
 }
 async function gatherChecks(database:D1Database,job:Job,data:CaseData){
@@ -229,7 +230,8 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
  const lease=crypto.randomUUID(),until=new Date(Date.now()+LEGAL_AUTOMATION_LEASE_MS).toISOString();
  const claimed=await database.prepare("UPDATE case_legal_automation_jobs SET status='running',attempts=attempts+1,lease_token=?,lease_until=?,updated_at=? WHERE id=? AND (status IN ('pending','retry_wait','draft_pending','waiting_evidence') OR (status='running' AND lease_until<?)) AND (next_attempt_at IS NULL OR next_attempt_at<=?) AND EXISTS(SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=? AND h.run_id=? AND h.input_sha256=?)")
    .bind(lease,until,now,jobId,now,now,candidate.caseId,candidate.caseRevision,candidate.dataVersion,candidate.calculationRunId,candidate.inputSha256).run();
- if(!claimed.meta.changes)return {caseId:candidate.caseId,status:"already_claimed_or_complete"};
+ if(claimed.meta?.changes===0)return {caseId:candidate.caseId,status:"already_claimed_or_complete"};
+ if(claimed.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_CLAIM_ACK_UNOBSERVED");
  const job=await database.prepare("SELECT id,case_id AS caseId,case_revision AS caseRevision,data_version AS dataVersion,calculation_run_id AS calculationRunId,input_sha256 AS inputSha256,reference_sha256 AS referenceSha256,status,attempts,completed_checks AS completedChecks,expected_checks AS expectedChecks,lease_token AS leaseToken,lease_until AS leaseUntil,next_attempt_at AS nextAttemptAt,legal_review_run_id AS legalReviewRunId,document_run_id AS documentRunId,outcome_json AS outcomeJson,last_error AS lastError FROM case_legal_automation_jobs WHERE id=?")
   .bind(jobId).first<Job>();
  if(!job||job.leaseToken!==lease)throw new Error("LEGAL_AUTOMATION_CLAIM_LOST");
@@ -269,6 +271,9 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
   }
   return await finalizeReview(database,job,lease,services);
  }catch(error){
+  // A transition may have committed even if its D1 acknowledgement was lost.
+  // Do not turn an uncertain success into a new failure/retry or audit claim.
+  if(error instanceof Error&&error.message==="LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED")throw error;
   const code=safeCode(error),stale=code==="LEGAL_AUTOMATION_SUPERSEDED";
   const attempts=job.attempts,terminal=!stale&&attempts>=RETRIES;
   const status=stale?"superseded":terminal?"failed":"retry_wait";
@@ -315,7 +320,8 @@ export async function retryFailedCaseLegalAutomation(database:D1Database,input:{
   throw new Error("LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB");
  const updated=await database.prepare("UPDATE case_legal_automation_jobs SET status='retry_wait',attempts=0,next_attempt_at=?,last_error=NULL,updated_at=? WHERE id=? AND status=? AND case_revision=? AND data_version=?")
   .bind(clock(),clock(),row.id,row.status,current.caseRevision,current.dataVersion).run();
- if(!updated.meta.changes)throw new Error("LEGAL_AUTOMATION_RETRY_CONFLICT");
+ if(updated.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_RETRY_CONFLICT");
+ if(updated.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED");
  await database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) VALUES(?,?,?,?,?,?)")
   .bind(input.caseId,row.id,current.dataVersion,"manual_retry_requested",JSON.stringify({
     previousStatus:row.status,newStatus:"retry_wait",projectionOnly:projectionRetry,courtApprovalInferred:false}),clock()).run();
