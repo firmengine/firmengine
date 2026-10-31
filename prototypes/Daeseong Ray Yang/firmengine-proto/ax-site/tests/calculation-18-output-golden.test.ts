@@ -122,6 +122,7 @@ test("liquidation_comparison: pending PV or asset review never becomes eligibili
   assert.equal(assessment.calculation.liquidationValueWon,"1000000");
   assert.equal(assessment.calculation.liquidationComparison,"unknown");
   assert.equal(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.status,"provisional");
+  assert.ok(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.reasons.includes(flag === "presentValueReviewed" ? "PRESENT_VALUE_REVIEW_REQUIRED" : "ASSET_VALUATION_BASIS_REVIEW_REQUIRED"));
   assert.equal(assessment.findings.find(v=>v.id==="liquidation")?.outcome,"unknown");
  }
  const data=goldenFixture();
@@ -130,6 +131,7 @@ test("liquidation_comparison: pending PV or asset review never becomes eligibili
  assert.equal(assessment.calculation.liquidationValueWon,"1000000","unreviewed asset arithmetic is not erased");
  assert.equal(assessment.calculation.liquidationComparison,"unknown");
  assert.equal(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.status,"provisional");
+ assert.ok(assessment.calculation.traces.find(v=>v.id==="liquidation_comparison")?.reasons.includes("ASSET_RECOGNITION_REVIEW_REQUIRED:asset-1"));
  assert.equal(assessment.findings.find(v=>v.id==="liquidation")?.outcome,"unknown");
 });
 test("liquidation_comparison: a fully reviewed numerical shortfall remains not_met without inferring court decision",()=>{
