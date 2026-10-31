@@ -271,10 +271,10 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
   }
   return await finalizeReview(database,job,lease,services);
  }catch(error){
-  // A transition may have committed even if its D1 acknowledgement was lost.
-  // Do not turn an uncertain success into a new failure/retry or audit claim.
-  if(error instanceof Error&&error.message==="LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED")throw error;
   const code=safeCode(error),stale=code==="LEGAL_AUTOMATION_SUPERSEDED";
+  // The prior transition may have committed despite a lost D1 acknowledgement.
+  // Never turn an uncertain success into a new failure/retry or audit claim.
+  if(error instanceof Error&&error.message==="LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED")throw error;
   const attempts=job.attempts,terminal=!stale&&attempts>=RETRIES;
   const status=stale?"superseded":terminal?"failed":"retry_wait";
   const delay=stale?null:terminal?null:later(Math.min(900,30*2**Math.max(0,attempts-1)));
