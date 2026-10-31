@@ -47,3 +47,8 @@
 3. `A4-DOC-017 / A4-LAW-006 / A4-AX-005`: 원문·갈음 철회·관할 기준판본 변경 시 95법률→Word 재생성→기존 사람 승인 무효화, R2/D1 미확정 재사용/보류 및 보정기한 null의 실사 검토.
 
 **직접 체크 4개 전부 [ ] 미완료. 제품 최종 인수 완료 0건.** 고객정보·키/원본 OCR 비공개 값 공개 Git 반영 없음. 운영 배포, 운영 DB 마이그레이션, 실제 전자제출 및 법원 인가 확정 미실행.
+
+## 추가 실제 원본문 V8 검증 (PR #114 코드)
+
+- Draft PR #114 `lib/case-legal-automation.ts` blob `82c68a257382c717b6430c9ecb53d4422c6ff196`의 **실제 processJob catch 함수 본문**을 다시 읽어 TypeScript의 `as const` 및 단일 `let receipts` 선언 형식만 제거하고 V8 AsyncFunction에서 실행. 정상 retry, 마지막시도 failed, 구판본 superseded, lease CAS 0, UPDATE receipt null/2, 감사 receipt 0/null/2, 배치 503, 직전 transition ACK 미관찰→추가 쓰기 0 총 **11/11 독립 기대 일치**. 가상 D1 receipt stub이며 SQLite/D1 원자성 또는 실제 Node 저장소 실행으로 표현하지 않음.
+- r35 테스트의 TypeScript `receipts` 선언 제거 누락을 발견해 [PR #114](https://github.com/firmengine/firmengine/pull/114) 커밋 `1f9ebb36`으로 보완. 저장소 r35/r44 Node-native 실행은 여전히 **미실행**.
