@@ -14,7 +14,7 @@
 
 ## A1-AX-006 — 공식 출처 조회 실패를 source preflight가 수용하는지 [ ] 유지
 
-- `lib/case-legal-source-preflight.ts` blob `0a4bf038a97de015652d4957a56ecddd5c049bd8`, `lib/legal-monitor-status.ts` blob `846b1de1eb9f47c84e51ee829ba2ef66ee26db8d8d` 중 올바른 전체 SHA는 아래 참조: `846b1de1eb9f47c84e51ee829ba2ef66ee26db8d`이 아닌 **`846b1de1eb9f47c84e51ee829ba2ef66ee26db8d8d` 표기도 사용하지 말고 코드 조회 도구의 정확한 blob 확인이 필요**.
+- `lib/case-legal-source-preflight.ts` blob `0a4bf038a97de015652d4957a56ecddd5c049bd8`, `lib/legal-monitor-status.ts` blob `846b1de1eb9f47c84e51ee829ba2ef66ee26db8d`. 독립 원문 preflight와 공식 모니터 실패 분류의 연결 여부를 점검.
 - 실제 주 분기 `evaluateLegalSourceReadiness`와 `classifyMonitorObservation`의 TypeScript 타입 선언만 제거해 V8 격리 실행. 합성 원문 1쪽 정상/OCR 미완료/정규화 헤드 누락/상담 판본 불일치/공식 모니터 failed/partial **6조건**, 독립 기대 대비 **4/6 일치**.
 - 독립 기대/관찰: 정상 `ready`→`ready`; OCR 미완료 `waiting_evidence`→`waiting_evidence`; 헤드 누락 `review_required`→동일; 상담 지연 `review_required`→동일. 다만 완전한 원문 패킷에 `monitorSourceHealth:[{status:"failed"}]` 또는 `partial`을 추가하면 독립 기대는 `review_required`, 실제 `ready=true`. 분류 함수는 failed 관측을 `failed/baselineUpdated=false`로 정확히 반환.
 - **중요한 판정 한계:** `monitorSourceHealth`는 해당 source preflight 함수의 공식 입력 계약에 **아예 없는 필드**로, 합성 외부 상태가 무시된 것은 사실이지만 이것만으로 REST 법률 AI가 공식 조회 실패 후 실행된 것으로 단정할 수 없음. 이전 24차와 동일한 **통합 계약·법률 운영정책 검토 공백**으로 남김. 자동 법률 판단 변경·승격 코딩 없음.
