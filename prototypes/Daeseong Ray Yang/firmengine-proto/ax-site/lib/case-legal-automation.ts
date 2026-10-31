@@ -340,9 +340,18 @@ export async function retryFailedCaseLegalAutomation(database:D1Database,input:{
   .bind(clock(),clock(),row.id,row.status,current.caseRevision,current.dataVersion).run();
  if(updated.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_RETRY_CONFLICT");
  if(updated.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_RETRY_ACK_UNOBSERVED");
- await database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) VALUES(?,?,?,?,?,?)")
-  .bind(input.caseId,row.id,current.dataVersion,"manual_retry_requested",JSON.stringify({
-    previousStatus:row.status,newStatus:"retry_wait",projectionOnly:projectionRetry,courtApprovalInferred:false}),clock()).run();
+ let auditChanges:unknown;
+ try{
+  const auditAck=await database.prepare("INSERT INTO case_legal_automation_events(case_id,job_id,data_version,event_kind,payload_json,created_at) VALUES(?,?,?,?,?,?)")
+   .bind(input.caseId,row.id,current.dataVersion,"manual_retry_requested",JSON.stringify({
+     previousStatus:row.status,newStatus:"retry_wait",projectionOnly:projectionRetry,courtApprovalInferred:false}),clock()).run();
+  auditChanges=auditAck.meta?.changes;
+ }catch{
+  // The retry CAS may have committed: never report a completed audit on a lost D1 response.
+  throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
+ }
+ if(auditChanges===0)throw new Error("LEGAL_AUTOMATION_AUDIT_INSERT_ZERO");
+ if(auditChanges!==1)throw new Error("LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED");
  return {caseId:input.caseId,dataVersion:current.dataVersion,status:"retry_wait",jobId:row.id,automaticCourtApproval:false};
 }
 export async function readCaseLegalAutomation(database:D1Database,caseId:string){
