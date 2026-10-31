@@ -49,7 +49,7 @@ for(const [kind,fn,zero,unobserved,one] of cases){
  }
 }
 test("unknown transition ACK cannot become a false retry or superseded status",async()=>{
- const catchText=span('}catch(error){\n  // A transition may have committed',
+ const catchText=span('}catch(error){\n  const code=safeCode(error),stale=',
  '\n }\n}\nexport async function drainCaseLegalAutomation');
  const catchBody=catchText.slice("}catch(error){".length).replace(/ as const\b/g,"");
  const failure=new AF("error","database","job","lease","safeCode","RETRIES",
