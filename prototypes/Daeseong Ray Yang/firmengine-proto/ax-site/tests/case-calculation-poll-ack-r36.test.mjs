@@ -14,14 +14,14 @@ const catchEnd=source.indexOf("\n   }\n }\n return {scanned:",catchStart);
 assert.ok(catchStart>=0&&catchEnd>catchStart,"production poll catch must exist");
 assert.equal(source.indexOf(catchMarker,catchStart+catchMarker.length),-1,"single poll catch");
 const catchBody=source.slice(catchStart+"}catch(error){".length,catchEnd)
-  .replace(/\\.first<\\{attempts:number\\}>/g,".first").replace(/ as const\\b/g,"");
+  .replace(/\.first<\{attempts:number\}>/g,".first").replace(/ as const\b/g,"");
 const handleFailure=new AF("error","database","row","lease","ms","at","results",
   `for(let once=0;once<1;once++){${catchBody}}return results;`);
 
 const claimStart=source.indexOf("if(claim.meta?.changes===0)");
 const claimEnd=source.indexOf("\n   try{",claimStart);
 assert.ok(claimStart>=0&&claimEnd>claimStart,"production poll claim guard must exist");
-const claimBody=source.slice(claimStart,claimEnd).replace(/ as const\\b/g,"");
+const claimBody=source.slice(claimStart,claimEnd).replace(/ as const\b/g,"");
 const handleClaim=new AF("claim","results","row",
   `for(let once=0;once<1;once++){${claimBody}}return results;`);
 
@@ -46,7 +46,7 @@ for(const attempts of [1,5]){
       try{result=await handleFailure(new Error("CALC_SYNTHETIC_503"),database,row,"lease-A",now,"2026-11-01T00:40:00Z",[])}
       catch(error){failure=error;}
       assert.equal(sqls.length,2,"SELECT attempts then one failure UPDATE");
-      assert.match(sqls[1],/WHERE case_id=\\? AND lease_token=\\?/);
+      assert.match(sqls[1],/WHERE case_id=\? AND lease_token=\?/);
       if(changes!==0&&changes!==1){
         assert.equal(result,null);
         assert.equal(failure?.message,expected);
