@@ -196,6 +196,9 @@ export function monthlyIncome(source: IncomeSource): { value: bigint | null; rea
     reasons.push("INCOME_PERIOD_NOT_COMPLETE_CALENDAR_MONTHS");
   const months = source.amountBasis === "monthly" ? 1 : source.amountBasis === "period_total" ? source.periodMonths ?? inferredMonths : null;
   if (source.amountBasis === "period_total" && source.periodMonths !== null && source.periodMonths !== undefined && inferredMonths !== null && source.periodMonths !== inferredMonths) reasons.push("INCOME_PERIOD_DENOMINATOR_CONFLICT");
+  // A declared single monthly observation cannot cover a different count of complete calendar months.
+  // Keep the input as a reviewable observation rather than interpreting eleven absent months as evidenced.
+  if (source.amountBasis === "monthly" && source.periodMonths !== null && source.periodMonths !== undefined && inferredMonths !== null && source.periodMonths !== inferredMonths) reasons.push("INCOME_PERIOD_DENOMINATOR_CONFLICT");
   if (months === null || months === undefined || !Number.isSafeInteger(months) || months <= 0 || months > maximumCalculationMonths()) reasons.push("INCOME_PERIOD_DENOMINATOR_MISSING");
   if (source.amountBasis === "monthly" && source.periodMonths && source.periodMonths > 1 && net === null && (gross !== null || expenses !== null)) reasons.push("INCOME_PERIOD_BASIS_CONFLICT");
   return { value: amount === null || reasons.length ? null : floorDivide(amount, BigInt(months!)), reasons, formula: source.amountBasis === "period_total" && source.periodMonths == null && inferredMonths !== null ? referenceFormula("income_calendar_months") : formula };
