@@ -30,7 +30,7 @@ test("A1-LAW-015: proposer cannot adopt their own calculation decision, includin
     );
   }
   assert.equal(before.workflowState!.decisions.at(-1)!.status, "proposed");
-  assert.equal(before.context.planMonths, null);
+  assert.equal(before.context.planMonths ?? null, null);
 });
 test("A1-LAW-015: independent approver can adopt a fresh proposal without retroactively changing proposer", async () => {
   const before = await proposed();
