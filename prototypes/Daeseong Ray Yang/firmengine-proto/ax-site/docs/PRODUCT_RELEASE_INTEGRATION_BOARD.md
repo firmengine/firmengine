@@ -114,7 +114,7 @@
 - [ ] **A1-IT-003** 본인 아닌 사건 ID로 조회·저장·파일 인가가 막히는지 확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **16차 P1:** workflow/requirements/case GET 실제 원본 함수본문 V8에서 사건별 역할검증 호출 없이 합성 HTTP200(기대403); 수정 [Draft PR #64](https://github.com/firmengine/firmengine/pull/64) 후보 3 GET denied/allowed **6/6** 격리 기대일치, 전체 GET 및 실 Sites/D1 미검증. [영수증](release-audit-runs/A1/20261031-round16-case-read-guard-handoff-ref-cas-0351KST.md). **[ ] 유지**. **18차 신규 P1(파일·목록):** main 문서 원본/페이지 GET은 합성 무인가 200·R2 GET 1(기대403/0), workspace 신원 없음에도 사건목록 200·COUNT 공개(기대403). [Draft PR #66](https://github.com/firmengine/firmengine/pull/66) 문서 GET 사전 인가+workspace 목록·totalCount를 유효 사건 grant로 필터. 후보 원본문 V8 격리 **10/10**, SQL-only SQLite **9/9** 기대일치; Node 회귀 작성만, D1/R2/Sites/CI·권한 정책 미인증. [18차 영수증](release-audit-runs/A1/20261031-round18-case-document-workspace-acl-n8n-calculation-0551KST.md). **[ ] 유지**.
 - [ ] **A1-IT-004** 사건 신규 생성/수정/삭제/복원과 감사 로그 완결성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-005** 상담기록 변경이 요구서류·원문판본에 실제 전달되는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-IT-006** 85문서 업로드/반려/철회/재업로드의 저장 상태 전이. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-IT-006** 85문서 업로드/반려/철회/재업로드의 저장 상태 전이. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **32차 P1 후보([ ] 유지):** `domain.retractDocument`가 상위·하위 문서 모두 `deleted` 전환하나 `case-command-store.ts` SQL은 부모 ID만 `withdrawn`하여 자식 OCR 작업 잔존 가능. parent/child/grandchild·무관 문서·구 revision CAS 합성 Node/SQLite **3/3 통과 후보**, main은 하위 문서 미중단 반례. [Draft PR #88](https://github.com/firmengine/firmengine/pull/88) helper+회귀 코드 미병합; 실제 85종·D1/R2/Cron·브라우저 미실행. [32차 영수증](release-audit-runs/A1/20261031-round32-descendant-withdrawal-structured-model-business-source.md).
 - [ ] **A1-IT-007** 한 PDF 다중 유형/한 유형 다중 PDF/암호·손상 파일 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-008** R2 파일 성공 뒤 D1 실패 시 유령 파일·이중저장 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 4차 부분검증: 일반 Export/자동초안 `commitManifest` 후 D1 ACK 유실 시 이미 참조된 SQL artifact row/R2 객체를 catch가 삭제하는 P0 재현. 수정 [Draft PR #24](https://github.com/firmengine/firmengine/pull/24) V8 7/7 격리 통과, Node/실 D1/R2 미인증. [영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).**
 - [ ] **A1-IT-009** D1 성공 뒤 파일 저장 실패 시 성공으로 위장 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **24차 부분 [ ]:** main `export-artifact-transaction.ts` blob `a114235e` 본문 V8 합성 R2 첫/둘째 실패·SQL 부분실패·manifest CAS·정상·사후로그 총 **6/6 기대일치**; R2 reject 시 SQL persist/manifest 0, 성공 반환 없음. **기존 P0** D1 commit 응답 유실/정리 경합은 [Draft #24](https://github.com/firmengine/firmengine/pull/24)·[#61](https://github.com/firmengine/firmengine/pull/61), 실 D1/R2 미인증. [24차 영수증](release-audit-runs/A1/20261031-round24-r2-commit-legal-source-budget-1148KST.md). **[ ] 유지**.
@@ -152,7 +152,7 @@
 ### A1 계산사무장 (18개)
 
 - [ ] **A1-CALC-001** 급여 12개월·상여·성과급·각종 공제 데이터 흐름. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-CALC-002** 사업자 매출/VAT/경비/입금/승인 순소득의 별도 경로. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-CALC-002** 사업자 매출/VAT/경비/입금/승인 순소득의 별도 경로. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **32차 부분([ ] 유지):** main `business-monthly-workbench.ts` 본문에서 타입 선언만 제거한 V8 + 월 선택/원천 helper 합성, 매출·비용 원천 분리, 동일 source 산술 미리보기, VAT source-only, 미승인 비용 null, 환입 보류 **5/5** 기대일치. `legalNetApproved=false` 유지. 승인 엔드포인트·월별 실제 OCR·공식 세무/법원 인정·서식 E2E 미실행; 기존 동일인 승인 [Draft #85](https://github.com/firmengine/firmengine/pull/85)·[#55](https://github.com/firmengine/firmengine/pull/55) 미병합. [32차 영수증](release-audit-runs/A1/20261031-round32-descendant-withdrawal-structured-model-business-source.md).
 - [ ] **A1-CALC-003** 같은 사업자 복수 월과 다른 사업자 복수행 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-004** 동일 월 여러 소득원 중복 입금·자료 대조. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-005** 12개월 중 11개월 누락 평균을 확정하지 않는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -217,7 +217,7 @@
 - [ ] **A1-AX-001** 상담 모델·OCR 모델·법률 모델 라우팅 실설정 확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-002** 출처/사실/추정/역질문의 구조화 출력 검증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-003** OCR·분류·독립 검증의 결과와 원문 span 결속. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-AX-004** JSON Schema 불일치·빈 결과·툴 호출 실패 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-AX-004** JSON Schema 불일치·빈 결과·툴 호출 실패 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **32차 P1 후보([ ] 유지):** main `luna.ts`는 `status=completed`/JSON.parse 이후 필수키·타입 Schema를 대조하지 않아 `{wrong:'value'}`/배열 `[]`가 허용되는 합성 호출 재현. [Draft PR #89](https://github.com/firmengine/firmengine/pull/89) 응답 구조 검사와 502 차단; 로컬 실제 소스 주입 Node **4/4**, 구조 검사 **3/3**. 실제 API·전체 Schema/Node·CI·배포 미실행. [32차 영수증](release-audit-runs/A1/20261031-round32-descendant-withdrawal-structured-model-business-source.md).
 - [ ] **A1-AX-005** 문서에 없는 금액·날짜·법원 결론 환각 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-006** 공식 법률 출처 검색 실패 시 검토보류 반환. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **24차 부분 [ ]:** `case-legal-source-preflight.ts` blob `0a4bf038` 원본문 V8 증빙·상담 오류 **7/7 기대일치**; 그러나 공식 법률 모니터 검색 실패·sourceHealth는 법률 AI source-preflight 입력에 **연결 확인 안 됨**. 실제 공식 조회 실패 주입/법률모델 호출 미실행; source-only 계약 공백, 실무자 정책 결정 필요. [24차 영수증](release-audit-runs/A1/20261031-round24-r2-commit-legal-source-budget-1148KST.md). **[ ] 유지**.
 - [ ] **A1-AX-007** 모델 연산 대신 결정론 계산 결과 사용. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
