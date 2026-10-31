@@ -81,6 +81,40 @@ export function inspectExportRecoveryEvidence(input) {
       add("MANIFEST_FINGERPRINT_CONFLICT"); conflict = true;
     }
   }
+  // A reduced, read-only manifest projection may omit file/writer details.
+  // When those details ARE observed, do not ignore an explicitly archived
+  // file, changed source version, or stale writer receipt merely because
+  // receipt/SQL/R2 hashes match. Neither case is approval or replay authority.
+  if (manifest && typeof manifest === "object" && !Array.isArray(manifest) &&
+      receipt && manifest.requestId === receipt.requestId) {
+    if ((manifest.caseRevision !== undefined && manifest.caseRevision !== receipt.caseRevision) ||
+        (manifest.sourceDataVersionAtExport !== undefined &&
+          manifest.sourceDataVersionAtExport !== receipt.sourceDataVersion) ||
+        (manifest.mode !== undefined && receipt.mode !== undefined &&
+          manifest.mode !== receipt.mode)) {
+      add("MANIFEST_SOURCE_IDENTITY_CONFLICT"); conflict = true;
+    }
+    if (Object.prototype.hasOwnProperty.call(manifest, "files")) {
+      const files = manifest.files;
+      if (!Array.isArray(files) || !plan || files.length !== plan.length ||
+          new Set(files.map(file => file?.id)).size !== files.length ||
+          files.some(file => !file || !plan.includes(file.id) ||
+            file.status !== "current" || !validSha(file.hash) ||
+            (sqlRows && sqlRows.some(row => row.id === file.id &&
+              typeof row.hash === "string" && row.hash.toLowerCase() !== file.hash.toLowerCase())))) {
+        add("MANIFEST_FILES_NOT_CURRENT_OR_CONFLICT"); conflict = true;
+      }
+    }
+    if (Object.prototype.hasOwnProperty.call(manifest, "documentWriter")) {
+      const writer = manifest.documentWriter;
+      if (!writer || writer.caseId !== receipt.caseId ||
+          writer.caseRevision !== receipt.caseRevision ||
+          (receipt.mode !== undefined && writer.mode !== receipt.mode) ||
+          writer.referenceRelease?.sha256 !== receipt.referenceSha256) {
+        add("WRITER_RECEIPT_SOURCE_CONFLICT"); conflict = true;
+      }
+    }
+  }
   if (artifactRows == null) { add("SQL_ROWS_NOT_OBSERVED"); incomplete = true; }
   else if (sqlRows && plan) {
     // A separate SQL artifact can alias this request's R2 object key.
