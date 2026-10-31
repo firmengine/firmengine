@@ -67,3 +67,11 @@ test("A2 r23: invalid selected window does not attest income; absent selection l
  assert.equal(monthRow(absent.form,"2026-01")?.net_income,"2,400,000");
  assert.equal(absent.form.scalars.approved_monthly_income,MISSING_FORM_VALUE);
 });
+
+// A2 r24 lawyer boundary: observed income is not approved until a representative period is selected.
+test("A2 r24: no selected representative period cannot create approved monthly income even with 12 observations",()=>{
+ const {calculation,form}=fixture(rows(months));
+ assert.ok(calculation.issues.includes("INCOME_REPRESENTATIVE_PERIOD_NOT_SELECTED"));
+ assert.equal(form.scalars.approved_monthly_income,MISSING_FORM_VALUE);
+ assert.equal(form.rows.month.length,12); // source-only preview is preserved
+});
