@@ -2,9 +2,9 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {checkSelectedIncomePeriodCoverage as check} from "../lib/income-period-coverage.ts";
 const period={start:"2026-01-01",end:"2026-12-31"};
-const rows=(months,net_income="2,400,000")=>months.map(m=>({period:"2026-"+String(m).padStart(2,"0"),net_income}));
+const rows=(months:number[],net_income:string="2,400,000")=>months.map(m=>({period:"2026-"+String(m).padStart(2,"0"),net_income}));
 const full=()=>rows(Array.from({length:12},(_,i)=>i+1));
-const checkCode=(v,code)=>assert.ok(v.codes.includes(code),JSON.stringify(v));
+const checkCode=(v:{codes:string[]},code:string)=>assert.ok(v.codes.includes(code),JSON.stringify(v));
 test("12-month synthetic approved 2400000 monthly observation has complete selected coverage",()=>{
  const got=check({selectedPeriod:period,monthRows:full(),evidenceCutoff:"2027-01-10"});
  assert.equal(got.status,"complete");assert.deepEqual(got.missingMonths,[]);
@@ -20,7 +20,7 @@ test("last month missing from selected 12-month period",()=>{
  assert.deepEqual(got.missingMonths,["2026-12"]);checkCode(got,"D5103_SELECTED_PERIOD_COVERAGE_GAP");
 });
 test("interior month missing and duplicate source month cannot compensate",()=>{
- const got=check({selectedPeriod:period,monthRows:[...rows([1,2,3,4,5,6,7,8,9,10,11]),rows([11])[0]]});
+ const got=check({selectedPeriod:period,monthRows:[...rows([1,2,3,4,5,6,7,8,9,10,11]),rows([11])[0]!]});
  assert.deepEqual(got.missingMonths,["2026-12"]);
 });
 test("11-month period explicitly chosen is not forced to twelve months",()=>{
