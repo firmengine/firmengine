@@ -25,6 +25,13 @@ function sourceIdentity(data: CaseData, source: IncomeSource, active: Map<string
   return id;
 }
 
+const reviewDecisionFingerprint = (source: IncomeSource) => JSON.stringify([
+  source.recognition ?? "unreviewed",
+  source.sourceCalculationRole ?? null,
+  source.aggregationTreatment ?? "unknown",
+  source.aggregationReviewed === true,
+  source.aggregationReviewReason?.trim() ?? null,
+]);
 function observationCore(source: IncomeSource) {
   return JSON.stringify([source.kind, exactIdentity(source.payerIdentityId), source.label, source.employer ?? null, source.periodStart ?? null, source.periodEnd ?? null, source.periodMonths ?? null, source.amountBasis ?? null, moneyFingerprint(source.gross), moneyFingerprint(source.expenses), moneyFingerprint(source.net), source.recurring ?? null]);
 }
@@ -58,13 +65,24 @@ export function resolveIncomeRows(data: CaseData, sources: IncomeSource[] = data
   const activeFacts = currentFacts(data), active = new Map(activeFacts.map(fact => [fact.id, fact]));
   const exactBuckets = new Map<string, IncomeSource>(), strongBuckets = new Map<string, IncomeSource>();
   const potentialBuckets = new Map<string, string[]>(), weakCandidates = new Map<string, string[]>();
+  const evidenceDecisions = new Map<string, { id: string; decision: string }>();
   const rows: IncomeSource[] = [], duplicates: string[] = [], issues: string[] = [];
   let mapLookups = 0;
   for (const source of sources) {
     const row: IncomeSource = { ...source, factIds: [...source.factIds] };
     const factIds = [...new Set(row.factIds)].sort();
     const exactFacts = factIds.length > 0 && factIds.every(id => active.has(id));
-    const core = observationCore(row), identity = sourceIdentity(data, row, active);
+    const evidenceCore = observationCore(row), decision = reviewDecisionFingerprint(row);
+    const core = JSON.stringify([evidenceCore, decision]), identity = sourceIdentity(data, row, active);
+    if (exactFacts) {
+      const evidenceKey = JSON.stringify([factIds, evidenceCore]);
+      const earlier = evidenceDecisions.get(evidenceKey);
+      if (earlier && earlier.decision !== decision) {
+        issues.push(`INCOME_SAME_FACT_REVIEW_CONFLICT:${earlier.id},${row.id}`);
+      } else if (!earlier) {
+        evidenceDecisions.set(evidenceKey, { id: row.id, decision });
+      }
+    }
     const exactKey = exactFacts ? JSON.stringify([factIds, core]) : null;
     const sourceSignature = sourceObservationSignature(data, row, active);
     const strongKey = identity && sourceSignature ? JSON.stringify([identity, row.kind, row.periodStart ?? null, row.periodEnd ?? null, row.periodMonths ?? null, row.amountBasis ?? null, core, sourceSignature]) : null;
