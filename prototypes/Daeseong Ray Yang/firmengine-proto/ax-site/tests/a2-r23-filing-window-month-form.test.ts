@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {createCase,normalizeMoney} from "../lib/domain.ts";
 import {calculateCase} from "../lib/assessment.ts";
-import {buildFormBindings,MISSING_FORM_VALUE} from "../lib/form-mapping.ts";
+import {buildFormBindings,MISSING_FORM_VALUE,completeFilingWindow} from "../lib/form-mapping.ts";
 
 // Synthetic-only facts and calendar months; not a legal recognition decision.
 const rules={id:"SYN-r23",status:"source_verified" as const,sources:[]};
@@ -74,4 +74,28 @@ test("A2 r24: no selected representative period cannot create approved monthly i
  assert.ok(calculation.issues.includes("INCOME_REPRESENTATIVE_PERIOD_NOT_SELECTED"));
  assert.equal(form.scalars.approved_monthly_income,MISSING_FORM_VALUE);
  assert.equal(form.rows.month.length,12); // source-only preview is preserved
+});
+
+test("A2 r25 DATA: invalid/partial/reversed selected windows cannot satisfy calendar approval prerequisite",()=>{
+ assert.equal(completeFilingWindow({start:"2026-01-01",end:"2026-12-31"}),true);
+ assert.equal(completeFilingWindow({start:"2026-02-01",end:"2026-02-28"}),true);
+ for(const period of [
+  {start:"2026-01-15",end:"2026-12-31"},
+  {start:"2026-01-01",end:"2026-12-15"},
+  {start:"2026-01-01",end:"2026-02-30"},
+  {start:"2026-12-01",end:"2026-01-31"},
+  {start:"2026-01-01",end:"2027-02-29"}
+ ])assert.equal(completeFilingWindow(period),false,JSON.stringify(period));
+ assert.equal(completeFilingWindow(undefined),false);
+});
+test("A2 r25 DATA: incomplete selected period keeps synthetic monthly observations source-only",()=>{
+ for(const period of [
+  {start:"2026-01-15",end:"2026-12-31"},
+  {start:"2026-01-01",end:"2026-12-15"},
+  {start:"2026-01-01",end:"2026-02-30"},
+  {start:"2026-12-01",end:"2026-01-31"}
+ ]){
+  const {form}=fixture(rows(months),period);
+  assert.equal(form.scalars.approved_monthly_income,MISSING_FORM_VALUE,JSON.stringify(period));
+ }
 });
