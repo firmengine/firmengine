@@ -24,6 +24,19 @@ export function exactSourceCalendarMonth(start:string|undefined,end:string|undef
  return to.getUTCDate()===monthEnd?start.slice(0,7):null;
 }
 
+
+/** Integrity-only: a selected income period must contain complete calendar months;
+ * this check does not select or approve any legal representative period. */
+export function completeFilingWindow(period: CaseData["context"]["filingPeriod"]): boolean {
+ if(!period || !/^\d{4}-(?:0[1-9]|1[0-2])-01$/.test(period.start) ||
+    !/^\d{4}-(?:0[1-9]|1[0-2])-\d{2}$/.test(period.end)) return false;
+ const from=new Date(period.start+"T00:00:00.000Z"),to=new Date(period.end+"T00:00:00.000Z");
+ if(!Number.isFinite(from.valueOf())||!Number.isFinite(to.valueOf())||
+    from.toISOString().slice(0,10)!==period.start||to.toISOString().slice(0,10)!==period.end||
+    from.valueOf()>to.valueOf())return false;
+ return to.getUTCDate()===new Date(Date.UTC(to.getUTCFullYear(),to.getUTCMonth()+1,0)).getUTCDate();
+}
+
 export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.3";
 export const MISSING_FORM_VALUE = "[확인 필요]";
 export const BASIC_FORM_CODES = documentPolicy.basicFormCodes as Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>>;
@@ -129,7 +142,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     total_repayment: amount(calculation.planTotalWon), liquidation_value: amount(calculation.liquidationValueWon),
     present_value: amount(calculation.presentValueWon), present_value_basis: present(data.context.presentValueBasis),
     allocation_basis: data.context.allocationBasisReviewed === true ? present(allocationLabels[data.context.allocationBasis ?? ""]) : "[배분 기준 검토 필요]",
-    approved_monthly_income: data.context.inventoryComplete.income==="yes" && data.context.incomePeriodReviewed===true &&
+    // A reviewed representative period is mandatory before a computed observation may be labelled approved.
+    // This preserves source-only previews; it does not recognize income or choose a legal period.
+    approved_monthly_income: completeFilingWindow(data.context.filingPeriod) && data.context.inventoryComplete.income==="yes" && data.context.incomePeriodReviewed===true &&
       calculation.monthlyIncomeWon !== null && calculation.incomeRows.length > 0 && calculation.incomeRows.every((row) => {
       const current=data.incomes.find(s=>s.id===row.id);
       return !!current&&row.monthlyWon!==null&&current.recognition==="accepted"&&
@@ -192,6 +207,17 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   };
   for (const [key, kind] of Object.entries({cash:"cash",bank_balance:"deposit",insurance_surrender:"insurance",vehicle_value:"vehicle",housing_deposit:"lease_deposit",real_estate_value:"real_estate",retirement_value:"retirement",business_assets_value:"business",other_assets:"other"})) scalars[key] = assetSum(kind);
   scalars.assets_total = assetSum();
+  // Preserve source-backed comparison rows for review, but do not present
+  // observations outside the selected representative period as in-period income.
+  // This is an internal form integrity check, not a legal period-selection rule.
+  const filingWindow=data.context.filingPeriod;
+  const filingStartMonth=filingWindow && /^\d{4}-(?:0[1-9]|1[0-2])-01$/.test(filingWindow.start)
+    ? filingWindow.start.slice(0,7):null;
+  const filingEndDate=filingWindow?new Date(filingWindow.end+"T00:00:00.000Z"):null;
+  const filingEndMonth=filingWindow && filingEndDate && Number.isFinite(filingEndDate.valueOf()) &&
+    filingEndDate.toISOString().slice(0,10)===filingWindow.end &&
+    filingEndDate.getUTCDate()===new Date(Date.UTC(filingEndDate.getUTCFullYear(),filingEndDate.getUTCMonth()+1,0)).getUTCDate()
+      ? filingWindow.end.slice(0,7):null;
   const incomesById=new Map(data.incomes.map(income=>[income.id,income]));
   // The source set of a D5103 month table is exactly the set used by
   // the deterministic calculation after explicit duplicate exclusions.
@@ -199,7 +225,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     const income=incomesById.get(calculationRow.id);
     const month=income?exactSourceCalendarMonth(income.periodStart,income.periodEnd,income.amountBasis):null;
     const verified=!!income&&sourceValid(data,income.factIds,index);
-    const usable=!!month&&verified&&calculationRow.monthlyWon!==null;
+    const inFilingWindow=!filingWindow || !!month && filingStartMonth!==null && filingEndMonth!==null &&
+      filingStartMonth<=filingEndMonth && month>=filingStartMonth && month<=filingEndMonth;
+    const usable=!!month&&inFilingWindow&&verified&&calculationRow.monthlyWon!==null;
     return {
       entity:present(income?.label),
       period:month??MISSING_FORM_VALUE,
