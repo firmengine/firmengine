@@ -5,7 +5,7 @@ import {auditStoredCalculationReplay} from "../lib/preapproval-calculation-repla
 /** Synthetic persistence rows only. This does not infer legal or court approval. */
 function row(name:string, value:unknown, won:string|null, calculationId="synthetic_calc") {
   return {calculationId,outputName:name,outputPath:`/assessment/calculation/${name}`,
-    valueJson:JSON.stringify(value),valueWon:won,status:value===null?"missing":"provisional",sourceFactIdsJson:"[]"};
+    valueJson:JSON.stringify(value),valueWon:won,status:value===null||value==="unknown"?"missing":"provisional",sourceFactIdsJson:"[]"};
 }
 function replay(values:Record<string,unknown>, rows:ReturnType<typeof row>[], expectedNames=Object.keys(values)) {
   const expectedOutputs=expectedNames.map(name=>({calculationId:"synthetic_calc",outputPath:`/assessment/calculation/${name}`}));
