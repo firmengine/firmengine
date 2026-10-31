@@ -88,6 +88,24 @@ export function resolveIncomeRows(data: CaseData, sources: IncomeSource[] = data
       mapLookups++; const bucket = weakCandidates.get(key) ?? []; bucket.push(row.id); weakCandidates.set(key, bucket);
     }
   }
+  // A single current net-income fact cannot independently support multiple retained
+  // source rows. Keep the observations for review; do not guess which one is right.
+  // Gross-only evidence may instead be shared by a reviewed derived net-income row.
+  const netFactRows = new Map<string, string[]>();
+  for (const row of rows) {
+    if (row.sourceCalculationRole === "gross_turnover_only" || row.net === null || row.net === undefined) continue;
+    for (const factId of new Set(row.factIds)) {
+      const fact = active.get(factId);
+      const key = fact?.key.replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+      if (key !== "income.net" && key !== "income.monthly_net") continue;
+      const ids = netFactRows.get(factId) ?? [];
+      ids.push(row.id);
+      netFactRows.set(factId, ids);
+    }
+  }
+  for (const [factId, ids] of netFactRows) if (ids.length > 1) {
+    issues.push(`INCOME_SAME_NET_FACT_MULTIPLE_ROWS_REVIEW_REQUIRED:${factId}:${ids.join(",")}`);
+  }
   for (const ids of potentialBuckets.values()) if (ids.length > 1) issues.push(`INCOME_SAME_PAYER_PERIOD_OBSERVATIONS_REVIEW_REQUIRED:${ids.join(",")}`);
   for (const ids of weakCandidates.values()) if (ids.length > 1) issues.push(`INCOME_NAME_MATCH_IS_NOT_IDENTITY:${ids.join(",")}`);
   return { rows, duplicates, issues: [...new Set(issues)], metrics: { rowsVisited: sources.length, mapLookups } };
