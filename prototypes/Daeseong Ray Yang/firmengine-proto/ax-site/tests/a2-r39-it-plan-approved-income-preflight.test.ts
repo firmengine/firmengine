@@ -11,7 +11,7 @@ async function run(code: Code, mode: "draft" | "final", input: Inputs = {}) {
   const scalars: Record<string, string> = {
     client_name: "SYNTHETIC APPLICANT",
     monthly_income: input.observed ?? "[확인 필요]",
-    approved_monthly_income: input.approved as string ?? "[확인 필요]",
+    approved_monthly_income: (input.approved === undefined ? "[확인 필요]" : input.approved) as string,
     ...(input.payment !== undefined ? { monthly_payment: input.payment } : {}),
     ...(input.total !== undefined ? { total_repayment: input.total } : {}),
   };
