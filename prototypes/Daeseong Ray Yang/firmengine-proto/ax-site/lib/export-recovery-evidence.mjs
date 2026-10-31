@@ -12,6 +12,17 @@ export function inspectExportRecoveryEvidence(input) {
   const codes = [];
   const add = code => { if (!codes.includes(code)) codes.push(code); };
   let conflict = false, stale = false, historical = false, incomplete = false, unplanned = false;
+  // A failed D1/R2/audit read may arrive as an error envelope instead of an
+  // array. Never throw or silently drop malformed entries in recovery triage.
+  // NULL is unobserved, [] is observed empty, malformed is a conflict.
+  const objectList = value => Array.isArray(value) &&
+    value.every(row => row !== null && typeof row === "object" && !Array.isArray(row));
+  const sqlRows = objectList(artifactRows) ? artifactRows : null;
+  const r2ProofList = objectList(objectProofs) ? objectProofs : null;
+  const auditList = objectList(auditEvents) ? auditEvents : null;
+  if (artifactRows != null && sqlRows === null) { add("SQL_ROWS_INVALID"); conflict = true; }
+  if (objectProofs != null && r2ProofList === null) { add("R2_PROOFS_INVALID"); conflict = true; }
+  if (auditEvents != null && auditList === null) { add("AUDIT_EVENTS_INVALID"); conflict = true; }
   const validId = x => typeof x === "string" && /^[A-Za-z0-9_-]{8,128}$/.test(x);
   const validSha = x => typeof x === "string" && /^[a-f0-9]{64}$/i.test(x);
   if (!receipt || !validId(receipt.requestId)
@@ -71,9 +82,9 @@ export function inspectExportRecoveryEvidence(input) {
     }
   }
   if (artifactRows == null) { add("SQL_ROWS_NOT_OBSERVED"); incomplete = true; }
-  else if (plan) {
+  else if (sqlRows && plan) {
     for (const id of plan) {
-      const hits = artifactRows.filter(row => row.id === id);
+      const hits = sqlRows.filter(row => row.id === id);
       if (hits.length === 0) { add("SQL_ROW_MISSING"); incomplete = true; continue; }
       if (hits.length !== 1) { add("SQL_ROW_DUPLICATE"); conflict = true; }
       for (const row of hits) {
@@ -87,10 +98,10 @@ export function inspectExportRecoveryEvidence(input) {
     }
   }
   if (objectProofs == null) { add("R2_PROOFS_NOT_OBSERVED"); incomplete = true; }
-  else if (plan && receipt) {
+  else if (r2ProofList && plan && receipt) {
     for (const id of plan) {
       const key = `cases/${receipt.caseId}/artifacts/${id}`;
-      const probes = objectProofs.filter(proof => proof.objectKey === key);
+      const probes = r2ProofList.filter(proof => proof.objectKey === key);
       if (!probes.length) { add("R2_PROOF_UNKNOWN"); incomplete = true; continue; }
       if (probes.some(p => p.exists !== probes[0].exists ||
         (p.verifiedSha256 ?? null) !== (probes[0].verifiedSha256 ?? null))) {
@@ -102,9 +113,9 @@ export function inspectExportRecoveryEvidence(input) {
       if (!validSha(proof.verifiedSha256)) {
         add("R2_BYTES_NOT_VERIFIED"); incomplete = true; continue;
       }
-      const rows = (artifactRows ?? []).filter(row => row.id === id);
+      const rows = (sqlRows ?? []).filter(row => row.id === id);
       if (!rows.length) {
-        if (artifactRows !== null) add("R2_WITHOUT_SQL_ROW");
+        if (sqlRows !== null) add("R2_WITHOUT_SQL_ROW");
         incomplete = true; continue;
       }
       if (rows.some(row => typeof row.hash !== "string" || row.hash.toLowerCase() !== proof.verifiedSha256.toLowerCase())) {
@@ -113,8 +124,8 @@ export function inspectExportRecoveryEvidence(input) {
     }
   }
   if (auditEvents == null) { add("AUDIT_EVENTS_NOT_OBSERVED"); incomplete = true; }
-  else if (!["document_writer.prepared", "export.generated"].every(type =>
-    auditEvents.some(event => event.type === type && receipt &&
+  else if (auditList && !["document_writer.prepared", "export.generated"].every(type =>
+    auditList.some(event => event.type === type && receipt &&
       event.caseId === receipt.caseId && event.requestId === receipt.requestId &&
       event.revision === receipt.caseRevision))) {
     add("AUDIT_EVENTS_OBSERVED_INCOMPLETE"); incomplete = true;
