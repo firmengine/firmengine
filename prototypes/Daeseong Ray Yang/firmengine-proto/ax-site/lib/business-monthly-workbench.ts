@@ -118,7 +118,8 @@ export function assembleBusinessMonthEvidence(rows:readonly BusinessSourceMoneyR
   const sameSourceRow=gross.length===1&&cost.length>0&&
     cost.every(row=>row.sourceRecordId===gross[0].sourceRecordId);
   const arithmetic=grossValue!==null&&costValue!==null&&sameSourceRow&&
-    entries.every(row=>row.verifiedAndAcceptedSource)&&
+    // An exact calendar-month label is insufficient when its source-window check is unresolved.
+    entries.every(row=>row.verifiedAndAcceptedSource&&row.periodOverlap==="inside")&&
     !refunds.length ? (BigInt(grossValue)-BigInt(costValue)).toString():null;
   return {month,selectedSourceFactIds:unique(entries.map(row=>row.factId)),
    selectedSourceRecordIds:unique(entries.map(row=>row.sourceRecordId)),
