@@ -16,7 +16,7 @@ export interface ReplayIssue {
   code: "INVALID_POINTER" | "RUNTIME_OUTPUT_MISSING" | "STORED_JSON_INVALID" |
     "OUTPUT_VALUE_MISMATCH" | "STORED_STATUS_INVALID" | "STORED_FACT_IDS_INVALID" |
     "SOURCE_FACT_NOT_CURRENT" | "DUPLICATE_OUTPUT_PATH" | "STORED_WON_MISMATCH" |
-    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED";
+    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED" | "STORED_STATUS_VALUE_CONFLICT";
   calculationId: string;
   outputPath: string;
   rowId: string | null;
@@ -66,6 +66,14 @@ export function auditStoredCalculationReplay(input: {
     catch { parsedOk = false; push("STORED_JSON_INVALID", row); }
     if (pointer.found && parsedOk && JSON.stringify(pointer.value) !== JSON.stringify(parsed))
       push("OUTPUT_VALUE_MISMATCH", row);
+    // A stored status cannot contradict whether the producer observed a value.
+    // This does not change or infer legal recognition of any financial amount.
+    if (parsedOk) {
+      const unobserved = parsed === null || parsed === "unknown";
+      if (unobserved ? row.status === "computed" || row.status === "provisional"
+                     : row.status === "missing" || row.status === "blocked")
+        push("STORED_STATUS_VALUE_CONFLICT", row);
+    }
     // Mirror case-calculation-feature-store.won() for exact integer text and safe integer numbers.
     // SQL NULL stays distinct from an observed 0; a nonmoney/missing value has no Won column.
     const endName = row.outputPath.split("/").at(-1) ?? "";
