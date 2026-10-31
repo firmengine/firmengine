@@ -41,7 +41,7 @@
 
 - [Draft PR #108](https://github.com/firmengine/firmengine/pull/108), branch `audit/a2-r41-calc-selected-period-coverage-20261101-0515`. **미병합·실무승인 전**, main 제품 코드 변경 없음.
 - 코드: `lib/income-period-coverage.ts` (동적 선택 기간·월별금액·명시적 cutoff의 보류 판단), `lib/document-writer.ts` (D5103 `final` blocker, `draft` warning; 기존 preflight 다음 단계에서 적용), `tests/a2-r41-period-coverage.test.ts` (15개 합성 테스트). 기존 #106의 `document-preflight.ts` 파일과 다른 경로로 분리했으나 **두 Draft 결합 종단시험 전 독립 병합 금지**.
-- 로컬·업로드 동일 Git blob SHA: helper `d3cc44be8fc18b5760d0bf270d280f1e8aee9076`, test `b1513017646f3705457d91804ea891a7dd022a27`; writer 수정 blob `8d0e2df82c34350cf4656990ac2224f8389a7a4a`. 변경경로 3/3 모두 `ax-site` 내부.
+- 로컬·업로드 동일 Git blob SHA: helper `d3cc44be8fc18b5760d0bf270d280f1e8aee9076`, test `6c2a1ddf6da21a0cf10507ef5afbd7e816ffeb70`; writer 수정 blob `8d0e2df82c34350cf4656990ac2224f8389a7a4a`. 변경경로 3/3 모두 `ax-site` 내부.
 - 안전 이슈: 현재 #96(합산 검토 전 총액), #97(동일 Fact 상충), #98(승인 form token), #102(충돌 총액 차단), #106(삼중서식 preflight), #67/#79(부분월/무효 대표기간) 모두 관련 통합 경로를 건드림. 개별 PR 임의 병합 금지.
 
 ## 4. 공식 법률·국세청·법원 확인 (2026-11-01 기준)
