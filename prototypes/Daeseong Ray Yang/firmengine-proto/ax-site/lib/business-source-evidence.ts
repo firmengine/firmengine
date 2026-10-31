@@ -96,6 +96,9 @@ export function auditBusinessSourceEvidence(
     const dateFact=matches[0];
     return dateFact.state==="verified"&&dateFact.recognition==="accepted"&&
       dateFact.validation.every(check=>check.severity!=="error")&&
+      // Missing or contradictory OCR date cannot exclude a financial source
+      // from the filing-period blockers merely because its Fact was accepted.
+      (!dateFact.fieldObservation||dateFact.fieldObservation.sourceState==="present")&&
       dateFact.refs.length>0&&dateFact.refs.every(ref=>validSourceRef(data,ref,index))&&
       exactDate(dateFact.value)?dateFact.value:null;
   };
