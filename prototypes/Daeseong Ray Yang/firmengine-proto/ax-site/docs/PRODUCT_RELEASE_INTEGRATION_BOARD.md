@@ -117,7 +117,7 @@
 - [ ] **A1-IT-006** 85문서 업로드/반려/철회/재업로드의 저장 상태 전이. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-007** 한 PDF 다중 유형/한 유형 다중 PDF/암호·손상 파일 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-008** R2 파일 성공 뒤 D1 실패 시 유령 파일·이중저장 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 4차 부분검증: 일반 Export/자동초안 `commitManifest` 후 D1 ACK 유실 시 이미 참조된 SQL artifact row/R2 객체를 catch가 삭제하는 P0 재현. 수정 [Draft PR #24](https://github.com/firmengine/firmengine/pull/24) V8 7/7 격리 통과, Node/실 D1/R2 미인증. [영수증](release-audit-runs/A1/20261030-round04-export-ack-stale-calculation.md).**
-- [ ] **A1-IT-009** D1 성공 뒤 파일 저장 실패 시 성공으로 위장 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-IT-009** D1 성공 뒤 파일 저장 실패 시 성공으로 위장 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **24차 부분 [ ]:** main `export-artifact-transaction.ts` blob `a114235e` 본문 V8 합성 R2 첫/둘째 실패·SQL 부분실패·manifest CAS·정상·사후로그 총 **6/6 기대일치**; R2 reject 시 SQL persist/manifest 0, 성공 반환 없음. **기존 P0** D1 commit 응답 유실/정리 경합은 [Draft #24](https://github.com/firmengine/firmengine/pull/24)·[#61](https://github.com/firmengine/firmengine/pull/61), 실 D1/R2 미인증. [24차 영수증](release-audit-runs/A1/20261031-round24-r2-commit-legal-source-budget-1148KST.md). **[ ] 유지**.
 - [ ] **A1-IT-010** 동시 브라우저 두 개의 동일 사건 CAS 저장 안전성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **2026-10-30 A1 2차: 기존 SQL CAS 4개 격리 SQLite 정상·리뷰-only 동일 revision 토큰 경합 정상. 실제 브라우저/D1 미인증. [영수증](release-audit-runs/A1/20261030-round02-draft-commit-cas.md).**
 - [ ] **A1-IT-011** 기존 사건 구판본 JSON·null 필드의 역호환 읽기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-IT-012** 마이그레이션 0000~0022 중 누락·순서·불일치 검증. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -161,7 +161,7 @@
 - [ ] **A1-CALC-008** 재산 보증금/보험/퇴직금/지분·면제재산 분기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-009** 상충 가구원 수/부양증빙에 생계비 확정 보류. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-010** 0원과 미관찰·음수/과소수입을 다른 상태로 처리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 10차 부분:** 현재 main의 `statusOf` 실제 함수 본문 V8에서 0/미관찰(null)/unknown/blocked/음수(-12)/상충/비해당 7/7 기대일치. 계산·영업소득·채권/서식 원단위 전체 실행과 음수 금액의 법적 인정 검증은 미실행, [ ] 유지. [10차 영수증](release-audit-runs/A1/20261030-round10-calculation-head-pagination.md).
-- [ ] **A1-CALC-011** 월 변제가능액·보수·우선/재단 비용 누락 시 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-CALC-011** 월 변제가능액·보수·우선/재단 비용 누락 시 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **24차 부분 [ ]:** `assessment.ts` blob `ee0f12bd` 실제 보수·우선·재단 비용 산식 V8 **7/7**(null이면 월 변제예산 null, 0 별도), `case-legal-calculation-preflight.ts` blob `c17892e6` V8 **8/8**(필수 출력 미승인 시 비용 누락이어도 예비 법률 AI 허용 가능), 자동초안 필수계산 게이트 V8 **6/6**(null/unknown/blocked 차단). 18계산·95법률·서식/실제 D1 미인증. [24차 영수증](release-audit-runs/A1/20261031-round24-r2-commit-legal-source-budget-1148KST.md). **[ ] 유지**.
 - [ ] **A1-CALC-012** 36/48/60개월 및 특례 기간의 회차 생성 확인. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-013** 총 변제액·채권별 배분·현재가치·청산가치 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-CALC-014** 직원이 수정한 금액은 제안/출처/승인 단계 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **A1 12차 신규 P1:** `validBusinessNetReview`가 과거 동일인 직원제안·변호사승인 기록을 현재 계산용 승인으로 오인, 실제 함수 V8 원본 3/6·수정후 6/6 (actor 경계만 격리). [Draft PR #55](https://github.com/firmengine/firmengine/pull/55)에서 독립 actor 재검증 및 합성 회귀 추가; Node/CI/실 D1·서식·실무자 미검증. [12차 영수증](release-audit-runs/A1/20261030-round12-export-retry-questions-business-independent-2350KST.md). **[ ] 유지**.
@@ -219,7 +219,7 @@
 - [ ] **A1-AX-003** OCR·분류·독립 검증의 결과와 원문 span 결속. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-004** JSON Schema 불일치·빈 결과·툴 호출 실패 복구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-005** 문서에 없는 금액·날짜·법원 결론 환각 차단. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
-- [ ] **A1-AX-006** 공식 법률 출처 검색 실패 시 검토보류 반환. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-AX-006** 공식 법률 출처 검색 실패 시 검토보류 반환. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **24차 부분 [ ]:** `case-legal-source-preflight.ts` blob `0a4bf038` 원본문 V8 증빙·상담 오류 **7/7 기대일치**; 그러나 공식 법률 모니터 검색 실패·sourceHealth는 법률 AI source-preflight 입력에 **연결 확인 안 됨**. 실제 공식 조회 실패 주입/법률모델 호출 미실행; source-only 계약 공백, 실무자 정책 결정 필요. [24차 영수증](release-audit-runs/A1/20261031-round24-r2-commit-legal-source-budget-1148KST.md). **[ ] 유지**.
 - [ ] **A1-AX-007** 모델 연산 대신 결정론 계산 결과 사용. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-008** 법률 의견 반론/근거/미해결 쟁점 분리. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-AX-009** 한 원본의 다수 행을 잘못 병합하는 프롬프트 점검. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
