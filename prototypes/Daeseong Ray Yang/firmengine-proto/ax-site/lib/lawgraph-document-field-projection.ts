@@ -41,6 +41,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
  const {data,bindings,calculationRows}=input;
  const facts=currentFacts(data).filter(f=>f.state==="verified"&&f.recognition==="accepted"
    &&!f.validation.some(x=>x.severity==="error")&&!factSourceLineageIssues(data,[f.id]).length);
+ const approvedCurrentFactIds=new Set(facts.map(f=>f.id));
  const subjectIds:Record<string,string[]>={
   creditor:input.calculation.debtRows.map(r=>r.id),
   asset:input.calculation.assetRows.map(r=>r.id),
@@ -90,7 +91,8 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
      calcFeatureRefs:calcFeature?[calcFeature.id]:[],
      citation:{schemaVersion:LAWGRAPH_DOCUMENT_FIELD_VERSION,status,contextPath:contextPath??null,
       caseRevision:data.context.revision,calculationStatus:calcFeature?.status??null,
-      officialEformParity:"not_verified",manualReviewRequired:status!=="linked_calculation"&&status!=="exact_source_fact"&&status!=="case_context"}});
+      officialEformParity:"not_verified",manualReviewRequired:(status!=="linked_calculation"&&status!=="exact_source_fact"&&status!=="case_context") ||
+      (calcFeature!==null&&(calcFeature.status!=="computed"||calcFeature.sourceFactIds.some(id=>!approvedCurrentFactIds.has(id))))}});
    }
   }
  }
