@@ -3,6 +3,7 @@ import type { CaseExecution } from "./case-agent.ts";
 import type { CalculationTrace } from "./assessment.ts";
 import { getCalculationSpecs, EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { referenceIdentity } from "./reference-runtime.ts";
+import {isCalculationHeadStale} from "./calculation-head-freshness.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
 
 export const CASE_CALCULATION_FEATURE_STORE_VERSION="case-calculation-features/1";
@@ -143,7 +144,7 @@ export async function listCaseCalculationFeatures(db:D1Database,input:{caseId:st
   if(after?.revision!==current.revision||after?.data_version!==current.data_version)throw error("CALCULATION_VERSION_MISMATCH");
   return {schemaVersion:CASE_CALCULATION_FEATURE_STORE_VERSION,caseId:input.caseId,currentDataVersion:current.data_version,currentCaseRevision:current.revision,
     runId:head?.run_id??null,dataVersion:head?.data_version??null,caseRevision:head?.case_revision??null,inputSha256:head?.input_sha256??null,
-    headStale:!!head&&(head.data_version!==current.data_version||head.case_revision!==current.revision),status:head?.status??"missing",courtApprovalInferred:false,
+    headStale:isCalculationHeadStale(head,current,referenceIdentity()?.sha256??referenceRelease.sha256),status:head?.status??"missing",courtApprovalInferred:false,
     ruleReleaseId:head?.rule_release_id??null,referenceRelease:head?{id:head.reference_id,revision:head.reference_revision,sha256:head.reference_sha256}:null,contractVersion:head?.contract_version??null,
     sourceHeads:head?JSON.parse(head.source_heads_json):null,sourceHeadsSha256:head?.source_heads_sha256??null,missing:head?JSON.parse(head.missing_json):null,
     totalFeatures:total?.n??0,limit,offset,nextOffset:offset+features.length<(total?.n??0)?offset+features.length:null,
