@@ -14,7 +14,7 @@ const end=source.indexOf("\n }\n}\nexport async function drainCaseLegalAutomatio
 assert.ok(start>=0&&end>start,"production legal worker catch body must be found uniquely");
 assert.equal(source.indexOf(marker,start+marker.length),-1,"only one legal worker catch body");
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
-const catchBody=source.slice(start+"}catch(error){".length,end).replace(/ as const\\b/g,"");
+const catchBody=source.slice(start+"}catch(error){".length,end).replace(/ as const\b/g,"");
 const handleFailure=new AsyncFunction("error","database","job","lease","safeCode",
   "RETRIES","later","clock","note",catchBody);
 
@@ -36,7 +36,7 @@ async function syntheticAttempt({changes,attempts=1,errorCode="LEGAL_SYNTHETIC_5
   let value=null,failure=null;
   try{value=await handleFailure(...args);}catch(error){failure=error;}
   assert.equal(statements.length,1);
-  assert.match(statements[0],/WHERE id=\\? AND lease_token=\\? AND status='running'/);
+  assert.match(statements[0],/WHERE id=\? AND lease_token=\? AND status='running'/);
   return {value,failure,audits};
 }
 
