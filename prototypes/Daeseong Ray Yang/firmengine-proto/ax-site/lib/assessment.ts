@@ -414,7 +414,9 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
   if (coverageIncomplete) issues.push("INCOME_PERIOD_COVERAGE_INCOMPLETE");
   // Do not publish a partial observed average as the case-wide monthly income.
   // Per-source and per-group observed values remain available for review.
-  const income = materialAggregateBlocked("income") || coverageIncomplete || businessSourceAudit.summary.zeroIncomeWouldBeUnsupported ? null : incomeAggregation.total;
+  // A selected but invalid calendar period is diagnostic-only, never a computed case-wide income.
+  // Keep individual source rows for review; do not infer an approved legal income amount.
+  const income = materialAggregateBlocked("income") || (hasFilingPeriod && !filingPeriodValid) || coverageIncomplete || businessSourceAudit.summary.zeroIncomeWouldBeUnsupported ? null : incomeAggregation.total;
   for (const group of incomeGroups) traces.push({ id: "income_group:" + group.id, title: group.label + " 관측기간 월평균", formula: referenceFormula("income_aggregation"), inputs: group.sourceIds.map((id) => ({ label: id + " 월평균", value: incomeRows.find((row) => row.id === id)?.monthlyWon ?? null, factIds: data.incomes.find((source) => source.id === id)?.factIds ?? [] })), resultWon: group.monthlyObservedAverageWon, status: group.monthlyObservedAverageWon === null ? "blocked" : !hasFilingPeriod || !filingPeriodValid || !periodReviewed || group.reasons.length || coverageIncomplete ? "provisional" : "calculated", reasons: [...group.reasons, ...(!hasFilingPeriod ? ["대표기간 미선택 · 관측 평균만 표시"] : []), ...(hasFilingPeriod && !filingPeriodValid ? ["선택 기간이 완전한 달력월이 아닙니다."] : []), ...(hasFilingPeriod && !periodReviewed ? ["선택한 대표기간 검토 전"] : []), ...(coverageIncomplete ? ["선택기간에 비해 관측 개월이 부족합니다."] : [])] });
   if (data.context.inventoryComplete.income !== "yes") issues.push("INCOME_INVENTORY_INCOMPLETE");
   const deduped = resolveDebtRows(data,index); issues.push(...deduped.issues); duplicateIds.push(...deduped.duplicates);
