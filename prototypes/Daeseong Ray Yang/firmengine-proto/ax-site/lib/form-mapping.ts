@@ -129,10 +129,15 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     total_repayment: amount(calculation.planTotalWon), liquidation_value: amount(calculation.liquidationValueWon),
     present_value: amount(calculation.presentValueWon), present_value_basis: present(data.context.presentValueBasis),
     allocation_basis: data.context.allocationBasisReviewed === true ? present(allocationLabels[data.context.allocationBasis ?? ""]) : "[배분 기준 검토 필요]",
-    approved_monthly_income: data.context.inventoryComplete.income==="yes" && data.context.incomePeriodReviewed===true &&
+    // REVIEW-ONLY: observed income cannot become an approved form scalar without a selected period.
+    // Period completeness and exact source-month coverage remain separate integration gates (#76/#93).
+    approved_monthly_income: !!data.context.filingPeriod && data.context.inventoryComplete.income==="yes" && data.context.incomePeriodReviewed===true &&
       calculation.monthlyIncomeWon !== null && calculation.incomeRows.length > 0 && calculation.incomeRows.every((row) => {
       const current=data.incomes.find(s=>s.id===row.id);
       return !!current&&row.monthlyWon!==null&&current.recognition==="accepted"&&
+        // This is a human classification review, not a source-fact verification or legal income finding.
+        current.aggregationTreatment!==undefined&&current.aggregationTreatment!=="unknown"&&
+        current.aggregationReviewed===true&&!!current.aggregationReviewReason?.trim()&&
         current.factIds.length>0&&factSourceLineageIssues(data,current.factIds,index).length===0;
     }) ? amount(calculation.monthlyIncomeWon) : MISSING_FORM_VALUE,
   });
