@@ -40,6 +40,60 @@ export function exportRecoveryArtifactSelect(caseId, artifactIds) {
 }
 const pick = (row, camel, snake) => Object.prototype.hasOwnProperty.call(row,camel) ?
   row[camel] : row[snake];
+
+const hash64 = value => typeof value === "string" && /^[a-f0-9]{64}$/i.test(value);
+/** Compare a request-scoped export.generated event to independently stored
+ * intent/source, SQL and current Manifest evidence. Writer-prepared events
+ * remain unbound: no event timestamp or actor proves their request identity.
+ */
+function checkExportGeneratedAudit(detail,receipt,sqlRows,manifest) {
+  if (detail.revision == null || detail.mode == null)
+    return block("inconclusive","D1_EXPORT_AUDIT_SOURCE_NOT_OBSERVED");
+  if (detail.revision !== receipt.caseRevision || detail.mode !== receipt.mode)
+    return block("conflict","D1_EXPORT_AUDIT_SOURCE_CONFLICT");
+  if (detail.files == null || detail.writerReceipt == null)
+    return block("inconclusive","D1_EXPORT_AUDIT_CONTENT_NOT_OBSERVED");
+  if (!Array.isArray(detail.files) || !record(detail.writerReceipt) ||
+      detail.files.length === 0 || detail.files.some(f=>!record(f) || !token(f.id)) ||
+      new Set(detail.files.map(f=>f.id)).size !== detail.files.length)
+    return block("conflict","D1_EXPORT_AUDIT_CONTENT_INVALID");
+  if (detail.files.some(f=>f.hash == null || f.kind == null))
+    return block("inconclusive","D1_EXPORT_AUDIT_FILE_FACT_NOT_OBSERVED");
+  if (detail.files.some(f=>!hash64(f.hash) ||
+      typeof f.kind !== "string" || !f.kind))
+    return block("conflict","D1_EXPORT_AUDIT_CONTENT_INVALID");
+  if (receipt.artifactIdsJson == null)
+    return block("inconclusive","D1_EXPORT_AUDIT_PLAN_NOT_OBSERVED");
+  let plan;
+  try {plan=JSON.parse(receipt.artifactIdsJson);} catch {
+    return block("conflict","D1_EXPORT_AUDIT_PLAN_INVALID");
+  }
+  if (!Array.isArray(plan) || plan.length===0 || plan.some(id=>!token(id)) ||
+      new Set(plan).size !== plan.length)
+    return block("conflict","D1_EXPORT_AUDIT_PLAN_INVALID");
+  if (detail.files.length !== plan.length ||
+      detail.files.some(f=>!plan.includes(f.id)))
+    return block("conflict","D1_EXPORT_AUDIT_FILES_CONFLICT");
+  const writer=detail.writerReceipt;
+  if (writer.caseId==null || writer.caseRevision==null || writer.mode==null ||
+      writer.referenceRelease?.sha256==null)
+    return block("inconclusive","D1_EXPORT_AUDIT_WRITER_SOURCE_NOT_OBSERVED");
+  if (writer.caseId!==receipt.caseId || writer.caseRevision!==receipt.caseRevision ||
+      writer.mode!==receipt.mode || writer.referenceRelease.sha256!==receipt.referenceSha256)
+    return block("conflict","D1_EXPORT_AUDIT_WRITER_SOURCE_CONFLICT");
+  if (sqlRows && detail.files.some(f=>sqlRows.some(row=>row.id===f.id &&
+      typeof row.hash==="string" && row.hash.toLowerCase()!==f.hash.toLowerCase())))
+    return block("conflict","D1_EXPORT_AUDIT_SQL_HASH_CONFLICT");
+  if (record(manifest) && manifest.exportRequestId===receipt.requestId &&
+      Array.isArray(manifest.files) && detail.files.some(f=>{
+        const actual=manifest.files.find(row=>row?.id===f.id);
+        return !actual || typeof actual.hash!=="string" ||
+          actual.hash.toLowerCase()!==f.hash.toLowerCase() || actual.kind!==f.kind;
+      }))
+    return block("conflict","D1_EXPORT_AUDIT_MANIFEST_FILES_CONFLICT");
+  return null;
+}
+
 /**
  * Takes ONLY observed D1 rows and independent R2 byte-GET proof.
  * undefined/null collections are NOT OBSERVED; [] is observed empty.
@@ -109,8 +163,12 @@ export function projectExportRecoveryD1Reads(input={}) {
       if (!record(detail)) return block("conflict","D1_AUDIT_DETAIL_JSON_INVALID");
       if (row.type==="document_writer.prepared") {
         writerEvents+=1; // detail is a writer receipt: no requestId; do NOT bind it.
-      } else if (detail.requestId === receipt.requestId &&
-          detail.revision === receipt.caseRevision) {
+      } else if (detail.requestId === receipt.requestId) {
+        // An event's requestId alone does not prove this export payload.
+        // Never bind contradicted source, files or writer receipts.
+        const problem=checkExportGeneratedAudit(detail,receipt,projectedRows,
+          input.caseData?.exportManifest);
+        if (problem) return problem;
         auditEvents.push({type:"export.generated",caseId,
           requestId:detail.requestId,revision:detail.revision});
       }
