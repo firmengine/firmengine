@@ -99,13 +99,15 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
     existing.sourceRequirements.periodIdentity ||= hasPeriod(f.temporal_role,route.familyId);
     existing.gaps=[...(existing.typedProjections.length?[]:["CASE_TYPED_CONSUMER_NOT_DECLARED"]),
       ...(existing.forms.some((x:any)=>x.token)?[]:["OFFICIAL_FORM_TOKEN_NOT_EXPLICITLY_LINKED"]),
-      ...(existing.legal.riskCheckCandidates.length?[]:["LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED"]),
+      // A document-type/rule match is only a candidate, never exact canonical legal evidence approval.
+      "LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED",
       "OFFICIAL_EFILING_REQUIREDNESS_NOT_VERIFIED"];
     continue;
    }
    const gaps=[...(typed.length?[]:["CASE_TYPED_CONSUMER_NOT_DECLARED"]),
      ...(forms.some(x=>x.token)?[]:["OFFICIAL_FORM_TOKEN_NOT_EXPLICITLY_LINKED"]),
-     ...(risks.length?[]:["LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED"]),
+     // Candidate risk checks do not provide an approved canonical evidence contract.
+      "LEGAL_RISK_SOURCE_FIELD_NOT_EXPLICITLY_LINKED",
      "OFFICIAL_EFILING_REQUIREDNESS_NOT_VERIFIED"];
    index.set(id,{canonicalFieldId:id,familyId:route.familyId,familyIds:[route.familyId],localKey:f.local_id,label:f.label,datatype:f.datatype,
     unit:f.canonical_unit,temporalRole:f.temporal_role,subjectRole:f.subject_entity_role,
