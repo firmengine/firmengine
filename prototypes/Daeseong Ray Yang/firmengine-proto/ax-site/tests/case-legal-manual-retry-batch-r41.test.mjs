@@ -25,6 +25,21 @@ function fixture(){
  const a=new DatabaseSync(path),b=new DatabaseSync(path);
  a.exec("PRAGMA journal_mode=WAL;CREATE TABLE case_legal_automation_jobs(id TEXT PRIMARY KEY,status TEXT,attempts INTEGER,next_attempt_at TEXT,last_error TEXT,updated_at TEXT,case_revision INTEGER,data_version INTEGER);CREATE TABLE case_legal_automation_events(id INTEGER PRIMARY KEY AUTOINCREMENT,case_id TEXT,job_id TEXT,data_version INTEGER,event_kind TEXT,payload_json TEXT,created_at TEXT);");
  a.prepare("INSERT INTO case_legal_automation_jobs VALUES('job-synthetic','failed',3,NULL,'synthetic failure','old',1,1)").run();
+ // r42: the guarded UPDATE consults the live case/source/calculation head.
+ // Include minimal current-version tables so r41's real-SQL regression stays executable.
+ a.exec("ALTER TABLE case_legal_automation_jobs ADD COLUMN case_id TEXT;"+
+   "ALTER TABLE case_legal_automation_jobs ADD COLUMN calculation_run_id TEXT;"+
+   "ALTER TABLE case_legal_automation_jobs ADD COLUMN input_sha256 TEXT;"+
+   "ALTER TABLE case_legal_automation_jobs ADD COLUMN reference_sha256 TEXT;"+
+   "CREATE TABLE cases(id TEXT PRIMARY KEY,revision INTEGER);"+
+   "CREATE TABLE case_data_change_state(case_id TEXT PRIMARY KEY,data_version INTEGER);"+
+   "CREATE TABLE case_calculation_heads(case_id TEXT PRIMARY KEY,run_id TEXT,data_version INTEGER,case_revision INTEGER,input_sha256 TEXT);"+
+   "CREATE TABLE case_calculation_runs(id TEXT PRIMARY KEY,data_version INTEGER,case_revision INTEGER,input_sha256 TEXT,reference_sha256 TEXT);"+
+   "INSERT INTO cases VALUES('case-synthetic',1);"+
+   "INSERT INTO case_data_change_state VALUES('case-synthetic',1);"+
+   "INSERT INTO case_calculation_heads VALUES('case-synthetic','calc-synthetic',1,1,'input-synthetic');"+
+   "INSERT INTO case_calculation_runs VALUES('calc-synthetic',1,1,'input-synthetic','ref-synthetic');"+
+   "UPDATE case_legal_automation_jobs SET case_id='case-synthetic',calculation_run_id='calc-synthetic',input_sha256='input-synthetic',reference_sha256='ref-synthetic' WHERE id='job-synthetic';");
  return {a,b,close(){a.close();b.close();rmSync(dir,{recursive:true,force:true});}};
 }
 function runPair(db,{args=updateArgs,failAudit=false}={}){
