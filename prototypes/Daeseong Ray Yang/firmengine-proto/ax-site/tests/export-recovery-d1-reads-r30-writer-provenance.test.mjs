@@ -6,7 +6,7 @@ import {projectExportRecoveryD1Reads} from "../lib/export-recovery-d1-reads.mjs"
 const C="case-synthetic",R="request-aaaaaaaa",I="artifact-aaaaaaaa";
 const H="a".repeat(64),B="b".repeat(64);
 const fresh=()=>({
-  caseId:C,caseRevision:3,mode:"draft",referenceRelease:{sha256:H},
+  schemaVersion:"document-writer-receipt/2",caseId:C,caseRevision:3,mode:"draft",referenceRelease:{sha256:H},
   artifactHashes:[H],inputSha256:H,evaluationId:H,evaluationResultHash:H,
   bindingsSha256:H,documentEditsHash:H,generatorVersion:"synthetic-v1",
   formContractVersion:"synthetic-contract"

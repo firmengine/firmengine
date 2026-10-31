@@ -4,7 +4,7 @@ import {projectExportRecoveryD1Reads} from "../lib/export-recovery-d1-reads.mjs"
 // All rows, bytes hashes and event payloads are synthetic. No staging/HTTP calls.
 const C="case-synthetic",R="request-aaaaaaaa",I="artifact-aaaaaaaa";
 const H="a".repeat(64),B="b".repeat(64);
-const writer={caseId:C,caseRevision:3,mode:"draft",referenceRelease:{sha256:H}};
+const writer={schemaVersion:"document-writer-receipt/2",inputSha256:H,evaluationId:H,evaluationResultHash:H,bindingsSha256:H,documentEditsHash:H,generatorVersion:"synthetic-v1",formContractVersion:"synthetic-contract",artifactHashes:[H],caseId:C,caseRevision:3,mode:"draft",referenceRelease:{sha256:H}};
 const detail={requestId:R,revision:3,mode:"draft",
   files:[{id:I,hash:H,kind:"application"}],writerReceipt:writer};
 const fixture=()=>({
@@ -14,7 +14,7 @@ const fixture=()=>({
   artifactRows:[{id:I,case_id:C,revision:3,
     object_key:`cases/${C}/artifacts/${I}`,hash:H}],
   caseData:{context:{id:C,revision:3},exportManifest:{exportRequestId:R,
-    files:[{id:I,hash:H,kind:"application",name:"draft.docx",status:"current"}]}},
+    files:[{id:I,hash:H,kind:"application",name:"draft.docx",status:"current"}],documentWriter:writer}},
   auditRows:[{case_id:C,type:"export.generated",detail:JSON.stringify(detail)}]
 });
 function changeEvent(input,change){
@@ -39,8 +39,8 @@ const negatives=[
   ["event has duplicate artifact IDs",x=>changeEvent(x,d=>{d.files.push({...d.files[0]});}),"conflict","D1_EXPORT_AUDIT_CONTENT_INVALID"],
   ["event hash malformed",x=>changeEvent(x,d=>{d.files[0].hash="wrong";}),"conflict","D1_EXPORT_AUDIT_CONTENT_INVALID"],
   ["event hash null is unobserved",x=>changeEvent(x,d=>{d.files[0].hash=null;}),"inconclusive","D1_EXPORT_AUDIT_FILE_FACT_NOT_OBSERVED"],
-  ["event hash differs from SQL",x=>changeEvent(x,d=>{d.files[0].hash=B;}),"conflict","D1_EXPORT_AUDIT_SQL_HASH_CONFLICT"],
-  ["event hash differs from manifest when SQL missing",x=>{x.artifactRows=null;changeEvent(x,d=>{d.files[0].hash=B;});},"conflict","D1_EXPORT_AUDIT_MANIFEST_FILES_CONFLICT"],
+  ["event hash differs from SQL",x=>changeEvent(x,d=>{d.files[0].hash=B;d.writerReceipt.artifactHashes=[B];x.caseData.exportManifest.documentWriter.artifactHashes=[B];}),"conflict","D1_EXPORT_AUDIT_SQL_HASH_CONFLICT"],
+  ["event hash differs from manifest when SQL missing",x=>{x.artifactRows=null;changeEvent(x,d=>{d.files[0].hash=B;d.writerReceipt.artifactHashes=[B];x.caseData.exportManifest.documentWriter.artifactHashes=[B];});},"conflict","D1_EXPORT_AUDIT_MANIFEST_FILES_CONFLICT"],
   ["embedded writer has wrong revision",x=>changeEvent(x,d=>{d.writerReceipt.caseRevision=4;}),"conflict","D1_EXPORT_AUDIT_WRITER_SOURCE_CONFLICT"],
   ["embedded writer reference missing",x=>changeEvent(x,d=>{delete d.writerReceipt.referenceRelease;}),"inconclusive","D1_EXPORT_AUDIT_WRITER_SOURCE_NOT_OBSERVED"],
   ["embedded writer missing",x=>changeEvent(x,d=>{delete d.writerReceipt;}),"inconclusive","D1_EXPORT_AUDIT_CONTENT_NOT_OBSERVED"],

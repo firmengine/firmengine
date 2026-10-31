@@ -85,46 +85,50 @@ function checkExportGeneratedAudit(detail,receipt,sqlRows,manifest) {
   // Finalized writer hashes must match the actual rendered artifact multiset.
   // Hashes alone are not R2 GET proof, but contradictions block audit binding.
   const writerHashes=writer.artifactHashes;
-  if (writerHashes === null)
+  // A finalized DocumentWriterReceipt v2 always carries rendered artifact hashes.
+  // Missing digest lists are unobserved, never a matching digest or audit proof.
+  if (writerHashes == null)
     return block("inconclusive","D1_EXPORT_AUDIT_WRITER_HASHES_NOT_OBSERVED");
-  if (writerHashes !== undefined) {
-    if (!Array.isArray(writerHashes) || writerHashes.length!==detail.files.length ||
-        writerHashes.some(hash=>!hash64(hash)))
-      return block("conflict","D1_EXPORT_AUDIT_WRITER_HASHES_INVALID");
-    const expected=detail.files.map(file=>file.hash.toLowerCase()).sort();
-    const observed=writerHashes.map(hash=>hash.toLowerCase()).sort();
-    if (expected.some((hash,index)=>hash!==observed[index]))
-      return block("conflict","D1_EXPORT_AUDIT_WRITER_ARTIFACT_HASH_CONFLICT");
-  }
+  if (!Array.isArray(writerHashes) || writerHashes.length!==detail.files.length ||
+      writerHashes.some(hash=>!hash64(hash)))
+    return block("conflict","D1_EXPORT_AUDIT_WRITER_HASHES_INVALID");
+  const expected=detail.files.map(file=>file.hash.toLowerCase()).sort();
+  const observed=writerHashes.map(hash=>hash.toLowerCase()).sort();
+  if (expected.some((hash,index)=>hash!==observed[index]))
+    return block("conflict","D1_EXPORT_AUDIT_WRITER_ARTIFACT_HASH_CONFLICT");
   // Stored Manifest and export.generated both carry a writer snapshot.
   // Matching case/revision alone is insufficient if evaluation/bindings differ.
-  if (record(manifest) && manifest.exportRequestId===receipt.requestId &&
-      record(manifest.documentWriter)) {
+  if (record(manifest) && manifest.exportRequestId===receipt.requestId) {
+    // A current Manifest without a writer receipt does not prove its export.
+    if (!record(manifest.documentWriter))
+      return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_WRITER_NOT_OBSERVED");
     const storedWriter=manifest.documentWriter;
+    // DocumentWriterReceipt v2 declares each field required. Omission or null
+    // on EITHER side is not equality, even if the remaining fields match.
     for (const key of ["schemaVersion","inputSha256","evaluationId",
       "evaluationResultHash","bindingsSha256","documentEditsHash",
       "generatorVersion","formContractVersion"]) {
-      if (Object.prototype.hasOwnProperty.call(writer,key) &&
-          Object.prototype.hasOwnProperty.call(storedWriter,key)) {
-        if (writer[key] == null || storedWriter[key] == null)
-          return block("inconclusive","D1_EXPORT_AUDIT_WRITER_FIELD_NOT_OBSERVED");
-        if (writer[key]!==storedWriter[key])
-          return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_CONFLICT");
-      }
-    }
-    if (writerHashes !== undefined &&
-        Object.prototype.hasOwnProperty.call(storedWriter,"artifactHashes")) {
-      if (storedWriter.artifactHashes == null)
-        return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_WRITER_HASHES_NOT_OBSERVED");
-      if (!Array.isArray(storedWriter.artifactHashes) ||
-          storedWriter.artifactHashes.length!==writerHashes.length ||
-          storedWriter.artifactHashes.some(hash=>!hash64(hash)))
-        return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_HASHES_INVALID");
-      const manifestHashes=storedWriter.artifactHashes.map(hash=>hash.toLowerCase()).sort();
-      if (writerHashes.map(hash=>hash.toLowerCase()).sort()
-          .some((hash,index)=>hash!==manifestHashes[index]))
+      if (writer[key] == null || storedWriter[key] == null)
+        return block("inconclusive","D1_EXPORT_AUDIT_WRITER_FIELD_NOT_OBSERVED");
+      if (writer[key]!==storedWriter[key])
         return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_CONFLICT");
     }
+    if (writer.schemaVersion!=="document-writer-receipt/2" ||
+        ["inputSha256","evaluationId","evaluationResultHash","bindingsSha256",
+          "documentEditsHash"].some(key=>!hash64(writer[key])) ||
+        ["generatorVersion","formContractVersion"].some(key=>
+          typeof writer[key]!=="string" || !writer[key].trim()))
+      return block("conflict","D1_EXPORT_AUDIT_WRITER_CONTRACT_INVALID");
+    if (storedWriter.artifactHashes == null)
+      return block("inconclusive","D1_EXPORT_AUDIT_MANIFEST_WRITER_HASHES_NOT_OBSERVED");
+    if (!Array.isArray(storedWriter.artifactHashes) ||
+        storedWriter.artifactHashes.length!==writerHashes.length ||
+        storedWriter.artifactHashes.some(hash=>!hash64(hash)))
+      return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_HASHES_INVALID");
+    const manifestHashes=storedWriter.artifactHashes.map(hash=>hash.toLowerCase()).sort();
+    if (writerHashes.map(hash=>hash.toLowerCase()).sort()
+        .some((hash,index)=>hash!==manifestHashes[index]))
+      return block("conflict","D1_EXPORT_AUDIT_MANIFEST_WRITER_CONFLICT");
   }
   if (sqlRows && detail.files.some(f=>sqlRows.some(row=>row.id===f.id &&
       typeof row.hash==="string" && row.hash.toLowerCase()!==f.hash.toLowerCase())))

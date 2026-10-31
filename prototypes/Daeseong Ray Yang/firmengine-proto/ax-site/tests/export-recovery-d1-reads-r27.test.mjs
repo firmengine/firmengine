@@ -7,7 +7,7 @@ import {EXPORT_RECOVERY_RECEIPT_SELECT_SQL,EXPORT_RECOVERY_AUDIT_SELECT_SQL,
 
 // ALL records in this file are synthetic, including D1 rows, event payloads and R2 GET proofs.
 const H="a".repeat(64),I="artifact-aaaaaaaa",R="request-aaaaaaaa",C="case-synthetic";
-const writer={caseId:C,caseRevision:3,mode:"draft",referenceRelease:{sha256:H},artifactHashes:[H]};
+const writer={schemaVersion:"document-writer-receipt/2",inputSha256:H,evaluationId:H,evaluationResultHash:H,bindingsSha256:H,documentEditsHash:H,generatorVersion:"synthetic-v1",formContractVersion:"synthetic-contract",caseId:C,caseRevision:3,mode:"draft",referenceRelease:{sha256:H},artifactHashes:[H]};
 const canonical=v=>v===undefined?"null":Array.isArray(v)?
   "["+v.map(canonical).join(",")+"]":v&&typeof v==="object"?
   "{"+Object.entries(v).filter(([,x])=>x!==undefined).sort(([a],[b])=>a.localeCompare(b))
