@@ -71,6 +71,14 @@ export function auditMaterialCalculatorSources(data:CaseData,index:CaseReadIndex
    // Explicit splits need separate source-backed per-row allocations and a reviewed rule.
    if(matched.length!==1){add("CALC_INPUT_MULTIPLE_TYPED_MATCHES",field,fact.id);continue;}
    const expected=moneyValue(fact.numeric),prop=field.destination.split(".")[1];
+   // A single verified money observation is not a second typed claim/value merely
+   // because another financial category links the same factId. Distinct-valued
+   // documentary cross-checks remain inspectable and do not by themselves block.
+   const crossCategoryFinancialRows=rows.filter(row=>row.item.factIds.includes(fact.id)&&
+     !field.destination!.startsWith(row.category+".")&&
+     (row.category==="income"?[row.item.net,row.item.gross]:row.category==="debt"?[row.item.principal,row.item.interest]:[row.item.grossValue])
+       .some(value=>moneyValue(value)===expected));
+   if(crossCategoryFinancialRows.length){add("CALC_INPUT_MULTIPLE_TYPED_MATCHES",field,fact.id);continue;}
    const actual=matched.map(row=>moneyValue((row.item as unknown as Record<string,unknown>)[prop] as NumericInput|null|undefined));
    if(actual.some(amount=>amount===null||amount!==expected))add("CALC_INPUT_AMOUNT_MISMATCH",field,fact.id);
  }
