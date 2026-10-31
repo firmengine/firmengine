@@ -11,7 +11,8 @@ const start=source.indexOf(marker);
 const end=source.indexOf("\n }\n}\nexport async function drainCaseLegalAutomation",start);
 assert.ok(start>=0&&end>start,"production catch body must be uniquely available");
 assert.equal(source.indexOf(marker,start+marker.length),-1);
-const body=source.slice(start+"}catch(error){".length,end).replace(/ as const\b/g,"");
+const body=source.slice(start+"}catch(error){".length,end).replace(/ as const\b/g,"")
+ .replace("let receipts:Array<{meta?:{changes?:number}}>;","let receipts;");
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
 const handleFailure=new AsyncFunction("error","database","job","lease","safeCode",
  "RETRIES","later","clock","note",body);
