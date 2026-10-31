@@ -9,8 +9,8 @@ const end=source.indexOf("async function gatherChecks(",start);
 assert.ok(start>=0&&end>start,"production note/transition source must be available");
 const body=source.slice(start,end)
  .replace("async function note(database:D1Database,job:Job,kind:string,value:unknown)","async function note(database,job,kind,value)")
- .replace(/async function transition\\(database:D1Database,job:Job,lease:string,status:string,fields:\\{[\\s\\S]*?\\}=\\{\\}\\)/,"async function transition(database,job,lease,status,fields={})");
-const compiled=new Function("clock","decode",body+"\\nreturn {note,transition};")(
+ .replace(/async function transition\(database:D1Database,job:Job,lease:string,status:string,fields:\{[\s\S]*?\}=\{\}\)/,"async function transition(database,job,lease,status,fields={})");
+const compiled=new Function("clock","decode",body+"\nreturn {note,transition};")(
  ()=>"2026-11-01T00:00:00.000Z",(raw,fallback)=>{try{return JSON.parse(raw)}catch{return fallback}});
 const job={id:"synthetic-job",caseId:"synthetic-case",dataVersion:1,caseRevision:1,calculationRunId:"synthetic-run",
  inputSha256:"a".repeat(64),completedChecks:0,expectedChecks:95,outcomeJson:"{}"};
@@ -53,5 +53,5 @@ for(const [name,update,audit,noteOnly,expected,steps] of cases){
  });
 }
 test("audit uncertainty is not converted to failure/retry after committed state CAS",()=>{
- assert.match(source,/\\["LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED","LEGAL_AUTOMATION_AUDIT_INSERT_ZERO","LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED"\\]\\.includes\\(error\\.message\\)/);
+ assert.match(source,/\["LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED","LEGAL_AUTOMATION_AUDIT_INSERT_ZERO","LEGAL_AUTOMATION_AUDIT_ACK_UNOBSERVED"\]\.includes\(error\.message\)/);
 });
