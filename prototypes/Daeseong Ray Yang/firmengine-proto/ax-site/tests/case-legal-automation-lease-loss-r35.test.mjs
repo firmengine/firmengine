@@ -1,7 +1,5 @@
-/** A4 r35: source-extracted legal-worker failure acknowledgement contract.
- * Synthetic stubs only: no D1/R2, model call, legal judgment or user data.
- * The production catch body is executed directly after removing a TypeScript-only
- * "as const" assertion; no separate copy of business logic is maintained.
+/** A4 r35 / r44: execute the actual legal processJob catch body with D1 receipt stubs.
+ * Synthetic-only. Batch atomicity and transaction behavior require Cloudflare staging.
  */
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -11,60 +9,55 @@ const source=readFileSync(new URL("../lib/case-legal-automation.ts",import.meta.
 const marker="}catch(error){\n  const code=safeCode(error),stale=";
 const start=source.indexOf(marker);
 const end=source.indexOf("\n }\n}\nexport async function drainCaseLegalAutomation",start);
-assert.ok(start>=0&&end>start,"production legal worker catch body must be found uniquely");
-assert.equal(source.indexOf(marker,start+marker.length),-1,"only one legal worker catch body");
+assert.ok(start>=0&&end>start,"production catch body must be uniquely available");
+assert.equal(source.indexOf(marker,start+marker.length),-1);
+const body=source.slice(start+"}catch(error){".length,end).replace(/ as const\\b/g,"");
 const AsyncFunction=Object.getPrototypeOf(async function(){}).constructor;
-const catchBody=source.slice(start+"}catch(error){".length,end).replace(/ as const\b/g,"");
 const handleFailure=new AsyncFunction("error","database","job","lease","safeCode",
-  "RETRIES","later","clock","note",catchBody);
+ "RETRIES","later","clock","note",body);
 
-async function syntheticAttempt({changes,attempts=1,errorCode="LEGAL_SYNTHETIC_503"}){
-  const audits=[];
-  const statements=[];
-  const database={prepare(sql){
-    statements.push(sql);
-    return {bind(...args){
-      assert.equal(args.at(-2),"job-synthetic");
-      assert.equal(args.at(-1),"lease-A");
-      return {async run(){return {meta:changes===undefined?{}:{changes}};}};
-    }};
-  }};
-  const args=[new Error(errorCode),database,
-    {caseId:"case-synthetic",id:"job-synthetic",attempts},"lease-A",
-    (e)=>e.message,4,()=> "future-retry",()=> "synthetic-now",
-    async (_db,_job,kind,payload)=>audits.push({kind,payload})];
-  let value=null,failure=null;
-  try{value=await handleFailure(...args);}catch(error){failure=error;}
-  assert.equal(statements.length,1);
-  assert.match(statements[0],/WHERE id=\? AND lease_token=\? AND status='running'/);
-  return {value,failure,audits};
+async function synthetic({changes=1,audit=1,attempts=1,err="LEGAL_SYNTHETIC_503",batchThrows=false}={}){
+ const prepared=[],batched=[];
+ const db={
+  prepare(sql){return {bind(...args){const statement={sql,args};prepared.push(statement);return statement;}}},
+  async batch(statements){
+   batched.push(statements);
+   if(batchThrows)throw new Error("503 PRIVATE_TOKEN");
+   return [{meta:changes===undefined?{}:{changes}},
+    {meta:audit===undefined?{}:{changes:audit}}];
+  }
+ };
+ let observed,returned;
+ try{returned=await handleFailure(new Error(err),db,
+  {caseId:"case-synthetic",id:"job-synthetic",dataVersion:1,attempts},"lease-A",
+  e=>e.message,4,()=> "future-retry",()=> "2026-11-01T08:00:00.000Z",async()=>{throw Error("legacy note must not run");});
+  observed=returned.status;
+ }catch(e){observed=e.message;}
+ assert.equal(prepared.length,2);
+ assert.equal(batched.length,1);
+ assert.match(prepared[0].sql,/lease_until>\\?/);
+ assert.match(prepared[1].sql,/WHERE changes\\(\\)=1/);
+ assert.equal(prepared[0].args.at(-3),"job-synthetic");
+ assert.equal(prepared[0].args.at(-2),"lease-A");
+ assert.equal(prepared[1].args[1],"job-synthetic");
+ assert.ok(!observed.includes("PRIVATE_TOKEN"));
+ return {observed,returned,prepared};
 }
-
-const cases=[
- ["replaced worker cannot report retry_wait",0,1,"LEGAL_SYNTHETIC_503","superseded",0],
- ["replaced worker cannot report failed",0,4,"LEGAL_SYNTHETIC_429","superseded",0],
- ["replaced worker cannot issue a false superseded audit event",0,2,"LEGAL_AUTOMATION_SUPERSEDED","superseded",0],
- ["owned retry still records once",1,1,"LEGAL_SYNTHETIC_TIMEOUT","retry_wait",1],
- ["owned terminal failure still records once",1,4,"LEGAL_SYNTHETIC_503","failed",1],
- ["owned stale transition still records once",1,1,"LEGAL_AUTOMATION_SUPERSEDED","superseded",1]
-];
-for(const [name,changes,attempts,errorCode,status,auditCount] of cases){
- test(name,async()=>{
-  const result=await syntheticAttempt({changes,attempts,errorCode});
-  assert.equal(result.failure,null);
-  assert.equal(result.value.status,status);
-  assert.equal(result.audits.length,auditCount);
-  if(changes===0){
-   assert.equal(result.value.errorCode,"LEGAL_AUTOMATION_LEASE_LOST");
-   assert.equal(result.value.retryAfter,null);
-  }else assert.equal(result.audits[0].kind,status);
- });
-}
-for(const [name,changes] of [["missing response changes",undefined],["null response changes",null],["invalid multiple-row response",2]]){
- test(name+" remains unobserved, not a committed status",async()=>{
-  const result=await syntheticAttempt({changes});
-  assert.equal(result.value,null);
-  assert.equal(result.failure?.message,"LEGAL_AUTOMATION_FAILURE_ACK_UNOBSERVED");
-  assert.equal(result.audits.length,0);
+for(const [name,settings,expected]of [
+ ["lost lease", {changes:0}, "superseded"],
+ ["owned retry", {changes:1}, "retry_wait"],
+ ["owned terminal", {changes:1,attempts:4}, "failed"],
+ ["owned superseded", {changes:1,err:"LEGAL_AUTOMATION_SUPERSEDED"}, "superseded"],
+ ["status receipt zero", {changes:0}, "superseded"],
+ ["null status change", {changes:null}, "LEGAL_AUTOMATION_FAILURE_BATCH_ACK_UNOBSERVED"],
+ ["invalid status two", {changes:2}, "LEGAL_AUTOMATION_FAILURE_BATCH_ACK_UNOBSERVED"],
+ ["normal audit", {changes:1,audit:1}, "retry_wait"],
+ ["null audit", {changes:1,audit:null}, "LEGAL_AUTOMATION_FAILURE_AUDIT_ACK_UNOBSERVED"],
+ ["zero audit", {changes:1,audit:0}, "LEGAL_AUTOMATION_FAILURE_AUDIT_ACK_UNOBSERVED"],
+ ["two audit", {changes:1,audit:2}, "LEGAL_AUTOMATION_FAILURE_AUDIT_ACK_UNOBSERVED"],
+ ["D1 503", {batchThrows:true}, "LEGAL_AUTOMATION_FAILURE_BATCH_ACK_UNOBSERVED"],
+ ]){
+ test(name,async()=>{const s=await synthetic(settings);assert.equal(s.observed,expected);
+  if(settings.changes===0)assert.equal(s.returned.errorCode,"LEGAL_AUTOMATION_LEASE_LOST");
  });
 }
