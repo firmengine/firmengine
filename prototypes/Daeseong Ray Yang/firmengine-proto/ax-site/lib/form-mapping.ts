@@ -192,6 +192,17 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   };
   for (const [key, kind] of Object.entries({cash:"cash",bank_balance:"deposit",insurance_surrender:"insurance",vehicle_value:"vehicle",housing_deposit:"lease_deposit",real_estate_value:"real_estate",retirement_value:"retirement",business_assets_value:"business",other_assets:"other"})) scalars[key] = assetSum(kind);
   scalars.assets_total = assetSum();
+  // Preserve source-backed comparison rows for review, but do not present
+  // observations outside the selected representative period as in-period income.
+  // This is an internal form integrity check, not a legal period-selection rule.
+  const filingWindow=data.context.filingPeriod;
+  const filingStartMonth=filingWindow && /^\d{4}-(?:0[1-9]|1[0-2])-01$/.test(filingWindow.start)
+    ? filingWindow.start.slice(0,7):null;
+  const filingEndDate=filingWindow?new Date(filingWindow.end+"T00:00:00.000Z"):null;
+  const filingEndMonth=filingWindow && filingEndDate && Number.isFinite(filingEndDate.valueOf()) &&
+    filingEndDate.toISOString().slice(0,10)===filingWindow.end &&
+    filingEndDate.getUTCDate()===new Date(Date.UTC(filingEndDate.getUTCFullYear(),filingEndDate.getUTCMonth()+1,0)).getUTCDate()
+      ? filingWindow.end.slice(0,7):null;
   const incomesById=new Map(data.incomes.map(income=>[income.id,income]));
   // The source set of a D5103 month table is exactly the set used by
   // the deterministic calculation after explicit duplicate exclusions.
@@ -199,7 +210,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     const income=incomesById.get(calculationRow.id);
     const month=income?exactSourceCalendarMonth(income.periodStart,income.periodEnd,income.amountBasis):null;
     const verified=!!income&&sourceValid(data,income.factIds,index);
-    const usable=!!month&&verified&&calculationRow.monthlyWon!==null;
+    const inFilingWindow=!filingWindow || !!month && filingStartMonth!==null && filingEndMonth!==null &&
+      filingStartMonth<=filingEndMonth && month>=filingStartMonth && month<=filingEndMonth;
+    const usable=!!month&&inFilingWindow&&verified&&calculationRow.monthlyWon!==null;
     return {
       entity:present(income?.label),
       period:month??MISSING_FORM_VALUE,
