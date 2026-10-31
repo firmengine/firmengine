@@ -1,4 +1,5 @@
 import { legalReviewInputFingerprint } from "./legal-review-identity.ts";
+import { documentWithdrawalStatements } from "./document-withdrawal-targets.ts";
 import { parseCaseCommand,commandHash,CommandError,type CaseCommand } from "./case-command-contract.ts";
 import { reduceCaseCommand,assertMutableCase,type CommandAuthority } from "./case-commands.ts";
 import { db,getCase,saveCase,readCommandReceipt,caseStateFingerprint,requireUploadedSource,getProcessingReadiness,requireHumanActor,now } from "./server-store";
@@ -110,7 +111,7 @@ export async function executeCaseCommand(caseId:string,raw:unknown,audit?:{legac
   try{
     await saveCase(result.data,command.expectedRevision,previous,{commandId:command.commandId,commandType:command.commandType,requestHash,actor:identity.actor,beforeStateHash:before,impact:result.impact,authorization:{sql:authSql,params:[identity.actor,...roles,caseId,now(),now(),roles.length]},guardedStatements:(token)=>{
       const guard="EXISTS (SELECT 1 FROM cases WHERE id=? AND revision=? AND storage_token=?)",args=[caseId,result.data.context.revision,token];
-      if(command.commandType==="document.retract")return [db().prepare(`UPDATE page_jobs SET status='withdrawn',lease_until=NULL WHERE case_id=? AND document_id=? AND ${guard}`).bind(caseId,command.target.documentId,...args)];
+      if(command.commandType==="document.retract")return documentWithdrawalStatements(command.target.documentId,result.impact.withdrawPageJobs,documentId=>db().prepare(`UPDATE page_jobs SET status='withdrawn',lease_until=NULL WHERE case_id=? AND document_id=? AND ${guard}`).bind(caseId,documentId,...args));
       if(command.commandType==="document.role"){
         const role=command.patch.role;
         // Role changes do not automatically start OCR. Explicit process controls remain separate.
