@@ -58,17 +58,51 @@ export function inspectExportRecoveryEvidence(input) {
       add("PLAN_INVALID_OR_DUPLICATE_ID"); conflict = true;
     }
   }
+  // A failed D1 source read or a partial projection must not be mistaken
+  // for an observed source change. Distinguish absent/null, malformed/0,
+  // and a valid but different version before deciding that facts are stale.
   if (caseSnapshot == null) { add("CURRENT_SOURCE_NOT_OBSERVED"); incomplete = true; }
-  else if (receipt) {
-    if (caseSnapshot.caseId !== receipt.caseId) { add("CASE_ID_CONFLICT"); conflict = true; }
-    if (caseSnapshot.revision !== receipt.caseRevision ||
+  else if (typeof caseSnapshot !== "object" || Array.isArray(caseSnapshot) ||
+    Object.prototype.hasOwnProperty.call(caseSnapshot, "error") ||
+    (Object.prototype.hasOwnProperty.call(caseSnapshot, "status") &&
+      !["caseId", "revision", "sourceDataVersion", "referenceSha256"]
+        .some(key => Object.prototype.hasOwnProperty.call(caseSnapshot, key)))) {
+    add("CURRENT_SOURCE_INVALID"); conflict = true;
+  } else if (receipt) {
+    const observed = [caseSnapshot.caseId, caseSnapshot.revision,
+      caseSnapshot.sourceDataVersion, caseSnapshot.referenceSha256]
+      .every(value => value != null);
+    const invalid =
+      (caseSnapshot.caseId != null && (typeof caseSnapshot.caseId !== "string" ||
+        !caseSnapshot.caseId.trim() || caseSnapshot.caseId.length > 300)) ||
+      (caseSnapshot.revision != null && (!Number.isSafeInteger(caseSnapshot.revision) ||
+        caseSnapshot.revision < 1)) ||
+      (caseSnapshot.sourceDataVersion != null &&
+        (!Number.isSafeInteger(caseSnapshot.sourceDataVersion) || caseSnapshot.sourceDataVersion < 1)) ||
+      (caseSnapshot.referenceSha256 != null && !validSha(caseSnapshot.referenceSha256));
+    if (invalid) { add("CURRENT_SOURCE_INVALID"); conflict = true; }
+    if (caseSnapshot.caseId != null && !invalid &&
+      caseSnapshot.caseId !== receipt.caseId) {
+      add("CASE_ID_CONFLICT"); conflict = true;
+    }
+    if (!observed) { add("CURRENT_SOURCE_PARTIAL_NOT_OBSERVED"); incomplete = true; }
+    else if (!invalid && (caseSnapshot.revision !== receipt.caseRevision ||
       caseSnapshot.sourceDataVersion !== receipt.sourceDataVersion ||
-      caseSnapshot.referenceSha256 !== receipt.referenceSha256) {
+      caseSnapshot.referenceSha256 !== receipt.referenceSha256)) {
       add("SOURCE_OR_REFERENCE_STALE"); stale = true;
     }
   }
   if (manifest == null) { add("MANIFEST_NOT_OBSERVED"); incomplete = true; }
-  else if (!receipt || manifest.requestId !== receipt.requestId) {
+  else if (typeof manifest !== "object" || Array.isArray(manifest) ||
+    Object.prototype.hasOwnProperty.call(manifest, "error") ||
+    (Object.prototype.hasOwnProperty.call(manifest, "status") &&
+      !Object.prototype.hasOwnProperty.call(manifest, "requestId"))) {
+    add("MANIFEST_INVALID"); conflict = true;
+  } else if (manifest.requestId == null) {
+    add("MANIFEST_REQUEST_NOT_OBSERVED"); incomplete = true;
+  } else if (typeof manifest.requestId !== "string" || !validId(manifest.requestId)) {
+    add("MANIFEST_INVALID"); conflict = true;
+  } else if (!receipt || manifest.requestId !== receipt.requestId) {
     add("HISTORICAL_OR_OTHER_MANIFEST"); historical = true;
   } else if (plan) {
     const ids = manifest.artifactIds;
