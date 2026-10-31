@@ -7,6 +7,9 @@
 import {activeLegalEvidencePolicy} from "./legal-evidence-criteria.ts";
 import type {CaseData} from "./domain.ts";
 import type {LegalSourceReadiness} from "./case-legal-source-preflight.ts";
+import {isCurrentLegalCalculationHead,type LegalCalculationHeadSnapshot} from "./legal-calculation-head-freshness.ts";
+import {referenceIdentity} from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with {type:"json"};
 export const LEGAL_CALCULATION_PREFLIGHT_VERSION="legal-calculation-ai-preflight/1" as const;
 export interface RequiredCalculationObservation{
  outputName:string;status:string;value:unknown;
@@ -42,13 +45,20 @@ export async function inspectLegalAutomationCalculationReadiness(database:D1Data
  const caseId=data.context.id;
  const head=await database.prepare(
    "SELECT c.revision AS caseRevision,s.data_version AS dataVersion,"+
-   "h.run_id AS runId,r.missing_json AS missingJson "+
+   "h.run_id AS runId,h.case_revision AS headRevision,h.data_version AS headDataVersion,"+
+   "h.input_sha256 AS headInputSha256,"+
+   "r.case_revision AS runRevision,r.data_version AS runDataVersion,"+
+   "r.input_sha256 AS runInputSha256,r.reference_sha256 AS runReferenceSha256,"+
+   "r.missing_json AS missingJson "+
    "FROM cases c JOIN case_data_change_state s ON s.case_id=c.id "+
    "JOIN case_calculation_heads h ON h.case_id=c.id "+
-   "JOIN case_calculation_runs r ON r.id=h.run_id "+
-   "WHERE c.id=? AND h.data_version=s.data_version AND h.case_revision=c.revision"
- ).bind(caseId).first<{caseRevision:number;dataVersion:number;runId:string;missingJson:string}>();
- if(!head||head.caseRevision!==data.context.revision)
+   "JOIN case_calculation_runs r ON r.id=h.run_id AND r.case_id=c.id "+
+   "WHERE c.id=?"
+ ).bind(caseId).first<LegalCalculationHeadSnapshot & {missingJson:string}>();
+ // An unchanged source version does not imply an unchanged reviewed reference.
+ // This check prevents source-only/calculation-stale rows from entering legal AI.
+ const activeReference=referenceIdentity()?.sha256??referenceRelease.sha256;
+ if(!head||!isCurrentLegalCalculationHead(head,data.context.revision,activeReference))
   return evaluateLegalCalculationPreflight({current:false,engineIssues:[],requiredOutputs:[],observed:[]});
  let json:unknown;
  try{json=JSON.parse(head.missingJson);}catch{return {ready:false,retryable:false,
