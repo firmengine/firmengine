@@ -16,8 +16,8 @@ function span(first,last){
  assert.ok(to>from,"production end marker missing: "+last);
  return source.slice(from,to);
 }
-const transition=new AF("updated","database","job","status","fields","note",
- span('if(updated.meta?.changes===0)throw new Error("LEGAL_AUTOMATION_SUPERSEDED");',
+const transition=new AF("receipts",
+ span('if(!Array.isArray(receipts)||receipts.length!==2)throw new Error("LEGAL_AUTOMATION_TRANSITION_ACK_UNOBSERVED");',
  '\n}\nasync function gatherChecks')+"\nreturn 'accepted';");
 const claim=new AF("claimed","candidate",
  span('if(claimed.meta?.changes===0)return',
@@ -36,15 +36,15 @@ for(const [kind,fn,zero,unobserved,one] of cases){
    const envelope={meta:changes===undefined?{}:{changes}};
    const audit=[];
    const args=kind==="transition"
-    ?[envelope,{}, {completedChecks:0},"pending",{},async()=>audit.push("written")]
+    ?[[envelope,{meta:{changes:changes===1?1:0}}]]
     :kind==="claim"?[envelope,{caseId:"case-synthetic"}]:[[envelope,{meta:{changes:changes===1?1:0}}]];
    let result=null,error=null;
    try{result=await fn(...args);}catch(e){error=e;}
    const expected=changes===0?zero:changes===1?one:unobserved;
    const observed=error?.message??(typeof result==="object"?result?.status:result);
    assert.equal(observed,expected);
-   if(kind==="transition")assert.equal(audit.length,changes===1?1:0,
-    "only exactly one acknowledged row may append an audit event");
+   if(kind==="transition")assert.equal(audit.length,0,
+    "transition batch must not append a separate audit after its receipt");
   });
  }
 }
