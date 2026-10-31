@@ -18,6 +18,23 @@ export function inspectExportRecoveryEvidence(input) {
     || !["claimed", "committed", "uncertain", "failed"].includes(receipt.status)) {
     add("RECEIPT_IDENTITY_INVALID"); conflict = true;
   }
+  // Matching two malformed source snapshots never establishes an authoritative
+  // source identity. NULL means not observed, while 0, fractional versions,
+  // and malformed reference digests are observed invalid values. Read-only only.
+  if (receipt) {
+    const requiredSource = [receipt.caseId, receipt.caseRevision,
+      receipt.sourceDataVersion, receipt.referenceSha256];
+    if (requiredSource.some(value => value == null)) {
+      add("RECEIPT_SOURCE_NOT_OBSERVED"); incomplete = true;
+    }
+    if ((receipt.caseId != null && (typeof receipt.caseId !== "string" ||
+        !receipt.caseId.trim() || receipt.caseId.length > 300)) ||
+      (receipt.caseRevision != null && (!Number.isSafeInteger(receipt.caseRevision) || receipt.caseRevision < 1)) ||
+      (receipt.sourceDataVersion != null && (!Number.isSafeInteger(receipt.sourceDataVersion) || receipt.sourceDataVersion < 1)) ||
+      (receipt.referenceSha256 != null && !validSha(receipt.referenceSha256))) {
+      add("RECEIPT_SOURCE_IDENTITY_INVALID"); conflict = true;
+    }
+  }
   let plan = null;
   const raw = receipt?.artifactIdsJson;
   if (raw == null) { add("PLAN_NOT_OBSERVED"); unplanned = true; }
