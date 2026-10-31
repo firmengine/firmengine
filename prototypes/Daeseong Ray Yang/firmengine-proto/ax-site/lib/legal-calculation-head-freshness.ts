@@ -15,7 +15,7 @@ export function isCurrentLegalCalculationHead(
   activeReferenceSha256:string,
 ):boolean {
   if(!head||!Number.isSafeInteger(expectedCaseRevision)||expectedCaseRevision<1||
-     !Number.isSafeInteger(head.dataVersion)||head.dataVersion<0||
+     typeof head.dataVersion!=="number"||!Number.isSafeInteger(head.dataVersion)||head.dataVersion<0||
      !isSha(activeReferenceSha256)||!isSha(head.runReferenceSha256)||
      !isSha(head.runInputSha256)||!isSha(head.headInputSha256)||
      typeof head.runId!=="string"||!/^calculation-[0-9a-f]{64}$/i.test(head.runId))return false;
