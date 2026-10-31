@@ -274,8 +274,13 @@ async function processJob(database:D1Database,candidate:Candidate,services:Legal
   const status=stale?"superseded":terminal?"failed":"retry_wait";
   const delay=stale?null:terminal?null:later(Math.min(900,30*2**Math.max(0,attempts-1)));
   const at=clock();
-  await database.prepare("UPDATE case_legal_automation_jobs SET status=?,lease_token=NULL,lease_until=NULL,next_attempt_at=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running'")
+  const failureAck=await database.prepare("UPDATE case_legal_automation_jobs SET status=?,lease_token=NULL,lease_until=NULL,next_attempt_at=?,last_error=?,updated_at=? WHERE id=? AND lease_token=? AND status='running'")
    .bind(status,delay,code,at,job.id,lease).run();
+  // The expired worker may have lost its lease. Never report a persisted
+  // failure or append an audit event for a zero-row compare-and-swap.
+  if(failureAck.meta?.changes===0)return {caseId:job.caseId,status:"superseded" as const,errorCode:"LEGAL_AUTOMATION_LEASE_LOST",retryAfter:null};
+  // Missing/ambiguous D1 acknowledgement is not equivalent to a committed 0.
+  if(failureAck.meta?.changes!==1)throw new Error("LEGAL_AUTOMATION_FAILURE_ACK_UNOBSERVED");
   await note(database,job,status,{code,retryAfter:delay});
   return {caseId:job.caseId,status,errorCode:code,retryAfter:delay};
  }
