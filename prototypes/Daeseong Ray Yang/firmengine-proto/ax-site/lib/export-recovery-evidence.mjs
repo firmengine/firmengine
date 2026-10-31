@@ -83,6 +83,19 @@ export function inspectExportRecoveryEvidence(input) {
   }
   if (artifactRows == null) { add("SQL_ROWS_NOT_OBSERVED"); incomplete = true; }
   else if (sqlRows && plan) {
+    // A separate SQL artifact can alias this request's R2 object key.
+    // Matching the planned row and bytes is not sufficient when another
+    // case, revision or artifact ID also claims the same object.
+    // Read-only: flag identity collisions without deleting any evidence.
+    if (receipt) {
+      const expectedKeys = new Map(plan.map(id =>
+        [`cases/${receipt.caseId}/artifacts/${id}`, id]));
+      if (sqlRows.some(row => expectedKeys.has(row.objectKey) &&
+        (row.id !== expectedKeys.get(row.objectKey) ||
+         row.caseId !== receipt.caseId || row.revision !== receipt.caseRevision))) {
+        add("SQL_OBJECT_KEY_ALIAS_CONFLICT"); conflict = true;
+      }
+    }
     for (const id of plan) {
       const hits = sqlRows.filter(row => row.id === id);
       if (hits.length === 0) { add("SQL_ROW_MISSING"); incomplete = true; continue; }
