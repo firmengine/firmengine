@@ -35,7 +35,7 @@ test("lost calculation poll lease is reported as superseded, not a fake retry re
     let rejectLoad:(err:Error)=>void=()=>{};
     const entered=new Promise<void>(resolve=>{signalStart=resolve;});
     const inFlight=drainCaseDataUpdates(f.database,{caseId:ID,limit:1,now:()=>NOW,
-      loadCase:async()=>{signalStart();return new Promise((_,reject)=>{rejectLoad=reject;});}});
+      loadCase:async()=>{signalStart();return new Promise<never>((_,reject)=>{rejectLoad=reject;});}});
     await entered;
     const held=f.sqlite.prepare("SELECT status,lease_token FROM case_calculation_poll_jobs WHERE case_id=?").get(ID) as {status:string;lease_token:string};
     assert.equal(held.status,"running");
@@ -47,7 +47,9 @@ test("lost calculation poll lease is reported as superseded, not a fake retry re
     assert.equal(result.scanned,1);
     assert.equal(result.results[0].status,"superseded");
     const remaining=f.sqlite.prepare("SELECT status,lease_token,last_error FROM case_calculation_poll_jobs WHERE case_id=?").get(ID) as {status:string;lease_token:string;last_error:string|null};
-    assert.deepEqual(remaining,{status:"running",lease_token:"replacement-worker-token",last_error:null});
+    assert.equal(remaining.status,"running");
+    assert.equal(remaining.lease_token,"replacement-worker-token");
+    assert.equal(remaining.last_error,null);
     assert.deepEqual(f.sqlite.prepare("PRAGMA foreign_key_check").all(),[]);
   }finally{f.close();}
 });
