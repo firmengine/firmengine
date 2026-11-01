@@ -31,7 +31,7 @@
 | 다른 caseId / SELECT 503 | 사건 격리 / 오류를 성공·부재로 승격 금지 | 타 사건 증빙 미노출 / 503 예외 전파 |
 
 - **실행**: Node **v22.16.0**, `node --experimental-strip-types --test`; 파일 SQLite WAL **두 연결**; 신규 독립 14/14 기대 관찰 일치. 기존 r41(9), r42(10), r43(12), r44(9), r46(8), r48(10)과 새 r49(14)를 한 번에 로컬 재실행한 결과 **72/72**, 실패 0. **구 결함을 확인하는 부정대조가 포함되어 제품 안전 72건 합격이 아니다.**
-- GitHub Draft PR **#126**: `lib/case-calculation-poll-reconciliation.ts` 및 `tests/case-calculation-poll-reconciliation-r49.test.mjs` **2개 신규 파일만**. 브랜치 `audit/a4-r49-ghost-poll-recovery-inspector-20261101`, HEAD `02d93cf5778064ef7e9404f55d8b0c94cdeabe87`, Open/Draft/미병합. GitHub helper blob `730305e4bfb20c51ac58e11c1d4a534f1c8b5f88`. 저장소 테스트와 로컬 실행본은 주석만 다르고 코드 본문 동일(FNV-1a after comment stripping `31700ed5`). 로컬 test 실행으로 GitHub Actions CI나 staging을 인증하지 않음.
+- GitHub Draft PR **#126**: `lib/case-calculation-poll-reconciliation.ts` 및 `tests/case-calculation-poll-reconciliation-r49.test.mjs` **2개 신규 파일만**. 브랜치 `audit/a4-r49-ghost-poll-recovery-inspector-20261101`, HEAD `147acf8986d5f04a5dd0d5ea8cdbb4a5777b473a`, Open/Draft/미병합. GitHub helper blob `47d864d2f43c1f36b427cb4c5400f59231604ba6`. 로컬 격리 strict tsc(최소 D1Database 타입 스텁) 오류 0건; 전체 프로젝트 TypeScript/CI는 미실행. helper GitHub blob과 로컬 실행본 FNV-1a `1541719c` 동일. 저장소 테스트와 로컬 실행본은 주석만 다르고 코드 본문 동일(FNV-1a after comment stripping `31700ed5`). 로컬 test 실행으로 GitHub Actions CI나 staging을 인증하지 않음.
 - Draft helper는 DB **SELECT만 수행**하고 `evidence=read_only_point_in_time`, `approved=false`, `writePerformed=false`를 기록한다. 현재 main API/Cron에 연결되지 않았으므로 **운영 복구 구현/완료 아님**. 인수·승인·사건 사실 확정을 수행하지 않는다.
 
 ## 3. 인계 및 별도 단계
