@@ -8,7 +8,7 @@ import { assertKeys,commandHash,CommandError,type CaseCommand } from "./case-com
 import { applyRequirementOverride } from "./case-requirements.ts";
 import { approveDocumentSubstitution } from "./approve-document-substitution.ts";
 import { adoptIntakeRun,buildIntakeCrosswalk } from "./intake-case-bridge.ts";
-import { confirmSubjectLink,rejectSubjectLink } from "./party-identity.ts";
+import { confirmSubjectLink,rejectSubjectLink,subjectLinkTargetKindAllowed } from "./party-identity.ts";
 import { transitionDocumentMatch } from "./document-fulfillment.ts";
 import { makeCaseTask,mergeCaseTasks,updateCaseTask } from "./case-tasks.ts";
 import { validateProcedureEvent } from "./case-procedure-events.ts";
@@ -154,7 +154,13 @@ export async function reduceCaseCommand(previous:CaseData,command:CaseCommand,au
  }else if(kind==="subject.link"){
    assertKeys(target,["linkId"],["linkId"]);assertKeys(patch,["operation","typedEntityId","expectedVersion","evidenceRefs"],["operation","expectedVersion"]);review(auth);if(isSynthetic(data))fail("합성 사건의 주체 확인을 승인할 수 없습니다.",409,"SYNTHETIC_REVIEW_PROHIBITED");const operation=enumValue(patch.operation,["confirm","reject"],"주체 연결 작업"),expectedVersion=patch.expectedVersion;if(!Number.isSafeInteger(expectedVersion)||(expectedVersion as number)<1)fail("연결 판본을 확인하세요.");const index=work.subjectLinks.findIndex(v=>v.linkId===target.linkId);if(index<0)fail("대상 연결이 없습니다.",404);
    const basis=strings(patch.evidenceRefs);if(operation==="confirm"&&basis.some(id=>!BASIS_REF(data).has(id)))fail("현재 사건의 원문 또는 사실 근거를 지정하세요.");
-   const ids=[data.context.id,...data.incomes.map(v=>v.id),...data.debts.map(v=>v.id),...data.assets.map(v=>v.id)];if(operation==="confirm"&&!ids.includes(String(patch.typedEntityId)))fail("같은 사건의 실제 대상을 지정하세요.");
+   const targetId=String(patch.typedEntityId),targetKinds=[
+     ...(data.context.id===targetId?["case"]:[]),
+     ...data.incomes.filter(item=>item.id===targetId).map(()=> "income"),
+     ...data.debts.filter(item=>item.id===targetId).map(()=> "debt"),
+     ...data.assets.filter(item=>item.id===targetId).map(()=> "asset")
+   ];
+   if(operation==="confirm"&&!subjectLinkTargetKindAllowed(work.subjectLinks[index]!,targetKinds))fail("상담 대상 범위에 맞는 단일 사건 항목만 연결할 수 있습니다. 가족·계좌 등 별도 대상은 인적 대조가 필요합니다.",409,"SUBJECT_TYPE_MISMATCH");
    work.subjectLinks[index]=operation==="confirm"?confirmSubjectLink(work.subjectLinks[index]!,{typedEntityId:String(patch.typedEntityId),reviewer:auth.actor,expectedVersion:expectedVersion as number,evidenceRefs:basis}):rejectSubjectLink(work.subjectLinks[index]!,expectedVersion as number,auth.actor);
  }else if(kind==="requirement.override"){
    assertKeys(target,["requirementId"],["requirementId"]);assertKeys(patch,["operation","period","subjectLinkId","alternativeId","basisRefs","mappingReview","substitutionReview"],["operation"]);const operation=enumValue(patch.operation,["automatic","add_manual","change_period","change_subject","select_alternative","review_mapping","review_substitution","waive_with_reason","declare_not_applicable","reopen","retire"],"요구서류 변경 작업");const index=work.requirements.findIndex(v=>v.requirementId===target.requirementId);if(index<0)fail("요구서류를 찾지 못했습니다.",404);
