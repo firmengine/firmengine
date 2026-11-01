@@ -84,8 +84,8 @@ test('r53 stale head + running malformed lease deadline remains uncertain',async
 test('r53 stale head + retry_wait NULL next_attempt_at is not a due task',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at=NULL");const r=await inspect(f);assert.equal(r.finding,'poll_retry_deadline_unobserved');assert.equal(r.headCurrent,false);}finally{f.close()}});
 test('r53 stale head + retry_wait malformed deadline remains unobserved',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='not-a-time'");const r=await inspect(f);assert.equal(r.finding,'poll_retry_deadline_unobserved');assert.equal(r.writePerformed,false);}finally{f.close()}});
 test('r53 stale head + running NULL owner is not a confirmed owned lease',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET lease_token=NULL");const r=await inspect(f);assert.equal(r.finding,'poll_running_owner_unobserved');assert.equal(r.lease,'unobserved');assert.equal(r.approved,false);}finally{f.close()}});
-test('r53 stale head + valid owned lease remains ordinary head_not_current',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');const r=await inspect(f);assert.equal(r.finding,'head_not_current');assert.equal(r.headCurrent,false);}finally{f.close()}});
-test('r53 stale head + due retry_wait with valid timestamp is not unknown deadline',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='2026-11-01T04:05:00.000Z'");const r=await inspect(f);assert.equal(r.finding,'head_not_current');}finally{f.close()}});
+test('r53 stale head + valid owned lease retains running state',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');const r=await inspect(f);assert.equal(r.finding,'poll_running_with_stale_head');assert.equal(r.headCurrent,false);assert.equal(r.lease,'expired');}finally{f.close()}});
+test('r53 stale head + due retry_wait retains scheduled due evidence',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='2026-11-01T04:05:00.000Z'");const r=await inspect(f);assert.equal(r.finding,'poll_retry_wait_with_stale_head');assert.equal(r.retryDue,true);}finally{f.close()}});
 
 
 test('r54 stale head plus terminal failed poll is separately flagged for operator review',async()=>{
@@ -122,3 +122,38 @@ test('r54 failed prior version after original source bump is not current-version
    assert.equal(r.finding,'head_not_current');assert.equal(r.headCurrent,false);assert.equal(r.writePerformed,false);
  }finally{f.close()}
 });
+
+// r55: stale-head lifecycle must not collapse live/runnable/waiting states into a generic stale-head label.
+test('r55 stale-head running live lease is in progress, not a Cron due task',async()=>{const f=fixture();try{
+ f.a.exec('UPDATE case_calculation_heads SET data_version=6');
+ f.a.exec("UPDATE case_calculation_poll_jobs SET lease_until='2026-11-01T04:55:00.000Z'");
+ assert.equal(candidates(f.b).length,0);
+ const r=await inspect(f);assert.equal(r.finding,'poll_running_with_stale_head');
+ assert.equal(r.lease,'live');assert.equal(r.headCurrent,false);assert.equal(r.approved,false);
+}finally{f.close()}});
+test('r55 stale-head running expired lease is eligible but not approved or auto-repaired',async()=>{const f=fixture();try{
+ f.a.exec('UPDATE case_calculation_heads SET data_version=6');
+ assert.equal(candidates(f.b).length,1);
+ const r=await inspect(f);assert.equal(r.finding,'poll_running_with_stale_head');
+ assert.equal(r.lease,'expired');assert.equal(r.writePerformed,false);
+}finally{f.close()}});
+test('r55 stale-head retry_wait future has retryDue false and is not yet a Cron candidate',async()=>{const f=fixture();try{
+ f.a.exec('UPDATE case_calculation_heads SET data_version=6');
+ f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='2026-11-01T04:55:00.000Z'");
+ assert.equal(candidates(f.b).length,0);
+ const r=await inspect(f);assert.equal(r.finding,'poll_retry_wait_with_stale_head');
+ assert.equal(r.retryDue,false);assert.equal(r.approved,false);
+}finally{f.close()}});
+test('r55 stale-head retry_wait due has retryDue true and becomes a Cron candidate',async()=>{const f=fixture();try{
+ f.a.exec('UPDATE case_calculation_heads SET data_version=6');
+ f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='2026-11-01T04:05:00.000Z'");
+ assert.equal(candidates(f.b).length,1);
+ const r=await inspect(f);assert.equal(r.finding,'poll_retry_wait_with_stale_head');
+ assert.equal(r.retryDue,true);assert.equal(r.writePerformed,false);
+}finally{f.close()}});
+test('r55 a newly changed source cannot be mislabeled as same-source running or due retry',async()=>{const f=fixture();try{
+ f.a.exec('UPDATE case_data_change_state SET data_version=8');
+ assert.equal((await inspect(f)).finding,'head_not_current');
+ f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='2026-11-01T04:05:00.000Z'");
+ const r=await inspect(f);assert.equal(r.finding,'head_not_current');assert.equal(r.approved,false);
+}finally{f.close()}});
