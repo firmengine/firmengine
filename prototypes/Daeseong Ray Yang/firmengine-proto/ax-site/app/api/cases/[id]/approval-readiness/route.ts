@@ -107,7 +107,7 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   if(!featureReadComplete)calculationCurrent=false;
   const storedCalculationReplay=persistedFeatures&&featureReadComplete
     ?auditStoredCalculationReplay({execution,rows:persistedFeatures,currentFactIds:new Set(facts.map(f=>f.id)),
-      expectedOutputs:calculationFeatureRows(execution).map(row=>({calculationId:row.calculationId,outputPath:row.outputPath}))})
+      expectedOutputs:calculationFeatureRows(execution).map(row=>({calculationId:row.calculationId,outputPath:row.outputPath,sourceFactIds:row.sourceFactIds}))})
     :null;
   if(storedCalculationReplay&&!storedCalculationReplay.valid)calculationCurrent=false;
   const legalCatalogCoverage=auditPreapprovalLegalCatalog({

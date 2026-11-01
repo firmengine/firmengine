@@ -16,7 +16,7 @@ export interface ReplayIssue {
   code: "INVALID_POINTER" | "RUNTIME_OUTPUT_MISSING" | "STORED_JSON_INVALID" |
     "OUTPUT_VALUE_MISMATCH" | "STORED_STATUS_INVALID" | "STORED_FACT_IDS_INVALID" |
     "SOURCE_FACT_NOT_CURRENT" | "DUPLICATE_OUTPUT_PATH" | "STORED_WON_MISMATCH" |
-    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED" | "UNEXPECTED_OUTPUT_PERSISTED" | "STORED_STATUS_VALUE_CONFLICT";
+    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED" | "UNEXPECTED_OUTPUT_PERSISTED" | "STORED_FACT_LINEAGE_MISMATCH" | "STORED_STATUS_VALUE_CONFLICT";
   calculationId: string;
   outputPath: string;
   rowId: string | null;
@@ -41,7 +41,7 @@ export function auditStoredCalculationReplay(input: {
   currentFactIds: ReadonlySet<string>;
   maxReportedIssues?: number;
   /** Exact expected persistence rows from the same engine execution, not heterogeneous catalog resultPaths. */
-  expectedOutputs?: readonly Pick<StoredCalculationAuditRow, "calculationId" | "outputPath">[];
+  expectedOutputs?: readonly (Pick<StoredCalculationAuditRow, "calculationId" | "outputPath"> & {sourceFactIds?: readonly string[]})[];
 }) {
   const limit = input.maxReportedIssues ?? 60;
   if (!Number.isInteger(limit) || limit < 1 || limit > 500) throw Error("INVALID_REPLAY_REPORT_LIMIT");
@@ -58,6 +58,13 @@ export function auditStoredCalculationReplay(input: {
   // Verify the stored set in both directions when the exact producer contract is available.
   const expectedPairs = input.expectedOutputs
     ? new Set(input.expectedOutputs.map(x => x.calculationId + "\u0000" + x.outputPath)) : null;
+  // Source IDs must match this execution's producer, not merely be any current Fact.
+  // This is data lineage consistency only; it does not infer legal recognition.
+  const expectedSources = new Map<string,string[]>();
+  for (const output of input.expectedOutputs ?? []) {
+    if (output.sourceFactIds !== undefined)
+      expectedSources.set(output.calculationId + "\u0000" + output.outputPath, [...output.sourceFactIds].sort());
+  }
   for (const row of input.rows) {
     const key = row.calculationId + "\u0000" + row.outputPath;
     if (physicalPaths.has(row.outputPath)) push("DUPLICATE_OUTPUT_PATH", row);
@@ -92,13 +99,20 @@ export function auditStoredCalculationReplay(input: {
       : null;
     if (parsedOk && row.valueWon !== undefined && row.valueWon !== canonicalWon)
       push("STORED_WON_MISMATCH", row);
+    let storedSourceIds: string[] | null = null;
     if (row.sourceFactIdsJson !== undefined) {
       try {
         const ids: unknown = JSON.parse(row.sourceFactIdsJson);
         if (!Array.isArray(ids) || ids.some(id => typeof id !== "string")) push("STORED_FACT_IDS_INVALID", row);
-        else if (ids.some(id => !input.currentFactIds.has(id))) push("SOURCE_FACT_NOT_CURRENT", row);
+        else {
+          storedSourceIds = ids;
+          if (ids.some(id => !input.currentFactIds.has(id))) push("SOURCE_FACT_NOT_CURRENT", row);
+        }
       } catch { push("STORED_FACT_IDS_INVALID", row); }
     }
+    if (expectedSources.has(key) && (!storedSourceIds ||
+        JSON.stringify([...storedSourceIds].sort()) !== JSON.stringify(expectedSources.get(key))))
+      push("STORED_FACT_LINEAGE_MISMATCH", row);
   }
   // A silent success on an empty or truncated SQL feature set is misleading.
   // Do not require all 42 heterogeneous catalog outputs here; compare exact
