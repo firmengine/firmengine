@@ -1,4 +1,5 @@
 import { currentReferenceSnapshot, referenceIdentity } from "./reference-runtime.ts";
+import { prepareDocumentRegistrationAudit, type DocumentRegistrationAudit } from "./document-register-audit.ts";
 import {assertNonSourceCaseChange,REVIEW_ONLY_COMMANDS,type NonSourceMutationCategory} from "./case-mutation-classifier.ts";
 import { resolveReferenceApplicationForCase } from "./reference-application.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
@@ -75,8 +76,12 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string};documentRegisteredAudit?:DocumentRegistrationAudit}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
+  if(options?.documentRegisteredAudit&&(mutation||options.mutationCategory))throw new HttpError(409,"DOCUMENT_REGISTRATION_AUDIT_SOURCE_ONLY");
+  const registrationAudit=options?.documentRegisteredAudit;
+  // Resolve actor before staging R2 snapshots, so failed identity resolution cannot strand files.
+  const registrationActor=registrationAudit?await actor():null;
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
   if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
@@ -102,6 +107,10 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     if(bytes.byteLength>=CASE_INLINE_LIMIT){const key=afterKey||await putSnapshot(bytes,"case");const pointer:CasePointer={_storage:"r2-case-v1",caseId:data.context.id,revision:data.context.revision,key,sha256:inputSha256,summary:caseSummary(data)};payload=JSON.stringify(pointer);}
   }catch(error){await Promise.all(ownedKeys.map(key=>bucket().delete(key).catch(()=>{})));throw error;}
   const guard="EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)";
+  // A registration event may commit only with the same revision AND exact pre-registered document.
+  // This extra case UPDATE predicate ensures the subsequent guarded event INSERT cannot silently affect 0 rows.
+  const registrationGuard=registrationAudit?" AND EXISTS (SELECT 1 FROM documents WHERE id = ? AND case_id = ? AND sha256 = ? AND page_count = ?)":"";
+  const registrationParams=registrationAudit?[registrationAudit.documentId,data.context.id,registrationAudit.sha256,registrationAudit.pageCount]:[];
   // A review draft from the AI pipeline may be linked to the staff workbench
   // only while the exact OCR/calculation/LawGraph heads still match. This
   // predicate participates in the same D1 batch as the artifact-only CAS.
@@ -118,9 +127,13 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
     expected,expected]:[];
   const batch:D1PreparedStatement[]=[
-    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard+registrationGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams,...registrationParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
+  if(registrationAudit)batch.push(prepareDocumentRegistrationAudit(db(),{
+    ...registrationAudit,caseId:data.context.id,caseRevision:data.context.revision,storageToken:token,
+    eventId:crypto.randomUUID(),actor:registrationActor!,at
+  }));
   if(mutation){
     batch.push(db().prepare(`INSERT INTO case_mutation_receipts (id,case_id,command_id,request_hash,command_type,actor,before_revision,after_revision,before_state_hash,after_state_hash,before_snapshot_key,after_snapshot_key,impact_payload,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(receiptId,data.context.id,mutation.commandId,mutation.requestHash,mutation.commandType,mutation.actor,expected,data.context.revision,mutation.beforeStateHash,afterStateHash,beforeKey,afterKey,JSON.stringify({...mutation.impact as Record<string,unknown>,snapshotHashes:{before:await sha256(new TextEncoder().encode(JSON.stringify(previous))),after:inputSha256}}),at,data.context.id,data.context.revision,token));
     batch.push(db().prepare(`INSERT INTO events (id,case_id,actor,type,detail,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(crypto.randomUUID(),data.context.id,mutation.actor,"case.command_committed",JSON.stringify({commandId:mutation.commandId,commandType:mutation.commandType,receiptId,before:mutation.beforeStateHash,after:afterStateHash}),at,data.context.id,data.context.revision,token));
