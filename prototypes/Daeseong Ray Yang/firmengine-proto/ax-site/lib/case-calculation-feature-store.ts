@@ -141,9 +141,10 @@ export async function listCaseCalculationFeatures(db:D1Database,input:{caseId:st
   const features=head?(await db.prepare("SELECT * FROM case_calculation_features WHERE run_id=? ORDER BY id LIMIT ? OFFSET ?").bind(head.run_id,limit,offset).all<StoredFeature>()).results??[]:[];
   const after=await db.prepare("SELECT c.revision,s.data_version FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=?").bind(input.caseId).first<{revision:number;data_version:number|null}>();
   if(after?.revision!==current.revision||after?.data_version!==current.data_version)throw error("CALCULATION_VERSION_MISMATCH");
+  const activeReferenceSha256=referenceIdentity()?.sha256??referenceRelease.sha256;
   return {schemaVersion:CASE_CALCULATION_FEATURE_STORE_VERSION,caseId:input.caseId,currentDataVersion:current.data_version,currentCaseRevision:current.revision,
     runId:head?.run_id??null,dataVersion:head?.data_version??null,caseRevision:head?.case_revision??null,inputSha256:head?.input_sha256??null,
-    headStale:!!head&&(head.data_version!==current.data_version||head.case_revision!==current.revision),status:head?.status??"missing",courtApprovalInferred:false,
+    headStale:!!head&&(head.data_version!==current.data_version||head.case_revision!==current.revision||head.reference_sha256!==activeReferenceSha256),status:head?.status??"missing",courtApprovalInferred:false,
     ruleReleaseId:head?.rule_release_id??null,referenceRelease:head?{id:head.reference_id,revision:head.reference_revision,sha256:head.reference_sha256}:null,contractVersion:head?.contract_version??null,
     sourceHeads:head?JSON.parse(head.source_heads_json):null,sourceHeadsSha256:head?.source_heads_sha256??null,missing:head?JSON.parse(head.missing_json):null,
     totalFeatures:total?.n??0,limit,offset,nextOffset:offset+features.length<(total?.n??0)?offset+features.length:null,
