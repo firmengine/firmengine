@@ -5,6 +5,8 @@
  * explicitly approved required calculator output is a preflight blocker.
  */
 import {activeLegalEvidencePolicy} from "./legal-evidence-criteria.ts";
+import {referenceIdentity} from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with {type:"json"};
 import type {CaseData} from "./domain.ts";
 import type {LegalSourceReadiness} from "./case-legal-source-preflight.ts";
 export const LEGAL_CALCULATION_PREFLIGHT_VERSION="legal-calculation-ai-preflight/1" as const;
@@ -40,14 +42,17 @@ export function evaluateLegalCalculationPreflight(input:{
 export async function inspectLegalAutomationCalculationReadiness(database:D1Database,data:CaseData)
  :Promise<LegalSourceReadiness>{
  const caseId=data.context.id;
+ const referenceSha256=referenceIdentity()?.sha256??referenceRelease.sha256;
  const head=await database.prepare(
    "SELECT c.revision AS caseRevision,s.data_version AS dataVersion,"+
    "h.run_id AS runId,r.missing_json AS missingJson "+
    "FROM cases c JOIN case_data_change_state s ON s.case_id=c.id "+
    "JOIN case_calculation_heads h ON h.case_id=c.id "+
    "JOIN case_calculation_runs r ON r.id=h.run_id "+
-   "WHERE c.id=? AND h.data_version=s.data_version AND h.case_revision=c.revision"
- ).bind(caseId).first<{caseRevision:number;dataVersion:number;runId:string;missingJson:string}>();
+   "WHERE c.id=? AND h.data_version=s.data_version AND h.case_revision=c.revision "+
+   "AND r.case_id=c.id AND r.data_version=s.data_version AND r.case_revision=c.revision "+
+   "AND r.input_sha256=h.input_sha256 AND r.reference_sha256=?"
+ ).bind(caseId,referenceSha256).first<{caseRevision:number;dataVersion:number;runId:string;missingJson:string}>();
  if(!head||head.caseRevision!==data.context.revision)
   return evaluateLegalCalculationPreflight({current:false,engineIssues:[],requiredOutputs:[],observed:[]});
  let json:unknown;
