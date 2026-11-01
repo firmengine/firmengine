@@ -8,7 +8,7 @@ type PollReconcileRow={
   caseId:string; currentRevision:number; currentDataVersion:number|null;
   pollCaseId:string|null; pollDataVersion:number|null; pollRevision:number|null;
   pollReferenceSha:string|null; pollStatus:string|null; leaseToken:string|null;
-  leaseUntil:string|null; headRunId:string|null; headDataVersion:number|null;
+  leaseUntil:string|null; nextAttemptAt:string|null; headRunId:string|null; headDataVersion:number|null;
   headRevision:number|null; headInputSha:string|null; verifiedRunId:string|null; runDataVersion:number|null;
   runRevision:number|null; runReferenceSha:string|null; runInputSha:string|null; runStatus:string|null;
 };
@@ -16,7 +16,7 @@ type PollReconcileRow={
 const CHECK_SQL=[
   "SELECT c.id AS caseId,c.revision AS currentRevision,s.data_version AS currentDataVersion,",
   "p.case_id AS pollCaseId,p.data_version AS pollDataVersion,p.case_revision AS pollRevision,",
-  "p.reference_sha256 AS pollReferenceSha,p.status AS pollStatus,p.lease_token AS leaseToken,p.lease_until AS leaseUntil,",
+  "p.reference_sha256 AS pollReferenceSha,p.status AS pollStatus,p.lease_token AS leaseToken,p.lease_until AS leaseUntil,p.next_attempt_at AS nextAttemptAt,",
   "h.run_id AS headRunId,h.data_version AS headDataVersion,h.case_revision AS headRevision,h.input_sha256 AS headInputSha,",
   "r.id AS verifiedRunId,r.data_version AS runDataVersion,r.case_revision AS runRevision,r.reference_sha256 AS runReferenceSha,r.input_sha256 AS runInputSha,r.status AS runStatus",
   "FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id",
@@ -31,7 +31,8 @@ export type PollRecoveryFinding=
   |"poll_absent_head_current"|"poll_absent_head_unobserved"
   |"head_unobserved"|"head_input_unobserved"|"head_input_conflict"|"head_not_current"|"poll_source_conflict"
   |"poll_running_with_current_head"|"poll_failed_with_current_head"
-  |"poll_retry_wait_with_current_head"|"poll_state_unobserved"|"poll_state_conflict";
+  |"poll_retry_wait_with_current_head"|"poll_state_unobserved"|"poll_state_conflict"
+  |"poll_running_deadline_unobserved"|"poll_retry_deadline_unobserved"|"poll_running_owner_unobserved";
 
 export async function inspectCaseCalculationPollRecovery(
  database:D1Database,input:{caseId:string;activeReferenceSha256:string|null|undefined;now?:number}
@@ -72,6 +73,20 @@ export async function inspectCaseCalculationPollRecovery(
    return {...base,finding:headCurrent?"poll_absent_head_current" as const:"poll_absent_head_unobserved" as const,lease,headCurrent};
  if(!row.headRunId||!row.verifiedRunId)
    return {...base,finding:"head_unobserved" as const,lease,headCurrent:false};
+ // A stale calculation head must not hide an unobservable poll deadline.
+ // Read-only evidence: no auto-renewal, cleanup, retry, or approval.
+ const sameSourcePoll=row.pollCaseId!==null&&row.pollDataVersion===row.currentDataVersion&&
+   row.pollRevision===row.currentRevision&&row.pollReferenceSha===sha;
+ const deadlineObserved=(value:unknown)=>typeof value==="string"&&
+   /^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:[.][0-9]{1,3})?Z$/.test(value)&&
+   Number.isFinite(Date.parse(value));
+ if(!headCurrent&&sameSourcePoll&&row.pollStatus==="running"&&!deadlineObserved(row.leaseUntil))
+   return {...base,finding:"poll_running_deadline_unobserved" as const,lease:"unobserved" as const,headCurrent:false};
+ if(!headCurrent&&sameSourcePoll&&row.pollStatus==="retry_wait"&&!deadlineObserved(row.nextAttemptAt))
+   return {...base,finding:"poll_retry_deadline_unobserved" as const,lease:"not_applicable" as const,headCurrent:false};
+ if(!headCurrent&&sameSourcePoll&&row.pollStatus==="running"&&
+   (typeof row.leaseToken!=="string"||!row.leaseToken.trim()))
+   return {...base,finding:"poll_running_owner_unobserved" as const,lease:"unobserved" as const,headCurrent:false};
  if(!headCurrent)return {...base,finding:"head_not_current" as const,lease,headCurrent:false};
  if(row.pollDataVersion!==row.currentDataVersion||row.pollRevision!==row.currentRevision||row.pollReferenceSha!==sha)
    return {...base,finding:"poll_source_conflict" as const,lease,headCurrent:true};
