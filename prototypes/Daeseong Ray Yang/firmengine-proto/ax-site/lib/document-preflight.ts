@@ -18,10 +18,13 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
   const registeredTokens=new Set(Object.values(FORM_CONTRACTS).flatMap(form=>form.fields.map(f=>f.token)));
   const known=new Set([...registeredTokens,...systemTokens]);
   for(const token of Object.keys(input.bindings.scalars)) if(!known.has(token)) blockers.push({code:"UNKNOWN_TOKEN",token,message:"Scalar token is not registered in the form contract.",severity:"blocker"});
+  // Review-only provenance carried in D5103 month bindings is not a DOCX token.
+  // Keep the public template registry strict for every other unregistered key.
+  const internalMonthReviewFields=new Set(["source_id","source_stream_id","source_fact_ids","source_review_status","source_calc_role"]);
   for(const [group,rows] of Object.entries(input.bindings.rows)) {
     const fields=[...new Set(Object.values(FORM_CONTRACTS).flatMap(form=>form.repeatGroups.find(g=>g.id===group)?.fields??[]))];
     if(!fields.length){blockers.push({code:"UNKNOWN_REPEAT_GROUP",token:group,message:"Repeat group is not registered.",severity:"blocker"});continue;}
-    rows.forEach((row,index)=>{for(const field of Object.keys(row)) if(!fields.includes(field)) blockers.push({code:"UNKNOWN_ROW_TOKEN",token:`${group}.${field}[${index}]`,message:"Repeat-row field is not registered.",severity:"blocker"});});
+    rows.forEach((row,index)=>{for(const field of Object.keys(row)) if(!fields.includes(field)&&!(group==="month"&&internalMonthReviewFields.has(field))) blockers.push({code:"UNKNOWN_ROW_TOKEN",token:`${group}.${field}[${index}]`,message:"Repeat-row field is not registered.",severity:"blocker"});});
   }
   for(const field of contract.fields) {
     if(field.kind==="layout") continue;
