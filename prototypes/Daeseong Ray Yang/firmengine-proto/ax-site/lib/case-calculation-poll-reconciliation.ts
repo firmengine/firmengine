@@ -33,7 +33,7 @@ export type PollRecoveryFinding=
   |"poll_running_with_current_head"|"poll_failed_with_current_head"
   |"poll_retry_wait_with_current_head"|"poll_state_unobserved"|"poll_state_conflict"
   |"poll_running_deadline_unobserved"|"poll_retry_deadline_unobserved"|"poll_running_owner_unobserved"
-  |"poll_failed_with_stale_head";
+  |"poll_failed_with_stale_head"|"poll_running_with_stale_head"|"poll_retry_wait_with_stale_head";
 
 export async function inspectCaseCalculationPollRecovery(
  database:D1Database,input:{caseId:string;activeReferenceSha256:string|null|undefined;now?:number}
@@ -92,6 +92,13 @@ export async function inspectCaseCalculationPollRecovery(
  // Preserve the manual-review/DLQ evidence even when the calculation head is stale.
  if(!headCurrent&&sameSourcePoll&&row.pollStatus==="failed")
    return {...base,finding:"poll_failed_with_stale_head" as const,lease:"not_applicable" as const,headCurrent:false};
+ // Preserve valid same-source job progress even while the calculation Head is stale.
+ // Deadline and ownership uncertainty are handled above; never mutate or approve.
+ if(!headCurrent&&sameSourcePoll&&row.pollStatus==="running")
+   return {...base,finding:"poll_running_with_stale_head" as const,lease,headCurrent:false};
+ if(!headCurrent&&sameSourcePoll&&row.pollStatus==="retry_wait")
+   return {...base,finding:"poll_retry_wait_with_stale_head" as const,lease:"not_applicable" as const,headCurrent:false,
+     retryDue:Number.isFinite(now)?Date.parse(row.nextAttemptAt??"")<=now:null};
  if(!headCurrent)return {...base,finding:"head_not_current" as const,lease,headCurrent:false};
  if(row.pollDataVersion!==row.currentDataVersion||row.pollRevision!==row.currentRevision||row.pollReferenceSha!==sha)
    return {...base,finding:"poll_source_conflict" as const,lease,headCurrent:true};
