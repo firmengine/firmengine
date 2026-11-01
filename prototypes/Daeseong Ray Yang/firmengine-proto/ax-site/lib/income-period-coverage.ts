@@ -64,10 +64,14 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
     const month=monthIndex(Number(parsed[1]),Number(parsed[2]));
     if(input.inspectSourceStreams){
       // A display label or a per-month row ID is not a stable payer/stream ID.
-      if(!row.source_id?.trim() || !row.source_stream_id?.trim() || !row.source_fact_ids?.trim()){
+      // Runtime bindings can contain non-string IDs or comma-only Fact lists.
+      // These are missing lineage, not a typed-data guarantee or a reason to throw.
+      if([row.source_id,row.source_stream_id,row.source_fact_ids].some(value=>typeof value!=="string" || value.trim().length===0) || row.source_fact_ids.split(",").some(part=>part.trim().length===0)){
         result.invalidRowIndices.push(i);code("D5103_SOURCE_LINEAGE_UNRESOLVED");continue;
       }
-      if(row.source_review_status!=="accepted" || row.source_calc_role==="gross_turnover_only"){
+      // Tax-comparison and unclassified sources are not observed net-income streams.
+      // This is a review gate only; it never determines legal recognized income.
+      if(row.source_review_status!=="accepted" || row.source_calc_role!=="period_income_observation"){
         result.invalidRowIndices.push(i);code("D5103_SOURCE_REVIEW_REQUIRED");continue;
       }
       // Two income streams may cite one immutable Fact for the same transaction.
