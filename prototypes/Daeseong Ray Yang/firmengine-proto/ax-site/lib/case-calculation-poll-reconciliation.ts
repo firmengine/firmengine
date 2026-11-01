@@ -40,7 +40,7 @@ export async function inspectCaseCalculationPollRecovery(
  const row=await database.prepare(CHECK_SQL).bind(input.caseId).first<PollReconcileRow>();
  const base={caseId:input.caseId,evidence:"read_only_point_in_time" as const,approved:false as const,writePerformed:false as const};
  if(!row)return {...base,finding:"case_unobserved" as const,lease:"unobserved" as const,headCurrent:null};
- if(!Number.isSafeInteger(row.currentDataVersion)||row.currentDataVersion<1||!Number.isSafeInteger(row.currentRevision)||row.currentRevision<1)
+ if(typeof row.currentDataVersion!=="number"||!Number.isSafeInteger(row.currentDataVersion)||row.currentDataVersion<1||!Number.isSafeInteger(row.currentRevision)||row.currentRevision<1)
    return {...base,finding:"source_unobserved" as const,lease:"unobserved" as const,headCurrent:null};
  const sha=input.activeReferenceSha256;
  if(typeof sha!=="string"||!/^[a-f0-9]{64}$/i.test(sha))
