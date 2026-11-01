@@ -124,7 +124,11 @@ export async function persistCaseCalculationFeatures(db:D1Database,input:Persist
     ...inserts(db,"case_calculation_features",["id","run_id","calculation_id","output_name","output_path","subject_id","row_ordinal","value_json","value_won","status","source_fact_ids_json","input_refs_json","formula"],rows.map((f,index)=>[`${runId}:feature:${String(index).padStart(8,"0")}`,runId,f.calculationId,f.outputName,f.outputPath,f.subjectId,f.rowOrdinal,json(f.value),f.valueWon,f.status,json(f.sourceFactIds),json({...f.inputRefs as object,sourceHeadsSha256:sourceHeadsSha,reasons:f.reasons}),f.formula])),
     db.prepare("INSERT INTO case_calculation_heads (case_id,run_id,data_version,case_revision,input_sha256,updated_at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases c JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=? AND c.revision=? AND s.data_version=?) ON CONFLICT(case_id) DO UPDATE SET run_id=excluded.run_id,data_version=excluded.data_version,case_revision=excluded.case_revision,input_sha256=excluded.input_sha256,updated_at=excluded.updated_at WHERE excluded.data_version>=case_calculation_heads.data_version AND excluded.case_revision>=case_calculation_heads.case_revision").bind(input.caseId,runId,input.dataVersion,input.caseRevision,input.inputSha256,at,input.caseId,input.caseRevision,input.dataVersion)];
   const result=await db.batch(statements);
-  if(!result.at(-1)?.meta?.changes)throw error("CALCULATION_VERSION_MISMATCH");
+  // A partial/missing batch receipt cannot prove that the head was promoted.
+  if(!Array.isArray(result)||result.length!==statements.length)throw error("CALCULATION_HEAD_ACK_UNOBSERVED");
+  const headChanges=result.at(-1)?.meta?.changes;
+  if(headChanges===0)throw error("CALCULATION_VERSION_MISMATCH");
+  if(headChanges!==1)throw error("CALCULATION_HEAD_ACK_UNOBSERVED");
   return {runId,dataVersion:input.dataVersion,caseRevision:input.caseRevision,inputSha256:input.inputSha256,features:rows.length,headPromoted:true,status,missingCount:missing.length,courtApprovalInferred:false};
 }
 
