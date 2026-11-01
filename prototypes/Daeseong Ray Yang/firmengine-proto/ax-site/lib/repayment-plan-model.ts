@@ -48,6 +48,8 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
     if(paid>BigInt(proposedOrdinaryMonthly))issues.push("DEFAULT_ORDINARY_MONTHLY_PROPOSAL_EXCEEDED:"+month);
    }
   }
+  // The generated-default path must enforce the same revision guard as a reviewed schedule.
+  if(calculation.caseRevision!==data.context.revision)issues.push("CALCULATION_SNAPSHOT_STALE");
   return {status:issues.length?"blocked":"provisional",rows:orderRows(rows),issues:[...new Set(issues)]};
  }
  const expectedInstallments=schedule.expectedInstallments??data.context.planMonths;
