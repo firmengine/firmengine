@@ -41,6 +41,17 @@ function factIds(value:unknown):string[]{
   visit(value);return [...ids];
 }
 const won=(name:string,value:unknown):string|null=>/Won$/.test(name)&&((typeof value==="string"&&/^-?\d+$/.test(value))||(typeof value==="number"&&Number.isSafeInteger(value)))?String(value):null;
+/** Storage format check only; does not change the calculation or legally recognize income. */
+export function classifyStoredFeatureMoney(name:string,value:unknown,engineStatus:string|undefined,reasons:string[]=[]){
+  const leaf=name.split(".").at(-1)??name,valueWon=won(leaf,value);
+  const malformed=/Won$/.test(leaf)&&value!==null&&value!==undefined&&value!=="unknown"&&valueWon===null;
+  const resultReasons=malformed?[...reasons,"INVALID_MONETARY_FEATURE_VALUE"]:[...reasons];
+  const originalStatus=statusOf(value,engineStatus,resultReasons);
+  const status:CalculationFeatureStatus=malformed&&originalStatus!=="conflict"&&originalStatus!=="not_applicable"
+    ?"blocked":originalStatus;
+  return {status,valueWon,reasons:resultReasons};
+}
+
 
 /** Exported pure serialization for verification; all numeric results already exist in execution. */
 export function calculationFeatureRows(execution:CaseExecution):Feature[]{
@@ -57,9 +68,10 @@ export function calculationFeatureRows(execution:CaseExecution):Feature[]{
   const add=(name:string,path:string,value:unknown,options:{calculationId?:string;subjectId?:string|null;rowOrdinal?:number|null;trace?:CalculationTrace;engineStatus?:string;reasons?:string[];ids?:string[];formula?:string}={})=>{
     const spec=owner(name.split(".")[0]),traces=options.trace?[options.trace]:traceFor(name),reasons=options.reasons??traces.flatMap(t=>t.reasons);
     const engineStatus=options.engineStatus??(traces.length&&traces.every(t=>t.status==="calculated")?"calculated":traces.some(t=>t.status==="blocked")?"blocked":"provisional");
+    const money=classifyStoredFeatureMoney(name,value,engineStatus,reasons);
     features.push({calculationId:options.calculationId??spec?.id??"engine_output",outputName:name,outputPath:path,subjectId:options.subjectId??null,rowOrdinal:options.rowOrdinal??null,
-      value:value===undefined?null:value,valueWon:won(name.split(".").at(-1)!,value),status:statusOf(value,engineStatus,reasons),sourceFactIds:options.ids??factIds(traces),
-      inputRefs:{declaredInputPaths:spec?.inputs??[],traceInputs:traces.flatMap(t=>t.inputs)},formula:options.formula??options.trace?.formula??spec?.formula??"Existing engine output; no arithmetic performed by storage",reasons});
+      value:value===undefined?null:value,valueWon:money.valueWon,status:money.status,sourceFactIds:options.ids??factIds(traces),
+      inputRefs:{declaredInputPaths:spec?.inputs??[],traceInputs:traces.flatMap(t=>t.inputs)},formula:options.formula??options.trace?.formula??spec?.formula??"Existing engine output; no arithmetic performed by storage",reasons:money.reasons});
   };
   for(const [name,value]of Object.entries(calculation))if(value===null||["string","number","boolean"].includes(typeof value)){
     if(["caseRevision","computedBy"].includes(name))continue;
