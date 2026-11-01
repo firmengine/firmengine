@@ -193,6 +193,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   for (const [key, kind] of Object.entries({cash:"cash",bank_balance:"deposit",insurance_surrender:"insurance",vehicle_value:"vehicle",housing_deposit:"lease_deposit",real_estate_value:"real_estate",retirement_value:"retirement",business_assets_value:"business",other_assets:"other"})) scalars[key] = assetSum(kind);
   scalars.assets_total = assetSum();
   const incomesById=new Map(data.incomes.map(income=>[income.id,income]));
+  const incomeStreamById=new Map(calculation.incomeGroups.flatMap(group=>group.sourceIds.map(id=>[id,group.id] as const)));
   // The source set of a D5103 month table is exactly the set used by
   // the deterministic calculation after explicit duplicate exclusions.
   rows.month = calculation.incomeRows.map((calculationRow) => {
@@ -202,6 +203,12 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     const usable=!!month&&verified&&calculationRow.monthlyWon!==null;
     return {
       entity:present(income?.label),
+      // Review-only lineage metadata; not public D5103 template tokens.
+      source_id:income?.id??"",
+      source_stream_id:incomeStreamById.get(calculationRow.id)??"",
+      source_fact_ids:income?.factIds.join(",")??"",
+      source_review_status:income?.recognition??"unreviewed",
+      source_calc_role:income?.sourceCalculationRole??"period_income_observation",
       period:month??MISSING_FORM_VALUE,
       revenue:usable?numeric(income?.gross):MISSING_FORM_VALUE,
       expense:usable?numeric(income?.expenses):MISSING_FORM_VALUE,
