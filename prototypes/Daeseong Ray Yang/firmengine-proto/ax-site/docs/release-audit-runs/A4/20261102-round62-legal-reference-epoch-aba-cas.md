@@ -17,7 +17,7 @@
 
 ## 실제 실행 — Node 22.16.0, SQLite WAL 파일형 두 독립 연결
 - 로컬 재현: `/mnt/data/firmengine-a4/round62_legal_transition_reference_epoch_sqlite.test.mjs` (합성값만 포함). `node --test` 최종 **11/11 하위 조건 기대 일치**, TAP 상위 그룹 포함 **12/12 pass**. 최초 시험에서는 SQLite 반환 객체의 null-prototype 때문에 `deepStrictEqual` 하네스 assertion 1건 실패했으나, 필드별 확인으로 정정하고 전체 재실행 통과. 실제 제품 결함을 해결한 것이 아닌 **시험하네스만 정정**.
-- 이전 56~61차 스크립트와 62차를 함께 로컬 Node로 재실행: **53/53 TAP test pass**. 과거 결함 부정대조를 포함하므로 제품 안전성 53건 합격이 아님.
+- 이전 56~61차 스크립트와 62차를 함께 로컬 Node로 재실행: **55/55 TAP test pass**. 과거 결함 부정대조를 포함하므로 제품 안전성 55건 합격이 아님.
 - DB 합성: case-A, sourceDataVersion=7, revision=3, Head=run-A, input SHA=64자 '1', job.reference SHA=64자 'a', lease-A 유효; 법률 release A1(id=release-A1,revision=1,SHA=a) → 다른 연결에서 활성 B2(id=release-B2,revision=2,SHA=b) 승인 COMMIT → A3(id=release-A3,revision=3,SHA=a) 복원. Node SQLite WAL `foreign_keys=ON`.
 - main `transition` SQL **실제 blob에서 전사**. Draft #150 `claim` SQL **PR patch에서 전사**. `SHA fence`와 `release ID+revision+SHA fence`는 오로지 합성 대조용 SQL이며 Github 코드 수정이나 운영 반영 아님.
 
