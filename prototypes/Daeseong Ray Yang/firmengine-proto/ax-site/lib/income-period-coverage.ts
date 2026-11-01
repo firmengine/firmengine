@@ -67,7 +67,10 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
     const cutoff=dateParts(input.evidenceCutoff);
     if(!cutoff)code("D5103_EVIDENCE_CUTOFF_INVALID");
     else {
-      const lastObserved=monthIndex(cutoff.year,cutoff.month);
+      // A dated cutoff inside a calendar month cannot substantiate that whole
+      // month, even if a future-dated month row was already materialized.
+      const cutoffMonthLastDay=new Date(Date.UTC(cutoff.year,cutoff.month,0)).getUTCDate();
+      const lastObserved=monthIndex(cutoff.year,cutoff.month)-(cutoff.day<cutoffMonthLastDay?1:0);
       for(let month=startIndex;month<=endIndex;month++)if(month>lastObserved)result.futureMonths.push(monthKey(month));
       if(result.futureMonths.length)code("D5103_SELECTED_PERIOD_AFTER_EVIDENCE_CUTOFF");
     }
