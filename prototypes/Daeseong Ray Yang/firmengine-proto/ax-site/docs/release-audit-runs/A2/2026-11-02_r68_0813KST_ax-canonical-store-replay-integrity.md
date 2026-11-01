@@ -57,3 +57,9 @@ main 실제 카탈로그 `lib/reference-decision-tables.json` blob `6924e3977caf
 **r69 IT담당자 후속:** #163/#138/#160/#151/#148/#153/#157 통합 소스 기반 프로젝트 Node 회귀/전체 CI, staging D1 SQL same-ID conflict·head CAS, 18모듈-91입력 실제 출력/42 저장피처 행, D5103/D5110/D5111 DOCX 금액·Fact 근거 재독. DB replay `valid`와 업무 승인 분리 검증. 법률 공지 제424호 부칙·경과/접수일 판정은 변호사·계산사무장 검수 전 미인증.
 
 **제품 인수 완료: 0건.** 전체 CI/Node runner·실제 staging D1/R2/Cron·Word 공식서식 동등성·실제 법률 승인·배포 미실행. 운영 배포, 운영 D1 마이그레이션, 전자제출, 인가 확정 실행 없음.
+
+## 5. 추가 소비처 안전 검토 — 보존 재독 valid와 승인 준비도 분리 (Draft 병합 차단)
+
+#163 생성 뒤 #138 기준 `app/api/cases/[id]/approval-readiness/route.ts` blob `fe1610c8e5ec776d02455ed984c49fc608bf65e6` 및 `lib/approval-readiness.ts` blob `d3aecf05688d3146ecff94a3795bb3da8a215d35`를 추가로 실제 재독함. Route는 `storedCalculationReplay.valid === false`일 때 `calculationCurrent=false`로 만들고, readiness builder의 계산 차단 작업은 원래 엔진 `traces`에서만 읽는다. 따라서 **원래 엔진 trace는 calculated이나 피처 직렬화에서 raw 원화 오류로 blocked인 경우**, replay를 정합으로 고치면 이전 차단이 사라지고 다른 조건에 따라 내부 `lawyer_approval_review_pending`으로 이동할 위험이 있음. 단, `autoApproval=false`, `readyForElectronicFiling=false`는 코드상 유지. 실제 전체 API/실사례로 readiness 변화를 재현한 것은 아니므로 **조건부 P1 소비처 위험 후보**로만 기록.
+
+**#163을 병합하면 안 되는 추가 조건:** calculationCurrent(원본 판본)·replay valid(저장 정합)·stored `blocked`(미해결 금액)·법률 승인(변호사)을 별도 상태로 유지하는 fail-closed gateway를 설계하고, 실제 route+readiness Node 회귀 및 staging D1 종단 실행으로 검증해야 한다. Draft PR 설명에 merge blocker를 명시함. main 제품 코드/자동 법률규칙 변경 없음.
