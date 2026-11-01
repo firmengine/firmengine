@@ -31,12 +31,12 @@ function fixture(){
  for(const db of [a,b])db.exec('PRAGMA journal_mode=WAL; PRAGMA busy_timeout=2000');
  a.exec(`CREATE TABLE cases(id TEXT PRIMARY KEY,revision INTEGER NOT NULL);
  CREATE TABLE case_data_change_state(case_id TEXT PRIMARY KEY,data_version INTEGER NOT NULL,last_changed_at TEXT NOT NULL);
- CREATE TABLE case_calculation_runs(id TEXT PRIMARY KEY,case_id TEXT NOT NULL,data_version INTEGER NOT NULL,case_revision INTEGER NOT NULL,reference_sha256 TEXT NOT NULL,input_sha256 TEXT);
+ CREATE TABLE case_calculation_runs(id TEXT PRIMARY KEY,case_id TEXT NOT NULL,data_version INTEGER NOT NULL,case_revision INTEGER NOT NULL,reference_sha256 TEXT NOT NULL,input_sha256 TEXT,status TEXT NOT NULL);
  CREATE TABLE case_calculation_heads(case_id TEXT PRIMARY KEY,run_id TEXT NOT NULL,data_version INTEGER NOT NULL,case_revision INTEGER NOT NULL,input_sha256 TEXT);
  CREATE TABLE case_calculation_poll_jobs(case_id TEXT PRIMARY KEY,data_version INTEGER NOT NULL,case_revision INTEGER NOT NULL,reference_sha256 TEXT NOT NULL,status TEXT NOT NULL,attempts INTEGER NOT NULL,lease_token TEXT,lease_until TEXT,next_attempt_at TEXT,last_error TEXT,updated_at TEXT);`);
  a.prepare('INSERT INTO cases VALUES(?,?)').run('synthetic-case',4);
  a.prepare('INSERT INTO case_data_change_state VALUES(?,?,?)').run('synthetic-case',7,'2026-11-01T04:00:00Z');
- a.prepare('INSERT INTO case_calculation_runs VALUES(?,?,?,?,?,?)').run('run-7','synthetic-case',7,4,A,A);
+ a.prepare('INSERT INTO case_calculation_runs VALUES(?,?,?,?,?,?,?)').run('run-7','synthetic-case',7,4,A,A,'computed');
  a.prepare('INSERT INTO case_calculation_heads VALUES(?,?,?,?,?)').run('synthetic-case','run-7',7,4,A);
  a.prepare('INSERT INTO case_calculation_poll_jobs VALUES(?,?,?,?,?,?,?,?,?,?,?)').run('synthetic-case',7,4,A,'running',1,'worker-A','2026-11-01T04:05:00Z',null,null,'2026-11-01T04:00:00Z');
  return {a,b,close(){a.close();b.close();rmSync(dir,{recursive:true,force:true})}};
@@ -64,3 +64,10 @@ test('r50 head input digest mismatch is not current even with matching run and s
 test('r50 missing digest is unobserved not computed success',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET input_sha256=NULL');const r=await inspect(f);assert.equal(r.finding,'head_input_unobserved');assert.equal(r.headCurrent,null);}finally{f.close()}});
 test('r50 malformed run digest is distinct from an observed conflict',async()=>{const f=fixture();try{f.a.exec("UPDATE case_calculation_runs SET input_sha256='0'");const r=await inspect(f);assert.equal(r.finding,'head_input_unobserved');assert.equal(r.headCurrent,null);}finally{f.close()}});
 test('r50 absent poll row cannot override head/run digest conflict',async()=>{const f=fixture();try{f.a.prepare('UPDATE case_calculation_runs SET input_sha256=?').run(B);f.a.exec('DELETE FROM case_calculation_poll_jobs');const r=await inspect(f);assert.equal(r.finding,'head_input_conflict');assert.equal(r.headCurrent,false);}finally{f.close()}});
+
+test('r51 stored computed run status is visible but does not imply approval',async()=>{const f=fixture();try{const r=await inspect(f);assert.equal(r.storedRunStatus,'computed');assert.equal(r.headCurrent,true);assert.equal(r.approved,false);}finally{f.close()}});
+test('r51 provisional run remains provisional even with current head',async()=>{const f=fixture();try{f.a.exec("UPDATE case_calculation_runs SET status='provisional'");const r=await inspect(f);assert.equal(r.storedRunStatus,'provisional');assert.equal(r.headCurrent,true);assert.equal(r.approved,false);}finally{f.close()}});
+test('r51 missing-calculation run is not a completed calculation',async()=>{const f=fixture();try{f.a.exec("UPDATE case_calculation_runs SET status='missing'");const r=await inspect(f);assert.equal(r.storedRunStatus,'missing');assert.equal(r.headCurrent,true);assert.equal(r.approved,false);}finally{f.close()}});
+test('r51 invalid stored run status is conflicting evidence, not approval',async()=>{const f=fixture();try{f.a.exec("UPDATE case_calculation_runs SET status='successful'");const r=await inspect(f);assert.equal(r.storedRunStatus,'conflict');assert.equal(r.approved,false);}finally{f.close()}});
+test('r51 NULL running lease owner cannot be treated as an expired owned lease',async()=>{const f=fixture();try{f.a.exec("UPDATE case_calculation_poll_jobs SET lease_token=NULL");const r=await inspect(f);assert.equal(r.lease,'unobserved');assert.equal(r.approved,false);}finally{f.close()}});
+test('r51 empty running lease token is unobserved despite past lease_until',async()=>{const f=fixture();try{f.a.exec("UPDATE case_calculation_poll_jobs SET lease_token=''");const r=await inspect(f);assert.equal(r.lease,'unobserved');assert.equal(r.writePerformed,false);}finally{f.close()}});
