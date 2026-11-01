@@ -9,7 +9,7 @@ const debts=[{id:"synthetic-debt-a",creditor:"Synthetic A",secured:"no",classifi
 const data={debts,documents:[],facts:[]} as unknown as CaseData;
 const execution={assessment:{calculation:{debtRows:[{id:"synthetic-debt-a"},{id:"synthetic-debt-b"}],assetRows:[],incomeRows:[]}}} as unknown as ExecutionSnapshot;
 function bindings(creditor: Array<{assignment_order?:string|null}>|undefined):FormBindings {
-  return {scalars:{},rows:{...(creditor?{creditor:creditor as Record<string,string>[]}:{})}} as FormBindings;
+  return {scalars:{},rows:{...(creditor?{creditor:creditor as unknown as Record<string,string>[]}:{})}} as FormBindings;
 }
 
 test("assignment row IDs reject missing original creditor row bindings",()=>{
