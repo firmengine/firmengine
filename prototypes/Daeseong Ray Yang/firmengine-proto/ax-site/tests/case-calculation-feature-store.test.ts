@@ -7,6 +7,8 @@ import { createCase,applyExtraction } from "../lib/domain.ts";
 import { projectPage,type PageRead } from "../lib/extraction.ts";
 import { executeCaseNodes } from "../lib/case-execution.ts";
 import { CURRENT_RULESET } from "../lib/legal-rules.ts";
+import { referenceIdentity } from "../lib/reference-runtime.ts";
+import referenceRelease from "../lib/reference-release.json" with {type:"json"};
 import { persistCaseCalculationFeatures,listCaseCalculationFeatures,calculationFeatureRows,type PersistCaseCalculationFeaturesInput } from "../lib/case-calculation-feature-store.ts";
 
 function caseData(id="case-a",withDebt=false){
@@ -88,5 +90,22 @@ test("execution identity mismatches and out-of-bounds reads fail closed; no sepa
     assert.ok(features.every(f=>f.value!==undefined));
     await assert.rejects(listCaseCalculationFeatures(h.db,{caseId:data.context.id,limit:501}),/INVALID_CALCULATION_FEATURE_QUERY/);
     h.sqlite.exec(readFileSync(new URL("../drizzle/0011_case_calculation_features.sql",import.meta.url),"utf8"));
+  }finally{h.close();}
+});
+
+test("same case source/revision but superseded reference release must flag calculation head stale",async()=>{
+  const h=setup();try{
+    const data=caseData("case-stale-reference",true);h.save(data);
+    const input=h.args(data);
+    const activeSha=referenceIdentity()?.sha256??referenceRelease.sha256;
+    const oldSha=activeSha==="b".repeat(64)?"a".repeat(64):"b".repeat(64);
+    const receipt=await persistCaseCalculationFeatures(h.db,{...input,referenceRelease:{id:"synthetic-old-reference",revision:1,sha256:oldSha}});
+    const view=await listCaseCalculationFeatures(h.db,{caseId:data.context.id,expectedDataVersion:input.dataVersion,limit:1});
+    assert.equal(view.runId,receipt.runId);
+    assert.equal(view.currentDataVersion,input.dataVersion);
+    assert.equal(view.currentCaseRevision,input.caseRevision);
+    assert.equal(view.referenceRelease?.sha256,oldSha);
+    assert.equal(view.headStale,true);
+    assert.equal(view.courtApprovalInferred,false);
   }finally{h.close();}
 });
