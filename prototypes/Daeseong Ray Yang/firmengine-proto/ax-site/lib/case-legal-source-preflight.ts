@@ -1,6 +1,8 @@
 /** P0/F04: an advisory AI must never run on an unfinished or untraceable
  * source snapshot. This does not infer legal acceptance or court approval. */
 import type {CaseData} from "./domain.ts";
+import {referenceIdentity} from "./reference-runtime.ts";
+import referenceRelease from "./reference-release.json" with {type:"json"};
 
 export type LegalSourceReadiness={
  ready:boolean;retryable:boolean;status:"ready"|"waiting_evidence"|"review_required";
@@ -41,8 +43,10 @@ type CaseCalculationSourceHeads={
 export async function inspectLegalAutomationSourceReadiness(database:D1Database,data:CaseData,processingComplete:boolean)
  :Promise<LegalSourceReadiness>{
  const caseId=data.context.id;
+ const expectedReferenceSha=referenceIdentity()?.sha256??referenceRelease.sha256;
  const [calculation,consultation]=await Promise.all([
-  database.prepare("SELECT r.source_heads_json AS sourceHeadsJson FROM case_calculation_heads h JOIN case_calculation_runs r ON r.id=h.run_id WHERE h.case_id=?").bind(caseId).first<{sourceHeadsJson:string}>(),
+  database.prepare("SELECT r.source_heads_json AS sourceHeadsJson FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads h ON h.case_id=c.id JOIN case_calculation_runs r ON r.id=h.run_id AND r.case_id=c.id WHERE c.id=? AND c.revision=? AND h.case_revision=c.revision AND h.data_version=s.data_version AND r.case_revision=c.revision AND r.data_version=s.data_version AND h.input_sha256=r.input_sha256 AND r.reference_sha256=?")
+   .bind(caseId,data.context.revision,expectedReferenceSha).first<{sourceHeadsJson:string}>(),
   database.prepare("SELECT h.active_run_id AS activeRunId,h.revision,r.consultation_revision AS analyzedRevision,r.status AS runStatus FROM consultation_heads h LEFT JOIN consultation_runs r ON r.id=h.active_run_id AND r.case_id=h.case_id WHERE h.case_id=?")
    .bind(caseId).first<{activeRunId:string|null;revision:number;analyzedRevision:number|null;runStatus:string|null}>(),
  ]);
