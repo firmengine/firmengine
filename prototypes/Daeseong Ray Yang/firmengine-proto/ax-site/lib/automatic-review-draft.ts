@@ -7,13 +7,14 @@ import {writeOfficePackage} from "./office-writer.ts";
 import {CURRENT_RULESET} from "./legal-rules.ts";
 import {referenceIdentity} from "./reference-runtime.ts";
 import {commitExportArtifactTransaction} from "./export-artifact-transaction.ts";
+import {AUTOMATIC_DRAFT_CURRENT_HEAD_SQL,AUTOMATIC_DRAFT_EXISTING_RUN_SQL} from "./automatic-draft-current-head.ts";
 import type {LegalAutomationServices} from "./case-legal-automation.ts";
 
 type Input=Parameters<LegalAutomationServices["generateDraft"]>[0];
 type DraftArtifact={id:string;name:string;kind:string;hash:string;mime:string;objectKey:string};
 const fail=(code:string):never=>{throw new Error(code);};
 async function assertCurrent(input:Input){
- const record=await db().prepare("SELECT c.revision AS revision,s.data_version AS dataVersion,ch.run_id AS calculationRunId,lh.review_run_id AS reviewRunId,j.lease_token AS leaseToken,j.lease_until AS leaseUntil,j.status AS status FROM cases c JOIN case_data_change_state s ON s.case_id=c.id JOIN case_calculation_heads ch ON ch.case_id=c.id JOIN case_legal_review_heads lh ON lh.case_id=c.id JOIN case_legal_automation_jobs j ON j.id=? AND j.case_id=c.id WHERE c.id=?")
+ const record=await db().prepare(AUTOMATIC_DRAFT_CURRENT_HEAD_SQL)
   .bind(input.jobId,input.caseId).first<{revision:number;dataVersion:number;calculationRunId:string;reviewRunId:string;leaseToken:string|null;leaseUntil:string|null;status:string}>();
  if(!record||record.revision!==input.caseRevision||record.dataVersion!==input.dataVersion
   ||record.calculationRunId!==input.calculationRunId||record.reviewRunId!==input.legalReviewRunId
@@ -23,8 +24,10 @@ async function assertCurrent(input:Input){
 export async function generateAutomaticReviewDraft(input:Input){
  const database=db(),runId="auto-draft:"+input.legalReviewRunId;
  await assertCurrent(input);
- const existing=await database.prepare("SELECT status,artifacts_json AS artifactsJson FROM case_automatic_document_runs WHERE legal_review_run_id=? AND case_id=?")
-  .bind(input.legalReviewRunId,input.caseId).first<{status:string;artifactsJson:string}>();
+ const existing=await database.prepare(AUTOMATIC_DRAFT_EXISTING_RUN_SQL)
+  .bind(input.legalReviewRunId,input.caseId).first<{status:string;artifactsJson:string;dataVersion:number;caseRevision:number}>();
+  if(existing&&(existing.dataVersion!==input.dataVersion||existing.caseRevision!==input.caseRevision))
+   fail("LEGAL_AUTOMATION_DRAFT_SOURCE_STALE");
  if(existing?.status==="complete"){
   const prior=JSON.parse(existing.artifactsJson) as DraftArtifact[];
   return {documentRunId:runId,artifacts:prior.map(a=>({id:a.id,name:a.name,kind:a.kind}))};
