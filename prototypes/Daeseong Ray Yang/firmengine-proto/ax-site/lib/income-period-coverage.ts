@@ -18,6 +18,8 @@ export interface SelectedIncomePeriodCoverageResult {
   futureMonths: string[];
   sourceMissingMonths: { streamId: string; missingMonths: string[] }[];
   sharedFactIds: string[];
+  repeatedFactIds: string[];
+  repeatedSourceRowIds: string[];
 }
 
 const dateParts = (value: string | undefined | null): {year:number;month:number;day:number}|null => {
@@ -32,7 +34,7 @@ const validWon = (value:unknown):boolean => typeof value === "string" && /^(?:0|
 
 /** Dynamic coverage of a *selected*, reviewed period; no fixed 12-month requirement. */
 export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCoverageInput):SelectedIncomePeriodCoverageResult {
-  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[],sourceMissingMonths:[],sharedFactIds:[]};
+  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[],sourceMissingMonths:[],sharedFactIds:[],repeatedFactIds:[],repeatedSourceRowIds:[]};
   const code=(x:string)=>{if(!result.codes.includes(x))result.codes.push(x);};
   if (!input.selectedPeriod) {
     if (!input.monthRows.length) result.status="not_applicable";
@@ -49,6 +51,8 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
   const covered=new Set<number>();
   const coveredByStream=new Map<string,Set<number>>();
   const factOwnerStream=new Map<string,string>();
+  const seenSourceRowIds=new Set<string>();
+  const seenStreamFactPairs=new Set<string>();
   for(let i=0;i<input.monthRows.length;i++){
     const row=input.monthRows[i];
     // Persisted or external bindings can violate static TypeScript row shapes.
@@ -74,9 +78,22 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
       if(row.source_review_status!=="accepted" || row.source_calc_role!=="period_income_observation"){
         result.invalidRowIndices.push(i);code("D5103_SOURCE_REVIEW_REQUIRED");continue;
       }
-      // Two income streams may cite one immutable Fact for the same transaction.
-      // Never treat repeated cross-stream evidence as two independently approved incomes.
+      // A stable source row or immutable Fact cited twice can make a duplicate
+      // payment look like independent monthly income. Request human review;
+      // legitimate split documents remain reviewable, never legally rejected.
+      const sourceRowId=row.source_id.trim();
+      if(seenSourceRowIds.has(sourceRowId)){
+        if(!result.repeatedSourceRowIds.includes(sourceRowId))result.repeatedSourceRowIds.push(sourceRowId);
+        code("D5103_REPEATED_SOURCE_ROW_REVIEW_REQUIRED");
+      }else seenSourceRowIds.add(sourceRowId);
+      // Distinguish same-stream repetition from cross-stream reuse. The former
+      // was previously ignored even if a Fact occurred twice in one comma list.
       for(const factId of row.source_fact_ids.split(",").map(x=>x.trim()).filter(Boolean)){
+        const streamFactKey=JSON.stringify([row.source_stream_id,factId]);
+        if(seenStreamFactPairs.has(streamFactKey)){
+          if(!result.repeatedFactIds.includes(factId))result.repeatedFactIds.push(factId);
+          code("D5103_REPEATED_FACT_REVIEW_REQUIRED");
+        }else seenStreamFactPairs.add(streamFactKey);
         const owner=factOwnerStream.get(factId);
         if(owner && owner!==row.source_stream_id){
           if(!result.sharedFactIds.includes(factId))result.sharedFactIds.push(factId);
