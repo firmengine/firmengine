@@ -1,5 +1,5 @@
 import { touchCase } from "../../../../../lib/domain";
-import { db,errorResponse,event,getCase,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
+import { db,errorResponse,getCase,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
 import { SAMPLE_SHA256,samplePageRole } from "../../../../../lib/sample-manifest";
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),c=await getCase(id);
@@ -20,10 +20,9 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     await db().prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,ready,created_at) VALUES (?,?,?,?,?,0,?)").bind(documentId,id,name,body.sha256,body.pageCount,now()).run();
     const statements=pageRoles.map(p=>db().prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,status,stage,attempts,updated_at) VALUES (?,?,?,?,?,?,?,'waiting',0,?)").bind(`${documentId}:${p.page}`,id,documentId,p.page,p.role,p.documentType??null,["filed_form","administrative"].includes(p.role)?"held":"awaiting_upload",now()));
     for(let i=0;i<statements.length;i+=80)await db().batch(statements.slice(i,i+80));
-    await saveCase(n,c.context.revision,c);
+    await saveCase(n,c.context.revision,c,undefined,{documentRegisteredAudit:{documentId,sha256:body.sha256,pageCount:body.pageCount}});
   }catch(error){
     await db().batch([db().prepare("DELETE FROM page_jobs WHERE document_id = ? AND case_id = ?").bind(documentId,id),db().prepare("DELETE FROM documents WHERE id = ? AND case_id = ? AND ready = 0").bind(documentId,id)]);throw error;
   }
-  await event(id,"document.registered",{documentId,sha256:body.sha256,pageCount:body.pageCount});
   return Response.json({documentId,knownSample:body.sha256===SAMPLE_SHA256,pageRoles},{status:201});
 }catch(e){return errorResponse(e);}}
