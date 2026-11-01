@@ -28,7 +28,7 @@ function fail(message:string,status=400,code="INVALID_COMMAND"):never{throw new 
 const text=(v:unknown,label:string)=>typeof v==="string"&&v.trim()?v.trim():fail(`${label}을 지정하세요.`);
 const strings=(v:unknown)=>Array.isArray(v)&&v.every(x=>typeof x==="string")?v as string[]:fail("항목 목록을 확인하세요.");
 const review=(auth:CommandAuthority,role="caseworker_review")=>{if(!auth.actor||auth.actor==="private-site-service"||!auth.roles.includes(role))fail("지정된 사람 검토 권한이 필요합니다.",403,"HUMAN_ROLE_REQUIRED");};
-const isSynthetic=(data:CaseData)=>!!(data.structuredTest||data.referenceTest);
+const isSynthetic=(data:CaseData)=>!!(data.structuredTest||data.referenceTest||data.evaluationClone);
 const enumValue=<T extends string>(value:unknown,values:readonly T[],label:string):T=>typeof value==="string"&&values.includes(value as T)?value as T:fail(`${label}을 확인하세요.`);
 const KNOWN_PAGE_ROLES=["evidence","filed_form","administrative","unknown"] as const;
 const SOURCE_STATES=["reported","extracted","verified","disputed","retracted"] as const;
