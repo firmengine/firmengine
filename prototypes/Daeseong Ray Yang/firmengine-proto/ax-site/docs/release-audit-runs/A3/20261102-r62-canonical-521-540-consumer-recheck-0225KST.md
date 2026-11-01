@@ -46,13 +46,13 @@ P/U는 **원본 `hasPeriod()`/`hasUnit()` 함수의 true 판정 슬롯 수**. so
 | 방식/입력 | 독립 기대 | 실제 관찰 | 판정 |
 |---|---|---|---|
 | 원본 index 693 × 85문서 ×48 family 및 base+extension+supplement 전수 정적 조인 | 693고유, 141 route, 1,808 슬롯; 이번 L 9 + P/C/A 33 | **일치** | JSON 정적 계약 실행. 원문 OCR 미실행 |
-| #521–540의 각 field 원천슬롯 수·locator 객체·복수행 정책·sourceCondition·타입/단위/role 정체성 | 20ID/42slot, 조건 20등록, 42 원천앵커 요구, 의미 충돌0 | **84/84 정적 단언 일치** | V8 JS 실행, 실제 D1 저장 아님 |
+| #521–540의 각 field 원천슬롯 수·locator 객체·복수행 정책·sourceCondition·타입/단위/role 정체성 | 20ID/42slot, 조건 20등록, 42 원천앵커 요구, 의미 충돌0 | **92/92 정적 단언 일치** | V8 JS 실행, 실제 D1 저장 아님 |
 | 원본 `hasPeriod` 42 슬롯 + `hasUnit` 42 슬롯 | 기간21/42, 단위2/42 | **84회 호출, 21/2** | TypeScript 타입 주석만 제거한 함수식 V8 격리 |
 | typed/material/정확 서식 토큰/법률 증거계약 정적 대조 | 직접 typed0/material0/form0/승인 법률0 | **각 0/20**, 빈 소비처를 폐기하지 않음 | 정적 정확 ID·family 매칭 |
 | `reviewScope` 원본 V8 함수본문에 family 2종 입력 | L=D5100,5105,5106,5110; P=D5100,5105 | **2/2 일치** | 단순 서식검토 후보 |
 | `assessment.ts` 원본 eligibility 루프를 타입주석만 제거해 합성 context 7건 | 미설정/unknown/no → 과거절차 review_required; yes → 해당 finding 없음, 기타 자연인=no 별도 fail | **7/7 기대 분기 일치** | 루프 격리. 실법률 판단·전체 assessment/E2E 아님 |
 
-감사 코드 최초 locator 점검에서 객체를 `true`와 비교해 생긴 **감사 도구의 거짓 실패**는 실제 JSON 필드형을 확인해 객체 속성 검증으로 교정 후 재실행(84/84). 제품 결함으로 집계하거나 계약을 수정하지 않음.
+감사 코드 최초 locator 점검에서 객체를 `true`와 비교해 생긴 **감사 도구의 거짓 실패**는 실제 JSON 필드형을 확인해 객체 속성 검증으로 교정 후 재실행(92/92). 제품 결함으로 집계하거나 계약을 수정하지 않음.
 
 ## 발견·남은 위험 (모두 사람 승인 전)
 
@@ -73,7 +73,7 @@ P/U는 **원본 `hasPeriod()`/`hasUnit()` 함수의 true 판정 슬롯 수**. so
 
 ## 후속 위치·금지사항
 
-- 원본 canonical index 순서에 따른 심층 재감사 **540/693 = 77.9%**, 잔여 **153**. 다음 **#541–560**, 시작 **#541 `procedure_private_creditor_request::procedure.creditor_info... `의 실제 최신 인덱스 재조회**. 다음 담당 시작 **데이터담당자**.
+- 원본 canonical index 순서에 따른 심층 재감사 **540/693 = 77.9%**, 잔여 **153**. 다음 **#541–560**, 시작 **#541 `procedure_private_creditor_request::procedure.creditor_info.as_of_date`부터 최신 인덱스 순서로 진행**. 다음 담당 시작 **데이터담당자**.
 - 실행/승인 미인증: 실제 문서·OCR 인식, page/row/sourceHash/CAS, D1/R2/Cron, 전체 Node CI, 18계산 E2E, 공식 법원 서식 출력, 변호사 서명·인수, 전자접수 및 사이트 운영배포. 미관찰/null/정확한0/명시없음/상충/source-only/승인전 구분. 개인 정보·원본 OCR 값·실고객 자료·env·키 공개 금지; 운영 DB 변경·이관·제출 안 함.
 
 ### 주요 원본 blob SHA
