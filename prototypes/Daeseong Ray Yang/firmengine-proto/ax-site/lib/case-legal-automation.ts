@@ -338,6 +338,10 @@ export async function retryFailedCaseLegalAutomation(database:D1Database,input:{
  if(!input.caseId||!Number.isSafeInteger(input.expectedDataVersion)||input.expectedDataVersion<1)throw new Error("LEGAL_AUTOMATION_RETRY_INVALID_INPUT");
  const current=await latest(database,input.caseId);
  if(!current||current.dataVersion!==input.expectedDataVersion)throw new Error("LEGAL_AUTOMATION_RETRY_STALE_VERSION");
+ const activeReference=referenceIdentity()?.sha256??referenceRelease.sha256;
+ // A still-current calculation head can carry an older active law/reference release.
+ // Do not reactivate its legal job when the authoritative release has changed.
+ if(current.referenceSha256!==activeReference)throw new Error("LEGAL_AUTOMATION_RETRY_STALE_REFERENCE");
  const row=await database.prepare("SELECT id,status,attempts,data_version AS dataVersion,case_revision AS caseRevision,calculation_run_id AS calculationRunId,legal_review_run_id AS legalReviewRunId,outcome_json AS outcomeJson FROM case_legal_automation_jobs WHERE case_id=? AND data_version=? AND calculation_run_id=?")
   .bind(input.caseId,current.dataVersion,current.calculationRunId).first<{id:string;status:string;attempts:number;dataVersion:number;caseRevision:number;calculationRunId:string;legalReviewRunId:string|null;outcomeJson:string}>();
  const projectionRetry=!!row&&row.status==="review_required"&&!!row.legalReviewRunId&&
