@@ -20,11 +20,11 @@
 ## A1-CALC-018 — 사업소득 변호사 승인 이후 구 승인 무효화
 
 - `lib/case-commands.ts` blob `d18c555f04f65687c509a8e8d35aba4bb3597378`; `lib/domain.ts` blob `39ab41856f6d7a379aca7217d24b28f7f5f7616a`; `lib/business-net-reconciliation.ts` blob `60a4fc295943dce404a7f99efffe88f58dd2d4ff`; 기존 `tests/business-net-review-lifecycle.test.ts` blob `dc089bd14f4c07f204cde7ca4038fe49ca08410c` 확인.
-- **실제 `touchCase` 및 `resetReviews` 함수 본문** V8 격리. `invalidateExports` 의존성만 결정적 mock. 독립 기대 10개: revision 8→9; 5개의 검토 Boolean false; referenceReviewSha 삭제; shortenedTermReview 삭제; paymentSchedule.reviewed false; proposed decision stale·adopted history 보존; 이전 값 impact 기록; 이전 사건 불변; export artifact/current 승인 무효(이 항목은 **stub 실행만**); `business.net.adopt` 분기의 `data.incomes.push(approved.income);resetReviews(data,impact)` 소스 연결. **10/10 기대 일치**. 상세 impact keys `ruleApplicationReviewed,referenceReviewSha256,incomePeriodReviewed,presentValueReviewed,assetValuationBasisReviewed,allocationBasisReviewed,shortenedTermReview,paymentSchedule.reviewed`.
+- **실제 `touchCase` 및 `resetReviews` 함수 본문** V8 격리. `invalidateExports` 의존성만 결정적 mock. 독립 조건 **9개 V8 실행+1개 정적 연결 검사**: revision 8→9; 5개의 검토 Boolean false; referenceReviewSha 삭제; shortenedTermReview 삭제; paymentSchedule.reviewed false; proposed decision stale·adopted history 보존; 이전 값 impact 기록; 이전 사건 불변; export artifact/current 승인 무효(이 항목은 **stub 실행만**); `business.net.adopt` 분기의 `data.incomes.push(approved.income);resetReviews(data,impact)` 소스 연결. **9/9 실행 조건 독립 기대 일치, 1/1 코드 호출 연결 정적 확인**. 상세 impact keys `ruleApplicationReviewed,referenceReviewSha256,incomePeriodReviewed,presentValueReviewed,assetValuationBasisReviewed,allocationBasisReviewed,shortenedTermReview,paymentSchedule.reviewed`.
 - 검증 중 코드가 보존한 과거 `adopted` 의사결정은 **과거 이력**이지 최신 법률 인정이 아님. `business.net.adopt`의 실제 권한·Fact 입력, D1 재계산 queue, 18 계산·95 법률·서식·UI 연결, 동시 사건 실행은 **미실행**. 동일인 승인 결함 관련 기존 [Draft PR #55](https://github.com/firmengine/firmengine/pull/55)·[Draft PR #85](https://github.com/firmengine/firmengine/pull/85) 둘 다 **open/draft/미병합**; 위험 해소로 볼 수 없음.
 
 ## 회차 판정 및 인계
 
-- 원본문 V8 합성 **24/24 기대 일치**(IT 7, AX 7, CALC 10). 이는 선택된 국소 조건에만 해당하며 구현 완료·전체 Node/CI/staging D1·R2·Cron/공식 서식·변호사 승인/사이트 배포 **동의어 아님**.
+- 원본문 V8 합성 **23/23 실행 조건 기대 일치**(IT 7, AX 7, CALC 9), 추가 CALC 1/1 원문 코드 연결 정적 확인. 이는 선택된 국소 조건에만 해당하며 구현 완료·전체 Node/CI/staging D1·R2·Cron/공식 서식·변호사 승인/사이트 배포 **동의어 아님**.
 - **신규 확정 결함 0, 신규 제품 패치/PR 0, 인수 완료 ID 0**. 미관찰/null/관측 0/비해당/상충/source-only/법률 승인 전은 독립 상태로 유지. 실제 의뢰인 기록/원문 OCR 사실값/키/.env/비공개 정답을 사용하지 않음. 운영 배포·D1 운영 migration·법원 전자제출·인가 확정 미실행.
 - 이번 A1 검증과 중앙 보드에는 3개 ID만 기록. **다음 역할: 사용자·서류담당자 / 변호사 / 데이터담당자**; `A1-DOC-009`(문서 재분류·하위 무효화), `A1-LAW-010`(가구원·생계비 승인), `A1-DATA-009`(기간/기준일/발급일). 다른 감사 병렬 변경은 보존 병합.
