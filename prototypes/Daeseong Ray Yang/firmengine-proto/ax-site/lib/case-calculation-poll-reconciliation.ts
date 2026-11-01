@@ -9,16 +9,16 @@ type PollReconcileRow={
   pollCaseId:string|null; pollDataVersion:number|null; pollRevision:number|null;
   pollReferenceSha:string|null; pollStatus:string|null; leaseToken:string|null;
   leaseUntil:string|null; headRunId:string|null; headDataVersion:number|null;
-  headRevision:number|null; verifiedRunId:string|null; runDataVersion:number|null;
-  runRevision:number|null; runReferenceSha:string|null;
+  headRevision:number|null; headInputSha:string|null; verifiedRunId:string|null; runDataVersion:number|null;
+  runRevision:number|null; runReferenceSha:string|null; runInputSha:string|null;
 };
 
 const CHECK_SQL=[
   "SELECT c.id AS caseId,c.revision AS currentRevision,s.data_version AS currentDataVersion,",
   "p.case_id AS pollCaseId,p.data_version AS pollDataVersion,p.case_revision AS pollRevision,",
   "p.reference_sha256 AS pollReferenceSha,p.status AS pollStatus,p.lease_token AS leaseToken,p.lease_until AS leaseUntil,",
-  "h.run_id AS headRunId,h.data_version AS headDataVersion,h.case_revision AS headRevision,",
-  "r.id AS verifiedRunId,r.data_version AS runDataVersion,r.case_revision AS runRevision,r.reference_sha256 AS runReferenceSha",
+  "h.run_id AS headRunId,h.data_version AS headDataVersion,h.case_revision AS headRevision,h.input_sha256 AS headInputSha,",
+  "r.id AS verifiedRunId,r.data_version AS runDataVersion,r.case_revision AS runRevision,r.reference_sha256 AS runReferenceSha,r.input_sha256 AS runInputSha",
   "FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id",
   "LEFT JOIN case_calculation_poll_jobs p ON p.case_id=c.id",
   "LEFT JOIN case_calculation_heads h ON h.case_id=c.id",
@@ -29,7 +29,7 @@ const CHECK_SQL=[
 export type PollRecoveryFinding=
   |"case_unobserved"|"source_unobserved"|"active_reference_unobserved"
   |"poll_absent_head_current"|"poll_absent_head_unobserved"
-  |"head_unobserved"|"head_not_current"|"poll_source_conflict"
+  |"head_unobserved"|"head_input_unobserved"|"head_input_conflict"|"head_not_current"|"poll_source_conflict"
   |"poll_running_with_current_head"|"poll_failed_with_current_head"
   |"poll_state_observed";
 
@@ -50,6 +50,15 @@ export async function inspectCaseCalculationPollRecovery(
  const lease=row.pollCaseId===null||row.pollStatus!=="running"?"not_applicable" as const:
   !Number.isFinite(timestamp)||!Number.isFinite(now)?"unobserved" as const:
   timestamp<=now?"expired" as const:"live" as const;
+ // Same run ID and source version alone cannot prove persisted input identity.
+ // Missing/malformed evidence is not equivalent to a confirmed digest conflict.
+ const digestObserved=(value:unknown)=>typeof value==="string"&&/^[a-f0-9]{64}$/i.test(value);
+ if(row.headRunId&&row.verifiedRunId){
+   if(!digestObserved(row.headInputSha)||!digestObserved(row.runInputSha))
+     return {...base,finding:"head_input_unobserved" as const,lease,headCurrent:null};
+   if(row.headInputSha!==row.runInputSha)
+     return {...base,finding:"head_input_conflict" as const,lease,headCurrent:false};
+ }
  const headCurrent=Boolean(row.headRunId&&row.verifiedRunId===row.headRunId&&
    row.headDataVersion===row.currentDataVersion&&row.runDataVersion===row.currentDataVersion&&
    row.headRevision===row.currentRevision&&row.runRevision===row.currentRevision&&
