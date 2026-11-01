@@ -40,7 +40,8 @@ function factIds(value:unknown):string[]{
   };
   visit(value);return [...ids];
 }
-const won=(name:string,value:unknown):string|null=>/Won$/.test(name)&&((typeof value==="string"&&/^-?\d+$/.test(value))||(typeof value==="number"&&Number.isSafeInteger(value)))?String(value):null;
+// Persist only canonical Won representations; preserve malformed raw output for human review.
+const won=(name:string,value:unknown):string|null=>/Won$/.test(name)&&((typeof value==="string"&&/^(?:0|-?[1-9]\d*)$/.test(value))||(typeof value==="number"&&Number.isSafeInteger(value)))?String(value):null;
 /** Storage format check only; does not change the calculation or legally recognize income. */
 export function classifyStoredFeatureMoney(name:string,value:unknown,engineStatus:string|undefined,reasons:string[]=[]){
   const leaf=name.split(".").at(-1)??name,valueWon=won(leaf,value);
