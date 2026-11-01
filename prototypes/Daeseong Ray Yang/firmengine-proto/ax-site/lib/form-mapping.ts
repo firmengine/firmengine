@@ -26,6 +26,16 @@ export function exactSourceCalendarMonth(start:string|undefined,end:string|undef
 
 export const FORM_MAPPING_VERSION = "canonical-public-forms-1.0.3";
 export const MISSING_FORM_VALUE = "[확인 필요]";
+// A source-only or conflicting value must remain visibly unresolved in the
+// public-form provenance. Runtime inputs may violate static string types.
+export function classifyPublicFormToken(value: unknown): { displayValue: string; unresolved: boolean } {
+  const isText = typeof value === "string" && value.trim().length > 0;
+  const displayValue = isText ? value : MISSING_FORM_VALUE;
+  const marker = displayValue.trim();
+  const unresolved = !isText ||
+    /^(?:source-only|\[(?:확인 필요|상충|불일치|누락|오인식|판독|검토|배분|미확정|미관찰|미상|승인전|원문만|원천만|source-only)(?:\]|[ ·:]))/.test(marker);
+  return {displayValue, unresolved};
+}
 export const BASIC_FORM_CODES = documentPolicy.basicFormCodes as Partial<Record<ArtifactKind, keyof typeof PUBLIC_FORM_METADATA>>;
 export interface FormBindings {
   scalars: Record<string, string>;
@@ -269,8 +279,9 @@ export async function renderPublicForm(input: { kind: ArtifactKind; data: CaseDa
   }}, unresolved = new Set<string>();
   const replace = (source: string, prefix?: string, row?: Record<string, string>): string => source.replace(/\{\{([a-zA-Z0-9_.]+)\}\}/g, (_, token: string) => {
     const value = prefix && token.startsWith(prefix + ".") ? row?.[token.slice(prefix.length + 1)] : bindings.scalars[token];
-    if (value === undefined || value === MISSING_FORM_VALUE || value.startsWith("[불일치")) unresolved.add(token);
-    return xmlEscape(value ?? MISSING_FORM_VALUE);
+    const classified = classifyPublicFormToken(value);
+    if (classified.unresolved) unresolved.add(token);
+    return xmlEscape(classified.displayValue);
   });
   xml = xml.replace(/<w:tr(?:\s[^>]*)?>[\s\S]*?<\/w:tr>/g, (rowXml) => {
     const prefixes = [...new Set([...rowXml.matchAll(/\{\{([a-z_]+)\.[a-zA-Z0-9_.]+\}\}/g)].map((match) => match[1]))];
