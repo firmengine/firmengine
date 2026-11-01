@@ -63,7 +63,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     const output=outputByToken[token];
     const exact=output?calculationRows.filter(r=>r.outputName===output
        &&(ordinal===null?r.rowOrdinal===null:r.rowOrdinal===ordinal)
-       &&(!subjectId||!r.subjectId||r.subjectId===subjectId)
+       &&(ordinal===null?r.subjectId===null:!!subjectId&&r.subjectId===subjectId)
        &&["computed","provisional"].includes(r.status)&&sameValue(r.value,value)):[];
     const calcFeature=exact.length===1?exact[0]:null;
     const canonical=token.replace(/[A-Z]/g,x=>"_"+x.toLowerCase());
