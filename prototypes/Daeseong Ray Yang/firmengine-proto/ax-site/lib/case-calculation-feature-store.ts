@@ -23,7 +23,10 @@ const conflict=(reasons:string[])=>reasons.some(r=>/CONFLICT|DISPUTED|AMBIGUOUS/
 function statusOf(value:unknown,engineStatus:string|undefined,reasons:string[]=[]):CalculationFeatureStatus{
   if(engineStatus==="not_applicable")return "not_applicable";
   if(conflict(reasons))return "conflict";
-  if(value===null||value===undefined||value==="unknown")return engineStatus==="blocked"?"blocked":"missing";
+  // Invalid engine scalars must never be stored as successfully computed values:
+  // JSON.stringify(NaN/Infinity) silently converts them to null.
+  if(typeof value==="number"&&!Number.isFinite(value))return "blocked";
+  if(value===null||value===undefined||value==="unknown"||(typeof value==="string"&&value.trim()===""))return engineStatus==="blocked"?"blocked":"missing";
   if(engineStatus==="calculated"||engineStatus==="computed"||engineStatus==="reviewed_basis")return "computed";
   // A known component can remain provisional even when its aggregate trace is
   // blocked by a different missing component. No output is replaced by zero.
