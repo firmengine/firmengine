@@ -94,7 +94,7 @@ const cases = [
     ]
   ],
   [
-    "unknown cutoff remains separately unresolved (no inference)",
+    "unknown cutoff is not inferred (known helper blind spot)",
     "2026-10-01",
     "2026-10-31",
     null,
