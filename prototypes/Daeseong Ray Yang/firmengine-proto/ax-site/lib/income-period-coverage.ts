@@ -17,6 +17,7 @@ export interface SelectedIncomePeriodCoverageResult {
   invalidRowIndices: number[];
   futureMonths: string[];
   sourceMissingMonths: { streamId: string; missingMonths: string[] }[];
+  sharedFactIds: string[];
 }
 
 const dateParts = (value: string | undefined | null): {year:number;month:number;day:number}|null => {
@@ -31,7 +32,7 @@ const validWon = (value:unknown):boolean => typeof value === "string" && /^(?:0|
 
 /** Dynamic coverage of a *selected*, reviewed period; no fixed 12-month requirement. */
 export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCoverageInput):SelectedIncomePeriodCoverageResult {
-  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[],sourceMissingMonths:[]};
+  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[],sourceMissingMonths:[],sharedFactIds:[]};
   const code=(x:string)=>{if(!result.codes.includes(x))result.codes.push(x);};
   if (!input.selectedPeriod) {
     if (!input.monthRows.length) result.status="not_applicable";
@@ -47,6 +48,7 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
   }
   const covered=new Set<number>();
   const coveredByStream=new Map<string,Set<number>>();
+  const factOwnerStream=new Map<string,string>();
   for(let i=0;i<input.monthRows.length;i++){
     const row=input.monthRows[i];
     // Persisted or external bindings can violate static TypeScript row shapes.
@@ -67,6 +69,15 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
       }
       if(row.source_review_status!=="accepted" || row.source_calc_role==="gross_turnover_only"){
         result.invalidRowIndices.push(i);code("D5103_SOURCE_REVIEW_REQUIRED");continue;
+      }
+      // Two income streams may cite one immutable Fact for the same transaction.
+      // Never treat repeated cross-stream evidence as two independently approved incomes.
+      for(const factId of row.source_fact_ids.split(",").map(x=>x.trim()).filter(Boolean)){
+        const owner=factOwnerStream.get(factId);
+        if(owner && owner!==row.source_stream_id){
+          if(!result.sharedFactIds.includes(factId))result.sharedFactIds.push(factId);
+          code("D5103_CROSS_STREAM_FACT_REVIEW_REQUIRED");
+        }else if(!owner)factOwnerStream.set(factId,row.source_stream_id);
       }
     }
     if(month<startIndex || month>endIndex) {result.outsideMonths.push(ym);code("D5103_MONTH_OUTSIDE_SELECTED_PERIOD");}
