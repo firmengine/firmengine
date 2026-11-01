@@ -31,7 +31,7 @@ export type PollRecoveryFinding=
   |"poll_absent_head_current"|"poll_absent_head_unobserved"
   |"head_unobserved"|"head_input_unobserved"|"head_input_conflict"|"head_not_current"|"poll_source_conflict"
   |"poll_running_with_current_head"|"poll_failed_with_current_head"
-  |"poll_state_observed";
+  |"poll_retry_wait_with_current_head"|"poll_state_unobserved"|"poll_state_conflict";
 
 export async function inspectCaseCalculationPollRecovery(
  database:D1Database,input:{caseId:string;activeReferenceSha256:string|null|undefined;now?:number}
@@ -77,5 +77,10 @@ export async function inspectCaseCalculationPollRecovery(
    return {...base,finding:"poll_source_conflict" as const,lease,headCurrent:true};
  if(row.pollStatus==="running")return {...base,finding:"poll_running_with_current_head" as const,lease,headCurrent:true};
  if(row.pollStatus==="failed")return {...base,finding:"poll_failed_with_current_head" as const,lease,headCurrent:true};
- return {...base,finding:"poll_state_observed" as const,lease,headCurrent:true};
+ if(row.pollStatus==="retry_wait")return {...base,finding:"poll_retry_wait_with_current_head" as const,lease,headCurrent:true};
+ // An unrecognized or missing persisted poll status is evidence loss/conflict,
+ // not a generic observed state and never authorization to clean up or retry.
+ if(typeof row.pollStatus!=="string"||!row.pollStatus.trim())
+   return {...base,finding:"poll_state_unobserved" as const,lease,headCurrent:true};
+ return {...base,finding:"poll_state_conflict" as const,lease,headCurrent:true};
 }
