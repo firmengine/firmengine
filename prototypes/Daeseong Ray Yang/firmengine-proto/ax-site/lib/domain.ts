@@ -370,7 +370,11 @@ export function normalizeMoney(rawValue: string | number | null | undefined, uni
   if (rawValue === null || rawValue === undefined || String(rawValue).trim() === "") return result;
   if (currency.toUpperCase() !== "KRW") return { ...result, normalizationStatus: "review_required" };
   if (typeof rawValue === "number" && !Number.isSafeInteger(rawValue)) return { ...result, normalizationStatus: "invalid" };
-  const text = String(rawValue).trim().replace(/,/g, "").replace(/\s*(?:원|KRW)\s*$/i, "");
+  const sourceText = String(rawValue).trim();
+  // OCR tokens with malformed comma groups must not become trusted exact Won.
+  if (sourceText.includes(",") && !/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?(?:\s*(?:원|KRW))?$/i.test(sourceText))
+    return { ...result, normalizationStatus: "invalid" };
+  const text = sourceText.replace(/,/g, "").replace(/\s*(?:원|KRW)\s*$/i, "");
   const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text);
   const units: Record<string, bigint> = { KRW: ONE, won: ONE, 원: ONE, thousand_won: BigInt(1000), 천원: BigInt(1000), ten_thousand_won: BigInt(10000), manwon: BigInt(10000), 만원: BigInt(10000), million_won: BigInt(1000000), 백만원: BigInt(1000000), 억원: BigInt(100000000) };
   const scale = units[unit];
