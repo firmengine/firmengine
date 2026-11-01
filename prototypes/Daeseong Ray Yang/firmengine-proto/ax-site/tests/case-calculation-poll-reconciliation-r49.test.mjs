@@ -86,3 +86,39 @@ test('r53 stale head + retry_wait malformed deadline remains unobserved',async()
 test('r53 stale head + running NULL owner is not a confirmed owned lease',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET lease_token=NULL");const r=await inspect(f);assert.equal(r.finding,'poll_running_owner_unobserved');assert.equal(r.lease,'unobserved');assert.equal(r.approved,false);}finally{f.close()}});
 test('r53 stale head + valid owned lease remains ordinary head_not_current',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');const r=await inspect(f);assert.equal(r.finding,'head_not_current');assert.equal(r.headCurrent,false);}finally{f.close()}});
 test('r53 stale head + due retry_wait with valid timestamp is not unknown deadline',async()=>{const f=fixture();try{f.a.exec('UPDATE case_calculation_heads SET data_version=6');f.a.exec("UPDATE case_calculation_poll_jobs SET status='retry_wait',lease_token=NULL,lease_until=NULL,next_attempt_at='2026-11-01T04:05:00.000Z'");const r=await inspect(f);assert.equal(r.finding,'head_not_current');}finally{f.close()}});
+
+
+test('r54 stale head plus terminal failed poll is separately flagged for operator review',async()=>{
+ const f=fixture();try{
+   f.a.exec("UPDATE case_calculation_heads SET data_version=6");
+   f.a.exec("UPDATE case_calculation_poll_jobs SET status='failed',lease_token=NULL,lease_until=NULL,next_attempt_at=NULL,last_error='SYNTHETIC_503'");
+   assert.equal(candidates(f.b).length,0); // manually retried failed state, not a Cron success
+   const r=await inspect(f);
+   assert.equal(r.finding,'poll_failed_with_stale_head');
+   assert.equal(r.headCurrent,false);assert.equal(r.approved,false);assert.equal(r.writePerformed,false);
+ }finally{f.close()}
+});
+test('r54 different poll reference must not be labeled as same-source failed',async()=>{
+ const f=fixture();try{
+   f.a.exec("UPDATE case_calculation_heads SET data_version=6");
+   f.a.prepare("UPDATE case_calculation_poll_jobs SET status='failed',reference_sha256=?").run(B);
+   const r=await inspect(f);
+   assert.equal(r.finding,'head_not_current');assert.equal(r.headCurrent,false);assert.equal(r.approved,false);
+ }finally{f.close()}
+});
+test('r54 reference release change with same-source failed poll remains a terminal failure signal',async()=>{
+ const f=fixture();try{
+   f.a.prepare("UPDATE case_calculation_runs SET reference_sha256=?").run(B);
+   f.a.exec("UPDATE case_calculation_poll_jobs SET status='failed'");
+   const r=await inspect(f);
+   assert.equal(r.finding,'poll_failed_with_stale_head');assert.equal(r.headCurrent,false);
+ }finally{f.close()}
+});
+test('r54 failed prior version after original source bump is not current-version terminal',async()=>{
+ const f=fixture();try{
+   f.a.exec("UPDATE case_data_change_state SET data_version=8");
+   f.a.exec("UPDATE case_calculation_poll_jobs SET status='failed'");
+   const r=await inspect(f);
+   assert.equal(r.finding,'head_not_current');assert.equal(r.headCurrent,false);assert.equal(r.writePerformed,false);
+ }finally{f.close()}
+});
