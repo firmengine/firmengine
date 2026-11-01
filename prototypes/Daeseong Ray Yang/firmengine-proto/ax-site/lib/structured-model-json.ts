@@ -42,6 +42,9 @@ export function structuredModelJsonMatchesSchema(value: unknown, schema: unknown
     if (Array.isArray(rule.enum) && !rule.enum.some(v => JSON.stringify(input) === JSON.stringify(v))) return false;
     const types = typeof rule.type === "string" ? [rule.type] : Array.isArray(rule.type) ? rule.type : [];
     if (types.length && (!types.every(type => typeof type === "string") || !types.some(type => typeMatches(input,type)))) return false;
+    // Explicit nullable values are valid even if the other branch declares object/array keywords.
+    // For non-null, keep conservative fail-closed behavior for untyped structural schemas.
+    const nullableNull = input === null && types.includes("null");
     if (isRecord(input)) {
       const props = isRecord(rule.properties) ? rule.properties : {};
       if (Array.isArray(rule.required) && rule.required.some(key => typeof key !== "string" || !Object.hasOwn(input,key))) return false;
@@ -53,12 +56,12 @@ export function structuredModelJsonMatchesSchema(value: unknown, schema: unknown
         } else if (rule.additionalProperties === false) return false;
         else if (isRecord(rule.additionalProperties) && !match(v,rule.additionalProperties,depth+1)) return false;
       }
-    } else if (rule.type === "object" || rule.properties !== undefined || rule.required !== undefined) return false;
+    } else if (!nullableNull && (rule.type === "object" || rule.properties !== undefined || rule.required !== undefined)) return false;
     if (Array.isArray(input)) {
       if (typeof rule.minItems === "number" && input.length < rule.minItems) return false;
       if (typeof rule.maxItems === "number" && input.length > rule.maxItems) return false;
       if (rule.items !== undefined && !input.every(item => match(item, rule.items, depth + 1))) return false;
-    } else if (rule.type === "array" || rule.items !== undefined) return false;
+    } else if (!nullableNull && (rule.type === "array" || rule.items !== undefined)) return false;
     if (typeof input === "string") {
       if (typeof rule.minLength === "number" && input.length < rule.minLength) return false;
       if (typeof rule.maxLength === "number" && input.length > rule.maxLength) return false;
