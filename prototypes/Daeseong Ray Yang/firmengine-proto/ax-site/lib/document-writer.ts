@@ -52,7 +52,7 @@ export function stableFormRowIds(group:string,data:CaseData,execution:ExecutionS
   if(group==="creditor") return calculation.debtRows.map(row=>row.id);
   if(["secured","disputed","priority","estate","assignment"].includes(group)) {
     const ids=calculation.debtRows.map(row=>row.id);
-    if(group==="assignment") return ids.filter((_,index)=>bindings.rows.creditor?.[index]?.assignment_order!==MISSING_FORM_VALUE);
+    if(group==="assignment") return ids.filter((_,index)=>{const assignmentOrder=bindings.rows.creditor?.[index]?.assignment_order;return typeof assignmentOrder==="string"&&assignmentOrder.trim().length>0&&assignmentOrder!==MISSING_FORM_VALUE;});
     return ids.filter(id=>{const debt=data.debts.find(item=>item.id===id);return !!debt&&(group==="secured"?(debt.secured==="yes"||debt.classification==="secured"):group==="disputed"?debt.classification==="disputed":group==="priority"?debt.priority==="priority":debt.classification==="estate");});
   }
   if(group==="asset") return calculation.assetRows.map(row=>row.id);
