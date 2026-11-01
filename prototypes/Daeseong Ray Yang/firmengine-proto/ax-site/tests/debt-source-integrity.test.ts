@@ -250,3 +250,46 @@ test("principal and interest linked to different source rows are not assembled i
   const result=calculateCase(fixture({splitAmountSubjects:true,total:"120"}),rules);
   assert.equal(result.debtRows[0].totalWon,null);assert.ok(result.issues.includes("DEBT_SOURCE_ROW_IDENTITY_AMBIGUOUS:typed-debt-id-differs-from-source-row"));
 });
+
+
+test("A1-LAW-004 contradictory legal class and security flag block secured/unsecured cap buckets without hiding source total",()=>{
+  for (const [classification,secured] of [["secured","no"],["ordinary","yes"]] as const){
+    const data=fixture({total:"120"});
+    data.debts[0].classification=classification;
+    data.debts[0].secured=secured;
+    const result=calculateCase(data,rules);
+    assert.equal(result.totalDebtWon,"120","source-linked total remains diagnostic");
+    assert.equal(result.securedDebtWon,null,"secured cap is not accepted from contradictory source flags");
+    assert.equal(result.unsecuredDebtWon,null,"unsecured cap is not accepted from contradictory source flags");
+    assert.ok(result.issues.includes("DEBT_COLLATERAL_CLASSIFICATION_CONFLICT:"+data.debts[0].id));
+    assert.ok(result.issues.includes("DEBT_CAP_CLASSIFICATION_INCOMPLETE"));
+  }
+});
+
+test("A1-LAW-004 internally consistent collateral flags keep both cap buckets independently observed",()=>{
+  for (const [classification,secured,expectedSecured,expectedUnsecured] of [
+    ["ordinary","no","0","120"],
+    ["secured","yes","120","0"],
+  ] as const){
+    const data=fixture({total:"120"});
+    data.debts[0].classification=classification;
+    data.debts[0].secured=secured;
+    const result=calculateCase(data,rules);
+    assert.equal(result.totalDebtWon,"120");
+    assert.equal(result.securedDebtWon,expectedSecured);
+    assert.equal(result.unsecuredDebtWon,expectedUnsecured);
+    assert.ok(!result.issues.some(issue=>issue.startsWith("DEBT_COLLATERAL_CLASSIFICATION_CONFLICT:")));
+  }
+});
+
+test("A1-LAW-004 tax classification remains under independent legal-review gate",()=>{
+  for (const [legalReview,expectedUnsecured] of [["unreviewed",null],["accepted","120"]] as const){
+    const data=fixture({total:"120"});
+    data.debts[0].classification="tax";
+    data.debts[0].legalReview=legalReview;
+    const result=calculateCase(data,rules);
+    assert.equal(result.totalDebtWon,"120");
+    assert.equal(result.unsecuredDebtWon,expectedUnsecured);
+    assert.equal(result.securedDebtWon,expectedUnsecured===null?null:"0");
+  }
+});
