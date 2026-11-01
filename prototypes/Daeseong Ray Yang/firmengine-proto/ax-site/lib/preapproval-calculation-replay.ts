@@ -51,10 +51,14 @@ export function auditStoredCalculationReplay(input: {
     if (issues.length < limit) issues.push({code, calculationId: row.calculationId,
       outputPath: row.outputPath, rowId: row.id ?? null});
   };
+  // One physical JSON pointer represents one stored output, irrespective of producer ID.
+  // Keep composite identities separately for expected-output coverage checks.
   const seen = new Set<string>();
+  const physicalPaths = new Set<string>();
   for (const row of input.rows) {
     const key = row.calculationId + "\u0000" + row.outputPath;
-    if (seen.has(key)) push("DUPLICATE_OUTPUT_PATH", row);
+    if (physicalPaths.has(row.outputPath)) push("DUPLICATE_OUTPUT_PATH", row);
+    physicalPaths.add(row.outputPath);
     seen.add(key);
     if (!legalStatus.has(row.status)) push("STORED_STATUS_INVALID", row);
     const pointer = atPointer(input.execution, row.outputPath);
@@ -106,7 +110,7 @@ export function auditStoredCalculationReplay(input: {
     }
   }
   return {schemaVersion: PREAPPROVAL_CALCULATION_REPLAY_VERSION,
-    storedRows: input.rows.length, replayedPaths: seen.size,
+    storedRows: input.rows.length, replayedPaths: physicalPaths.size,
     valid: Object.keys(counts).length === 0, issueCount: Object.values(counts).reduce((n, x) => n + x, 0),
     issueCountByCode: counts, issues, issuesTruncated: Object.values(counts).reduce((n, x) => n + x, 0) > limit,
     courtApprovalInferred: false as const, sourceFactsModified: false as const};
