@@ -171,6 +171,7 @@ export async function prepareDocumentWrite(input:{data:CaseData;evaluation:Deriv
         selectedPeriod:data.context.filingPeriod,
         monthRows:preparedExecution.formBindings!.rows.month??[],
         evidenceCutoff:data.context.evidence_cutoff??null,
+        inspectSourceStreams:true,
       });
       if(coverage.status==="review_required"){
         const detail=[
@@ -178,6 +179,7 @@ export async function prepareDocumentWrite(input:{data:CaseData;evaluation:Deriv
           coverage.outsideMonths.length?"outside="+coverage.outsideMonths.join(","):null,
           coverage.invalidRowIndices.length?"invalidRows="+coverage.invalidRowIndices.join(","):null,
           coverage.futureMonths.length?"afterCutoff="+coverage.futureMonths.join(","):null,
+          coverage.sourceMissingMonths.length?"streamGaps="+coverage.sourceMissingMonths.map(s=>s.streamId+":"+s.missingMonths.join("|")).join(","):null,
         ].filter(Boolean).join("; ");
         for(const reason of coverage.codes){
           if([...preflight.blockers,...preflight.warnings].some(issue=>issue.code===reason))continue;
