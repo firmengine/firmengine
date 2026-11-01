@@ -10,7 +10,7 @@ type PollReconcileRow={
   pollReferenceSha:string|null; pollStatus:string|null; leaseToken:string|null;
   leaseUntil:string|null; headRunId:string|null; headDataVersion:number|null;
   headRevision:number|null; headInputSha:string|null; verifiedRunId:string|null; runDataVersion:number|null;
-  runRevision:number|null; runReferenceSha:string|null; runInputSha:string|null;
+  runRevision:number|null; runReferenceSha:string|null; runInputSha:string|null; runStatus:string|null;
 };
 
 const CHECK_SQL=[
@@ -18,7 +18,7 @@ const CHECK_SQL=[
   "p.case_id AS pollCaseId,p.data_version AS pollDataVersion,p.case_revision AS pollRevision,",
   "p.reference_sha256 AS pollReferenceSha,p.status AS pollStatus,p.lease_token AS leaseToken,p.lease_until AS leaseUntil,",
   "h.run_id AS headRunId,h.data_version AS headDataVersion,h.case_revision AS headRevision,h.input_sha256 AS headInputSha,",
-  "r.id AS verifiedRunId,r.data_version AS runDataVersion,r.case_revision AS runRevision,r.reference_sha256 AS runReferenceSha,r.input_sha256 AS runInputSha",
+  "r.id AS verifiedRunId,r.data_version AS runDataVersion,r.case_revision AS runRevision,r.reference_sha256 AS runReferenceSha,r.input_sha256 AS runInputSha,r.status AS runStatus",
   "FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id",
   "LEFT JOIN case_calculation_poll_jobs p ON p.case_id=c.id",
   "LEFT JOIN case_calculation_heads h ON h.case_id=c.id",
@@ -38,7 +38,12 @@ export async function inspectCaseCalculationPollRecovery(
 ){
  if(!input.caseId||input.caseId.length>300)throw new Error("CALCULATION_POLL_RECOVERY_INVALID_CASE");
  const row=await database.prepare(CHECK_SQL).bind(input.caseId).first<PollReconcileRow>();
- const base={caseId:input.caseId,evidence:"read_only_point_in_time" as const,approved:false as const,writePerformed:false as const};
+ // The stored run's declared status is NOT the same as current head identity,
+ // independent feature verification, staff approval, or court recognition.
+ const rawRunStatus=row?.verifiedRunId?row.runStatus:null;
+ const storedRunStatus=rawRunStatus===null||rawRunStatus===undefined?"unobserved" as const:
+   rawRunStatus==="computed"||rawRunStatus==="provisional"||rawRunStatus==="missing"?rawRunStatus:"conflict" as const;
+ const base={caseId:input.caseId,evidence:"read_only_point_in_time" as const,storedRunStatus,approved:false as const,writePerformed:false as const};
  if(!row)return {...base,finding:"case_unobserved" as const,lease:"unobserved" as const,headCurrent:null};
  if(typeof row.currentDataVersion!=="number"||!Number.isSafeInteger(row.currentDataVersion)||row.currentDataVersion<1||!Number.isSafeInteger(row.currentRevision)||row.currentRevision<1)
    return {...base,finding:"source_unobserved" as const,lease:"unobserved" as const,headCurrent:null};
@@ -48,7 +53,7 @@ export async function inspectCaseCalculationPollRecovery(
  const timestamp=row.leaseUntil===null?NaN:Date.parse(row.leaseUntil);
  const now=input.now??Date.now();
  const lease=row.pollCaseId===null||row.pollStatus!=="running"?"not_applicable" as const:
-  !Number.isFinite(timestamp)||!Number.isFinite(now)?"unobserved" as const:
+  typeof row.leaseToken!=="string"||!row.leaseToken.trim()||!Number.isFinite(timestamp)||!Number.isFinite(now)?"unobserved" as const:
   timestamp<=now?"expired" as const:"live" as const;
  // Same run ID and source version alone cannot prove persisted input identity.
  // Missing/malformed evidence is not equivalent to a confirmed digest conflict.
