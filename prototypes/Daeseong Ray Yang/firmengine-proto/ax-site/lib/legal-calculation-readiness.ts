@@ -14,16 +14,28 @@ const won=(value:unknown):bigint|null=>{
 export function reviewLegalPlanArithmetic(formCode:string,input:{scalars:Record<string,string>}):LegalCalculationReview{
  const issues:LegalCalculationIssue[]=[];
  if(!["D5110","D5111"].includes(formCode))return {version:LEGAL_CALCULATION_READINESS_VERSION,issues,automaticLegalApproval:false};
- const v=(key:string)=>won(input.scalars[key]);
+ // This is a display-integrity gate, not a finding that a term is legally approved.
+ const unresolved=(raw:unknown):boolean=>{
+   if(raw===null||raw===undefined||raw==="")return true;
+   if(typeof raw!=="string")return false;
+   const s=raw.normalize("NFKC").trim();
+   return s==="source-only" || /^\[(?:확인 필요|상충|불일치|누락|오인식|판독(?: 불가)?|검토(?: 필요)?|배분(?: 기준 검토 필요)?|미확정|미관찰|미상|승인전|원문만|원천만|해당없음|source-only)(?::[^\]]+)?\]$/.test(s);
+ };
+ // Repayment duration is a month count, not a monetary amount.
+ const validDisplay=(key:string,raw:unknown):boolean=>
+   key==="repayment_months"
+     ? typeof raw==="string" && /^\d+$/.test(raw.normalize("NFKC").trim())
+     : won(raw)!==null;
+ const v=(key:string)=>key==="repayment_months"&&!validDisplay(key,input.scalars[key])
+   ? null : won(input.scalars[key]);
  const add=(code:string,severity:LegalCalculationIssue["severity"],message:string,statute:string)=>issues.push({code,severity,message,statute});
  // Internal format validation only. No missing value or source-only observation
  // becomes legal approval, and explicit observed string "0" remains valid.
  for(const key of ["approved_monthly_income","recognized_living_cost","monthly_disposable_income",
    "repayment_months","present_value","liquidation_value","monthly_payment","total_repayment"]){
    const raw=(input.scalars as Record<string,unknown>)[key];
-   if(raw===null||raw===undefined||raw===""||typeof raw==="string"&&
-      (/^\s*\[(?:확인 필요|상충|불일치|누락|오인식|판독|검토|배분|미확정|미관찰|미상|승인전|원문만|원천만|해당없음|source-only)/.test(raw)||raw.trim()==="source-only"))continue;
-   if(won(raw)===null) add("PLAN_SCALAR_FORMAT_UNRESOLVED","blocker",
+   if(unresolved(raw))continue;
+   if(!validDisplay(key,raw)) add("PLAN_SCALAR_FORMAT_UNRESOLVED","blocker",
      key+": 금액 또는 회차의 표시 형식이 유효하지 않아 독립 산술 검증을 할 수 없습니다.",
      "FIRMENGINE-INTERNAL-DATA-INTEGRITY");
  }
