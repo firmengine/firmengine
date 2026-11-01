@@ -260,3 +260,25 @@ test("operator can reproject same source revision using saved 95 legal checks wi
     /LEGAL_AUTOMATION_NO_CURRENT_FAILED_JOB/);
  }finally{h.close();}
 });
+
+test("cross-case calculation Run cannot acquire a legal AI lease even with matching version and SHA",async()=>{
+ const h=setup();try{
+  const source=await h.initialize("synthetic-owner-a");
+  const foreign=await h.initialize("synthetic-owner-b");
+  assert.equal(source.version,foreign.version);
+  const original=h.sqlite.prepare("SELECT run_id AS runId,input_sha256 AS inputSha256 FROM case_calculation_heads WHERE case_id=?").get(source.caseId) as {runId:string;inputSha256:string};
+  h.sqlite.prepare("UPDATE case_calculation_heads SET run_id=?,input_sha256=? WHERE case_id=?")
+   .run(foreign.calculationRunId,foreign.hash,source.caseId);
+  let calls=0;
+  const services=h.services(source.data,async()=>{calls++;return {stage:"legal_review",remaining:10};});
+  const blocked=await drainCaseLegalAutomation(h.db,{caseId:source.caseId,limit:1,services});
+  assert.equal(blocked.scanned,0,"foreign-run head is not a scheduler candidate");
+  assert.equal(calls,0,"no paid legal model call");
+  assert.equal((h.sqlite.prepare("SELECT COUNT(*) AS n FROM case_legal_automation_jobs WHERE case_id=?").get(source.caseId) as {n:number}).n,0,"no foreign-run job inserted");
+  h.sqlite.prepare("UPDATE case_calculation_heads SET run_id=?,input_sha256=? WHERE case_id=?")
+   .run(original.runId,original.inputSha256,source.caseId);
+  const valid=await drainCaseLegalAutomation(h.db,{caseId:source.caseId,limit:1,services});
+  assert.equal(valid.scanned,1,"valid same-case head remains schedulable");
+  assert.equal(calls,1);
+ }finally{h.close();}
+});
