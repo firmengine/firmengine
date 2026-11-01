@@ -485,6 +485,14 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
       continue;
     }
     if (guarantee?.capTreatment === "exclude" && guarantee.capTreatmentReviewed === true && !!guarantee.reviewReason?.trim()) continue;
+    // A security flag that contradicts the typed legal class must not be
+    // assigned to either debt cap bucket. The observed debt total is preserved;
+    // classification requires an independent staff/lawyer source review.
+    if ((debt.classification === "secured" && debt.secured === "no") || (debt.classification === "ordinary" && debt.secured === "yes")) {
+      capComplete = false;
+      issues.push("DEBT_COLLATERAL_CLASSIFICATION_CONFLICT:" + debt.id);
+      continue;
+    }
     if (row.totalWon === null || debt.secured === "unknown" || debt.classification === "unknown" || !debt.asOf || debt.asOf !== data.context.asOf || (["tax", "estate", "disputed", "non_dischargeable"].includes(debt.classification) && debt.legalReview !== "accepted")) { capComplete = false; continue; }
     if (debt.secured === "yes") secured += BigInt(row.totalWon); else unsecured += BigInt(row.totalWon);
   }
