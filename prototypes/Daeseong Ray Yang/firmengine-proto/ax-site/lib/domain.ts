@@ -712,9 +712,11 @@ export function retractDocument(input: CaseData, documentId: string): CaseData {
   return data;
 }
 
-export function extractionCacheKey(input: { documentId: string; documentHash: string; pages: number[]; mappingVersion: string; promptVersion: string; model: string; ruleReleaseId: string }): string {
+export function extractionCacheKey(input: { documentId: string; documentHash: string; pages: number[]; mappingVersion: string; promptVersion: string; model: string; ruleReleaseId: string; referenceSha256?: string }): string {
+  // Include the request-scoped reference snapshot, not only the static rule ID:
+  // editable approved reference values can change without changing that ID.
   // Deliberately includes identity as cache values carry document/page references.
-  return JSON.stringify([input.documentId, input.documentHash, [...input.pages].sort((a, b) => a - b), input.mappingVersion, input.promptVersion, input.model, input.ruleReleaseId]);
+  return JSON.stringify([input.documentId, input.documentHash, [...input.pages].sort((a, b) => a - b), input.mappingVersion, input.promptVersion, input.model, input.ruleReleaseId, input.referenceSha256 ?? null]);
 }
 
 export interface ExtractionPayload {
