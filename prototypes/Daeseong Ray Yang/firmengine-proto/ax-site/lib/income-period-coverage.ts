@@ -63,7 +63,11 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
     if(!covered.has(month))result.missingMonths.push(monthKey(month));
   }
   if(result.missingMonths.length)code("D5103_SELECTED_PERIOD_COVERAGE_GAP");
-  if(input.evidenceCutoff!==undefined&&input.evidenceCutoff!==null){
+  // A missing observation cutoff is unknown, not a verified through-date.
+  // Drafts may warn; final reviewed D5103 needs an explicit evidence date.
+  if(input.evidenceCutoff===undefined||input.evidenceCutoff===null){
+    code("D5103_EVIDENCE_CUTOFF_UNOBSERVED");
+  } else {
     const cutoff=dateParts(input.evidenceCutoff);
     if(!cutoff)code("D5103_EVIDENCE_CUTOFF_INVALID");
     else {
