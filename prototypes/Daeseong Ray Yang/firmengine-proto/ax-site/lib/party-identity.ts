@@ -16,6 +16,13 @@ export function candidateSubjectLinks(run: IntakeRun, idFactory: () => string): 
     scopeKey: `intake-subject:${subject.subjectId}`,
     status: "candidate", basisRefs: [], version: 1, reviewer: null }));
 }
+/** Confirm only an unambiguous, same-kind typed counterpart. Person/household,
+ * event, expense and procedure subjects have no separate typed identity target
+ * in this workflow yet: keep them as candidates pending a reviewed crosswalk. */
+export function subjectLinkTargetKindAllowed(link: Pick<SubjectLink,"subjectScope">, targetKinds: readonly string[]): boolean {
+  return targetKinds.length === 1 && ["case","income","debt","asset"].includes(link.subjectScope) && link.subjectScope === targetKinds[0];
+}
+
 export function confirmSubjectLink(link: SubjectLink, input: { typedEntityId: string; reviewer: string; expectedVersion: number; evidenceRefs: string[] }): SubjectLink {
   if (link.status !== "candidate" || link.version !== input.expectedVersion) throw new Error("Subject link is stale or not a candidate.");
   if (!input.typedEntityId.trim() || !input.reviewer.trim() || !input.evidenceRefs.length) throw new Error("Confirmation requires a typed entity, reviewer, and basis.");
