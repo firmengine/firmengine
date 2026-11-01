@@ -85,3 +85,16 @@ test("monthly required evidence must cover every complete calendar month, not ju
  data.facts.push({...data.facts[0],id:"f2",logicalId:"f2",version:1,periodStart:"2026-02-01",periodEnd:"2026-02-28"});
  assert.ok(!evaluateCaseFieldLineage(data,rows).fields[0].blockerCandidates.includes("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE"));
 });
+
+// Candidate classification only: no court approval or substantive claim decision.
+test("A3 health insurance arrears are debt-form candidates, not insurance policy assets",()=>{
+ const r=buildFeatureLineageAudit(INTAKE_CATALOG_SEED,sha,{limit:1000});
+ const arrear=r.fields.find(f=>f.canonicalFieldId==="health_insurance_arrears::unpaid_contribution");
+ const policy=r.fields.find(f=>f.canonicalFieldId==="insurance_policy_asset::surrender_value");
+ assert.ok(arrear,"health-insurance arrear OCR evidence must remain in the source index");
+ assert.ok(policy,"insurance policy OCR evidence must remain in the source index");
+ assert.ok(arrear.forms.some(f=>f.code==="D5106"),"debt-form review candidate must remain");
+ assert.ok(!arrear.forms.some(f=>f.code==="D5101"),"arrears must not acquire asset-form candidate by substring");
+ assert.ok(policy.forms.some(f=>f.code==="D5101"),"insurance-policy asset review candidate must remain");
+ assert.equal(r.legalApprovalInferred,false);
+});
