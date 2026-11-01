@@ -36,6 +36,18 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
    rows.push({installment:month,paymentDate:null,phaseId:"generated-default",debtId:debt.id,claimClass,principalWon:mp.toString(),interestWon:mi.toString(),otherComponentWon:"0",fundingSourceId:claimClass==="ordinary"?"ordinary_budget":claimClass==="priority"?"priority_budget":"estate_budget",balanceAfter:after.toString(),sourceIds:[...a.factIds]});
   }
   addTrusteeFeeRows(data,rows,months!,issues,()=>"generated-default",()=>null);
+  // Independently rounded principal/interest remainders can front-load a
+  // payment above the proposed monthly ordinary installment. Keep the
+  // evidence and amounts intact; require review rather than auto-rebalance.
+  const proposedOrdinaryMonthly=calculation.monthlyPaymentWon;
+  if(proposedOrdinaryMonthly!==null&&proposedOrdinaryMonthly!==undefined){
+   if(!nat(proposedOrdinaryMonthly))issues.push("DEFAULT_ORDINARY_MONTHLY_PROPOSAL_INVALID");
+   else for(let month=1;month<=months!;month++){
+    const paid=rows.filter(r=>r.installment===month&&r.claimClass==="ordinary")
+      .reduce((total,r)=>total+BigInt(r.principalWon)+BigInt(r.interestWon),0n);
+    if(paid>BigInt(proposedOrdinaryMonthly))issues.push("DEFAULT_ORDINARY_MONTHLY_PROPOSAL_EXCEEDED:"+month);
+   }
+  }
   return {status:issues.length?"blocked":"provisional",rows:orderRows(rows),issues:[...new Set(issues)]};
  }
  const expectedInstallments=schedule.expectedInstallments??data.context.planMonths;
