@@ -132,7 +132,7 @@
 
 - [ ] **A1-DOC-001** 상담문/녹취 요약이 신청인과 가족·상대방을 구별하는지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-002** 신규 상담 등록에서 사건·서류목록 생성까지 실제 클릭 경로. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **51차 부분 [ ]:** 신규 사건 폼→POST→상담 append/analyze→matchIntakeChecklist→D1 요구서류/field-plan 준비→상담 UI 반환 정적 호출·테이블 경로 확인. 합성 사건 POST Node 회귀 실행은 LAW-003과 공통; 실제 상담 AI·브라우저·D1 서류목록 재조회는 미실행. [51차 영수증](release-audit-runs/A1/20261101-round51-intake-court-catalog-audit.md).
-- [ ] **A1-DOC-003** 추가 상담 후 필수/권장/법원개별 서류 목록 변경. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DOC-003** 추가 상담 후 필수/권장/법원개별 서류 목록 변경. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **53차 부분 [ ]:** 추가·정정 상담 note 활성 필터 V8 3/3, 기존 run 해제→재분석→현행 run 요구서류 조회 최소 호환 스키마 Node SQLite 7/7; 원문·기준 판본과 active run CAS, pendingReanalysis·화면 stale 경로 확인. 실제 상담 AI/Cloudflare D1·브라우저·85문서 E2E 미검증. [53차 영수증](release-audit-runs/A1/20261101-round53-consultation-debt-observation-1655KST.md).
 - [ ] **A1-DOC-004** 근로·사업·겸업·무직·휴직별 요구서류 달라짐. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-005** 가족관계/주소/혼인/부양대상 변경 서류 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DOC-006** 월별 급여·사업장·계좌·채권자 다중 문서 유지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -175,7 +175,7 @@
 - [ ] **A1-LAW-001** 제579조 신청인 자격/소득 지속성과 증빙 요구. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-002** 제595조 기각사유·기존 면책·허위 진술 위험 검토. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-003** 미확정 관할 사건에 서울 기준 자동 확정 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **51차 신규 P1 후보 [ ]:** 신규 사건 UI `courtId=seoul` 기본 선택 및 POST 누락/null→서울, 공백 그대로 저장을 원본 POST+합성 D1 V8 **main 4/7 vs 수정 7/7** 재현. [Draft PR #128](https://github.com/firmengine/firmengine/pull/128)에서 미확인 명시·기본 unknown 및 Node source-bound **10/10**(실 D1/브라우저 아님), 코드/변호사 인수 전 미병합. 기존 서울 우선 1차 업무기준·관할 인가 확정과 분리, 기존 사건 자동 변경 없음. [51차 영수증](release-audit-runs/A1/20261101-round51-intake-court-catalog-audit.md).
-- [ ] **A1-LAW-004** 담보/일반/우선/별제권/분쟁 채권 법률 분기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-LAW-004** 담보/일반/우선/별제권/분쟁 채권 법률 분기. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **53차 신규 P1 후보 [ ]:** 담보 법률분류와 secured yes/no 상충 시 기존 main의 담보/무담보 cap에 120원을 잘못 배치하는 합성 V8 반례 2건 재현. [Draft PR #132](https://github.com/firmengine/firmengine/pull/132)에서 cap null 검토보류·관측 총채무 120 보존, 실제 브랜치 소스 V8 7/7 기대 일치. 프로젝트 Node 회귀 3개 블록 작성/미실행, 변호사·계산사무장 승인 및 실 D1/CI 전 미병합. [53차 영수증](release-audit-runs/A1/20261101-round53-consultation-debt-observation-1655KST.md).
 - [ ] **A1-LAW-005** 보증/양도/채권자 사인거래와 채권자목록 반영. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-006** 소송/압류/전부명령의 절차 리스크 출처. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-LAW-007** 재산 은닉·증여·명의변경·편파변제 의심의 조사 경로. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
@@ -195,7 +195,7 @@
 
 - [ ] **A1-DATA-001** 상담→문서→페이지→행→693 ID→Fact의 단방향/역방향 연결. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-002** 85서류 종류/48추출 패밀리 ID 고유성. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **51차 source-only 부분 [ ]:** 원문 catalog JSON 파싱에서 **85 문서 ID/고유85, OCR 48 family/고유48, 정의 85/고유85**, 문서별 family 허용/존재/전역 필드 중복 위반 **0**, 실제 사용 family 48/48. seed 규칙54+coverage16=70, 모든 85 문서가 primary 또는 alternative로 규칙 연결됨. 직원 편집 현행 DB catalog·실제 OCR/브라우저/CI 미검증. [51차 영수증](release-audit-runs/A1/20261101-round51-intake-court-catalog-audit.md).
-- [ ] **A1-DATA-003** 원문 0/누락/오인식/비해당/상충 타입 보존. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
+- [ ] **A1-DATA-003** 원문 0/누락/오인식/비해당/상충 타입 보존. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **53차 부분 [ ]:** 원본 observeField 함수 몸체의 V8 합성 10/10; 미관찰/null·관측0·blank·masked·conflict·not_seen·앵커 있는 explicit_none 등 sourceClaim/상태 분리, caseDecision=unreviewed 유지. canonical 바인딩은 격리 stub; 실제 OCR→D1→typed Fact→계산·법률·법원서식 E2E 미검증. [53차 영수증](release-audit-runs/A1/20261101-round53-consultation-debt-observation-1655KST.md).
 - [ ] **A1-DATA-004** 동일 OCR ID의 복수행과 단수합계 last-wins 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재. **13차 부분([ ] 유지):** `projectPage` 실제 함수 격리 V8 2/2: 같은 canonical ID 두 행은 Fact 두 개 유지, 같은 행 상충 후보도 별도 Fact 두 개 유지(typed 자동 소득/채무 0). 실제 OCR→D1→계산 last-wins E2E 미실행. [영수증](release-audit-runs/A1/20261031-round13-substitution-evidence-legal-catalog-ocr-multirow-0053KST.md).
 - [ ] **A1-DATA-005** 신청인/배우자/채권자/사업자/계좌 ID 혼합 금지. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
 - [ ] **A1-DATA-006** 원문 숫자와 Fact numeric/typed numeric 삼중 대조. 결과: 재현 입력·예상/실제·미완료 단계·수정 SHA 기재.
