@@ -39,13 +39,20 @@ export interface DocumentReceptionView {
 /** Read-only reception aggregation. Unknown states never count as completed. */
 export function aggregateDocumentReception(input: DocumentReceptionInput): DocumentReceptionView {
   const processingCountsByStatus: Record<string,number> = {}, pageCountsByRole: Record<string,number> = {}, readingIssues: DocumentReceptionView["readingIssues"] = [];
-  for (const page of input.pages) {
+  // Reception is scoped to one uploaded document. Another document's page 1
+  // must never satisfy this document's page 1, even if a caller mixes rows.
+  const scopedPages=input.pages.filter(page=>page.documentId===input.document.id);
+  const scopedIssues=(input.fieldIssues??[]).filter(issue=>issue.documentId===input.document.id);
+  const foreignPages=input.pages.filter(page=>page.documentId!==input.document.id);
+  const foreignIssues=(input.fieldIssues??[]).filter(issue=>issue.documentId!==input.document.id);
+  if(foreignPages.length||foreignIssues.length)readingIssues.push({code:"document_scope_mismatch",severity:"required",documentId:input.document.id,page:null,message:"Reception input contains another document's page or field issue; verify document identity before confirming read completion."});
+  for (const page of scopedPages) {
     processingCountsByStatus[page.status] = (processingCountsByStatus[page.status] ?? 0) + 1;
     const role = ["evidence","filed_form","administrative","unknown"].includes(page.role) ? page.role : "unknown";
     pageCountsByRole[role] = (pageCountsByRole[role] ?? 0) + 1;
     if (role === "unknown") readingIssues.push({code:"page_role_unknown",severity:"required",documentId:page.documentId,page:page.page,message:`Unrecognized page role: ${page.role}`});
   }
-  const byPage = new Map(input.pages.map(page => [page.page,page]));
+  const byPage = new Map(scopedPages.map(page => [page.page,page]));
   const required = [...new Set(input.requiredPages)].sort((a,b)=>a-b), completed:number[] = [], missing:number[] = [], incomplete:number[] = [];
   for (const pageNo of required) {
     const page = byPage.get(pageNo);
@@ -59,16 +66,16 @@ export function aggregateDocumentReception(input: DocumentReceptionInput): Docum
       else if (page.status === "failed" || page.status === "review_required") readingIssues.push({code:`page_${page.status}`,severity:"required",documentId:page.documentId,page:pageNo});
     }
   }
-  for (const issue of input.fieldIssues ?? []) {
+  for (const issue of scopedIssues) {
     if (issue.state === "readable") continue;
     readingIssues.push({code:`field_${issue.state}`,severity:issue.required?"required":"warning",documentId:issue.documentId,page:issue.page,fieldId:issue.fieldId,quote:issue.quote,bbox:issue.bbox,message:issue.message});
   }
   const uploadState = input.document.status === "deleted" ? "withdrawn" : !input.document.originalReady || !input.document.pagesReady ? "upload_pending" : "ready";
   const hasRequiredIssue = readingIssues.some(issue => issue.severity === "required");
-  const hasUnknownStatus = input.pages.some(page => !["pending","awaiting_upload","processing","completed","failed","review_required"].includes(page.status));
-  const hasFailedOrReview = input.pages.some(page => page.status === "failed" || page.status === "review_required");
-  const hasProcessing = input.pages.some(page => page.status === "processing");
-  const hasQueued = input.pages.some(page => page.status === "pending" || page.status === "awaiting_upload");
+  const hasUnknownStatus = scopedPages.some(page => !["pending","awaiting_upload","processing","completed","failed","review_required"].includes(page.status));
+  const hasFailedOrReview = scopedPages.some(page => page.status === "failed" || page.status === "review_required");
+  const hasProcessing = scopedPages.some(page => page.status === "processing");
+  const hasQueued = scopedPages.some(page => page.status === "pending" || page.status === "awaiting_upload");
   const policyNotRequired = input.readNotRequired?.policyVerified === true && !!input.readNotRequired.reason.trim();
   let primaryStatus: DocumentReceptionView["primaryStatus"];
   if (uploadState === "withdrawn") primaryStatus = "withdrawn";
@@ -76,8 +83,8 @@ export function aggregateDocumentReception(input: DocumentReceptionInput): Docum
   else if (hasRequiredIssue || hasUnknownStatus || hasFailedOrReview) primaryStatus = "attention_required";
   else if (hasProcessing) primaryStatus = "processing";
   else if (hasQueued) primaryStatus = "queued";
-  else if (policyNotRequired && !input.pages.length) primaryStatus = "not_required";
-  else if (required.length && completed.length === required.length && !(input.fieldIssues ?? []).some(issue => issue.required && issue.state !== "readable")) primaryStatus = "read_complete";
+  else if (policyNotRequired && !scopedPages.length) primaryStatus = "not_required";
+  else if (required.length && completed.length === required.length && !scopedIssues.some(issue => issue.required && issue.state !== "readable")) primaryStatus = "read_complete";
   else if (!required.length && policyNotRequired) primaryStatus = "not_required";
   else primaryStatus = "attention_required";
   return {kind:"read_only_derived_projection_not_persisted_enum",primaryStatus,uploadState,processingCountsByStatus,pageCountsByRole,readingIssues,requiredPageCoverage:{required,completed,missing,incomplete},sourceRevision:input.sourceRevision};
