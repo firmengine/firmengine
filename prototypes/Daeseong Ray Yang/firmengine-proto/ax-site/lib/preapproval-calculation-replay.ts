@@ -58,7 +58,14 @@ export function auditStoredCalculationReplay(input: {
   // Verify the stored set in both directions when the exact producer contract is available.
   const expectedPairs = input.expectedOutputs
     ? new Set(input.expectedOutputs.map(x => x.calculationId + "\u0000" + x.outputPath)) : null;
-  // Source IDs must match this execution\x27s producer, not merely be any current Fact.\n  // This is data lineage consistency only; it does not infer legal recognition.\n  const expectedSources = new Map<string,string[]>();\n  for (const output of input.expectedOutputs ?? []) {\n    if (output.sourceFactIds !== undefined)\n      expectedSources.set(output.calculationId + "\u0000" + output.outputPath, [...output.sourceFactIds].sort());\n  }\n  for (const row of input.rows) {
+  // Source IDs must match this execution's producer, not merely be any current Fact.
+  // This is data lineage consistency only; it does not infer legal recognition.
+  const expectedSources = new Map<string,string[]>();
+  for (const output of input.expectedOutputs ?? []) {
+    if (output.sourceFactIds !== undefined)
+      expectedSources.set(output.calculationId + "\u0000" + output.outputPath, [...output.sourceFactIds].sort());
+  }
+  for (const row of input.rows) {
     const key = row.calculationId + "\u0000" + row.outputPath;
     if (physicalPaths.has(row.outputPath)) push("DUPLICATE_OUTPUT_PATH", row);
     physicalPaths.add(row.outputPath);
