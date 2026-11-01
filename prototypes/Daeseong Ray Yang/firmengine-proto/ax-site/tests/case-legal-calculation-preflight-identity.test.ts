@@ -36,7 +36,7 @@ function fixture(){
    async all<T>(){return{results:sqlite.prepare(sql).all(...values) as T[]};}};
   return stmt;
  }} as unknown as D1Database;
- const data={context:{id:"synthetic-1",revision:3,courtId:"",applicationDate:""}} as CaseData;
+ const data={context:{id:"synthetic-1",revision:3,courtId:"",applicationDate:""}} as unknown as CaseData;
  const swap=(runId:string,inputSha=INPUT_B)=>
   sqlite.prepare("UPDATE case_calculation_heads SET run_id=?,input_sha256=? WHERE case_id='synthetic-1'").run(runId,inputSha);
  return {sqlite,db,data,swap};
