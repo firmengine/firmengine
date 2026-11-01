@@ -16,7 +16,7 @@ export interface ReplayIssue {
   code: "INVALID_POINTER" | "RUNTIME_OUTPUT_MISSING" | "STORED_JSON_INVALID" |
     "OUTPUT_VALUE_MISMATCH" | "STORED_STATUS_INVALID" | "STORED_FACT_IDS_INVALID" |
     "SOURCE_FACT_NOT_CURRENT" | "DUPLICATE_OUTPUT_PATH" | "STORED_WON_MISMATCH" |
-    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED" | "STORED_STATUS_VALUE_CONFLICT";
+    "EMPTY_STORED_OUTPUTS" | "EXPECTED_OUTPUT_NOT_PERSISTED" | "UNEXPECTED_OUTPUT_PERSISTED" | "STORED_STATUS_VALUE_CONFLICT";
   calculationId: string;
   outputPath: string;
   rowId: string | null;
@@ -55,11 +55,15 @@ export function auditStoredCalculationReplay(input: {
   // Keep composite identities separately for expected-output coverage checks.
   const seen = new Set<string>();
   const physicalPaths = new Set<string>();
+  // Verify the stored set in both directions when the exact producer contract is available.
+  const expectedPairs = input.expectedOutputs
+    ? new Set(input.expectedOutputs.map(x => x.calculationId + "\u0000" + x.outputPath)) : null;
   for (const row of input.rows) {
     const key = row.calculationId + "\u0000" + row.outputPath;
     if (physicalPaths.has(row.outputPath)) push("DUPLICATE_OUTPUT_PATH", row);
     physicalPaths.add(row.outputPath);
     seen.add(key);
+    if (expectedPairs && !expectedPairs.has(key)) push("UNEXPECTED_OUTPUT_PERSISTED", row);
     if (!legalStatus.has(row.status)) push("STORED_STATUS_INVALID", row);
     const pointer = atPointer(input.execution, row.outputPath);
     if (!pointer.found) {
