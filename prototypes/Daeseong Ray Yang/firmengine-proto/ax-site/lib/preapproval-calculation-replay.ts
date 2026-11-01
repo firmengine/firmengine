@@ -81,22 +81,30 @@ export function auditStoredCalculationReplay(input: {
     catch { parsedOk = false; push("STORED_JSON_INVALID", row); }
     if (pointer.found && parsedOk && JSON.stringify(pointer.value) !== JSON.stringify(parsed))
       push("OUTPUT_VALUE_MISMATCH", row);
-    // A stored status cannot contradict whether the producer observed a value.
-    // This does not change or infer legal recognition of any financial amount.
+    // Missing contradicts observed value; blocked is also valid for observed
+    // malformed/source-unapproved values and must not be treated as missing.
+    // This is storage integrity, never legal recognition or approval.
     if (parsedOk) {
       const unobserved = parsed === null || parsed === "unknown";
       if (unobserved ? row.status === "computed" || row.status === "provisional"
-                     : row.status === "missing" || row.status === "blocked")
+                     : row.status === "missing")
         push("STORED_STATUS_VALUE_CONFLICT", row);
     }
-    // Mirror case-calculation-feature-store.won() for exact integer text and safe integer numbers.
+    // Mirror the canonical Won storage contract (see #160), not the legacy
+    // permissive regex that allowed negative-zero and leading-zero strings.
     // SQL NULL stays distinct from an observed 0; a nonmoney/missing value has no Won column.
     const endName = row.outputPath.split("/").at(-1) ?? "";
     const canonicalWon = /Won$/.test(endName) && parsedOk
-      ? typeof parsed === "string" && /^-?\d+$/.test(parsed) ? parsed
+      ? typeof parsed === "string" && /^(?:0|-?[1-9]\d*)$/.test(parsed) ? parsed
         : typeof parsed === "number" && Number.isSafeInteger(parsed) ? String(parsed)
         : null
       : null;
+    // Observed malformed Won cannot be asserted as computed/provisional even
+    // if a legacy writer persisted value_won=NULL. A blocked raw string is valid
+    // evidence of a failed classification, not evidence of a computed amount.
+    if (parsedOk && /Won$/.test(endName) && parsed !== null && parsed !== "unknown" && canonicalWon === null &&
+        (row.status === "computed" || row.status === "provisional"))
+      push("STORED_STATUS_VALUE_CONFLICT", row);
     if (parsedOk && row.valueWon !== undefined && row.valueWon !== canonicalWon)
       push("STORED_WON_MISMATCH", row);
     let storedSourceIds: string[] | null = null;
