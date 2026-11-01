@@ -19,6 +19,8 @@ const cases:[string,Record<string,string>[],string,string|null][]=[
   ["wage 12 and business 1", [...months.map(m=>row("W",m)),row("B","2026-01","1,000,000")],"review_required","D5103_SOURCE_STREAM_COVERAGE_REVIEW_REQUIRED"],
   ["employer change 6 plus 6 requires manual scope review", [...months.slice(0,6).map(m=>row("W1",m)),...months.slice(6).map(m=>row("W2",m))],"review_required","D5103_SOURCE_STREAM_COVERAGE_REVIEW_REQUIRED"],
   ["two complete independent streams", [...months.map(m=>row("W",m)),...months.map(m=>row("B",m,"1,000,000"))],"complete",null],
+  ["two different businesses B1 full and B2 11 months", [...months.map(m=>row("B1",m,"1,000,000")),...months.slice(0,11).map(m=>row("B2",m,"700,000"))],"review_required","D5103_SOURCE_STREAM_COVERAGE_REVIEW_REQUIRED"],
+  ["two different businesses both complete", [...months.map(m=>row("B1",m,"1,000,000")),...months.map(m=>row("B2",m,"700,000"))],"complete",null],
   ["source-only business cannot silently complete", [...months.map(m=>row("W",m)),row("B","2026-03","1,000,000",{source_review_status:"unreviewed"})],"review_required","D5103_SOURCE_REVIEW_REQUIRED"],
   ["VAT gross-only cannot become recognized income", [...months.map(m=>row("W",m)),row("B","2026-03","1,000,000",{source_calc_role:"gross_turnover_only"})],"review_required","D5103_SOURCE_REVIEW_REQUIRED"],
   ["unlinked Fact cannot establish a complete month", [...months.map(m=>row("W",m)),row("B","2026-03","1,000,000",{source_fact_ids:""})],"review_required","D5103_SOURCE_LINEAGE_UNRESOLVED"],
@@ -38,4 +40,13 @@ test("missing cutoff is never interpreted as complete",()=>assert.ok(check(month
 test("legacy source-neutral helper mode retains existing contract",()=>{
  const original=months.map(period=>({period,net_income:"0"}));
  assert.equal(check(original,"2026-12-31",false).status,"complete");
+});
+
+test("same Fact across two full source streams must remain a human review conflict",()=>{
+ const inputs=[...months.map(m=>row("B1",m,"1,000,000")),...months.map(m=>row("B2",m,"700,000"))];
+ inputs[12].source_fact_ids=inputs[0].source_fact_ids;
+ const observed=check(inputs);
+ assert.equal(observed.status,"review_required");
+ assert.ok(observed.codes.includes("D5103_CROSS_STREAM_FACT_REVIEW_REQUIRED"));
+ assert.deepEqual(observed.sharedFactIds,["SYN-B1-2026-01"]);
 });
