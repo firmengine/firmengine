@@ -1,9 +1,10 @@
 # FirmEngine A1 69차 — 갈음 A←B+C / 서울 424호 관할·시행 / Fact 정정·철회
 
 - 회차: 2026-11-02 08:47 KST 시작 기준. 대상: GitHub `firmengine/firmengine` **main**, 허용 경로 `prototypes/Daeseong Ray Yang/firmengine-proto/ax-site/` 내부 한정.
-- 감사 시작/수정 직전 main HEAD: `7a2fea277221e3ded9540e2237c97736aff0bbc7`. 직전 main 커밋 A3 r68 `7a2fea2`, `d42d151`; A2 r68 `92aba53`, `d7058ae`; A1 r68 보드 `e14f05e`. 동시 에이전트 작업 가능.
+- 감사 시작 main HEAD: `7a2fea277221e3ded9540e2237c97736aff0bbc7`. 직전 main 커밋 A3 r68 `7a2fea2`, `d42d151`; A2 r68 `92aba53`, `d7058ae`; A1 r68 보드 `e14f05e`. 동시 에이전트 작업 가능.
 - 읽은 단일 인수 보드: `docs/PRODUCT_RELEASE_INTEGRATION_BOARD.md`, 원본 blob `6772e097386c478e9e4b7ea82f7fae6bdff27ac6`; 이전 A1 68차 영수증 blob `c3ed4b7db62315d42a2ffc3c605eb42b9195577e`. 기존 테스트 `tests/document-substitution.test.ts` blob `0bb1478bac062f3daa844f10374440af6cbdceb2`, `tests/domain.test.ts` blob `2a029bf0b6d37fc3e582a79003a8b3db311877fd`, `db/schema.ts` blob `933f8686845ac14669312dd21bf85e02c62ed5e6`.
 - 기존 변경 PR은 #57(A1 DOC 갈음 증빙역할, Draft), #94(A1 LAW 관할미확인, Draft), #12(A1 DATA review-only append-only, Draft) 확인. 다른 작업의 PR·코드는 덮어쓰지 않음.
+- 반영 타임라인: 영수증 생성 `b2b2c7b37af17b92833734971404216639166694`; 그 후 타 에이전트 변경을 포함한 보드 갱신 직전 확인 main HEAD `a8e6775e281636362d76a3b2f07e834b5fdb2d18`, 보드 blob `7ee8610b6ee0c1762ca53b3ddc26dda53d34d009`에서 **세 ID만** 보존 병합; 보드 커밋 `5ef7c05b914931a36a5672803a23d37e35bd67a5` (보드 새 blob `c60744c39609730aadb8d5073b9724b77a6f18cb`). 다른 에이전트 변경은 덮어쓰지 않음.
 - 이번 회차 역할: **사용자·서류담당자 → 변호사 → 데이터담당자**. A1-DOC-011, A1-LAW-012, A1-DATA-011 모두 **[ ] 미완료** 유지.
 
 ## 실제 검증 방식과 범위
