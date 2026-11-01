@@ -208,7 +208,9 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
       source_stream_id:incomeStreamById.get(calculationRow.id)??"",
       source_fact_ids:income?.factIds.join(",")??"",
       source_review_status:income?.recognition??"unreviewed",
-      source_calc_role:income?.sourceCalculationRole??"period_income_observation",
+      // Missing source classification is not proof of period income observation.
+      // Preserve unknown for the review-only coverage gate; never auto-recognize net income.
+      source_calc_role:income?.sourceCalculationRole??"",
       period:month??MISSING_FORM_VALUE,
       revenue:usable?numeric(income?.gross):MISSING_FORM_VALUE,
       expense:usable?numeric(income?.expenses):MISSING_FORM_VALUE,
