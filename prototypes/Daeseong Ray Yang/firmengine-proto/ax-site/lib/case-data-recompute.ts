@@ -117,9 +117,24 @@ export async function drainCaseDataUpdates(database:D1Database,input:{
      const value=await recomputeCaseDataUpdate(database,{
        caseId:row.caseId,loadCase:()=>input.loadCase(row.caseId),now:input.now
      });
-     // A successful or superseded attempt must NOT cool down the newer source version.
-     await database.prepare("DELETE FROM case_calculation_poll_jobs WHERE case_id=? AND lease_token=?")
-       .bind(row.caseId,lease).run();
+     // A changed head is not a lease-release acknowledgement. A newer worker
+     // may own the row already; never call its result current on a 0-row DELETE.
+     // An absent/invalid D1 ACK could follow a successful COMMIT, so do not
+     // turn this cleanup uncertainty into a fresh calculator retry or failure.
+     let cleanupChanges:unknown;
+     try{
+       const cleanupAck=await database.prepare("DELETE FROM case_calculation_poll_jobs WHERE case_id=? AND lease_token=?")
+         .bind(row.caseId,lease).run();
+       cleanupChanges=cleanupAck?.meta?.changes;
+     }catch{
+       cleanupChanges=undefined;
+     }
+     if(cleanupChanges!==1){
+       results.push({caseId:row.caseId,dataVersion:row.dataVersion,
+         status:cleanupChanges===0?"superseded" as const:"cleanup_unobserved" as const,
+         ...(cleanupChanges===0?{}:{error:"CASE_CALCULATION_POLL_RELEASE_ACK_UNOBSERVED"})});
+       continue;
+     }
      results.push(value);
    }catch(error){
      const receipt=await database.prepare("SELECT attempts FROM case_calculation_poll_jobs WHERE case_id=? AND lease_token=?")
