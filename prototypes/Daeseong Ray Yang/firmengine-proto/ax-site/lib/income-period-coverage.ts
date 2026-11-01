@@ -6,6 +6,8 @@ export interface SelectedIncomePeriodCoverageInput {
   selectedPeriod?: { start: string; end: string } | null;
   monthRows: ReadonlyArray<Readonly<Record<string, string>>>;
   evidenceCutoff?: string | null;
+  /** Internal source-stream provenance check; never automatic legal recognition. */
+  inspectSourceStreams?: boolean;
 }
 export interface SelectedIncomePeriodCoverageResult {
   status: "not_applicable" | "complete" | "review_required";
@@ -14,6 +16,7 @@ export interface SelectedIncomePeriodCoverageResult {
   outsideMonths: string[];
   invalidRowIndices: number[];
   futureMonths: string[];
+  sourceMissingMonths: { streamId: string; missingMonths: string[] }[];
 }
 
 const dateParts = (value: string | undefined | null): {year:number;month:number;day:number}|null => {
@@ -28,7 +31,7 @@ const validWon = (value:unknown):boolean => typeof value === "string" && /^(?:0|
 
 /** Dynamic coverage of a *selected*, reviewed period; no fixed 12-month requirement. */
 export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCoverageInput):SelectedIncomePeriodCoverageResult {
-  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[]};
+  const result:SelectedIncomePeriodCoverageResult={status:"complete",codes:[],missingMonths:[],outsideMonths:[],invalidRowIndices:[],futureMonths:[],sourceMissingMonths:[]};
   const code=(x:string)=>{if(!result.codes.includes(x))result.codes.push(x);};
   if (!input.selectedPeriod) {
     if (!input.monthRows.length) result.status="not_applicable";
@@ -43,6 +46,7 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
     result.status="review_required";code("D5103_SELECTED_PERIOD_INVALID");return result;
   }
   const covered=new Set<number>();
+  const coveredByStream=new Map<string,Set<number>>();
   for(let i=0;i<input.monthRows.length;i++){
     const row=input.monthRows[i];
     // Persisted or external bindings can violate static TypeScript row shapes.
@@ -56,13 +60,40 @@ export function checkSelectedIncomePeriodCoverage(input:SelectedIncomePeriodCove
       result.invalidRowIndices.push(i);code("D5103_MONTH_EVIDENCE_UNRESOLVED");continue;
     }
     const month=monthIndex(Number(parsed[1]),Number(parsed[2]));
+    if(input.inspectSourceStreams){
+      // A display label or a per-month row ID is not a stable payer/stream ID.
+      if(!row.source_id?.trim() || !row.source_stream_id?.trim() || !row.source_fact_ids?.trim()){
+        result.invalidRowIndices.push(i);code("D5103_SOURCE_LINEAGE_UNRESOLVED");continue;
+      }
+      if(row.source_review_status!=="accepted" || row.source_calc_role==="gross_turnover_only"){
+        result.invalidRowIndices.push(i);code("D5103_SOURCE_REVIEW_REQUIRED");continue;
+      }
+    }
     if(month<startIndex || month>endIndex) {result.outsideMonths.push(ym);code("D5103_MONTH_OUTSIDE_SELECTED_PERIOD");}
-    else covered.add(month);
+    else {
+      covered.add(month);
+      if(input.inspectSourceStreams){
+        const streamId=row.source_stream_id;
+        const streamMonths=coveredByStream.get(streamId)??new Set<number>();
+        streamMonths.add(month);coveredByStream.set(streamId,streamMonths);
+      }
+    }
   }
   for(let month=startIndex;month<=endIndex;month++){
     if(!covered.has(month))result.missingMonths.push(monthKey(month));
   }
   if(result.missingMonths.length)code("D5103_SELECTED_PERIOD_COVERAGE_GAP");
+  // A complete union of months can hide one incomplete independent income
+  // stream. This only requests explicit human source-period review; it never
+  // assumes a statutory period or recognizes/disallows an income amount.
+  if(input.inspectSourceStreams && coveredByStream.size>1){
+    for(const [streamId,streamMonths] of coveredByStream){
+      const missingMonths:string[]=[];
+      for(let month=startIndex;month<=endIndex;month++)if(!streamMonths.has(month))missingMonths.push(monthKey(month));
+      if(missingMonths.length)result.sourceMissingMonths.push({streamId,missingMonths});
+    }
+    if(result.sourceMissingMonths.length)code("D5103_SOURCE_STREAM_COVERAGE_REVIEW_REQUIRED");
+  }
   // A missing observation cutoff is unknown, not a verified through-date.
   // Drafts may warn; final reviewed D5103 needs an explicit evidence date.
   if(input.evidenceCutoff===undefined||input.evidenceCutoff===null){
