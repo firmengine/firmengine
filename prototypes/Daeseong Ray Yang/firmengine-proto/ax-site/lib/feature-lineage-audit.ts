@@ -22,7 +22,7 @@ type CandidateStatus="review_candidate_not_proven";
 function reviewScope(family:string){
  const income=/income|payroll|wage|employment|business_sales|business_cost|accounting|pension_benefit/.test(family);
  const debt=/debt|credit|claim|arrear|tax_public|guarantee|garnishment/.test(family);
- const asset=/asset|property|vehicle|insurance|lease|bank_account|securities|crypto|disposition|transfer|receivable|retirement/.test(family);
+ const asset=family!=="health_insurance_arrears"&&/asset|property|vehicle|insurance|lease|bank_account|securities|crypto|disposition|transfer|receivable|retirement/.test(family);
  const household=/household|medical|education|childcare|identity|residence/.test(family);
  const procedure=/procedure|application|court_order|enforcement|narrative|case_specific|prior/.test(family);
  const forms:string[]=[];
