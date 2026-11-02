@@ -155,3 +155,32 @@ test("stale source dataVersion cannot be silently rebound to an unchanged case r
  await assert.rejects(()=>upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"}),
   /CORRECTION_SOURCE_DATA_VERSION_MISMATCH/);
 });
+
+test("court correction read uses one D1 batch for source revision and item heads",async()=>{
+ const {db,data,draft}=setup();
+ await upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"});
+ let readBatches=0;
+ const observed={...db,async batch(statements:Parameters<D1Database["batch"]>[0]){
+  readBatches++;
+  assert.equal(statements.length,2);
+  return db.batch(statements);
+ }} as D1Database;
+ const result=await readCourtCorrectionItems(observed,data);
+ assert.equal(readBatches,1);
+ assert.equal(result.items[0].sourceCurrent,true);
+ assert.equal(result.items[0].courtOrderSatisfied,false);
+});
+test("unobserved correction item batch results cannot be reported as zero court items",async()=>{
+ const {db,data}=setup();
+ const response={...db,async batch(){
+  return [{results:[{revision:data.context.revision,dataVersion:1}]},{results:null}] as unknown as Awaited<ReturnType<D1Database["batch"]>>;
+ }} as D1Database;
+ await assert.rejects(()=>readCourtCorrectionItems(response,data),/CORRECTION_ITEM_READ_SNAPSHOT_UNOBSERVED/);
+});
+test("zero observed correction item rows is not the same as an unobserved D1 response",async()=>{
+ const {db,data}=setup();
+ const result=await readCourtCorrectionItems(db,data);
+ assert.equal(result.count,0);
+ assert.deepEqual(result.unitemizedCourtEventIds,["court-order"]);
+ assert.equal(result.courtApprovalInferred,false);
+});
