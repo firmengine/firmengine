@@ -9,6 +9,7 @@ import {db,bucket,event,getCase,caseExtras,caseStateFingerprint,saveCase,HttpErr
 import {prepareDocumentWrite,finalizeDocumentWriterReceipt,type DocumentWriterReceipt} from "./document-writer.ts";
 import {buildDocumentFieldBases} from "./document-field-bases.ts";
 import {referenceIdentity} from "./reference-runtime.ts";
+import {AUTOMATIC_DRAFT_HANDOFF_HEAD_SQL} from "./automatic-draft-handoff-head.ts";
 import {FORM_CONTRACT_VERSION} from "./form-contracts.ts";
 import {automaticDraftHandoffDecision,parseAutomaticDraftArtifacts,type AutomaticDraftRow,
  type AutomaticDraftHead,type AutomaticDraftArtifact,type AutomaticDraftOrigin} from "./automatic-draft-handoff-contract.ts";
@@ -21,17 +22,7 @@ function manifestOrigin(data:CaseData):AutomaticDraftOrigin|null{
   return x&&typeof x.runId==="string"&&typeof x.legalReviewRunId==="string"?x:null;
 }
 async function head(database:D1Database,caseId:string):Promise<AutomaticDraftHead|null>{
- return database.prepare(
-  "SELECT s.data_version AS dataVersion,c.run_id AS calculationRunId,l.review_run_id AS legalReviewRunId,"+
-  "c.case_revision AS calculationCaseRevision,l.case_revision AS legalCaseRevision,"+
-  "r.reference_sha256 AS referenceSha256 "+
-  "FROM case_data_change_state s "+
-  "JOIN case_calculation_heads c ON c.case_id=s.case_id "+
-  "JOIN case_calculation_runs r ON r.id=c.run_id "+
-  "JOIN case_legal_review_heads l ON l.case_id=s.case_id "+
-  "WHERE s.case_id=? AND c.data_version=s.data_version "+
-  "AND l.data_version=s.data_version AND l.calculation_run_id=c.run_id"
- ).bind(caseId).first<AutomaticDraftHead>();
+ return database.prepare(AUTOMATIC_DRAFT_HANDOFF_HEAD_SQL).bind(caseId).first<AutomaticDraftHead>();
 }
 async function completeRun(database:D1Database,caseId:string,legalReviewRunId:string|undefined){
  if(!legalReviewRunId)return null;
