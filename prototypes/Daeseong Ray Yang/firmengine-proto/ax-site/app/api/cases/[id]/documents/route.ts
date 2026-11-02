@@ -16,12 +16,18 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
   n.documents.push({id:documentId,name,sha256:body.sha256,status:"active",pages:pageRoles.map(p=>p.page),uploadedAt:now(),extractionStatus:"pending"});
   n.pages.push(...pageRoles.map(p=>({...p,documentId,imageUrl:`/api/cases/${id}/documents/${documentId}?kind=page&page=${p.page}`})));
   n.context.inventoryComplete={income:"unknown",debt:"unknown",asset:"unknown"};
+  let caseSaveStarted=false;
   try{
     await db().prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,ready,created_at) VALUES (?,?,?,?,?,0,?)").bind(documentId,id,name,body.sha256,body.pageCount,now()).run();
     const statements=pageRoles.map(p=>db().prepare("INSERT INTO page_jobs (id,case_id,document_id,page,role,document_type,status,stage,attempts,updated_at) VALUES (?,?,?,?,?,?,?,'waiting',0,?)").bind(`${documentId}:${p.page}`,id,documentId,p.page,p.role,p.documentType??null,["filed_form","administrative"].includes(p.role)?"held":"awaiting_upload",now()));
     for(let i=0;i<statements.length;i+=80)await db().batch(statements.slice(i,i+80));
+    caseSaveStarted=true;
     await saveCase(n,c.context.revision,c);
   }catch(error){
+    // Once saveCase starts, its D1 commit may succeed even if its return fails.
+    // Do not delete OCR jobs or original metadata until an authoritative
+    // reconciliation proves both a non-commit and an unreferenced document.
+    if(caseSaveStarted)throw error;
     await db().batch([db().prepare("DELETE FROM page_jobs WHERE document_id = ? AND case_id = ?").bind(documentId,id),db().prepare("DELETE FROM documents WHERE id = ? AND case_id = ? AND ready = 0").bind(documentId,id)]);throw error;
   }
   await event(id,"document.registered",{documentId,sha256:body.sha256,pageCount:body.pageCount});
