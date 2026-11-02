@@ -25,6 +25,15 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  const months=data.context.planMonths;
  if(!schedule||schedule.phases.length===0){
   if(!Number.isSafeInteger(months)||months!<1||calculation.planTotalWon===null)return {status:"blocked",rows:[],issues:["DEFAULT_PLAN_INPUTS_MISSING"]};
+  // Fail closed on reconstructed default allocations; no legal allocation rule is changed.
+  const canonicalWon=(value:unknown):value is string=>typeof value==="string"&&/^(?:0|[1-9]\d*)$/.test(value);
+  const allocationRows=calculation.allocations;
+  if(!Array.isArray(allocationRows)||allocationRows.some(a=>!a||typeof a.debtId!=="string"||!Array.isArray(a.factIds)||!canonicalWon(a.allocatedPrincipalWon)||!canonicalWon(a.allocatedInterestWon)))
+   return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_INVALID"]};
+  if(new Set(allocationRows.map(a=>a.debtId)).size!==allocationRows.length)
+   return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_DUPLICATE_DEBT_ID"]};
+  if(data.debts.some(d=>[d.principal?.amountWon,d.interest?.amountWon].some(value=>value!==null&&value!==undefined&&!canonicalWon(value))))
+   return {status:"blocked",rows:[],issues:["DEFAULT_DEBT_BALANCE_INVALID"]};
   const balances=new Map(data.debts.map(d=>[d.id,(BigInt(d.principal?.amountWon??"0")+BigInt(d.interest?.amountWon??"0"))]));
   const allocations=calculation.allocations;
   for(let month=1;month<=months!;month++)for(const a of allocations){
