@@ -20,6 +20,19 @@ export interface DocumentBindingInput{
 const sourceNumeric=(x:unknown)=>typeof x==="string"?x.replace(/[,\s₩원]/g,""):typeof x==="number"?String(x):null;
 const sameValue=(a:unknown,b:unknown)=>a===b||
   (sourceNumeric(a)!==null&&sourceNumeric(a)===sourceNumeric(b));
+// A rendered KRW amount can be linked to a calculated output only if both
+// sides are valid integer/grouped won values. Do not erase arbitrary commas
+// or embedded whitespace (e.g. an OCR read "1,00" is not proven by 100 won).
+const exactWonLineageValue=(x:unknown):string|null=>{
+ const raw=typeof x==="number"&&Number.isSafeInteger(x)?String(x):typeof x==="string"?x.trim():null;
+ if(raw===null)return null;
+ const amount=raw.replace(/^₩\s*/,"").replace(/\s*원$/,"").trim();
+ return /^-?(?:\d+|\d{1,3}(?:,\d{3})+)$/.test(amount)?amount.replace(/,/g,""):null;
+};
+const exactWonLineageMatch=(a:unknown,b:unknown):boolean=>{
+ const left=exactWonLineageValue(a),right=exactWonLineageValue(b);
+ return left!==null&&right!==null&&left===right;
+};
 const outputByToken:Record<string,string>={
  total_principal:"debtPrincipalWon",total_interest:"debtInterestWon",
  secured_debt_total:"securedDebtWon",unsecured_debt_total:"unsecuredDebtWon",
@@ -64,7 +77,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     const exact=output?calculationRows.filter(r=>r.outputName===output
        &&(ordinal===null?r.rowOrdinal===null:r.rowOrdinal===ordinal)
        &&(ordinal===null?r.subjectId===null:!!subjectId&&r.subjectId===subjectId)
-       &&["computed","provisional"].includes(r.status)&&sameValue(r.value,value)):[];
+       &&["computed","provisional"].includes(r.status)&&exactWonLineageMatch(r.value,value)):[];
     const calcFeature=exact.length===1?exact[0]:null;
     const canonical=token.replace(/[A-Z]/g,x=>"_"+x.toLowerCase());
     // Exact source key and exact displayed value only. Unknown keys are not
