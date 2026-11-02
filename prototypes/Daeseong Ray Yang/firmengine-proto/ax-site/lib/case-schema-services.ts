@@ -43,7 +43,7 @@ export function caseSchemaServices(){
     processCaseUpdates:(input:{caseId?:string;limit?:number})=>processCaseAgentUpdates(input),
   };
 }
-export async function readCaseSchemaData(caseId:string,input:{view?:string;documentTypeId?:string;expectedRevision?:number;limit?:number;offset?:number;afterEventId?:number}={}){
+export async function readCaseSchemaData(caseId:string,input:{view?:string;documentTypeId?:string;expectedRevision?:number;expectedReviewRunId?:string;limit?:number;offset?:number;afterEventId?:number}={}){
   const data=await getCase(caseId);
   if(input.expectedRevision!==undefined&&input.expectedRevision!==data.context.revision)throw Object.assign(new Error("CASE_REVISION_MISMATCH"),{code:"CASE_REVISION_MISMATCH"});
   const services=caseSchemaServices(),view=input.view??"requirements";
@@ -89,7 +89,7 @@ export async function readCaseSchemaData(caseId:string,input:{view?:string;docum
   if(view==="risk_feature_audit")return auditLegalRiskContracts();
   if(view==="court_gap_audit")return auditCourtPracticeGaps();
   if(view==="calculations")return services.caseCalculations({caseId,limit:input.limit,offset:input.offset});
-  if(view==="legal")return listCaseLawgraphReview(db(),{caseId,limit:input.limit,offset:input.offset});
+  if(view==="legal")return listCaseLawgraphReview(db(),{caseId,limit:input.limit,offset:input.offset,expectedReviewRunId:input.expectedReviewRunId});
   if(view==="automation")return readCaseLegalAutomation(db(),caseId);
   if(view==="updates")return services.caseUpdates({caseId,afterEventId:input.afterEventId,limit:input.limit});
   throw Object.assign(new Error("INVALID_CASE_SCHEMA_VIEW"),{code:"INVALID_CASE_SCHEMA_VIEW"});
