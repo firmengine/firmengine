@@ -86,6 +86,12 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  // Ambiguous source identity must not produce an internally "complete" ledger.
  if(new Set(data.debts.map(debt=>debt.id)).size!==data.debts.length)
   return {status:"blocked",rows:[],issues:["REVIEWED_DUPLICATE_SOURCE_DEBT_ID"]};
+ // Reviewed source Fact IDs must be canonical before rows are emitted.
+ // Shape validation is NOT Fact existence, owner, producer, or legal approval.
+ if(data.debts.some(debt=>!Array.isArray(debt.factIds)||
+   debt.factIds.some(id=>typeof id!=="string"||!id.trim()||id!==id.trim())||
+   new Set(debt.factIds).size!==debt.factIds.length))
+  return {status:"blocked",rows:[],issues:["REVIEWED_SOURCE_FACT_IDS_INVALID"]};
  // A reviewed schedule must not complete when source principal/interest is unobserved.
  // Source-only and non-exact money are not zero; legal recognition stays human-reviewed.
  if(data.debts.some(debt=>moneyValue(debt.principal)===null||moneyValue(debt.interest)===null))
