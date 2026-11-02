@@ -34,7 +34,7 @@ function factIds(value:unknown):string[]{
   const visit=(v:unknown)=>{
     if(Array.isArray(v)){for(const x of v)visit(x);return;}
     if(v&&typeof v==="object")for(const [k,x]of Object.entries(v)){
-      if(/(?:factIds|FactIds)$/.test(k)&&Array.isArray(x)){for(const id of x)if(typeof id==="string")ids.add(id);}
+      if(/(?:factIds|FactIds)$/.test(k)&&Array.isArray(x)){for(const id of x){if(typeof id!=="string"||!id.trim()||id.trim()!==id)throw error("CALCULATION_FEATURE_INVALID_FACT_ID");ids.add(id);}}
       else visit(x);
     }
   };
