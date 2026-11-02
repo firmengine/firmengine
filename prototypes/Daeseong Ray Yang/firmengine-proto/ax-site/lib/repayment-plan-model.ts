@@ -90,6 +90,11 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  // Source-only and non-exact money are not zero; legal recognition stays human-reviewed.
  if(data.debts.some(debt=>moneyValue(debt.principal)===null||moneyValue(debt.interest)===null))
   return {status:"blocked",rows:[],issues:["REVIEWED_SOURCE_DEBT_COMPONENT_UNRESOLVED"]};
+ // Technical consistency: source debt components must not be negative, even if an
+ // upstream typed amount was marked exact. Do not reclassify or rebalance debts.
+ if(data.debts.some(debt=>[debt.principal,debt.interest].some(component=>{
+  const amount=moneyValue(component);return amount!==null&&amount<0n;
+ }))) return {status:"blocked",rows:[],issues:["REVIEWED_SOURCE_DEBT_COMPONENT_NEGATIVE"]};
  const expectedInstallments=schedule.expectedInstallments??data.context.planMonths;
  if(expectedInstallments!==undefined&&expectedInstallments!==data.context.planMonths)issues.push("INSTALLMENT_COUNT_MISMATCH");
  const phases=[...schedule.phases].sort((a,b)=>a.firstInstallment-b.firstInstallment); let next=1;
