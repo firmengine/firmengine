@@ -283,6 +283,11 @@ function aggregateIncomeObservations(data: CaseData, input: IncomeObservation[],
     if (!rows.length) {
       continue; // Entire source group falls outside the chosen period.
     }
+    // An explicitly declared aggregation treatment needs its own completed review.
+    // Accepted source facts do not approve duplicate/series/independence treatment.
+    if (rows.some(row => row.source.aggregationTreatment !== undefined && row.source.aggregationTreatment !== "unknown" &&
+      (row.source.aggregationReviewed !== true || !row.source.aggregationReviewReason?.trim())))
+      reasons.push("INCOME_AGGREGATION_REVIEW_REQUIRED");
     // A payer with no source-backed identity cannot be safely merged or silently added twice.
     const distinctSources = new Set(rows.map((row) => row.source.id));
     if (!payerId(rows[0].source) && distinctSources.size > 1 && !reviewedSameNameSeries) reasons.push("INCOME_PAYER_IDENTITY_REVIEW_REQUIRED");
@@ -310,7 +315,7 @@ function aggregateIncomeObservations(data: CaseData, input: IncomeObservation[],
     if (hasOverlap && !approvedComponents) reasons.push("INCOME_OVERLAPPING_OBSERVATIONS_REVIEW_REQUIRED");
     if (hasOverlap && approvedComponents) effectiveRows = [{ ...sorted[0], value: sorted.some((item) => item.value === null) ? null : sorted.reduce((sum, item) => sum + item.value!, ZERO), periodTotalOverride: sorted.some((item) => periodTotal(item) === null) ? null : sorted.reduce((sum, item) => sum + periodTotal(item)!, ZERO) }];
     if (!hasOverlap && rows.some((r) => r.source.aggregationTreatment === "component")) reasons.push("INCOME_COMPONENT_PERIOD_MISMATCH");
-    const nonComputable = new Set(["INCOME_PAYER_IDENTITY_REVIEW_REQUIRED", "INCOME_FILING_PERIOD_INVALID", "INCOME_PERIOD_RANGE_MISSING_FOR_FILING_PERIOD", "INCOME_FILING_WINDOW_PARTIAL_OBSERVATION", "INCOME_PERIOD_RANGE_MISSING_FOR_SERIES", "INCOME_OBSERVATION_INVALID", "INCOME_OVERLAPPING_OBSERVATIONS_REVIEW_REQUIRED", "INCOME_COMPONENT_PERIOD_MISMATCH", "INCOME_DUPLICATE_REVIEW_REQUIRED"]);
+    const nonComputable = new Set(["INCOME_AGGREGATION_REVIEW_REQUIRED", "INCOME_PAYER_IDENTITY_REVIEW_REQUIRED", "INCOME_FILING_PERIOD_INVALID", "INCOME_PERIOD_RANGE_MISSING_FOR_FILING_PERIOD", "INCOME_FILING_WINDOW_PARTIAL_OBSERVATION", "INCOME_PERIOD_RANGE_MISSING_FOR_SERIES", "INCOME_OBSERVATION_INVALID", "INCOME_OVERLAPPING_OBSERVATIONS_REVIEW_REQUIRED", "INCOME_COMPONENT_PERIOD_MISMATCH", "INCOME_DUPLICATE_REVIEW_REQUIRED"]);
     if (!reasons.some((reason) => nonComputable.has(reason))) {
       // Aggregate non-overlapping monthly or annual observations as a duration-weighted mean.
       for (const row of effectiveRows) {
