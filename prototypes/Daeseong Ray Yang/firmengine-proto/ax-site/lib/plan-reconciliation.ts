@@ -57,9 +57,14 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
   if(!rows.length&&!isPriority)continue;
   const principal=debt.principal?.amountWon,interest=debt.interest?.amountWon;
   if(principal==null||interest==null||!nat(principal)||!nat(interest)){issues.push("CLAIM_BALANCE_MISSING:"+debt.id);if(isPriority)priorityCoverage[debt.id]={scheduledWon:"0",uncoveredWon:"0",deadlineInstallment:expected,status:"unknown"};continue;}
-  const cap=BigInt(principal)+BigInt(interest);let paid=0n,when:number|null=null;
+  const cap=BigInt(principal)+BigInt(interest);let paid=0n,paidPrincipal=0n,paidInterest=0n,when:number|null=null;
   for(const row of [...rows].sort((a,b)=>a.installment-b.installment)){
+   paidPrincipal+=BigInt(row.principalWon);
+   paidInterest+=BigInt(row.interestWon);
    paid+=BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon);
+   // Technical source-component conservation; never reclassify an amount automatically.
+   if(paidPrincipal>BigInt(principal))issues.push("PAYMENT_EXCEEDS_SOURCE_PRINCIPAL:"+debt.id);
+   if(paidInterest>BigInt(interest))issues.push("PAYMENT_EXCEEDS_SOURCE_INTEREST:"+debt.id);
    if(paid>cap)issues.push("PAYMENT_EXCEEDS_CLAIM:"+debt.id);
    if(when===null&&paid>=cap)when=row.installment;
   }
