@@ -136,7 +136,8 @@ export async function adoptAutomaticDraftForReview(input:{
   if(!meta||typeof meta!=="object"||Array.isArray(meta))reject("AUTODRAFT_RENDERED_RECEIPT_MISSING");
   const original=(meta as Record<string,unknown>).writer_receipt as DocumentWriterReceipt|undefined;
   if(!original)reject("AUTODRAFT_RENDERED_RECEIPT_MISSING");
-  const extras=await caseExtras(data);
+  // A replay is evidence verification, never a trigger for a new calculation/cache reset.
+  const extras=await caseExtras(data,{readOnlyDerivedEvaluation:decision.alreadyLinked});
   if(!extras.derivedEvaluation||extras.derivedEvaluation.status!=="complete")reject("AUTODRAFT_CURRENT_EVALUATION_NOT_READY");
   const prepared=await prepareDocumentWrite({
     data,evaluation:extras.derivedEvaluation,
