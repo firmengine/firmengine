@@ -36,7 +36,15 @@ function bindField(field:ReadField,contract:Contract|null,category:string){
   const issues=resolved.issues.map(issue=>issue==="canonical_id_key_conflict"?"CANONICAL_ID_KEY_CONFLICT":issue==="canonical_id_outside_family"?"CANONICAL_FIELD_NOT_IN_SCHEMA":issue==="canonical_id_ambiguous"?"AMBIGUOUS_SOURCE_FIELD_KEY":"SOURCE_FIELD_KEY_UNBOUND");
   if(selected)issues.push(...calculationSourceCellIssues(field,selected));
   if(field.confidence!=="clear")issues.push("SOURCE_READ_UNCERTAIN");
-  if(field.sourceState!==undefined&&field.sourceState!=="present"&&field.sourceState!=="explicit_none")issues.push("SOURCE_STATE_REQUIRES_REVIEW");
+  // A missing source state with a null cell is unobserved, not a proven read.
+  const state=field.sourceState??(field.value===null?"unknown":"present");
+  if(state!=="present"&&state!=="explicit_none")issues.push("SOURCE_STATE_REQUIRES_REVIEW");
+  // The explicit-none exception needs the same cited page anchor as the
+  // field-observation layer. An unquoted assertion cannot clear review.
+  const bbox=field.bbox;
+  const anchored=typeof field.quote==="string"&&!!field.quote.trim()&&Array.isArray(bbox)&&bbox.length===4
+    &&bbox.every(v=>Number.isFinite(v)&&v>=0&&v<=1)&&bbox[0]<bbox[2]&&bbox[1]<bbox[3];
+  if(state==="explicit_none"&&!anchored)issues.push("SOURCE_EXPLICIT_NONE_ANCHOR_MISSING");
   return {canonicalFieldId:resolved.canonicalFieldId,projectionKey:canonicalProjectionKey(contract,resolved,category),
     bindingStatus,validationStatus:!selected?"unbound":issues.length?"source_review_required":"source_only",issues};
 }

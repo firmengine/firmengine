@@ -244,3 +244,38 @@ test("stored unknown-unit money remains in the source SQL but cannot become a tr
   assert.equal(projectPage(raw,"doc-1",1,hash).transactions.length,0);
  }finally{h.close();}
 });
+
+
+test("A3 r36: unobserved null and unanchored explicit_none remain review-required; a quoted zero stays observed",async()=>{
+  const h=setup();try{
+    const read:PageRead={documentType:"shared-document:financial_statement@accounting_source",complete:true,warnings:[],
+      records:[{category:"other",label:"Synthetic ledger row",fields:[
+        {key:"account_name",canonicalFieldId:"accounting_source::account_name",label:"Account",value:null,
+          unit:null,quote:null,bbox:null,confidence:"clear"},
+        {key:"entity",canonicalFieldId:"accounting_source::entity",label:"Entity",value:null,
+          unit:null,quote:null,bbox:null,confidence:"clear",sourceState:"explicit_none"},
+        {key:"closing_balance",canonicalFieldId:"accounting_source::closing_balance",label:"No balance stated",
+          value:null,unit:null,quote:"해당 없음",bbox:[0.1,0.1,0.3,0.2],confidence:"clear",sourceState:"explicit_none"},
+        {key:"opening_balance",canonicalFieldId:"accounting_source::opening_balance",label:"Balance",
+          value:"0",unit:"KRW",quote:"0 KRW",bbox:[0.1,0.2,0.3,0.3],confidence:"clear",sourceState:"present"}
+      ]}]};
+    const classification={documentTypeId:"financial_statement",documentTypeName:"Synthetic statement",
+      familyId:"accounting_source",documentCatalogVersion:2,documentCatalogSha256:"c".repeat(64)};
+    await persistPageExtractionRows(h.database,input(read,{classification}));
+    const rows=await listCaseExtractionRows(h.database,{caseId:"case-1",documentTypeId:"financial_statement"});
+    const fields=rows.records[0].fields;
+    assert.deepEqual(fields.map(field=>field.validationStatus),[
+      "source_review_required","source_review_required","source_only","source_only"
+    ]);
+    assert.ok(fields[0].validation.includes("SOURCE_STATE_REQUIRES_REVIEW"));
+    assert.ok(fields[1].validation.includes("SOURCE_EXPLICIT_NONE_ANCHOR_MISSING"));
+    assert.deepEqual(fields.map(field=>field.value),[null,null,null,"0"]);
+    const coverage=await listCaseExtractionCoverage(h.database,{caseId:"case-1",documentTypeId:"financial_statement"});
+    const state=(id:string)=>coverage.rows.find(row=>row.canonicalFieldId===id)?.observationStatus;
+    assert.equal(state("accounting_source::account_name"),"observed_review_required");
+    assert.equal(state("accounting_source::entity"),"observed_review_required");
+    assert.equal(state("accounting_source::closing_balance"),"observed_source_only");
+    assert.equal(state("accounting_source::opening_balance"),"observed_source_only");
+    assert.equal(rows.legalRecognition,"not_provided");
+  }finally{h.close();}
+});
