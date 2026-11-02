@@ -10,7 +10,7 @@ const MISSING = new Set(["","[확인 필요]","[불일치·확인 필요]","[미
 const NON_NEGATIVE_PLAN_SCALARS = new Set(["monthly_payment","monthly_trustee_fee","total_repayment"]);
 // Source-only/uncertain markers in document review must never become final-ready.
 // Keep the existing provisional markers fail-closed; this is not legal approval.
-const absent=(x:unknown)=>x===undefined||x===null||MISSING.has(String(x).trim())||/^(?:source-only(?:$|[ :])|\[(?:상충|누락|오인식|판독|검토|배분|미확정|미관찰|미상|승인전|원문만|원천만|source-only))/.test(String(x).trim());
+const absent=(x:unknown)=>x===undefined||x===null||MISSING.has(String(x).trim())||/^(?:source-only|\[(?:확인 필요|불일치|상충|누락|오인식|판독|검토|배분|미확정|미관찰|미상|승인전|원문만|원천만|source-only))/.test(String(x).trim());
 export async function evaluateDocumentPreflight(input:{formCode:string;bindings:FormBindings;identity:DocumentPreflightIdentity;mode:DocumentMode;contract?:FormContract}):Promise<DocumentPreflightResult> {
   const contract=input.contract ?? FORM_CONTRACTS[input.formCode];
   const blockers:PreflightIssue[]=[],warnings:PreflightIssue[]=[],unresolved:string[]=[];
