@@ -58,7 +58,7 @@ test("current case required-source scope excludes an identical amount from anoth
   facts:[{id:"fB",logicalId:"fB",version:1,subjectId:"income-b",canonicalFieldId:"payroll_payslip::income.payroll.net_pay",key:"income.net",
     value:"100",numeric:null,state:"verified",recognition:"accepted",refs:[{documentId:"B",page:1,quote:"source B",sourceHash:"b".repeat(64)}],
     fieldObservation:{sourceState:"present"},validation:[],periodStart:"2026-01-01",periodEnd:"2026-01-31"}],
-  workflowState:{subjectLinks:[],requirements:[{requirementId:"R",subjectLinkId:"linkA",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
+  workflowState:{subjectLinks:[{linkId:"linkA",status:"confirmed",typedEntityId:"income-a"}],requirements:[{requirementId:"R",subjectLinkId:"linkA",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
     crosswalkReview:{reviewer:"staff",periodPolicy:"any"},requiredFieldGroups:[["payroll_payslip::income.payroll.net_pay"]]}],
    documentMatches:[{requirementId:"R",subjectLinkId:"linkA",documentId:"A",state:"accepted",sourceDocumentHash:"a".repeat(64),pageIds:["A:1"]}]}
  } as unknown as Parameters<typeof evaluateCaseFieldLineage>[0];
@@ -74,7 +74,7 @@ test("monthly required evidence must cover every complete calendar month, not ju
   facts:[{id:"f1",logicalId:"f1",version:1,subjectId:"wage1",canonicalFieldId:"payroll_payslip::income.payroll.net_pay",key:"income.net",
     value:"100",state:"verified",recognition:"accepted",refs:[{documentId:"A",page:1,quote:"month 1",sourceHash:"a".repeat(64)}],
     fieldObservation:{sourceState:"present"},validation:[],periodStart:"2026-01-01",periodEnd:"2026-01-31"}],
-  workflowState:{subjectLinks:[],requirements:[{requirementId:"R",subjectLinkId:"owner",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
+  workflowState:{subjectLinks:[{linkId:"owner",status:"confirmed",typedEntityId:"wage1"}],requirements:[{requirementId:"R",subjectLinkId:"owner",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
     requiredPeriod:"2026-01-01 ~ 2026-02-28",crosswalkReview:{periodPolicy:"monthly",reviewer:"staff"},
     requiredFieldGroups:[["payroll_payslip::income.payroll.net_pay"]]}],
    documentMatches:[{requirementId:"R",subjectLinkId:"owner",documentId:"A",state:"accepted",sourceDocumentHash:"a".repeat(64),pageIds:["A:1"]}]}
@@ -84,4 +84,37 @@ test("monthly required evidence must cover every complete calendar month, not ju
  assert.ok(first.blockerCandidates.includes("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE"));
  data.facts.push({...data.facts[0],id:"f2",logicalId:"f2",version:1,periodStart:"2026-02-01",periodEnd:"2026-02-28"});
  assert.ok(!evaluateCaseFieldLineage(data,rows).fields[0].blockerCandidates.includes("REQUIRED_MONTHLY_FIELD_COVERAGE_INCOMPLETE"));
+});
+
+test("reviewed canonical proof never borrows another subject on one accepted source page",()=>{
+ const id="conditional_nonstandard_income_or_household_event::conditional.change.income_delta";
+ const hash="a".repeat(64);
+ const data={
+  context:{id:"synthetic-multi-subject",revision:1},
+  documents:[{id:"D",status:"active",sha256:hash,pages:[1]}],
+  pages:[{documentId:"D",page:1,role:"evidence",text:"Person A income change 100; Person B income change 200"}],
+  facts:[
+   {id:"fA",logicalId:"fA",version:1,subjectId:"person-A",canonicalFieldId:id,key:"income.change",value:"100",
+    state:"verified",recognition:"accepted",refs:[{documentId:"D",page:1,quote:"Person A income change 100",sourceHash:hash}],fieldObservation:{sourceState:"present"},validation:[],periodStart:"2026-01-01",periodEnd:"2026-01-31"},
+   {id:"fB",logicalId:"fB",version:1,subjectId:"person-B",canonicalFieldId:id,key:"income.change",value:"200",
+    state:"verified",recognition:"accepted",refs:[{documentId:"D",page:1,quote:"Person B income change 200",sourceHash:hash}],fieldObservation:{sourceState:"present"},validation:[],periodStart:"2026-01-01",periodEnd:"2026-01-31"}
+  ],
+  workflowState:{
+   subjectLinks:[{linkId:"link-A",status:"confirmed",typedEntityId:"person-A"}],
+   requirements:[{requirementId:"R",subjectLinkId:"link-A",mappingRequired:false,retired:false,waivedByReview:false,notApplicableConfirmed:false,
+     crosswalkReview:{reviewer:"staff",periodPolicy:"any"},requiredFieldGroups:[[id]]}],
+   documentMatches:[{requirementId:"R",subjectLinkId:"link-A",documentId:"D",state:"accepted",sourceDocumentHash:hash,pageIds:["D:1"]}]
+  }
+ } as unknown as Parameters<typeof evaluateCaseFieldLineage>[0];
+ const rows=[{canonicalFieldId:id,datatype:"money",temporalRole:"period_scope",sourceRequirements:{periodIdentity:true}}];
+ const view=()=>evaluateCaseFieldLineage(data,rows).fields[0];
+ assert.equal(view().sourceObservations,2);
+ assert.equal(view().matchedSourceFacts,1); // only A, not the other person on the same page
+ data.facts.splice(0,1);
+ assert.equal(view().matchedSourceFacts,0);
+ assert.ok(view().blockerCandidates.includes("REQUIRED_FIELD_WRONG_SOURCE_SCOPE_OR_NO_ACCEPTED_MATCH"));
+ data.workflowState.subjectLinks[0].typedEntityId="person-B";
+ assert.equal(view().matchedSourceFacts,1); // same reviewed subject must match the fact's typed entity
+ data.workflowState.subjectLinks[0].status="candidate";
+ assert.equal(view().matchedSourceFacts,0); // unconfirmed relink never clears proof
 });
