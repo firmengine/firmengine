@@ -101,10 +101,11 @@ export async function adoptAutomaticDraftForReview(input:{
   try{artifacts=parseAutomaticDraftArtifacts(run.artifactsJson,input.caseId);}
   catch(error){reject(error instanceof Error?error.message:"AUTODRAFT_ARTIFACT_INVALID");}
   const decision=decide(data,run,heads,artifacts);
-  if(decision.alreadyLinked)return {status:"already_linked" as const,runId:run.id,artifactCount:artifacts.length,courtApprovalInferred:false};
   if(!decision.eligible)reject(decision.blockers.join(","));
-  if(input.expectedRevision!==data.context.revision ||
-    input.expectedStateFingerprint!==await caseStateFingerprint(data))
+  // Replays may carry the pre-commit fingerprint after a lost D1 ACK. Keep
+  // idempotency only if the linked manifest and its evidence are re-proven.
+  if(!decision.alreadyLinked && (input.expectedRevision!==data.context.revision ||
+    input.expectedStateFingerprint!==await caseStateFingerprint(data)))
     reject("AUTODRAFT_HANDOFF_CASE_CHANGED");
   // A current export from another writer is NEVER overwritten by an automatic draft.
   // Exact artifact rows and immutable R2 hashes are checked before linking.
@@ -118,9 +119,10 @@ export async function adoptAutomaticDraftForReview(input:{
       stored.hash!==artifact.hash||stored.mime!==artifact.mime||
       stored.objectKey!==artifact.objectKey||stored.revision!==run.caseRevision)
       reject("AUTODRAFT_SQL_ARTIFACT_MISMATCH");
-    const object=await bucket().get(artifact.objectKey);
+    // Transport errors are UNOBSERVED, not proof of a missing object.
+    const object=await bucket().get(artifact.objectKey).catch(()=>reject("AUTODRAFT_OBJECT_UNOBSERVED",503));
     if(!object)reject("AUTODRAFT_OBJECT_MISSING");
-    const bytes=await object.arrayBuffer();
+    const bytes=await object.arrayBuffer().catch(()=>reject("AUTODRAFT_OBJECT_UNOBSERVED",503));
     if(await sha256(bytes)!==artifact.hash)reject("AUTODRAFT_OBJECT_HASH_MISMATCH");
     if(artifact.kind==="rendered_json"){
       try{rendered=JSON.parse(new TextDecoder().decode(bytes)) as Record<string,unknown>;}
@@ -142,6 +144,22 @@ export async function adoptAutomaticDraftForReview(input:{
     requiredKinds:requiredKindsForCase(data),now:original.generatedAt
   });
   mustMatchReceipt(original,prepared.receipt);
+  // An already-linked result is not an evidence bypass: verify D1 rows,
+  // actual R2 bytes and the writer receipt above BEFORE returning success.
+  // A separate current read also detects staff edits during the network I/O.
+  if(decision.alreadyLinked){
+    const after=await head(database,input.caseId);
+    const latest=await completeRun(database,input.caseId,after?.legalReviewRunId);
+    const reloaded=await getCase(input.caseId);
+    if(!latest||latest.id!==run.id||latest.status!=="complete"||
+      latest.artifactsJson!==run.artifactsJson||
+      await caseStateFingerprint(reloaded)!==await caseStateFingerprint(data))
+      reject("AUTODRAFT_HANDOFF_REPLAY_CHANGED");
+    const replayed=decide(reloaded,latest,after,artifacts);
+    if(!replayed.alreadyLinked)reject("AUTODRAFT_HANDOFF_REPLAY_CHANGED");
+    return {status:"already_linked" as const,runId:run.id,
+      artifactCount:artifacts.length,courtApprovalInferred:false};
+  }
   const finalized=await finalizeDocumentWriterReceipt(original,artifacts);
   finalized.fieldBases=await buildDocumentFieldBases({
    data,execution:prepared.execution,formResults:finalized.formResults,artifacts
