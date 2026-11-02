@@ -86,6 +86,10 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  // Ambiguous source identity must not produce an internally "complete" ledger.
  if(new Set(data.debts.map(debt=>debt.id)).size!==data.debts.length)
   return {status:"blocked",rows:[],issues:["REVIEWED_DUPLICATE_SOURCE_DEBT_ID"]};
+ // A reviewed schedule must not complete when source principal/interest is unobserved.
+ // Source-only and non-exact money are not zero; legal recognition stays human-reviewed.
+ if(data.debts.some(debt=>moneyValue(debt.principal)===null||moneyValue(debt.interest)===null))
+  return {status:"blocked",rows:[],issues:["REVIEWED_SOURCE_DEBT_COMPONENT_UNRESOLVED"]};
  const expectedInstallments=schedule.expectedInstallments??data.context.planMonths;
  if(expectedInstallments!==undefined&&expectedInstallments!==data.context.planMonths)issues.push("INSTALLMENT_COUNT_MISMATCH");
  const phases=[...schedule.phases].sort((a,b)=>a.firstInstallment-b.firstInstallment); let next=1;
