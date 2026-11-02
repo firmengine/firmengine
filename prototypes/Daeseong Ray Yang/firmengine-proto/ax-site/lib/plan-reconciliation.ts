@@ -18,8 +18,21 @@ const nat=(v:unknown)=>typeof v==="string"&&/^\d+$/.test(v);
 
 export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,ledger:PlanLedger,options:{priorityPolicies?:Record<string,PriorityCoveragePolicy>}={}):PlanReconciliation {
  const issues=[...ledger.issues],byMonth=new Map<number,typeof ledger.rows>();
+ const debtById=new Map(data.debts.map(debt=>[debt.id,debt]));
+ const sourceForClass:Record<string,string>={ordinary:"ordinary_budget",priority:"priority_budget",estate:"estate_budget",trustee_fee:"disposable_income"};
  if(ledger.status==="blocked")issues.push("PLAN_LEDGER_BLOCKED");
  for(const r of ledger.rows){
+  if(!Object.prototype.hasOwnProperty.call(sourceForClass,r.claimClass))issues.push("INVALID_LEDGER_CLAIM_CLASS:"+r.debtId);
+  else if(sourceForClass[r.claimClass]!==r.fundingSourceId)issues.push("LEDGER_FUNDING_SOURCE_MISMATCH:"+r.debtId);
+  if(r.claimClass!=="trustee_fee"){
+   const debt=debtById.get(r.debtId);
+   if(!debt)issues.push("LEDGER_DEBT_NOT_IN_CASE:"+r.debtId);
+   else {
+    // Consistency with today's ledger builder, not legal recognition of a claim class.
+    const expectedClass=debt.priority==="estate"||debt.classification==="estate"?"estate":debt.priority==="priority"||debt.classification==="tax"?"priority":"ordinary";
+    if(r.claimClass!==expectedClass)issues.push("LEDGER_CLAIM_CLASS_SOURCE_MISMATCH:"+r.debtId);
+   }
+  }
   if(!Number.isInteger(r.installment)||r.installment<1)issues.push("INVALID_INSTALLMENT");
   const list=byMonth.get(r.installment)??[];list.push(r);byMonth.set(r.installment,list);
   for(const amount of [r.principalWon,r.interestWon,r.otherComponentWon,r.balanceAfter])if(!nat(amount))issues.push("INVALID_LEDGER_MONEY");
@@ -77,7 +90,7 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
  const zero={principalWon:"0",interestWon:"0",otherComponentWon:"0",totalWon:"0"};
  const sums=ledger.rows.reduce<typeof zero>((a,r)=>({principalWon:(BigInt(a.principalWon)+BigInt(r.principalWon)).toString(),interestWon:(BigInt(a.interestWon)+BigInt(r.interestWon)).toString(),otherComponentWon:(BigInt(a.otherComponentWon)+BigInt(r.otherComponentWon)).toString(),totalWon:(BigInt(a.totalWon)+BigInt(r.principalWon)+BigInt(r.interestWon)+BigInt(r.otherComponentWon)).toString()}),zero);
  const classSums={ordinaryWon:"0",priorityWon:"0",estateWon:"0",trusteeFeeWon:"0"};
- for(const row of ledger.rows){const key=row.claimClass==="ordinary"?"ordinaryWon":row.claimClass==="priority"?"priorityWon":row.claimClass==="estate"?"estateWon":"trusteeFeeWon";classSums[key]=(BigInt(classSums[key])+BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon)).toString();}
+ for(const row of ledger.rows){const key=row.claimClass==="ordinary"?"ordinaryWon":row.claimClass==="priority"?"priorityWon":row.claimClass==="estate"?"estateWon":row.claimClass==="trustee_fee"?"trusteeFeeWon":null;if(key===null)continue;classSums[key]=(BigInt(classSums[key])+BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon)).toString();}
  if(calculation.planTotalWon!==null&&BigInt(classSums.ordinaryWon)!==BigInt(calculation.planTotalWon))legalReviewTasks.push("ORDINARY_ALLOCATION_UNRESOLVED");
  return {status:issues.length?"blocked":"reconciled",issues:[...new Set(issues)],totals:{...sums,...classSums},unallocatedBudgets,priorityPayoffInstallment:payoff,priorityCoverage,...(legalReviewTasks.length?{legalReviewTasks:[...new Set(legalReviewTasks)]}:{})};
 }
