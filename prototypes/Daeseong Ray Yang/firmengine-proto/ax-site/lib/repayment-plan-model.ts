@@ -25,6 +25,10 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  const months=data.context.planMonths;
  if(!schedule||schedule.phases.length===0){
   if(!Number.isSafeInteger(months)||months!<1||calculation.planTotalWon===null)return {status:"blocked",rows:[],issues:["DEFAULT_PLAN_INPUTS_MISSING"]};
+  // Data integrity: a duplicate source debt ID is overwritten by the ID-keyed Map.
+  // The default ledger cannot distinguish distinct source creditors in that case.
+  if(new Set(data.debts.map(debt=>debt.id)).size!==data.debts.length)
+   return {status:"blocked",rows:[],issues:["DEFAULT_DUPLICATE_SOURCE_DEBT_ID"]};
   // Fail closed on reconstructed default allocations; no legal allocation rule is changed.
   const canonicalWon=(value:unknown):value is string=>typeof value==="string"&&/^(?:0|[1-9]\d*)$/.test(value);
   const allocationRows=calculation.allocations;
