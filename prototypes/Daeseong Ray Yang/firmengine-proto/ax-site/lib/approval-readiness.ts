@@ -4,6 +4,7 @@
  */
 import type { CaseData, Fact } from "./domain.ts";
 import type { Assessment } from "./assessment.ts";
+import type { StoredStatusGate } from "./preapproval-stored-status-gate.ts";
 
 export const APPROVAL_READINESS_VERSION = "pre-approval-readiness/1" as const;
 export type ApprovalWorkKind = "consultation" | "document" | "source" | "calculation" | "legal" | "court_order";
@@ -67,6 +68,8 @@ export interface ApprovalReadinessInput {
   legalReview: LegalReviewInput | null;
   expectedRiskIds: readonly string[];
   riskTitles?: Readonly<Record<string, string>>;
+  /** Independent persisted-status gate; no inference of court or attorney approval. */
+  storedFeatureReadiness?: StoredStatusGate;
 }
 const RESOLVED = new Set(["satisfied", "not_applicable_confirmed", "waived_by_review", "retired"]);
 // Discontinuance may occur BEFORE approval. Never misclassify it as post-approval.
@@ -172,6 +175,20 @@ export function buildPreApprovalReadiness(input: ApprovalReadinessInput) {
       reason: "계산 실행 ID·원본 버전·사건 revision의 일치가 확인되지 않았습니다.",
       nextAction: "현행 원본과 기준정보 판본으로 기존 계산 엔진을 재실행하고 결과 원장을 보존하세요.",
       relatedFactIds: [], relatedCalculationTraceIds: [], relatedRuleIds: [] });
+    // Do not collapse storage consistency into business calculation readiness.
+    // A blocked raw Won can replay exactly and must nevertheless be reviewed.
+    if (input.storedFeatureReadiness?.reviewRequired) {
+      const report=input.storedFeatureReadiness;
+      candidate({ id: "calculation:stored-feature-status", kind: "calculation", priority: "urgent",
+        title: "저장된 계산 피처의 미해결 상태 검토",
+        reason: report.state==="unobserved"
+          ? "저장 계산 피처를 완전하게 확인하지 못했습니다."
+          : "저장 상태: provisional "+report.counts.provisional+", blocked "+report.counts.blocked+
+            ", missing "+report.counts.missing+", conflict "+report.counts.conflict+
+            ", invalid "+report.counts.invalid+". 금액·Fact 정합과 법률상 인정은 별개입니다.",
+        nextAction: "원문·Fact·typed·SQL 금액과 계산 trace를 재대조하고 미해결 피처를 실무자가 확인하세요.",
+        relatedFactIds: [], relatedCalculationTraceIds: [], relatedRuleIds: [] });
+    }
     for (const trace of traces) {
       if (trace.status === "calculated") continue;
       candidate({ id: "trace:" + trace.id, kind: "calculation", priority: trace.status === "blocked" ? "urgent" : "high",
