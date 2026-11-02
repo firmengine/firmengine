@@ -21,6 +21,8 @@
 
 `already_linked` 조기반환 → 가용성 결함/문서 무결성 오류에도 재조회 안 함. Draft #174는 SQL/R2/Writer 확인으로 조기 성공을 억제하는 **수정 후보**이며, 원격 R2 조회 비용 증가·승인/ACK 유실 UX·동일 파일을 수정하는 #164/#167/#170 충돌·현재 기준정보 승인세대 CAS는 별도 검토가 필요하다. `already_linked` 재검증 이후에도 객체가 바로 변경되는 R2 시점 경쟁, 기준정보의 A→B→A와 다중 active, 영수증 유실(#17/#24/#161)은 끝나지 않았다.
 
+- **추가 병합 보류 조건(소스 확인, 미실행):** Draft #174에서는 이전 조기반환과 달리 `already_linked` 경로가 `caseExtras(data)`를 통과한다. `server-store.ts`의 `caseExtras → readDerivedEvaluation`은 누락/불일치된 계산 캐시에 `analyses` pending INSERT 또는 재계산·reset 경로를 가질 수 있으므로 **기존 재시도의 read-only/무과금 속성을 보장하지 않는다**. 이는 새 부작용 가능성에 대한 정적 분석이며 실제 D1 쓰기 발생은 미관찰. PR #174 [검토 댓글](https://github.com/firmengine/firmengine/pull/174#issuecomment-6569385402)에 별도 보류 조건 등록. `caseExtras` read-only 대체 또는 부작용·과금 불발의 저장소/staging 회귀 후 병합 판단.
+
 - `A4-IT-005` **[ ]**: 재생성·재시도 경계의 조기 성공 제거 후보. 실제 HTTP 병렬·staging CAS는 미관찰.
 - `A4-DOC-011` **[ ]**: 직원 기존 연결 문서 재인계 전에 D1/R2/receipt 체크 필요. 실제 직원 화면·문서 링크 미관찰.
 - `A4-LAW-013` **[ ]**: Writer receipt 검사 후에도 실제 변호사·Word 최종 바이트 승인 **미실행**; 승인으로 승격하지 않음.
