@@ -43,6 +43,14 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
   // Only referenced debts are checked; unallocated debts remain subject to separate review.
   if(allocationRows.some(a=>{const debt=debts.get(a.debtId);return debt&&(debt.principal?.amountWon==null||debt.interest?.amountWon==null);}))
    return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_SOURCE_BALANCE_MISSING"]};
+  // Data integrity only: an allocated component must not exceed its observed source balance.
+  // Keep source and allocation values unchanged; do not infer legal approval.
+  if(allocationRows.some(a=>{
+   const debt=debts.get(a.debtId);
+   return debt&&(BigInt(a.allocatedPrincipalWon)>BigInt(debt.principal!.amountWon!)
+      ||BigInt(a.allocatedInterestWon)>BigInt(debt.interest!.amountWon!));
+  }))
+   return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_EXCEEDS_SOURCE_COMPONENT"]};
   const balances=new Map(data.debts.map(d=>[d.id,(BigInt(d.principal?.amountWon??"0")+BigInt(d.interest?.amountWon??"0"))]));
   const allocations=calculation.allocations;
   for(let month=1;month<=months!;month++)for(const a of allocations){
