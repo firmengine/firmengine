@@ -33,9 +33,10 @@
 
 ## 3. 실행 증거/수정 후보
 
-- 실제 Node.js `22.16.0`, SQLite WAL 두 독립 연결. **신규 17/17 조건의 독립 기대 관찰 일치**. 후보 helper를 실제 Node TS import(`--experimental-strip-types`)하여 재실행한 **17/17** 일치. r75~r80 합성 회귀 **71/71** 기대 관찰 일치. 일부는 의도된 안전 실패 부정대조이므로 제품 합격 71개가 아님.
+- 실제 Node.js `22.16.0`, SQLite WAL 두 독립 연결. **신규 17/17 조건의 독립 기대 관찰 일치**. 후보 helper를 실제 Node TS import(`--experimental-strip-types`)하여 재실행한 **18/18** 일치(추가 1개는 저장 직전 SQLite clock 기준 권한 만료 검사). r75~r80 합성 회귀 **71/71** 기대 관찰 일치. 일부는 의도된 안전 실패 부정대조이므로 제품 합격 71개가 아님.
 - 로컬 합성 실행 파일: `staff_handoff_role_revocation_cas_sqlite.test.mjs`, 후보 helper 연결 `staff_handoff_role_revocation_cas_candidate.test.mjs`; 실행 명령 `node --test` 또는 `node --experimental-strip-types --test`. 로컬 출력 각각 `node-results.txt`, `candidate-node-results.txt`, `regression-r75-r80.txt`. (GitHub 공개 소스에는 실제 고객 정보 없음.)
-- 별도 안전 검토 **[Draft PR #187](https://github.com/firmengine/firmengine/pull/187)**: `lib/automatic-draft-role-guard.ts` 신규, `server-store.ts` 최종 UPDATE에 active/actor/역할/관할/유효기간 SQL EXISTS×2, `automatic-draft-handoff.ts` actor 전달, 새 `tests/automatic-draft-handoff-role-revocation.test.mjs`. 브랜치 `audit/a4-r80-staff-role-revocation-cas-20261102`; 출발 main `22333b00`; PR HEAD `e100f871152b7307499b39731b9e260fb478f974`. 파일 4개 모두 허용 범위. **코드 PR 미병합**.
+- 별도 안전 검토 **[Draft PR #187](https://github.com/firmengine/firmengine/pull/187)**: `lib/automatic-draft-role-guard.ts` 신규, `server-store.ts` 최종 UPDATE에 active/actor/역할/관할/유효기간 SQL EXISTS×2, `automatic-draft-handoff.ts` actor 전달, 새 `tests/automatic-draft-handoff-role-revocation.test.mjs`. 브랜치 `audit/a4-r80-staff-role-revocation-cas-20261102`; 출발 main `22333b00`; PR 초기 HEAD `e100f871152b7307499b39731b9e260fb478f974`, 현 HEAD `68e40cb96ccac64dd0ef0933caab729238bb36b9`. 파일 4개 모두 허용 범위. **코드 PR 미병합**.
+- **추가 경계 수정:** 최초 후보가 R2 PUT 이전에 생성한 JS `at`으로 grant 만료를 판단하는 작은 TOCTOU를 발견. Draft PR #187의 role predicate를 최종 SQL 안의 SQLite `strftime('%Y-%m-%dT%H:%M:%fZ','now')`으로 변경(양 역할 동일 statement). 기존 JS 시각 이후 만료된 grant를 DB COMMIT 시점에 차단하는 Node 부정대조 추가. 저장소/Cloudflare D1 실환경은 미실행.
 - 새 저장소 테스트는 **작성·GitHub 반영만 완료 / 실제 저장소 전체 모듈 환경에서 미실행**. 로컬 SQLite 시험은 새 본선 commit을 실행한 것이 아니라 후보 helper+전사 SQL을 실행. full TS/Next/CI, staging D1/R2/Cron, 실제 두 HTTP 워커, Word 바이트, lawyer 승인/공식 서식, 10분 quiet/95법률 종단 및 보정 이벤트는 **미실행**.
 - 검사대상 6역할 순환: **IT → 사용자·서류 → 계산사무장 → 변호사 → 데이터 → AX**. 내용은 역할 관점 간접 검토이며 실제 직원·변호사 의사결정/승인을 뜻하지 않음.
 
