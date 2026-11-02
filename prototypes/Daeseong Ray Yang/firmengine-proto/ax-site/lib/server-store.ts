@@ -75,7 +75,7 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string;referenceId:string;referenceRevision:number}}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
@@ -112,11 +112,16 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     "JOIN case_calculation_runs cr ON cr.id=c.run_id AND cr.reference_sha256=? "+
     "JOIN case_legal_review_heads l ON l.case_id=s.case_id AND l.data_version=s.data_version "+
     "AND l.calculation_run_id=c.run_id WHERE s.case_id=? AND s.data_version=? "+
-    "AND c.run_id=? AND l.review_run_id=? AND c.case_revision=? AND l.case_revision=?)"
+    "AND c.run_id=? AND l.review_run_id=? AND c.case_revision=? AND l.case_revision=?)"+
+    // Approval identity is checked in the SAME D1 UPDATE as the case CAS.
+    // SHA alone is insufficient after A->B->A restore (new approved epoch).
+    " AND EXISTS (SELECT 1 FROM legal_reference_releases ar WHERE ar.status='active' "+
+    "AND ar.id=? AND ar.revision=? AND ar.sha256=?)"
   ):"";
   const headParams=expectedHeads?[expectedHeads.referenceSha256,data.context.id,
     expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
-    expected,expected]:[];
+    expected,expected,expectedHeads.referenceId,expectedHeads.referenceRevision,
+    expectedHeads.referenceSha256]:[];
   const batch:D1PreparedStatement[]=[
     db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
