@@ -75,11 +75,14 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string};handoffAudit?:{actor:string;detail:Record<string,unknown>}}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
   if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
+  if(options?.handoffAudit&&(category!=="artifact_only"||!options.expectedHeads||
+    !options.handoffAudit.actor||options.handoffAudit.actor==="private-site-service"||
+    options.handoffAudit.actor!==await actor()))throw new HttpError(403,"AUTODRAFT_HANDOFF_AUDIT_ACTOR_REQUIRED");
   if(category!=="source"){
     try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
@@ -121,6 +124,14 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
+  if(options?.handoffAudit){
+    // Keep the staff handoff audit inside the same D1 batch as its manifest CAS.
+    // A failed or stale UPDATE cannot produce a successful audit event.
+    batch.push(db().prepare(`INSERT INTO events (id,case_id,actor,type,detail,at) SELECT ?,?,?,?,?,? WHERE ${guard}`)
+      .bind(crypto.randomUUID(),data.context.id,options.handoffAudit.actor,
+        "automatic_draft.linked_to_staff_workbench",JSON.stringify(options.handoffAudit.detail),at,
+        data.context.id,data.context.revision,token));
+  }
   if(mutation){
     batch.push(db().prepare(`INSERT INTO case_mutation_receipts (id,case_id,command_id,request_hash,command_type,actor,before_revision,after_revision,before_state_hash,after_state_hash,before_snapshot_key,after_snapshot_key,impact_payload,created_at) SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,? WHERE ${guard}`).bind(receiptId,data.context.id,mutation.commandId,mutation.requestHash,mutation.commandType,mutation.actor,expected,data.context.revision,mutation.beforeStateHash,afterStateHash,beforeKey,afterKey,JSON.stringify({...mutation.impact as Record<string,unknown>,snapshotHashes:{before:await sha256(new TextEncoder().encode(JSON.stringify(previous))),after:inputSha256}}),at,data.context.id,data.context.revision,token));
     batch.push(db().prepare(`INSERT INTO events (id,case_id,actor,type,detail,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(crypto.randomUUID(),data.context.id,mutation.actor,"case.command_committed",JSON.stringify({commandId:mutation.commandId,commandType:mutation.commandType,receiptId,before:mutation.beforeStateHash,after:afterStateHash}),at,data.context.id,data.context.revision,token));
