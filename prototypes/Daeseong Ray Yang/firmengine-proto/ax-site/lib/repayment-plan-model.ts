@@ -130,8 +130,10 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  if(expectedInstallments!==undefined&&next-1!==expectedInstallments)issues.push("TERM_BOUNDARY_MISMATCH");
  const feeInstallments=expectedInstallments??next-1;
  addTrusteeFeeRows(data,rows,feeInstallments,issues,month=>phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment)?.id??"manual-uncovered-month",month=>{const row=rows.find(r=>r.installment===month);if(row)return row.paymentDate;const phase=phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment);if(!phase?.firstPaymentDate)return null;return addMonths(phase.firstPaymentDate,month-phase.firstInstallment);});
- const hasPriority=data.debts.some(d=>d.priority==="priority"||d.priority==="estate"||d.classification==="estate");
- if(hasPriority)for(const debt of data.debts.filter(d=>d.priority==="priority"||d.priority==="estate"||d.classification==="estate")){
+ // Existing tax→priority row classification must also participate in coverage checks.
+ // This is a consistency guard, not a court recognition of any tax claim.
+ const hasPriority=data.debts.some(d=>d.priority==="priority"||d.priority==="estate"||d.classification==="estate"||d.classification==="tax");
+ if(hasPriority)for(const debt of data.debts.filter(d=>d.priority==="priority"||d.priority==="estate"||d.classification==="estate"||d.classification==="tax")){
   const amounts=[debt.principal?.amountWon,debt.interest?.amountWon];
   if(amounts.some(x=>x==null||!nat(x))){issues.push("PRIORITY_CLAIM_BALANCE_UNKNOWN:"+debt.id);continue;}
   const due=BigInt(amounts[0]!)+BigInt(amounts[1]!);
