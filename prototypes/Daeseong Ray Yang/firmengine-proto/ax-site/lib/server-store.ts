@@ -120,7 +120,7 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
     expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
     expected,expected]:[];
   const roleGuard=expectedHeads?HANDOFF_ROLE_GUARD_SQL:"";
-  const roleParams=expectedHeads?handoffRoleGuardParams(options?.handoffActor??"",data.context.id,at):[];
+  const roleParams=expectedHeads?handoffRoleGuardParams(options?.handoffActor??"",data.context.id):[];
   const batch:D1PreparedStatement[]=[
     db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard+roleGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams,...roleParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
