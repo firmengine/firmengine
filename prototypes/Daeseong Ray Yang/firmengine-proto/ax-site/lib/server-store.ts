@@ -211,11 +211,12 @@ async function resetAndRetryDerivedEvaluation(data:CaseData,id:string,identity:{
   return readDerivedEvaluation(data,identity,inputSha256,false);
 }
 
-async function readDerivedEvaluation(data:CaseData,identity:{id:string;revision:number;token:string}|undefined,inputSha256:string,retryPending=true):Promise<DerivedEvaluationRead|undefined>{
+async function readDerivedEvaluation(data:CaseData,identity:{id:string;revision:number;token:string}|undefined,inputSha256:string,retryPending=true,readOnly=false):Promise<DerivedEvaluationRead|undefined>{
   if(!identity||identity.id!==data.context.id||identity.revision!==data.context.revision)return undefined;
   const rows=(await db().prepare("SELECT a.id,a.payload FROM analyses a JOIN cases c ON c.id = a.case_id AND c.revision = a.revision WHERE a.case_id = ? AND a.revision = ? AND a.type = 'derived_evaluation' AND c.storage_token = ? AND json_valid(a.payload) = 1 AND json_extract(a.payload,'$.storageToken') = ? AND json_extract(a.payload,'$.inputSha256') = ? ORDER BY a.at DESC LIMIT 1")
     .bind(data.context.id,data.context.revision,identity.token,identity.token,inputSha256).all<{id:string;payload:string}>()).results;
   if(!rows.length){
+    if(readOnly)return undefined; // Staff replay must not materialize a new calculation cache.
     const id=crypto.randomUUID(),pending=pendingDerivedEvaluation({revision:identity.revision,storageToken:identity.token,inputSha256,generatedAt:now(),referenceApplication:resolveReferenceApplicationForCase(data)});
     const inserted=await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE EXISTS (SELECT 1 FROM cases WHERE id = ? AND revision = ? AND storage_token = ?)")
       .bind(id,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),now(),data.context.id,identity.revision,identity.token).run();
@@ -223,24 +224,24 @@ async function readDerivedEvaluation(data:CaseData,identity:{id:string;revision:
     await finishDerivedEvaluation(data,id,pending);
     return readDerivedEvaluation(data,identity,inputSha256,false);
   }
-  let envelope:unknown;try{envelope=JSON.parse(rows[0].payload);}catch{return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
-  if(!isDerivedEvaluation(envelope)||envelope.storageToken!==identity.token||envelope.inputSha256!==inputSha256||envelope.revision!==identity.revision||envelope.engineVersion!==EXECUTION_CONTRACT_VERSION||envelope.referenceSha256!==(referenceIdentity()?.sha256??referenceRelease.sha256))return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+  let envelope:unknown;try{envelope=JSON.parse(rows[0].payload);}catch{return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
+  if(!isDerivedEvaluation(envelope)||envelope.storageToken!==identity.token||envelope.inputSha256!==inputSha256||envelope.revision!==identity.revision||envelope.engineVersion!==EXECUTION_CONTRACT_VERSION||envelope.referenceSha256!==(referenceIdentity()?.sha256??referenceRelease.sha256))return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
   if(envelope.status==="pending"){
-    if(!retryPending)return {status:"pending" as const,revision:identity.revision,inputSha256,storageToken:identity.token};
+    if(!retryPending||readOnly)return {status:"pending" as const,revision:identity.revision,inputSha256,storageToken:identity.token};
     await finishDerivedEvaluation(data,rows[0].id,envelope);
     return readDerivedEvaluation(data,identity,inputSha256,false);
   }
   if(envelope.execution){
     const bytes=new TextEncoder().encode(JSON.stringify(envelope.execution));
-    if(!envelope.evaluationSha256||await sha256(bytes)!==envelope.evaluationSha256)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    if(!envelope.evaluationSha256||await sha256(bytes)!==envelope.evaluationSha256)return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
     return {...envelope,status:"complete" as const,execution:envelope.execution};
   }
   if(envelope.executionPointer){
     const prefix=`cases/${data.context.id}/evaluations/${identity.revision}-${identity.token}-`;
-    if(!envelope.executionPointer.key.startsWith(prefix)||!/^[a-f0-9-]{36}\.json$/.test(envelope.executionPointer.key.slice(prefix.length)))return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
-    const object=await bucket().get(envelope.executionPointer.key);if(!object)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
-    const bytes=new Uint8Array(await object.arrayBuffer()),hash=await sha256(bytes);if(hash!==envelope.executionPointer.sha256||hash!==envelope.evaluationSha256)return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
-    try{return {...envelope,status:"complete" as const,execution:JSON.parse(new TextDecoder().decode(bytes))};}catch{return resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
+    if(!envelope.executionPointer.key.startsWith(prefix)||!/^[a-f0-9-]{36}\.json$/.test(envelope.executionPointer.key.slice(prefix.length)))return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    const object=await bucket().get(envelope.executionPointer.key);if(!object)return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    const bytes=new Uint8Array(await object.arrayBuffer()),hash=await sha256(bytes);if(hash!==envelope.executionPointer.sha256||hash!==envelope.evaluationSha256)return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);
+    try{return {...envelope,status:"complete" as const,execution:JSON.parse(new TextDecoder().decode(bytes))};}catch{return readOnly?undefined:resetAndRetryDerivedEvaluation(data,rows[0].id,identity,inputSha256);}
   }
   return {status:"pending" as const,revision:identity.revision,inputSha256};
 }
@@ -289,7 +290,7 @@ export async function requireUploadedSource(data:CaseData,source:{documentId?:st
   const row=await db().prepare("SELECT d.id FROM documents d JOIN page_jobs p ON p.document_id = d.id AND p.case_id = d.case_id WHERE d.id = ? AND d.case_id = ? AND d.ready = 1 AND p.page = ? AND p.image_key IS NOT NULL").bind(source.documentId,data.context.id,source.page).first();
   if(!row)throw new HttpError(409,"원본과 해당 페이지의 업로드가 끝난 뒤 데이터를 등록하세요.");
 }
-export async function caseExtras(data:CaseData){
+export async function caseExtras(data:CaseData,options:{readOnlyDerivedEvaluation?:boolean}={}){
   const id=data.context.id;
   const identity=caseSnapshots.get(data),inputSha256=await sha256(new TextEncoder().encode(JSON.stringify(data))),calculatorInputSha256=await snapshotSha256(data);
   const currentFiles=new Set((data.exportManifest?.files??[]).filter(f=>f.status==="current").map(f=>f.id));
@@ -299,7 +300,7 @@ export async function caseExtras(data:CaseData){
     db().prepare("SELECT id,revision,type,payload,at FROM analyses WHERE case_id = ? AND revision = ? AND type IN ('legal_advisory','legal_review') AND json_valid(payload) = 1 AND json_extract(payload,'$.calculatorExecution.inputSha256') = ? AND json_extract(payload,'$.calculatorExecution.referenceRelease.sha256') = ? AND json_extract(payload,'$.calculatorExecution.contractVersion') = ? ORDER BY at DESC,id DESC LIMIT 101").bind(id,data.context.revision,calculatorInputSha256,referenceIdentity()?.sha256??referenceRelease.sha256,EXECUTION_CONTRACT_VERSION).all<{id:string,revision:number,type:string,payload:string,at:string}>(),
     getProcessingReadiness(data),
     db().prepare("SELECT COUNT(*) AS attempts,COALESCE(SUM(CAST(json_extract(detail,'$.inputTokens') AS INTEGER)),0) AS inputTokens,COALESCE(SUM(CAST(json_extract(detail,'$.outputTokens') AS INTEGER)),0) AS outputTokens,MIN(at) AS startedAt,MAX(at) AS completedAt FROM events WHERE case_id = ? AND type = 'model.call' AND json_extract(detail,'$.model') = ?").bind(id,AI_MODEL).first<{attempts:number,inputTokens:number,outputTokens:number,startedAt:string|null,completedAt:string|null}>(),
-    readDerivedEvaluation(data,identity,inputSha256),
+    readDerivedEvaluation(data,identity,inputSha256,!options.readOnlyDerivedEvaluation,!!options.readOnlyDerivedEvaluation),
   ]);
   const execution:CaseData["execution"]=usage&&usage.attempts>0?{model:AI_MODEL,attempts:usage.attempts,inputTokens:usage.inputTokens,outputTokens:usage.outputTokens,...(usage.startedAt?{startedAt:usage.startedAt}:{}),...(usage.completedAt?{completedAt:usage.completedAt}:{})}:data.execution;
   const legalPageHasMore=legalAnalyses.results.length>100,legalRows=legalAnalyses.results.slice(0,100).flatMap(x=>{try{return [{...x,payload:JSON.parse(x.payload)}];}catch{return [];}});
