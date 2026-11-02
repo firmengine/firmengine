@@ -1,3 +1,4 @@
+import { requireCaseReadAccess } from "../../../../lib/case-read-access.ts";
 import { executeLegacyCaseCommand } from "../../../../lib/case-command-store";
 import { caseResponse } from "../../../../lib/case-response";
 import { jsonResponse } from "../../../../lib/json-response";
@@ -9,7 +10,7 @@ async function assertReferenceImportJobsStopped(id:string){
   const active=await db().prepare("SELECT COUNT(*) AS count FROM page_jobs WHERE case_id = ? AND (status = 'processing' OR lease_until IS NOT NULL)").bind(id).first<{count:number}>();
   if((active?.count??0)>0)throw new HttpError(409,"OCR jobs must be terminal and lease-free before importing reference data.");
 }
-export async function GET(request:Request,{params}:Context){try{const {id}=await params,url=new URL(request.url);if(url.searchParams.get("historyIntegrityRestore")==="preview"){
+export async function GET(request:Request,{params}:Context){try{const {id}=await params;await requireCaseReadAccess(id);const url=new URL(request.url);if(url.searchParams.get("historyIntegrityRestore")==="preview"){
   const input=parseRestoreInput({expectedRevision:Number(url.searchParams.get("expectedRevision")),baselineRevision:Number(url.searchParams.get("baselineRevision")),documentId:url.searchParams.get("documentId"),page:Number(url.searchParams.get("page")),sourceSha256:url.searchParams.get("sourceSha256"),baselineFactsSha256:url.searchParams.get("baselineFactsSha256")}),result=await buildRestorePlan(id,input);
   return jsonResponse({caseId:id,documentId:input.documentId,page:input.page,baselineRevision:input.baselineRevision,currentRevision:input.expectedRevision,sourceSha256:input.sourceSha256,plan:{baselineObjectSha256:result.plan.baselineObjectSha256,baselineFactsSha256:result.plan.baselineFactsSha256,count:result.plan.count,selectedIdsSha256:result.plan.selectedIdsSha256,expectedRevision:result.plan.expectedRevision,activeExportFilesInvalidated:result.plan.activeExportFilesInvalidated,priorReviewsCleared:result.plan.priorReviewsCleared,priorReviewFingerprintsSha256:result.plan.priorReviewFingerprintsSha256},activeFactsChanged:0,humanFactReviewsChanged:0},request,{headers:{"Cache-Control":"no-store"}});
 }return jsonResponse(await caseResponse(id),request,{headers:{"Cache-Control":"no-store"}});}catch(e){return errorResponse(e);}}
