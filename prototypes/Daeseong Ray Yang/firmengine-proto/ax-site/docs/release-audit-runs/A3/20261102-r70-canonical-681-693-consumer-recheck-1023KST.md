@@ -15,19 +15,19 @@ P/U/A = 원본 기간 술어 true / 단위 술어 true / 정확 canonical 적용
 
 | # | 정확 canonical ID | 서류 | datatype; canonical_unit; temporal_role; subject | P/U/A | 사용처·공백 |
 |---:|---|---|---|:---:|---|
-| 690 | `wage_withholding_tax::income.tax.taxpayer` | `salary_withholding` | party_role; not_applicable; not_applicable; applicant_debtor | 1/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 692 | `wage_withholding_tax::income.tax.withholding_agent` | `salary_withholding` | party_role; not_applicable; not_applicable; employer | 1/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 688 | `wage_withholding_tax::income.tax.tax_year` | `salary_withholding` | integer; not_applicable; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 681 | `vehicle_valuation::valuation_method` | `vehicle_valuation` | string; not_applicable; not_applicable; owner_legal | 0/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 682 | `vehicle_valuation::vehicle_id` | `vehicle_valuation` | identifier; not_applicable; not_applicable; owner_legal | 0/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
 | 683 | `wage_withholding_tax::income.tax.employment_start_end` | `salary_withholding` | date_range; not_applicable; period_scope; applicant_debtor | 1/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
 | 684 | `wage_withholding_tax::income.tax.gross_wages` | `salary_withholding` | money; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 689 | `wage_withholding_tax::income.tax.taxable_allowances` | `salary_withholding` | money_or_itemized; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 687 | `wage_withholding_tax::income.tax.tax_exempt_allowances` | `salary_withholding` | money_or_itemized; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 691 | `wage_withholding_tax::income.tax.withheld_income_tax` | `salary_withholding` | money; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 686 | `wage_withholding_tax::income.tax.resident_tax` | `salary_withholding` | money; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 693 | `wage_withholding_tax::income.tax.year_end_adjustment` | `salary_withholding` | money_or_status; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
 | 685 | `wage_withholding_tax::income.tax.issue_date` | `salary_withholding` | date; not_applicable; document_issue_date; authority | 1/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 682 | `vehicle_valuation::vehicle_id` | `vehicle_valuation` | identifier; not_applicable; not_applicable; owner_legal | 0/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
-| 681 | `vehicle_valuation::valuation_method` | `vehicle_valuation` | string; not_applicable; not_applicable; owner_legal | 0/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 686 | `wage_withholding_tax::income.tax.resident_tax` | `salary_withholding` | money; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 687 | `wage_withholding_tax::income.tax.tax_exempt_allowances` | `salary_withholding` | money_or_itemized; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 688 | `wage_withholding_tax::income.tax.tax_year` | `salary_withholding` | integer; not_applicable; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 689 | `wage_withholding_tax::income.tax.taxable_allowances` | `salary_withholding` | money_or_itemized; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 690 | `wage_withholding_tax::income.tax.taxpayer` | `salary_withholding` | party_role; not_applicable; not_applicable; applicant_debtor | 1/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 691 | `wage_withholding_tax::income.tax.withheld_income_tax` | `salary_withholding` | money; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 692 | `wage_withholding_tax::income.tax.withholding_agent` | `salary_withholding` | party_role; not_applicable; not_applicable; employer | 1/0/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
+| 693 | `wage_withholding_tax::income.tax.year_end_adjustment` | `salary_withholding` | money_or_status; KRW; tax_period_year; applicant_debtor | 1/1/1 | source-only; typed 0; direct material 0; exact token/legal 0 |
 
 `extraction_records`→`extracted_features.raw_value_json/canonical_field_id/source_state`→`extraction_field_coverage`와 `feature-lineage-audit.ts`의 `document_id/page/record_ordinal/field_ordinal/source_sha256`는 저장/추적 **스키마**이며 실제 저장·조회/판본 동일성 영수증은 없다. 이번 피처의 0 direct 계산/법률/서식 소비를 폐기·무용 판정하지 않는다.
 
