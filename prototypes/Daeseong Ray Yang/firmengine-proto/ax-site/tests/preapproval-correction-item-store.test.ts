@@ -172,10 +172,12 @@ test("court correction read uses one D1 batch for source revision and item heads
 });
 test("unobserved correction item batch results cannot be reported as zero court items",async()=>{
  const {db,data}=setup();
- const response={...db,async batch(){
-  return [{results:[{revision:data.context.revision,dataVersion:1}]},{results:null}] as unknown as Awaited<ReturnType<D1Database["batch"]>>;
- }} as D1Database;
- await assert.rejects(()=>readCourtCorrectionItems(response,data),/CORRECTION_ITEM_READ_SNAPSHOT_UNOBSERVED/);
+ for(const failedResult of [null,[{results:[{revision:data.context.revision,dataVersion:1}]},{results:null}]]) {
+  const response={...db,async batch(){
+   return failedResult as unknown as Awaited<ReturnType<D1Database["batch"]>>;
+  }} as D1Database;
+  await assert.rejects(()=>readCourtCorrectionItems(response,data),/CORRECTION_ITEM_READ_SNAPSHOT_UNOBSERVED/);
+ }
 });
 test("zero observed correction item rows is not the same as an unobserved D1 response",async()=>{
  const {db,data}=setup();
