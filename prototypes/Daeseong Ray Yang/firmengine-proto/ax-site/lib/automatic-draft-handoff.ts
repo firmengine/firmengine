@@ -163,7 +163,7 @@ export async function adoptAutomaticDraftForReview(input:{
    })),next,"draft"),documentWriter:finalized,autoDraftOrigin:origin
   } as OriginManifest;
   await saveCase(next,data.context.revision,data,undefined,{
-   mutationCategory:"artifact_only",
+   mutationCategory:"artifact_only",handoffActor:input.actor,
    expectedHeads:{dataVersion:run.dataVersion,calculationRunId:after!.calculationRunId,
     legalReviewRunId:run.legalReviewRunId,referenceSha256:after!.referenceSha256}
   });

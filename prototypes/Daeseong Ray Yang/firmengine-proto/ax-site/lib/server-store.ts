@@ -1,4 +1,5 @@
 import { currentReferenceSnapshot, referenceIdentity } from "./reference-runtime.ts";
+import {HANDOFF_ROLE_GUARD_SQL,handoffRoleGuardParams} from "./automatic-draft-role-guard.ts";
 import {assertNonSourceCaseChange,REVIEW_ONLY_COMMANDS,type NonSourceMutationCategory} from "./case-mutation-classifier.ts";
 import { resolveReferenceApplicationForCase } from "./reference-application.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
@@ -75,11 +76,12 @@ export async function caseStateFingerprint(data:CaseData):Promise<string>{
 export async function readCommandReceipt(caseId:string,commandId:string){
   return db().prepare("SELECT id,case_id AS caseId,command_id AS commandId,request_hash AS requestHash,command_type AS commandType,actor,before_revision AS beforeRevision,after_revision AS afterRevision,before_state_hash AS beforeStateHash,after_state_hash AS afterStateHash,impact_payload AS impact,created_at AS createdAt FROM case_mutation_receipts WHERE case_id = ? AND command_id = ?").bind(caseId,commandId).first<Record<string,unknown>>();
 }
-export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string}}){
+export async function saveCase(data:CaseData,expected:number,previous:CaseData,mutation?:CaseMutationContext,options?:{mutationCategory?:"artifact_only";expectedHeads?:{dataVersion:number;calculationRunId:string;legalReviewRunId:string;referenceSha256:string};handoffActor?:string}){
   if(options?.mutationCategory&&mutation)throw new HttpError(409,"단순 생성물 저장과 사건 변경 명령은 혼합할 수 없습니다.");
   const category:NonSourceMutationCategory|"source"=
     mutation&&REVIEW_ONLY_COMMANDS.has(mutation.commandType)?"review_only":options?.mutationCategory??"source";
   if(options?.expectedHeads&&category!=="artifact_only")throw new HttpError(409,"AUTODRAFT_HANDOFF_GUARD_REQUIRES_ARTIFACT_ONLY");
+  if(options?.expectedHeads&&(!options.handoffActor?.trim()||options.handoffActor==="private-site-service"))throw new HttpError(403,"AUTODRAFT_ROLE_FENCE_ACTOR_REQUIRED");
   if(category!=="source"){
     try{assertNonSourceCaseChange(previous,data,category,category==="review_only"?mutation?.commandType:undefined);}
     catch(error){throw new HttpError(409,error instanceof Error?error.message:"NON_SOURCE_CHANGE_INVALID");}
@@ -117,8 +119,10 @@ export async function saveCase(data:CaseData,expected:number,previous:CaseData,m
   const headParams=expectedHeads?[expectedHeads.referenceSha256,data.context.id,
     expectedHeads.dataVersion,expectedHeads.calculationRunId,expectedHeads.legalReviewRunId,
     expected,expected]:[];
+  const roleGuard=expectedHeads?HANDOFF_ROLE_GUARD_SQL:"";
+  const roleParams=expectedHeads?handoffRoleGuardParams(options?.handoffActor??"",data.context.id):[];
   const batch:D1PreparedStatement[]=[
-    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams),
+    db().prepare("UPDATE cases SET payload = ?, revision = ?, name = ?, updated_at = ?, storage_token = ?, mutation_category = ? WHERE id = ? AND revision = ? AND storage_token = ?"+(mutation?.authorization?` AND (${mutation.authorization.sql})`:"")+headGuard+roleGuard).bind(payload,data.context.revision,data.context.caseName,at,token,category,data.context.id,expected,snapshot.token,...(mutation?.authorization?.params??[]),...headParams,...roleParams),
     db().prepare(`INSERT INTO analyses (id,case_id,revision,type,payload,at) SELECT ?,?,?,?,?,? WHERE ${guard}`).bind(evaluationId,data.context.id,data.context.revision,"derived_evaluation",JSON.stringify(pending),at,data.context.id,data.context.revision,token),
   ];
   if(mutation){
