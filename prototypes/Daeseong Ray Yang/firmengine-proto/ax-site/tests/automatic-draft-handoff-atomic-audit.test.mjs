@@ -6,8 +6,8 @@ import {DatabaseSync} from "node:sqlite";
 const store=readFileSync(new URL("../lib/server-store.ts",import.meta.url),"utf8");
 const handoff=readFileSync(new URL("../lib/automatic-draft-handoff.ts",import.meta.url),"utf8");
 const guard=store.match(/const guard="([^"]+)";/)?.[1];
-const auditTemplate=store.match(/batch\\.push\\(db\\(\\)\\.prepare\\(\\\`(INSERT INTO events \\(id,case_id,actor,type,detail,at\\) SELECT .*? WHERE \\$\\{guard\\})\\\`\\)/s)?.[1];
-const auditSql=auditTemplate?.replace("${guard}",guard??"");
+const auditFragment='INSERT INTO events (id,case_id,actor,type,detail,at) SELECT ?,?,?,?,?,? WHERE ${guard}';
+const auditSql=store.includes(auditFragment)?auditFragment.replace("${guard}",guard??""):undefined;
 function fixture(){
  const d=new DatabaseSync(":memory:");
  d.exec("CREATE TABLE cases(id TEXT PRIMARY KEY,revision INTEGER,storage_token TEXT,payload TEXT);"+
@@ -25,8 +25,8 @@ test("handoff event SQL is in the saveCase D1 batch before commit; no swallowed 
  const audit=store.indexOf("if(options?.handoffAudit){",store.indexOf("const batch:D1PreparedStatement[]"));
  const commit=store.indexOf("await db().batch(batch)");
  assert.ok(audit>0&&audit<commit);
- assert.match(handoff,/handoffAudit:\\{actor:input\\.actor,detail:/);
- assert.doesNotMatch(handoff,/await event\\(input\\.caseId/);
+ assert.ok(handoff.includes("handoffAudit:{actor:input.actor,detail:"));
+ assert.ok(!handoff.includes("await event(input.caseId"));
 });
 test("atomic candidate: successful CAS emits exactly one staff event",()=>{
  const f=fixture();
