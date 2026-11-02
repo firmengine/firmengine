@@ -1,4 +1,9 @@
-/** A4 r89 independent negative-control audit: event write vs document registration. This is NOT a product safety pass.\n * Execute explicitly with node --test <this file>; the default is current main baseline.\n * Candidate #201 comparison requires A4_EXPECT_BASELINE=0 and A4_POST_ROUTE_PATH.\n * Based on the r88 POST body harness; synthetic D1 adapters only.\n */\n/** A4 r88: executes the actual document-registration POST function body after
+/** A4 r89 independent negative-control audit: event write vs document registration. This is NOT a product safety pass.
+ * Execute explicitly with node --test <this file>; the default is current main baseline.
+ * Candidate #201 comparison requires A4_EXPECT_BASELINE=0 and A4_POST_ROUTE_PATH.
+ * Based on the r88 POST body harness; synthetic D1 adapters only.
+ */
+/** A4 r88: executes the actual document-registration POST function body after
  * removing its TypeScript signature/imports and supplying synthetic in-memory
  * D1/R2 adapters. Does not execute Next runtime, Cloudflare D1/R2 or secrets.
  * The project version reads ../app/api/cases/[id]/documents/route.ts.
