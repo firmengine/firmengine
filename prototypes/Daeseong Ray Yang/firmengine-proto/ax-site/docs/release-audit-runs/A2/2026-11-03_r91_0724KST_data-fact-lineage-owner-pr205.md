@@ -13,7 +13,7 @@
 
 **재현한 결함:** main `projectLawgraphDocumentFields`는 출력 숫자가 일치하면 `calcFeature.sourceFactIds`를 그대로 합치고 `linked_calculation/manualReviewRequired=false`로 만든다. 현재 사건 Fact가 없거나 타 사건의 동일한 금액에 대한 Fact ID, 철회·미승인 Fact ID여도 동일하다. 실제 main 테스트 `tests/lawgraph-document-field-projection.test.ts`도 `data.facts=[]`이면서 `sourceFactIds=["source-f1"]`인 계산 링크의 존재만 확인하고 승인 상태는 확인하지 않는다.
 
-**실제 실행:** GitHub main의 `projectLawgraphDocumentFields` 함수 **본문**을 확보하고 TypeScript 타입 표기만 제거해 V8 `Function` 격리실행. `currentFacts/factSourceLineageIssues`, 서식 카탈로그, 금액비교 및 조건부 문서 요구는 명시적 **합성 mock**이며 프로젝트 Node 테스트나 실제 문서 출력이 아니다. 독립 기대상 반례 12개에서 기존 잘못된 `linked_calculation` 8건 및 숫자형 source IDs 1건 예외를 관찰. 후보는 **12/12 기대 판정 일치**. 후보 변경은 출력금액과 `calcFeatureRefs`를 수정하지 않고, 수치가 일치해도 원천 Fact가 현재 사건의 적격 Fact 집합에 없는 경우 서식 `lineage_review_required/manualReviewRequired=true`로만 내린다.
+**실제 실행:** GitHub main의 `projectLawgraphDocumentFields` 함수 **본문**을 확보하고 TypeScript 타입 표기만 제거해 V8 `Function` 격리실행. `currentFacts/factSourceLineageIssues`, 서식 카탈로그, 금액비교 및 조건부 문서 요구는 명시적 **합성 mock**이며 프로젝트 Node 테스트나 실제 문서 출력이 아니다. 독립 기대상 반례 12개에서 기존 잘못된 `linked_calculation` 7건과 숫자형 source IDs 1건 예외를 확인(별도의 빈 근거 배열 1건도 기존 linked지만 합격 여부 미인증)를 관찰. 후보는 **12/12 기대 판정 일치**. 후보 변경은 출력금액과 `calcFeatureRefs`를 수정하지 않고, 수치가 일치해도 원천 Fact가 현재 사건의 적격 Fact 집합에 없는 경우 서식 `lineage_review_required/manualReviewRequired=true`로만 내린다.
 
 | 합성 조건 (모든 ID SYN-*) | 기대 상태 | main 관찰 | #205 후보 격리 관찰 |
 |---|---|---|---|
