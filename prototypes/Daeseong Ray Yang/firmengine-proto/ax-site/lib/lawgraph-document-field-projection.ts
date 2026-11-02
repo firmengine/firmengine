@@ -64,7 +64,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     const output=outputByToken[token];
     const exact=output?calculationRows.filter(r=>r.outputName===output
        &&(ordinal===null?r.rowOrdinal===null:r.rowOrdinal===ordinal)
-       &&(!subjectId||!r.subjectId||r.subjectId===subjectId)
+       &&(r.subjectId===subjectId)
        &&["computed","provisional"].includes(r.status)&&sameValue(r.value,value)):[];
     const calcFeature=exact.length===1?exact[0]:null;
     const canonical=token.replace(/[A-Z]/g,x=>"_"+x.toLowerCase());
@@ -76,7 +76,14 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     // A matching calculation number does not prove that its source Fact IDs
     // belong to the current accepted case snapshot.
     const calcFactIds=Array.isArray(calcFeature?.sourceFactIds)?calcFeature.sourceFactIds.filter(id=>typeof id==="string"):[];
-    const calculationSourceUnverified=!!calcFeature&&(!Array.isArray(calcFeature.sourceFactIds)||calcFactIds.length!==calcFeature.sourceFactIds.length||calcFactIds.some(id=>!verifiedFactIds.has(id)));
+    const calculationSourceUnverified=!!calcFeature&&(
+      !Array.isArray(calcFeature.sourceFactIds)
+      // Empty, repeated or malformed Fact IDs are not evidence of a verified calculation.
+      ||calcFactIds.length===0
+      ||calcFactIds.length!==calcFeature.sourceFactIds.length
+      ||new Set(calcFactIds).size!==calcFactIds.length
+      ||calcFactIds.some(id=>!id.trim()||id!==id.trim()||!verifiedFactIds.has(id))
+    );
     const sourceIds=[...new Set([...calcFactIds,...matchingFacts.map(f=>f.id)])];
     const contextPath=ordinal===null?contextByToken[token]:undefined;
     const contextReady=!!contextPath&&!missing(value)&&(
