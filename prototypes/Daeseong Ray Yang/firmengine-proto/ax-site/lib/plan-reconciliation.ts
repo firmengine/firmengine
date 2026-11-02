@@ -53,7 +53,7 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
  }
  const payoff:Record<string,number|null>={},priorityCoverage:PlanReconciliation["priorityCoverage"]={},legalReviewTasks:string[]=[];
  for(const debt of data.debts){
-  const rows=ledger.rows.filter(row=>row.debtId===debt.id),isPriority=debt.priority==="priority"||debt.priority==="estate"||debt.classification==="estate";
+  const rows=ledger.rows.filter(row=>row.debtId===debt.id),isPriority=debt.priority==="priority"||debt.priority==="estate"||debt.classification==="estate"||debt.classification==="tax";
   if(!rows.length&&!isPriority)continue;
   const principal=debt.principal?.amountWon,interest=debt.interest?.amountWon;
   if(principal==null||interest==null||!nat(principal)||!nat(interest)){issues.push("CLAIM_BALANCE_MISSING:"+debt.id);if(isPriority)priorityCoverage[debt.id]={scheduledWon:"0",uncoveredWon:"0",deadlineInstallment:expected,status:"unknown"};continue;}
