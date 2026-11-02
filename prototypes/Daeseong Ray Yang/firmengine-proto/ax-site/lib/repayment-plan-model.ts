@@ -28,7 +28,7 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
   // Fail closed on reconstructed default allocations; no legal allocation rule is changed.
   const canonicalWon=(value:unknown):value is string=>typeof value==="string"&&/^(?:0|[1-9]\d*)$/.test(value);
   const allocationRows=calculation.allocations;
-  if(!Array.isArray(allocationRows)||allocationRows.some(a=>!a||typeof a.debtId!=="string"||!Array.isArray(a.factIds)||a.factIds.some(id=>typeof id!=="string"||!id.trim())||!canonicalWon(a.allocatedPrincipalWon)||!canonicalWon(a.allocatedInterestWon)))
+  if(!Array.isArray(allocationRows)||allocationRows.some(a=>!a||typeof a.debtId!=="string"||!Array.isArray(a.factIds)||a.factIds.some(id=>typeof id!=="string"||!id.trim()||id!==id.trim())||new Set(a.factIds).size!==a.factIds.length||!canonicalWon(a.allocatedPrincipalWon)||!canonicalWon(a.allocatedInterestWon)))
    return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_INVALID"]};
   if(new Set(allocationRows.map(a=>a.debtId)).size!==allocationRows.length)
    return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_DUPLICATE_DEBT_ID"]};
