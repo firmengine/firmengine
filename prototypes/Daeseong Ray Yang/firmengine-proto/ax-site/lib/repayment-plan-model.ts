@@ -82,6 +82,10 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
   if(calculation.caseRevision!==data.context.revision)issues.push("CALCULATION_SNAPSHOT_STALE");
   return {status:issues.length?"blocked":"provisional",rows:orderRows(rows),issues:[...new Set(issues)]};
  }
+ // Reviewed schedules use the same debt-ID keyed Map as generated defaults.
+ // Ambiguous source identity must not produce an internally "complete" ledger.
+ if(new Set(data.debts.map(debt=>debt.id)).size!==data.debts.length)
+  return {status:"blocked",rows:[],issues:["REVIEWED_DUPLICATE_SOURCE_DEBT_ID"]};
  const expectedInstallments=schedule.expectedInstallments??data.context.planMonths;
  if(expectedInstallments!==undefined&&expectedInstallments!==data.context.planMonths)issues.push("INSTALLMENT_COUNT_MISMATCH");
  const phases=[...schedule.phases].sort((a,b)=>a.firstInstallment-b.firstInstallment); let next=1;
