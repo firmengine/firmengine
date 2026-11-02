@@ -11,6 +11,7 @@ import {buildApprovalIssueGraph} from "../../../../../lib/approval-issue-graph.t
 import {auditFivePreapprovalStages,type StoredCalcFeature} from "../../../../../lib/preapproval-stage-audit.ts";
 import {inspectPreapprovalOcrStorage} from "../../../../../lib/preapproval-ocr-storage-audit.ts";
 import {auditStoredCalculationReplay} from "../../../../../lib/preapproval-calculation-replay.ts";
+import {auditStoredCalculationStatusGate} from "../../../../../lib/preapproval-stored-status-gate.ts";
 import {calculationFeatureRows} from "../../../../../lib/case-calculation-feature-store.ts";
 import {auditPreapprovalLegalCatalog} from "../../../../../lib/preapproval-legal-coverage-audit.ts";
 import {readCourtCorrectionItems} from "../../../../../lib/preapproval-correction-item-store.ts";
@@ -110,6 +111,9 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
       expectedOutputs:calculationFeatureRows(execution).map(row=>({calculationId:row.calculationId,outputPath:row.outputPath,sourceFactIds:row.sourceFactIds}))})
     :null;
   if(storedCalculationReplay&&!storedCalculationReplay.valid)calculationCurrent=false;
+  // A source-consistent replay may still contain blocked/missing/provisional rows.
+  // Audit the business completion status independently of revision and Fact integrity.
+  const storedFeatureReadiness=auditStoredCalculationStatusGate({rows:persistedFeatures,readComplete:featureReadComplete});
   const legalCatalogCoverage=auditPreapprovalLegalCatalog({
     caseData:data,facts,sourceValidatedAcceptedFactIds:acceptedFactIds,
     rules:LEGAL_CATALOG,exceptions:legalExceptions.scenarios,
@@ -130,12 +134,14 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     monitor:requirements.status==="fulfilled"?requirements.value:null,
     legalReview:legal.status==="fulfilled"?legal.value:null,
     expectedRiskIds:RISK_CATALOG.map(x=>x.id),
-    riskTitles:Object.fromEntries(RISK_CATALOG.map(x=>[x.id,x.title]))
+    riskTitles:Object.fromEntries(RISK_CATALOG.map(x=>[x.id,x.title])),
+    storedFeatureReadiness
   });
   const failures=[
     ...(requirements.status==="rejected"?["DOCUMENT_MONITOR_UNAVAILABLE"]:[]),
     ...(legal.status==="rejected"?["CURRENT_LAWGRAPH_UNAVAILABLE"]:[]),
     ...calculationReplayIssues,
+    ...(storedFeatureReadiness.reviewRequired?["STORED_CALCULATION_FEATURE_REVIEW_REQUIRED"]:[]),
     ...(actualCorrectionEvents.length&&("status" in correctionItems)?["COURT_CORRECTION_ITEM_LEDGER_UNAVAILABLE"]:[]),
     ...(!storedCalculationReplay?.valid&&storedCalculationReplay?["CALCULATION_ALL_STORED_ROWS_REPLAY_MISMATCH"]:[]),
     ...(!featureReadComplete?["FULL_CALCULATION_FEATURE_READ_INCOMPLETE"]:[]),
@@ -162,6 +168,6 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
     documents:requirements.status==="fulfilled"?requirements.value:null,
     validSourceFactIds:acceptedFactIds,
   });
-  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,storedCalculationReplay,legalCatalogCoverage,correctionItems,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
+  return Response.json({...output,judgmentGraph:graph,stageAudit,storedOcrCoverage:physicalOcr,storedCalculationReplay,storedFeatureReadiness,legalCatalogCoverage,correctionItems,dependencyFailures:failures},{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
 }
