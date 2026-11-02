@@ -175,7 +175,13 @@ export function intakeSourceNotes(value: ConsultationNote[]): ConsultationNote[]
 }
 
 function requireSubject(subjectId: string, scope: IntakeScope, state?: IntakeState) {
-  if (scope === "case" ? subjectId !== "case" : !subjectId.startsWith(`${scope}:`) || subjectId.length <= scope.length + 1) fail("INTAKE_SUBJECT_SCOPE_MISMATCH", subjectId);
+  // Match the public classifier's subject-id schema at the server boundary.
+  // A plausible label or quote is not proof that the subject ID is well formed.
+  const prefix = `${scope}:`;
+  const localId = subjectId.startsWith(prefix) ? subjectId.slice(prefix.length) : "";
+  if (scope === "case" ? subjectId !== "case" :
+    subjectId.length > 120 || !/^[A-Za-z0-9][A-Za-z0-9_.:-]*$/.test(localId))
+    fail("INTAKE_SUBJECT_SCOPE_MISMATCH", subjectId);
   if (state === "present" && subjectId === `${scope}:none`) fail("INTAKE_NEGATIVE_SUBJECT_PRESENT", subjectId);
 }
 function acceptsHistoricalOccurrence(feature: { id: string; scope: IntakeScope }): boolean {
