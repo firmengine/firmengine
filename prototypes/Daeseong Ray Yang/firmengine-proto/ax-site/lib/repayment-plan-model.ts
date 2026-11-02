@@ -34,6 +34,15 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
    return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_DUPLICATE_DEBT_ID"]};
   if(data.debts.some(d=>[d.principal?.amountWon,d.interest?.amountWon].some(value=>value!==null&&value!==undefined&&!canonicalWon(value))))
    return {status:"blocked",rows:[],issues:["DEFAULT_DEBT_BALANCE_INVALID"]};
+  // A reconstructed default ledger is not evidence of a valid calculation if its
+  // allocated total disagrees with the calculation snapshot. Never rebalance it here.
+  const allocatedTotal=allocationRows.reduce((sum,a)=>sum+BigInt(a.allocatedPrincipalWon)+BigInt(a.allocatedInterestWon),0n);
+  if(!canonicalWon(calculation.planTotalWon)||allocatedTotal!==BigInt(calculation.planTotalWon))
+   return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_TOTAL_MISMATCH"]};
+  // Do not silently reclassify an unobserved source principal or interest as 0 Won.
+  // Only referenced debts are checked; unallocated debts remain subject to separate review.
+  if(allocationRows.some(a=>{const debt=debts.get(a.debtId);return debt&&(debt.principal?.amountWon==null||debt.interest?.amountWon==null);}))
+   return {status:"blocked",rows:[],issues:["DEFAULT_ALLOCATION_SOURCE_BALANCE_MISSING"]};
   const balances=new Map(data.debts.map(d=>[d.id,(BigInt(d.principal?.amountWon??"0")+BigInt(d.interest?.amountWon??"0"))]));
   const allocations=calculation.allocations;
   for(let month=1;month<=months!;month++)for(const a of allocations){
