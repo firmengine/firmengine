@@ -2,6 +2,7 @@
 import type { CaseExecution } from "./case-agent.ts";
 import type { CalculationTrace } from "./assessment.ts";
 import { getCalculationSpecs, EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
+import { decodeStoredCalculationEvidence } from "./calculation-form-evidence-decoder.ts";
 import { referenceIdentity } from "./reference-runtime.ts";
 import referenceRelease from "./reference-release.json" with { type: "json" };
 
@@ -147,5 +148,5 @@ export async function listCaseCalculationFeatures(db:D1Database,input:{caseId:st
     ruleReleaseId:head?.rule_release_id??null,referenceRelease:head?{id:head.reference_id,revision:head.reference_revision,sha256:head.reference_sha256}:null,contractVersion:head?.contract_version??null,
     sourceHeads:head?JSON.parse(head.source_heads_json):null,sourceHeadsSha256:head?.source_heads_sha256??null,missing:head?JSON.parse(head.missing_json):null,
     totalFeatures:total?.n??0,limit,offset,nextOffset:offset+features.length<(total?.n??0)?offset+features.length:null,
-    features:features.map(f=>({featureId:f.id,runId:head!.run_id,dataVersion:head!.data_version,caseRevision:head!.case_revision,calculationId:f.calculation_id,outputName:f.output_name,outputPath:f.output_path,subjectId:f.subject_id,rowOrdinal:f.row_ordinal,value:JSON.parse(f.value_json),valueWon:f.value_won,status:f.status,sourceFactIds:JSON.parse(f.source_fact_ids_json),inputRefs:JSON.parse(f.input_refs_json),formula:f.formula}))};
+    features:features.map(f=>({featureId:f.id,runId:head!.run_id,dataVersion:head!.data_version,caseRevision:head!.case_revision,calculationId:f.calculation_id,outputName:f.output_name,outputPath:f.output_path,subjectId:f.subject_id,rowOrdinal:f.row_ordinal,...decodeStoredCalculationEvidence({valueJson:f.value_json,factIdsJson:f.source_fact_ids_json}),valueWon:f.value_won,status:f.status,inputRefs:JSON.parse(f.input_refs_json),formula:f.formula}))};
 }
