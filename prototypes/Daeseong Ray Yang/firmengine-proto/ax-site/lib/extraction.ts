@@ -1,4 +1,5 @@
 import { renderPromptPolicy } from "./reference-prompts.ts";
+import { sourceQuotesOverlap } from "./source-verification-identity.ts";
 import { bindCanonicalSourceField, canonicalProjectionKey } from "./canonical-field-binding.ts";
 import { calculationSourceCellIssues } from "./ocr-calculation-input.ts";
 import { documentFieldContract } from "./document-agent-registry.ts";
@@ -75,7 +76,7 @@ function recordCategoryStatus(checks:readonly FieldReviewCheck[]|undefined,ri:nu
   if(statuses.some(status=>status!=="supported"))return "unclear";
   return "supported";
 }
-function validAgreement(field:ReadField,check:FieldReviewCheck){return (check.categoryStatus===undefined||check.categoryStatus==="supported")&&check.meaningStatus==="supported"&&check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim();}
+function validAgreement(field:ReadField,check:FieldReviewCheck){return (check.categoryStatus===undefined||check.categoryStatus==="supported")&&check.meaningStatus==="supported"&&check.status==="agrees"&&check.value===field.value&&check.unit?.trim()===field.unit?.trim()&&!!check.quote?.trim()&&sourceQuotesOverlap(field.quote,check.quote);}
 function anchoredNullClaim(field:ReadField){return field.value===null&&["blank","masked","illegible","explicit_none"].includes(field.sourceState??"")&&!!field.quote?.trim()&&isValidSourceBBox(field.bbox);}
 function verifierDisposition(check:FieldReviewCheck|undefined,missing=false):VerificationState{
   if(!check)return missing?"missing_check":"unverified";
@@ -95,7 +96,8 @@ function unresolvedDisposition(first:FieldReviewCheck|undefined,second:FieldRevi
   if(first?.status==="unreadable"||second?.status==="unreadable")return "unreadable";
   if(first&&second&&(first.status==="corrected"||second.status==="corrected")&&(first.value!==second.value||first.unit?.trim()!==second.unit?.trim()))return "conflicting";
   if(second&&(second.meaningStatus==="unclear"||second.status==="ambiguous"))return "unclear";
-  return verifierDisposition(first,missingFirst);
+  const disposition=verifierDisposition(first,missingFirst);
+  return disposition==="supported"?"unclear":disposition;
 }
 export function isValidSourceBBox(bbox:unknown):bbox is [number,number,number,number]{return Array.isArray(bbox)&&bbox.length===4&&bbox.every(v=>typeof v==="number"&&Number.isFinite(v)&&v>=0&&v<=1)&&bbox[0]<bbox[2]&&bbox[1]<bbox[3];}
 // Re-located source geometry needs substantial area agreement across reads.
@@ -139,7 +141,7 @@ export function applyFirstVerification(read:PageRead,checks:readonly FieldReview
       const matches=checksFor(checks,ri,fi),first=matches.length===1?matches[0]:undefined;
       const agreement=!!first&&validAgreement(field,first)&&(field.value!==null||isValidSourceBBox(first.bbox));
       if(agreement){field.confidence="clear";field.verificationState="supported";}
-      else {field.confidence=first?.status==="unreadable"?"unreadable":"uncertain";field.verificationState=verifierDisposition(first,matches.length===0);}
+      else {field.confidence=first?.status==="unreadable"?"unreadable":"uncertain";const disposition=verifierDisposition(first,matches.length===0);field.verificationState=disposition==="supported"?"unclear":disposition;}
     });
     const categoryStatus=recordCategoryStatus(checks,ri);
     if(categoryStatus==="wrong_category"||categoryStatus==="unclear")for(const field of record.fields){field.confidence="uncertain";field.verificationState=categoryStatus==="wrong_category"?"wrong_field":"unclear";}
