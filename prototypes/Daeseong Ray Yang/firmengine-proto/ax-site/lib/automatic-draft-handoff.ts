@@ -150,6 +150,11 @@ export async function adoptAutomaticDraftForReview(input:{
   const after=await head(database,input.caseId);
   const second=decide(data,run,after,artifacts);
   if(!second.eligible||second.alreadyLinked)reject("AUTODRAFT_HANDOFF_SOURCE_CHANGED");
+  // The request-scoped snapshot is only a read-time hint. The matching
+  // active approval ID/revision/SHA must still be fenced atomically in D1.
+  const activeReference=referenceIdentity();
+  if(!activeReference||activeReference.sha256!==after!.referenceSha256)
+    reject("AUTODRAFT_REFERENCE_RELEASE_CHANGED");
   const next=structuredClone(data);
   const origin:AutomaticDraftOrigin={
    runId:run.id,legalReviewRunId:run.legalReviewRunId,
@@ -165,7 +170,8 @@ export async function adoptAutomaticDraftForReview(input:{
   await saveCase(next,data.context.revision,data,undefined,{
    mutationCategory:"artifact_only",
    expectedHeads:{dataVersion:run.dataVersion,calculationRunId:after!.calculationRunId,
-    legalReviewRunId:run.legalReviewRunId,referenceSha256:after!.referenceSha256}
+    legalReviewRunId:run.legalReviewRunId,referenceSha256:after!.referenceSha256,
+    referenceId:activeReference.id,referenceRevision:activeReference.revision}
   });
   await event(input.caseId,"automatic_draft.linked_to_staff_workbench",{
     runId:run.id,legalReviewRunId:run.legalReviewRunId,caseRevision:run.caseRevision,
