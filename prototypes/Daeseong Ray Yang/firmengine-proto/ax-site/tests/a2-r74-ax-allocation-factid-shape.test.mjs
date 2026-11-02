@@ -19,7 +19,7 @@ function fixture(months, factIds, options={}) {
 }
 for (const months of [36,48,60]) {
   for (const [label,ids] of [
-    ["numeric id", [42]], ["null id", [null]], ["empty id", [""]], ["whitespace id", [" \\t "]],
+    ["numeric id", [42]], ["null id", [null]], ["empty id", [""]], ["whitespace id", [" \t "]],
   ]) test(`r74 ${months} months reject ${label} before ledger generation`,()=>{
     const ledger=fixture(months,ids);
     assert.equal(ledger.status,"blocked");
