@@ -15,7 +15,7 @@ test("handoff route uses commit-time actor fence, not only preflight role check"
  assert.match(store,/\+headGuard\+roleGuard\)\.bind/);
  assert.match(store,/\.\.\.headParams,\.\.\.roleParams/);
  assert.equal((HANDOFF_ROLE_GUARD_SQL.match(/app_role_grants/g)||[]).length,2);
- assert.equal(handoffRoleGuardParams("syn-actor","syn-case",at).length,10);
+ assert.equal(handoffRoleGuardParams("syn-actor","syn-case").length,6);
 });
 function fixture(){
  const db=new DatabaseSync(":memory:");
@@ -29,7 +29,7 @@ function fixture(){
 const baseline="UPDATE cases SET storage_token='after' WHERE id='syn-case' AND storage_token='before'";
 function update(db,guarded=true){
  const sql=baseline+(guarded?HANDOFF_ROLE_GUARD_SQL:"");
- return db.prepare(sql).run(...(guarded?handoffRoleGuardParams("syn-actor","syn-case",at):[])).changes;
+ return db.prepare(sql).run(...(guarded?handoffRoleGuardParams("syn-actor","syn-case"):[])).changes;
 }
 test("normal two active scoped grants permit one CAS, not lawyer approval",()=>{
  const d=fixture();try{assert.equal(update(d),1);assert.equal(update(d),0);}finally{d.close()}
@@ -53,12 +53,21 @@ test("wrong case / expired review grants are not active",()=>{
  for(const sql of [
   "UPDATE app_role_grants SET scope_id='other-case' WHERE role='caseworker_review'",
   "UPDATE app_role_grants SET effective_to='2026-11-02T10:59:59.000Z' WHERE role='caseworker_review'",
-  "UPDATE app_role_grants SET effective_from='2026-11-03T00:00:00.000Z' WHERE role='caseworker_review'"
+  "UPDATE app_role_grants SET effective_from='2099-01-01T00:00:00.000Z' WHERE role='caseworker_review'"
  ]){
   const d=fixture();try{d.exec(sql);assert.equal(update(d),0);}finally{d.close()}
  }
 });
+test("DB clock rejects grant expired during pre-commit I/O (cached JS time is not an authorization epoch)",()=>{
+ const d=fixture();try{
+  const before=new Date(Date.now()-60_000).toISOString();
+  const expired=new Date(Date.now()-30_000).toISOString();
+  assert.ok(before<expired);
+  d.prepare("UPDATE app_role_grants SET effective_to=? WHERE role='caseworker_review'").run(expired);
+  assert.equal(update(d),0);
+ }finally{d.close()}
+});
 test("rejects service fallback and empty actor before SQL",()=>{
- assert.throws(()=>handoffRoleGuardParams("private-site-service","syn-case",at),/ACTOR_REQUIRED/);
- assert.throws(()=>handoffRoleGuardParams("","syn-case",at),/ACTOR_REQUIRED/);
+ assert.throws(()=>handoffRoleGuardParams("private-site-service","syn-case"),/ACTOR_REQUIRED/);
+ assert.throws(()=>handoffRoleGuardParams("","syn-case"),/ACTOR_REQUIRED/);
 });
