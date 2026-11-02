@@ -7,10 +7,10 @@ export const HANDOFF_REQUIRED_ROLES = ["case_editor", "caseworker_review"] as co
 const oneRole =
   " AND EXISTS (SELECT 1 FROM app_role_grants g " +
   "WHERE g.actor_id=? AND g.role=? AND g.scope_id IN (?,'*') " +
-  "AND g.status='active' AND g.effective_from<=? " +
-  "AND (g.effective_to IS NULL OR g.effective_to>?))";
+  "AND g.status='active' AND g.effective_from<=strftime('%Y-%m-%dT%H:%M:%fZ','now') " +
+  "AND (g.effective_to IS NULL OR g.effective_to>strftime('%Y-%m-%dT%H:%M:%fZ','now')))";
 export const HANDOFF_ROLE_GUARD_SQL = HANDOFF_REQUIRED_ROLES.map(() => oneRole).join("");
-export function handoffRoleGuardParams(actor:string,caseId:string,at:string):string[]{
+export function handoffRoleGuardParams(actor:string,caseId:string):string[]{
   if(!actor.trim()||actor==="private-site-service")throw new Error("AUTODRAFT_ROLE_FENCE_ACTOR_REQUIRED");
-  return HANDOFF_REQUIRED_ROLES.flatMap(role=>[actor,role,caseId,at,at]);
+  return HANDOFF_REQUIRED_ROLES.flatMap(role=>[actor,role,caseId]);
 }
