@@ -90,3 +90,35 @@ test("execution identity mismatches and out-of-bounds reads fail closed; no sepa
     h.sqlite.exec(readFileSync(new URL("../drizzle/0011_case_calculation_features.sql",import.meta.url),"utf8"));
   }finally{h.close();}
 });
+
+test("A2 r87 SQL Fact ID readback: malformed shapes fail closed, explicit zero and null remain distinct",async()=>{
+  const h=setup();try{
+    const data=caseData("case-a2-r87-fact-readback",true);h.save(data);
+    await persistCaseCalculationFeatures(h.db,h.args(data));
+    const selected=h.sqlite.prepare("SELECT id FROM case_calculation_features ORDER BY id LIMIT 1").get() as {id:string};
+    assert.ok(selected?.id);
+    const put=(factJson:string,valueJson:string)=>h.sqlite.prepare(
+      "UPDATE case_calculation_features SET source_fact_ids_json=?,value_json=? WHERE id=?"
+    ).run(factJson,valueJson,selected.id);
+    for(const [factJson,code] of [
+      ['"SYN-F1"',"CALCULATION_FORM_FACT_IDS_INVALID"],
+      ["42","CALCULATION_FORM_FACT_IDS_INVALID"],
+      ["null","CALCULATION_FORM_FACT_IDS_INVALID"],
+      ['["SYN-F1",42]',"CALCULATION_FORM_FACT_IDS_INVALID"],
+      ['["SYN-F1","SYN-F1"]',"CALCULATION_FORM_FACT_IDS_INVALID"],
+      ['[" SYN-F1 "]',"CALCULATION_FORM_FACT_IDS_INVALID"],
+      ["{","CALCULATION_FORM_EVIDENCE_JSON_INVALID"],
+    ] as const){
+      put(factJson,"100");
+      await assert.rejects(listCaseCalculationFeatures(h.db,{caseId:data.context.id,limit:500}),new RegExp(code));
+    }
+    for(const [valueJson,expected] of [["0",0],["null",null],['"unknown"',"unknown"]] as const){
+      put("[]",valueJson);
+      const out=await listCaseCalculationFeatures(h.db,{caseId:data.context.id,limit:500});
+      const row=out.features.find(f=>f.featureId===selected.id);
+      assert.deepEqual(row?.sourceFactIds,[]);
+      assert.equal(row?.value,expected);
+      assert.equal(out.courtApprovalInferred,false);
+    }
+  }finally{h.close();}
+});
