@@ -134,7 +134,7 @@ export async function readCourtCorrectionItems(database:D1Database,data:CaseData
   ).bind(caseId)
  ]);
  // Missing or malformed D1 results are UNOBSERVED, never an empty item list.
- if(snapshot.length!==2||!Array.isArray(snapshot[0]?.results)||!Array.isArray(snapshot[1]?.results))
+ if(!Array.isArray(snapshot)||snapshot.length!==2||!Array.isArray(snapshot[0]?.results)||!Array.isArray(snapshot[1]?.results))
   throw fail("CORRECTION_ITEM_READ_SNAPSHOT_UNOBSERVED");
  const current=(snapshot[0].results as unknown as Array<{revision:number;dataVersion:number}>)[0];
  if(!current||current.revision!==data.context.revision)throw fail("CORRECTION_CASE_REVISION_MISMATCH");
