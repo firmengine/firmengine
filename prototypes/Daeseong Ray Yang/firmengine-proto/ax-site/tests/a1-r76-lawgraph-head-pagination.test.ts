@@ -52,7 +52,7 @@ function fixture(options: {count?: number; shift?: "head" | "revision" | "dataVe
 
 test("large legal document-field pages retain exact 0/null and all 1,203 distinct rows", async () => {
   const h=fixture(), records:string[]=[];
-  let offset=0, token:string|undefined;
+  let offset:number|null=0, token:string|undefined;
   while(offset!==null){
     const page=await listCaseLawgraphReview(h.db,{caseId:"synthetic",limit:500,offset,expectedReviewRunId:token});
     token=page.runId ?? undefined;
