@@ -78,14 +78,12 @@ function hasInternalReviewAppendix(document: FilingReadinessDocument): boolean {
 
 function parseWon(value: string | undefined): bigint | null {
   if (value === undefined) return null;
-  const normalized = value
-    .trim()
-    .replace(/[\s,\u00a0]/gu, "")
-    .replace(/[₩원]/gu, "")
-    .replace(/[−﹣－]/gu, "-");
-  if (!/^-?\d+$/u.test(normalized)) return null;
+  // Re-read printed amounts without silently repairing malformed grouping or
+  // embedded currency units. A display ambiguity must remain "unknown".
+  const visible = value.trim().replace(/[−﹣－]/gu, "-");
+  if (!/^-?(?:₩\s*)?(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)\s*원?$/u.test(visible)) return null;
   try {
-    return BigInt(normalized);
+    return BigInt(visible.replace(/[,₩원\s]/gu, ""));
   } catch {
     return null;
   }
