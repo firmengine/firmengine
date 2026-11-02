@@ -32,3 +32,6 @@ A2 체크: **A2-DATA-017 / 018 / 020 / 024**, 전부 부분검증 **[ ]**, 제�
 - Draft #195의 **2개 파일은 ax-site 아래**; main에는 보드 및 본 영수증 외 제품 코드 수정 없음. 이전 #194 세금·우선채권 분류 변화나 611/614 적용 변경과 **독립**.
 - 테스트 계층 구분: **원본문 타입제거 V8 격리 6/6, strict numeric 14/14; SQL 0011 동형 SQLite 8/8**. 반면 Node 원본 테스트 0, 전체 CI 0, staging D1/R2/Cron 0, 18모듈/42출력+Word 바이트 종단 0, 정식법원서식/법률실무 승인 0. 제품 RELEASE_READY **0건**.
 - **r86 AX담당자**: Draft #195 vs #100 프로젝션 충돌 검토·실제 Node 러너, #194 세금 원장 Fact 소유/producer/revision, `source_fact_ids_json` 유효성·소유·중복·JSON parse fail-closed 가드, D5103/D5110/D5111 반복행 DOCX 실제 재독. 원금·이자·세금 법률 분류/424 제7호 사건 적용은 변호사·계산사무장 승인전 미인증.
+
+### 커밋 반영 소스 추가 재검증
+- Draft #195 코드 blob `fbde9b31830026cbe24f145624e9fda69d40e719`을 GitHub에서 재읽어, main 원본문과 각각 타입 표기만 제거한 **실제 projector V8 격리 8/8** 비교. 기존 잘못된 형식 `1,00/1원2/0 0/12₩34`는 `linked_calculation`이며 SYN Fact가 허위 결합됨; Draft에서는 네 사례 모두 `lineage_review_required` 및 **sourceFactIds=[]**. 정상 `0원`/`1,000원` 링크 유지. `[미관찰]`/`[승인전]`은 계산 링크 없음. 이 8/8은 프로젝트 Node/CI 실행과 별개.
