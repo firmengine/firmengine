@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { AI_MODEL, CONSULTATION_AI_MODEL, type EvidenceModel } from "./domain";
 import { HttpError } from "./server-store";
+import { structuredModelJsonMatchesSchema } from "./structured-model-json.ts";
 export interface Usage {inputTokens:number;outputTokens:number;durationMs:number;model:EvidenceModel;}
 export interface LunaCallArgs {model?:EvidenceModel;agent:string;instructions:string;input:unknown[];schema:Record<string,unknown>;maxOutput?:number;reasoningEffort?:"low"|"medium";webSearch?:{allowedDomains:string[]};signal?:AbortSignal;}
 export interface LunaCallResult<T> {value:T;usage:Usage;sourceUrls?:string[];}
@@ -32,6 +33,7 @@ export async function callLuna<T>(args:LunaCallArgs):Promise<LunaCallResult<T>>{
   if(contents.some(c=>c.type==="refusal"))throw new HttpError(422,"모델이 이 페이지 처리를 완료하지 못했습니다. 원본을 확인하세요.");
   const text=contents.filter(c=>c.type==="output_text").map(c=>c.text??"").join("");
   let value:T;try{value=JSON.parse(text);}catch{throw new HttpError(502,"모델의 구조화 응답을 읽지 못했습니다.");}
+  if(!structuredModelJsonMatchesSchema(value,args.schema))throw new HttpError(502,"모델의 구조화 응답이 요청한 필드·형식 계약과 일치하지 않습니다. 원문 상태를 확인하고 재시도하세요.");
   const sourceUrls=domains?[...new Set((body.output??[]).flatMap(item=>[
     ...(item.type==="web_search_call"?item.action?.sources??[]:[]).map(source=>source.url),
     ...(item.content??[]).filter(content=>content.type==="output_text").flatMap(content=>(content.annotations??[]).filter(annotation=>annotation.type==="url_citation").map(annotation=>annotation.url)),
