@@ -5,7 +5,7 @@
 import type {CaseData,ExportManifest} from "./domain.ts";
 import {requiredKindsForCase} from "./domain.ts";
 import {newExportManifest} from "./exports.ts";
-import {db,bucket,event,getCase,caseExtras,caseStateFingerprint,saveCase,HttpError,sha256,now} from "./server-store.ts";
+import {db,bucket,getCase,caseExtras,caseStateFingerprint,saveCase,HttpError,sha256,now} from "./server-store.ts";
 import {prepareDocumentWrite,finalizeDocumentWriterReceipt,type DocumentWriterReceipt} from "./document-writer.ts";
 import {buildDocumentFieldBases} from "./document-field-bases.ts";
 import {referenceIdentity} from "./reference-runtime.ts";
@@ -165,13 +165,13 @@ export async function adoptAutomaticDraftForReview(input:{
   await saveCase(next,data.context.revision,data,undefined,{
    mutationCategory:"artifact_only",
    expectedHeads:{dataVersion:run.dataVersion,calculationRunId:after!.calculationRunId,
-    legalReviewRunId:run.legalReviewRunId,referenceSha256:after!.referenceSha256}
-  });
-  await event(input.caseId,"automatic_draft.linked_to_staff_workbench",{
+    legalReviewRunId:run.legalReviewRunId,referenceSha256:after!.referenceSha256},
+   handoffAudit:{actor:input.actor,detail:{
     runId:run.id,legalReviewRunId:run.legalReviewRunId,caseRevision:run.caseRevision,
     sourceDataVersion:run.dataVersion,artifactIds:artifacts.map(a=>a.id),actor:input.actor,reason:input.reason,
     mode:"draft",courtApprovalInferred:false
-  }).catch(()=>{});
+   }}
+  });
   return {status:"linked" as const,runId:run.id,artifactCount:artifacts.length,
     courtApprovalInferred:false};
 }
