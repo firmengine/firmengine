@@ -49,13 +49,13 @@ main `lib/reference-decision-tables.json` blob `6924e3977caf748ce8a3d617fae15aff
 
 - [서울회생법원 2026-10-01 보도자료](https://slb.scourt.go.kr/dcboard/new/DcNewsViewAction.work?cbub_code=000221&gubun=172&seqnum=3187) **제424호 제2조 제2항 제7호 신설** 직접 재열람. 법원 개정전문 PDF/부칙은 **이번 r111 재독하지 않음**. 앞선 r108의 2026-09-23 개정/2026-10-01 시행/이후 최초접수 적용 기록과 구분.
 - 국가법령정보센터 [제611조](https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0611&lsiSeq=290631&urlMode=lsScJoRltInfoR), [제614조](https://www.law.go.kr/LSW/lsSideInfoP.do?docCls=jo&joBrNo=00&joNo=0614&lsiSeq=290631&urlMode=lsScJoRltInfoR) **[시행 2026-10-02] 법률 제21490호** 직접 열람. 총채무 금액/청산가치·법원인가 요건은 가상 기술 후보와 독립.
-- 국세청의 부가가치세 안내는 [개인 부가가치세 메뉴](https://www.nts.go.kr/)에서 존재 확인하되, 기존 링크 `cntntsId=7802`는 현재 실제 **'가산세'** 페이지임을 발견. **VAT 과세기간 6개월/1년 원문을 이번 회차 신규 검증하지 않았음**. VAT·종소세 신고액·월별 법원인정 순소득을 자동 동등시/전환하지 않음.
+- [국세청 부가가치세 개요](https://nts.go.kr/nts/cm/cntnts/cntntsView.do?cntntsId=7693&mi=2272) 이번 r111 직접 열람: 일반과세자 1·2기 각 6개월, 간이과세자 원칙 1년(과세유형 변경 등 예외 별도). 기존 URL `cntntsId=7802`가 현재 '가산세'로 연결되는 오류도 확인하고 정확한 원문 링크로 교정. VAT 신고매출·종합소득세 신고자료·법원 인정 월순소득은 서로 동일하지 않으며 자동 전환/확정하지 않음.
 
 ## 5. A2 IT 체크 ID / 수정 / 다음
 
 - **A2-IT-004 [ ]**: null/0/unknown·비불리언 flag와 저장 의미를 분리, source-only→법률 인정 승격 방지. 전체 경로 미검증.
 - **A2-IT-015 [ ]**: 0011 동형 SQLite 6건 수락과 외래키 1거부; 실 D1/typed feature→재계산 미검증.
-- **A2-IT-018 [ ]**: 서울 424호 2026-10-01 공식 공지, 법률 제611/614조 2026-10-02 시행판 직접 열람, VAT URL 판본 오류 표기. 법원 부칙·공식 판본별 사건 적용 미인증.
+- **A2-IT-018 [ ]**: 서울 424호 2026-10-01 공식 공지, 법률 제611/614조 2026-10-02 시행판 직접 열람, 국세청 VAT 6개월/1년 과세기간 원문 직접 열람(기존 URL 오류 확인). 법원 부칙·공식 판본별 사건 적용 미인증.
 - **A2-IT-020 [ ]**: TS/JSON 런타임 flag 타입·경로 타입의 P1 결함 재현, Draft #226 수정·15건 V8 격리 일치. 실제 전체 Node/CI 및 승인 미인증.
 
 **다음 r112 사용자·서류담당자**: #226의 실제 Node22 러너(신규 15 + 부모 22) 및 `buildLegalProposals` 실제 호출 입력·Fact 귀속·관할/최초접수일 전파; blocked 원장 금액이 D5103/06/10/11에 0원으로 표시되는지 SQL/문서 생성·재독. #225/226 중첩 PR은 실무 법률/데이터 승인 전 병합 금지.
