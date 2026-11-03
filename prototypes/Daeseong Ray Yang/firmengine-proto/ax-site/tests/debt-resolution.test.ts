@@ -54,3 +54,34 @@ test("정확히 같은 사실 버전의 복제 객체는 반복 집계하지 않
   assert.equal(resolveDebtRows(data).rows.length,1);
   data.debts[1].contractId="LOAN-2002";assert.equal(resolveDebtRows(data).rows.length,2);
 });
+
+test("같은 원천 계약의 미해결 비용·총액 슬롯이 다른 경우 중복 제거가 검토차단을 숨기지 않는다",()=>{
+  for(const slot of ["legal_costs","total"]){
+    for(const markedIndex of [0,1]){
+      const data=fixture(["ISSUER-1001","ISSUER-1001"]);
+      data.debts[markedIndex]!.sourceComponentIssues=[slot];
+      const result=resolveDebtRows(data);
+      assert.equal(result.rows.length,2,`slot=${slot} marked=${markedIndex}`);
+      assert.equal(result.duplicates.length,0,`slot=${slot} marked=${markedIndex}`);
+      assert.ok(result.issues.includes("DEBT_CONTRACT_CONFLICT:LOAN-1001"));
+      assert.ok(result.rows.some(debt=>debt.sourceComponentIssues?.includes(slot)));
+    }
+  }
+});
+test("미해결 슬롯의 동일 집합은 순서가 달라도 반복 관측만 중복 제거한다",()=>{
+  const data=fixture(["ISSUER-1001","ISSUER-1001"]);
+  data.debts[0]!.sourceComponentIssues=["legal_costs","total"];
+  data.debts[1]!.sourceComponentIssues=["total","legal_costs"];
+  const result=resolveDebtRows(data);
+  assert.equal(result.rows.length,1);
+  assert.deepEqual(result.duplicates,["loan-1"]);
+  assert.deepEqual(result.issues,[]);
+});
+test("미해결 슬롯이 명시 빈 배열인 경우와 필드 미존재인 경우는 같은 무결성 상태다",()=>{
+  const data=fixture(["ISSUER-1001","ISSUER-1001"]);
+  data.debts[0]!.sourceComponentIssues=[];
+  const result=resolveDebtRows(data);
+  assert.equal(result.rows.length,1);
+  assert.deepEqual(result.duplicates,["loan-1"]);
+  assert.deepEqual(result.issues,[]);
+});

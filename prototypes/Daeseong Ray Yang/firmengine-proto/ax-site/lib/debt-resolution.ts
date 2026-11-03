@@ -42,7 +42,7 @@ export function resolveDebtRows(data: CaseData,index?:CaseReadIndex): { rows: De
   }
   const rows: Debt[] = [], sourceGroups: Debt[][] = [], duplicates: string[] = [], issues: string[] = [];
   const amount = (value: Debt["principal"]) => moneyValue(value)?.toString() ?? null;
-  const fingerprint = (d: Debt) => JSON.stringify([d.contractId, d.creditor, amount(d.principal), amount(d.interest), d.asOf, d.dueDate, d.secured, d.classification, d.priority, d.legalReview, d.excludedByReview, d.exclusionReason, d.guaranteeDetails]);
+  const fingerprint = (d: Debt) => JSON.stringify([d.contractId, d.creditor, amount(d.principal), amount(d.interest), d.asOf, d.dueDate, d.secured, d.classification, d.priority, d.legalReview, d.excludedByReview, d.exclusionReason, d.guaranteeDetails, [...new Set(d.sourceComponentIssues ?? [])].sort()]);
   for (const group of groups.values()) {
     const first = group[0];
     if (group.some(d => fingerprint(d) !== fingerprint(first))) {
