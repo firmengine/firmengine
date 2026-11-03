@@ -103,7 +103,7 @@ export default function Workspace({ initialTab = "overview", initialCaseId }: { 
   const [dragging, setDragging] = useState(false); const [ledgerFilter, setLedgerFilter] = useState("all"); const [ledgerPage, setLedgerPage] = useState(1);
   const [reviewTab, setReviewTab] = useState<"workflow" | "transactions" | "findings" | "calculations" | "objects" | "plan">("workflow");
   const [retractDoc, setRetractDoc] = useState<EvidenceDocument | null>(null); const [exportReview, setExportReview] = useState<ExportReviewSnapshot | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null); const legacyMutation = useRef<PendingClientMutation | null>(null); const pause = useRef(false); const caseRef = useRef<CaseData | null>(null); const caseLoadSequence = useRef(0); const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const previewBindingRef=useRef({caseId:"",documentId:"",page:0,jobId:""});
+  const fileInput = useRef<HTMLInputElement>(null); const legacyMutation = useRef<PendingClientMutation | null>(null); const exportMutation = useRef<PendingClientMutation | null>(null); const pause = useRef(false); const caseRef = useRef<CaseData | null>(null); const caseLoadSequence = useRef(0); const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null); const previewBindingRef=useRef({caseId:"",documentId:"",page:0,jobId:""});
   const notify = useCallback((message: string, type: Notice["type"] = "info") => { setNotice({ message, type }); if (noticeTimer.current) clearTimeout(noticeTimer.current); noticeTimer.current = setTimeout(() => setNotice(null), type === "error" ? 10000 : 6000); }, []);
   const accept = useCallback((response: CaseResponse) => { if (response.referenceSnapshot) installBrowserReferenceSnapshot(response.referenceSnapshot); if (response.case) { setData(response.case); caseRef.current = response.case; } if (response.assessment) setAssessment(response.assessment); if (response.workflow) setWorkflow(response.workflow); if(response.executionPlan)setExecutionPlan(response.executionPlan); if (response.transactionReview) setTransactionReview(response.transactionReview); if (response.analyses) setAnalyses(response.analyses); if (response.files) setFiles(response.files); if(response.jobs)setPageJobs(response.jobs); if (response.remaining !== undefined) setRemaining(response.remaining); }, []);
   const refresh = useCallback(async () => { try { const result = await request<WorkspaceState>("/api/workspace"); if (result.referenceSnapshot) installBrowserReferenceSnapshot(result.referenceSnapshot); setWorkspace(result); setWorkspaceError(""); return result; } catch (error) { setWorkspaceError(error instanceof Error ? error.message : "작업공간을 불러오지 못했습니다."); throw error; } }, []);
@@ -270,7 +270,29 @@ export default function Workspace({ initialTab = "overview", initialCaseId }: { 
       notify("해당 쪽을 새 판독 대기열에 넣었습니다. 분석 이어서 실행을 누르면 이 페이지부터 처리합니다.","success");
     });
   }
-  async function makeExport(mode: "draft" | "final") { if (!data) return; if (data.referenceTest?.mode === "synthetic_reference_only" && mode === "final") { notify("정답 데이터 기준 사건입니다."); return; } await runBusy("export", async () => { const result = await request<CaseResponse & { files: DownloadFile[] }>(`/api/cases/${data.context.id}/export`, { method: "POST", body: JSON.stringify({ mode }) }); accept(result); setFiles(result.files); notify(mode === "draft" ? "검토용 초안을 생성했습니다." : "확정 서류를 생성했습니다.", "success"); }); }
+  async function makeExport(mode: "draft" | "final") {
+    if (!data) return;
+    if (data.referenceTest?.mode === "synthetic_reference_only" && mode === "final") { notify("정답 데이터 기준 사건입니다."); return; }
+    // Keep the same identity after a 5xx/lost response. A new intentional
+    // generation (after a verified response) gets a new UUID and files.
+    const caseId=data.context.id,key=JSON.stringify({caseId,revision:data.context.revision,mode});
+    await runBusy("export", async () => {
+      const requestId=legacyCommandId(exportMutation,key);
+      try {
+        const result=await request<CaseResponse & {files:DownloadFile[]}>(`/api/cases/${caseId}/export`, {
+          method:"POST",body:JSON.stringify({mode,requestId})
+        });
+        accept(result);setFiles(result.files);
+        clearLegacyCommandId(exportMutation,key);
+        notify(mode==="draft"?"검토용 초안을 생성했습니다.":"확정 서류를 생성했습니다.","success");
+      } catch(error) {
+        // Explicit 4xx is a rejected request, not an ambiguous commit.
+        // Keep requestId on 5xx/network loss for a safe same-operation retry.
+        if(isKnownMutationRejection(error))clearLegacyCommandId(exportMutation,key);
+        throw error;
+      }
+    });
+  }
   async function saveExportReview(snapshot: ExportReviewSnapshot) {
     await runBusy("export-review", async () => {
       try {

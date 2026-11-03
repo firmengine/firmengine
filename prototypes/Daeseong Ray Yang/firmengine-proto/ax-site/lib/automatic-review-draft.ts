@@ -92,6 +92,10 @@ export async function generateAutomaticReviewDraft(input:Input){
    "DELETE FROM artifacts WHERE id=? AND case_id=? AND object_key=?").bind(f.id,input.caseId,f.objectKey))),
   deleteObject:key=>bucket().delete(key),
   onCleanupFailure:()=>{},
+  onCommitUncertain:report=>event(input.caseId,"legal_automation.draft_manifest_unconfirmed",{
+    runId,artifactIds:report.records.map(r=>r.id),objectKeys:report.objectKeys,
+    reconciliationRequired:true
+  }).catch(()=>{}),
  });
  await event(input.caseId,"legal_automation.review_draft_generated",{
   dataVersion:input.dataVersion,reviewRunId:input.legalReviewRunId,

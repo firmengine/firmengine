@@ -273,6 +273,10 @@ export interface ExportManifest {
   requiredKinds: ArtifactKind[];
   files: ExportFile[];
   reviews: { caseworker: ReviewRecord | null; lawyer: ReviewRecord | null };
+  /** Stable request identity, not a legal acceptance. */
+  exportRequestId?: string;
+  /** OCR source data version at Export generation. */
+  sourceDataVersionAtExport?: number | null;
   /** Render-time document writer receipt; preserved with the export manifest for edit authority and audit. */
   documentWriter?: DocumentWriterReceipt;
 }
