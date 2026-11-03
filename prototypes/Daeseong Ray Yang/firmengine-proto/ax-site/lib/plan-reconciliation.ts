@@ -68,7 +68,7 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
    const policyValid=Number.isSafeInteger(deadline)&&deadline>=1&&deadline<=Math.max(expected,1);
    const deadlinePaid=ledger.rows.filter(row=>row.debtId===debt.id&&row.installment<=deadline).reduce((n,row)=>n+BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon),0n);
    const scheduled=deadlinePaid<cap?deadlinePaid:cap,uncovered=cap-scheduled;
-   const status=policy?.applicability==="unknown"||!policyValid?"unknown":uncovered===0n?"covered":"blocked";
+   const status=policy?.applicability!=="confirmed"||!policyValid?"unknown":uncovered===0n?"covered":"blocked";
    priorityCoverage[debt.id]={scheduledWon:scheduled.toString(),uncoveredWon:uncovered.toString(),deadlineInstallment:deadline,status};
    if(status==="unknown")legalReviewTasks.push("PRIORITY_COVERAGE_POLICY_REVIEW:"+debt.id);
    else if(uncovered>0n)issues.push("PRIORITY_ESTATE_NOT_FULLY_PAID_BY_DEADLINE:"+debt.id);
