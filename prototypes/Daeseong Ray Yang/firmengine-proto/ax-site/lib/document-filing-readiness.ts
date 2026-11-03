@@ -68,7 +68,8 @@ function allVisibleText(document: FilingReadinessDocument): string {
 
 function hasUnresolvedMarker(document: FilingReadinessDocument): boolean {
   if ((document.form?.unresolvedTokens?.length ?? 0) > 0) return true;
-  return /\[[^\]]*(?:확인 필요|불일치|상충|검토 필요|선택 필요|입력 필요)[^\]]*\]|\b(?:EXPLICIT_[A-Z0-9_]+|[A-Z]+_[A-Z0-9_]+_REQUIRED|[A-Z]+_[A-Z0-9_]+_MISMATCH)\b|검토 전/iu.test(allVisibleText(document));
+  // A visible review marker may not appear in form.unresolvedTokens; readback must flag it.
+  return /\[[^\]]*(?:확인 필요|불일치|상충|검토|선택 필요|입력 필요|미관찰|미상|승인전|누락|오인식|판독|배분|미확정|원문만|원천만)[^\]]*\]|\b(?:EXPLICIT_[A-Z0-9_]+|[A-Z]+_[A-Z0-9_]+_REQUIRED|[A-Z]+_[A-Z0-9_]+_MISMATCH)\b|검토 전|(?:^|\n)source-only(?:_[A-Za-z0-9_-]+)?(?:\n|$)/iu.test(allVisibleText(document));
 }
 
 function hasInternalReviewAppendix(document: FilingReadinessDocument): boolean {
