@@ -1,10 +1,12 @@
 /** A monetary display guard. Positive output verifies arithmetic, not legal entitlement or filing readiness. */
 export type PlanFormLedgerLike = {
   status: string;
+  issues?: string[];
   rows: Array<{ installment: number; debtId: string; claimClass: string; principalWon: unknown; interestWon: unknown; otherComponentWon: unknown }>;
 };
 export type PlanFormReconciliationLike = {
   status: string;
+  issues?: string[];
   totals: { principalWon: unknown; interestWon: unknown; otherComponentWon: unknown; totalWon: unknown; ordinaryWon: unknown; priorityWon: unknown; estateWon: unknown; trusteeFeeWon: unknown };
   unallocatedBudgets: Record<string, unknown>;
   legalReviewTasks?: string[];
@@ -19,6 +21,8 @@ export function reconciledCreditorMonthlyWon(
   expectedInstallments: number | null | undefined,
 ): string | null {
   if (!ledger || ledger.status !== "complete" || !reconciliation || reconciliation.status !== "reconciled" ||
+      (ledger.issues !== undefined && (!Array.isArray(ledger.issues) || ledger.issues.length > 0)) ||
+      (reconciliation.issues !== undefined && (!Array.isArray(reconciliation.issues) || reconciliation.issues.length > 0)) ||
       (reconciliation.legalReviewTasks?.length ?? 0) > 0 || !Number.isSafeInteger(expectedInstallments) ||
       expectedInstallments === null || expectedInstallments === undefined || expectedInstallments <= 0 || !debtId ||
       !Array.isArray(ledger.rows) || !ledger.rows.length || !reconciliation.totals || !reconciliation.unallocatedBudgets) return null;
@@ -27,10 +31,19 @@ export function reconciledCreditorMonthlyWon(
   const actual = { principalWon: 0n, interestWon: 0n, otherComponentWon: 0n, totalWon: 0n,
     ordinaryWon: 0n, priorityWon: 0n, estateWon: 0n, trusteeFeeWon: 0n };
   const byMonth = new Map<number, bigint>();
+  const seenDebtMonth = new Set<string>();
+  const classByDebt = new Map<string, string>();
   for (const row of ledger.rows) {
     if (!Number.isSafeInteger(row.installment) || row.installment < 1 || row.installment > expectedInstallments ||
-      !allowed.has(row.claimClass) || !validWon(row.principalWon) || !validWon(row.interestWon) ||
+      !allowed.has(row.claimClass) || typeof row.debtId !== "string" || !row.debtId.trim() ||
+      !validWon(row.principalWon) || !validWon(row.interestWon) ||
       !validWon(row.otherComponentWon)) return null;
+    const debtMonthKey = `${row.installment}\u0000${row.debtId}`;
+    if (seenDebtMonth.has(debtMonthKey)) return null;
+    seenDebtMonth.add(debtMonthKey);
+    const previousClass = classByDebt.get(row.debtId);
+    if (previousClass !== undefined && previousClass !== row.claimClass) return null;
+    classByDebt.set(row.debtId, row.claimClass);
     months.add(row.installment);
     const principal = BigInt(row.principalWon), interest = BigInt(row.interestWon), other = BigInt(row.otherComponentWon);
     const paid = principal + interest + other;
