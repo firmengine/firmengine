@@ -59,6 +59,21 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     }
   }
   const creditorRows=input.bindings.rows.creditor??[];
+  // Application integrity only: a positive (or negative anomalous) aggregate
+  // with no creditor rows cannot be reconciled to any named claimant.
+  // Explicit zero, unobserved totals, and forms without creditor rows remain distinct.
+  if(contract.repeatGroups.some(group=>group.id==="creditor")&&creditorRows.length===0) {
+    const principal=numeric(input.bindings.scalars.total_principal);
+    const interest=numeric(input.bindings.scalars.total_interest);
+    if((principal!==null&&principal!==0n)||(interest!==null&&interest!==0n)){
+      const issue:PreflightIssue={
+        code:"REPEAT_ROW_CREDITOR_COVERAGE_MISSING",token:"creditor",
+        message:"Nonzero debt aggregate has no creditor rows; full creditor coverage cannot be verified.",
+        severity:input.mode==="final"?"blocker":"warning"
+      };
+      if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+    }
+  }
   for(const [rowField,totalField] of [["principal","total_principal"],["interest","total_interest"]] as const) {
     const rowValues=creditorRows.map(row=>numeric(row[rowField])); const total=numeric(input.bindings.scalars[totalField]);
     if(rowValues.some(value=>value===null)) {
