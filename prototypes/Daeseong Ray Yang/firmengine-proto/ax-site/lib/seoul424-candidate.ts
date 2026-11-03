@@ -42,8 +42,8 @@ function validDate(s: string): boolean {
 /** Source evidence cannot be positive with blank, duplicate, or non-array Fact IDs. */
 function hasUsableFactIds(ids: unknown): ids is string[] {
   return Array.isArray(ids) && ids.length > 0
-    && ids.every((id) => typeof id === "string" && id.trim().length > 0)
-    && new Set(ids).size === ids.length;
+    && ids.every((id) => typeof id === "string" && id.trim().length > 0 && id === id.trim())
+    && new Set(ids.map((id: string) => id.trim())).size === ids.length;
 }
 function wageCriterion(history: EvidenceValue<WageHistoryEvidence> | null, applicationDate: string | null): { status: Tri; factIds: string[]; detail: string } {
   const years = referencePositiveInteger("param.seoul.shortened_term.wage_history_years");
@@ -64,12 +64,14 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   const debtThreshold = referenceMoney("param.seoul.shortened_term.total_debt_max_won");
   const wageYears = referencePositiveInteger("param.seoul.shortened_term.wage_history_years"), recentDebtYears = referencePositiveInteger("param.seoul.shortened_term.recent_debt_years");
   const base = { sourceUrl: referenceParameter<string>("param.seoul.shortened_term.source_url"), clause: `제424호 제2조 제2항 제7호 가목: 최근 ${wageYears}년간 최저임금 미만의 급여를 받았을 것`, neutralInterpretationReviewRequired: true as const, courtApprovalInferred: false as const };
+  // Missing, malformed and padded court identifiers cannot establish jurisdiction.
+  const courtIdConfirmed = typeof input.courtId === "string" && input.courtId.trim().length > 0 && input.courtId === input.courtId.trim();
   const validAppDate = input.firstFilingDate !== null && validDate(input.firstFilingDate);
   const baseConditions = [
-    { id: "court_scope", status: input.courtId === null ? "unknown" as const : input.courtId === court ? "yes" as const : "no" as const, factIds: [], detail: "서울회생법원 관할" },
+    { id: "court_scope", status: !courtIdConfirmed ? "unknown" as const : input.courtId === court ? "yes" as const : "no" as const, factIds: [], detail: "서울회생법원 관할" },
     { id: "effective_date", status: !validAppDate ? "unknown" as const : input.firstFilingDate! >= effectiveFrom ? "yes" as const : "no" as const, factIds: [], detail: `${effectiveFrom} 이후 최초 접수 사건` },
   ];
-  if (input.courtId !== null && input.courtId !== court) return { ...base, status: "not_applicable", route: null, conditions: baseConditions, reason: "서울회생법원 준칙이므로 다른 관할에 적용하지 않습니다." };
+  if (courtIdConfirmed && input.courtId !== court) return { ...base, status: "not_applicable", route: null, conditions: baseConditions, reason: "서울회생법원 준칙이므로 다른 관할에 적용하지 않습니다." };
   if (!validAppDate) return { ...base, status: "unknown", route: null, conditions: baseConditions, reason: "신청접수일이 없거나 유효하지 않아 시행 버전을 확인할 수 없습니다." };
   if (input.firstFilingDate! < effectiveFrom) return { ...base, status: "unsupported_version", route: null, conditions: baseConditions, reason: `${effectiveFrom} 시행 판본부터 지원합니다. 이전 사건을 아니오로 판단하지 않습니다.` };
   // Gate positive categories by a usable source reference; this does not certify a Fact.
@@ -95,7 +97,7 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
     { id: "no_individual_creditors", ...creditors, detail: "개인채권자 없음 및 채권자목록 완전성" },
     { id: "no_recent_year_debt_except_goods_card", ...recentDebt, detail: `최근 ${recentDebtYears}년 발생 채무 없음(물품구입 신용카드채무 제외)` },
   ];
-  if (input.courtId === null || !routesShapeValid) return { ...base, status: "unknown", route: null, conditions, reason: "관할법원 또는 제1~6호 경로 입력 형식이 확인되기 전에는 서울 제424호 검토 후보를 승격하지 않습니다." };
+  if (!courtIdConfirmed || !routesShapeValid) return { ...base, status: "unknown", route: null, conditions, reason: "관할법원 또는 제1~6호 경로 입력 형식이 확인되기 전에는 서울 제424호 검토 후보를 승격하지 않습니다." };
   if (category16 === "yes") return { ...base, status: "candidate_for_human_review", route: "category_1_to_6", conditions, reason: "법률특정 제1~6호 요건의 별도 검토 후보입니다. §614 및 법원 판단은 남아 있습니다." };
   const seven = [wage.status, debt.status, creditors.status, recentDebt.status];
   if (seven.every((x) => x === "yes")) return { ...base, status: "candidate_for_human_review", route: "category_7", conditions, reason: "제7호 누적조건 후보입니다. §614와 법원 심사는 남아 있습니다." };
