@@ -371,6 +371,10 @@ export function normalizeMoney(rawValue: string | number | null | undefined, uni
   if (currency.toUpperCase() !== "KRW") return { ...result, normalizationStatus: "review_required" };
   if (typeof rawValue === "number" && !Number.isSafeInteger(rawValue)) return { ...result, normalizationStatus: "invalid" };
   // Only canonical thousands groups may be stripped; malformed OCR commas are not exact amounts.
+  // Explicit source currency suffix and extracted unit may not disagree by a multiplier.
+  // Keep the raw observation for human review; never infer a corrected amount.
+  const explicitWonSuffix = /(?:원|KRW)\s*$/i.test(String(rawValue).trim());
+  if (explicitWonSuffix && !["KRW", "won", "원"].includes(unit)) return { ...result, normalizationStatus: "invalid" };
   const rawText = String(rawValue).trim().replace(/\s*(?:원|KRW)\s*$/i, "");
   if (rawText.includes(",") && !/^[+-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(rawText)) return { ...result, normalizationStatus: "invalid" };
   const text = rawText.replace(/,/g, "");
