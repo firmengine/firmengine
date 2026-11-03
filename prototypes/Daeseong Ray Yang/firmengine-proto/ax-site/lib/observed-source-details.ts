@@ -22,6 +22,13 @@ function usable(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
     !factSourceLineageIssues(data, [fact.id],index).some(issue => issue !== "SOURCE_VERIFICATION_REQUIRED");
 }
 
+/** Distinct period and as-of date must remain visible together; neither is document issue date. */
+export function observedPeriodAndAsOf(fact: Pick<Fact, "periodStart" | "periodEnd" | "asOf">): string {
+  const period = fact.periodStart || fact.periodEnd ? `${fact.periodStart ?? "?"} ~ ${fact.periodEnd ?? "?"}` : null;
+  const basis = typeof fact.asOf === "string" && fact.asOf.trim() ? fact.asOf.trim() : null;
+  return period && basis ? `${period} · 기준일 ${basis}` : period ?? basis ?? "[기간·기준일 미확인]";
+}
+
 /** Evidence observations for draft schedules. Values are never upgraded to legal ownership or recognition. */
 export function observedSourceDetails(data: CaseData, kinds: string[],index?:CaseReadIndex): ObservedDetailTable {
   const selected = currentFacts(data,index).filter(fact => usable(data, fact,index) &&
@@ -48,7 +55,7 @@ export function observedSourceDetails(data: CaseData, kinds: string[],index?:Cas
     const ownershipHint = /(?:owner|ownership|tenant|landlord|lessor|lessee|applicant_role|attribution|share)/i.test(fact.key)
       ? "역할·귀속 원문 관측; 신청인 소유·법적 인정 아님"
       : "원문 관측; 법적 인정 아님";
-    return [fact.subjectId, fact.key, value(data, fact), paragraphSource || "[해당 없음]", fact.periodStart ?? fact.periodEnd ? `${fact.periodStart ?? "?"} ~ ${fact.periodEnd ?? "?"}` : fact.asOf ?? "[기간·기준일 미확인]",
+    return [fact.subjectId, fact.key, value(data, fact), paragraphSource || "[해당 없음]", observedPeriodAndAsOf(fact),
       fact.state, fact.recognition, conflict ? "상충 · 선택 보류" : ownershipHint, refs];
   });
   return {
