@@ -20,35 +20,35 @@ function fixture(value: unknown, status: string, sourceIds: string[] = ["SYN-FAC
 
 test("A2 r99: provisional calculator input remains linked but requires human review",()=>{
   const row=fixture("900000","provisional");
-  assert.equal(row.citation.status,"linked_calculation");
-  assert.equal(row.citation.calculationStatus,"provisional");
-  assert.equal(row.citation.manualReviewRequired,true);
+  assert.equal((row.citation as any).status,"linked_calculation");
+  assert.equal((row.citation as any).calculationStatus,"provisional");
+  assert.equal((row.citation as any).manualReviewRequired,true);
   assert.equal(row.value,"900000");
   assert.deepEqual(row.sourceFactIds,["SYN-FACT"]);
 });
 test("A2 r99: computed status retains technical link, not legal certification",()=>{
   const row=fixture("900000","computed");
-  assert.equal(row.citation.status,"linked_calculation");
-  assert.equal(row.citation.manualReviewRequired,false);
-  assert.equal(row.citation.officialEformParity,"not_verified");
+  assert.equal((row.citation as any).status,"linked_calculation");
+  assert.equal((row.citation as any).manualReviewRequired,false);
+  assert.equal((row.citation as any).officialEformParity,"not_verified");
 });
 for(const state of ["blocked","conflict","missing"]){
   test(`A2 r99: ${state} calculator input does not link`,()=>{
     const row=fixture("900000",state);
-    assert.equal(row.citation.status,"lineage_review_required");
-    assert.equal(row.citation.manualReviewRequired,true);
+    assert.equal((row.citation as any).status,"lineage_review_required");
+    assert.equal((row.citation as any).manualReviewRequired,true);
   });
 }
 test("A2 r99: missing binding remains missing, not numeric zero",()=>{
   const row=fixture(null,"computed");
-  assert.equal(row.citation.status,"missing_value");
+  assert.equal((row.citation as any).status,"missing_value");
   assert.equal(row.value,null);
-  assert.equal(row.citation.manualReviewRequired,true);
+  assert.equal((row.citation as any).manualReviewRequired,true);
 });
 test("A2 r99: mismatching displayed amount cannot claim calculated lineage",()=>{
   const row=fixture("900001","computed");
-  assert.equal(row.citation.status,"lineage_review_required");
-  assert.equal(row.citation.manualReviewRequired,true);
+  assert.equal((row.citation as any).status,"lineage_review_required");
+  assert.equal((row.citation as any).manualReviewRequired,true);
 });
 
 test.todo("A2 r99: entire project Node runner, staging D1 and real D5103 DOCX roundtrip");
