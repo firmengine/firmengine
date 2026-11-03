@@ -19,7 +19,7 @@ const distinct=(values:string[])=>[...new Set(values)].sort();
 const hasPeriod=(role:string,family:string)=>role!=="not_applicable"||/income|payroll|tax|contribution|transaction|accounting|ledger|medical|education/.test(family);
 const hasUnit=(type:string)=>/money|amount|quantity|ratio|decimal|integer/.test(type);
 type CandidateStatus="review_candidate_not_proven";
-function reviewScope(family:string){
+function reviewScope(family:string,canonicalFieldId:string){
  const income=/income|payroll|wage|employment|business_sales|business_cost|accounting|pension_benefit/.test(family);
  const debt=/debt|credit|claim|arrear|tax_public|guarantee|garnishment/.test(family);
  const asset=/asset|property|vehicle|insurance|lease|bank_account|securities|crypto|disposition|transfer|receivable|retirement/.test(family);
@@ -38,7 +38,8 @@ function reviewScope(family:string){
  if(asset)laws.push("KR-ACT-614");
  if(household)laws.push("KR-ACT-579","SEOUL-405");
  if(family.includes("spouse"))laws.push("SEOUL-406");
- if(family.includes("securities")||family.includes("crypto"))laws.push("SEOUL-408");
+ // Document-extension IDs can be routed through generic asset families.
+ if(family.includes("securities")||family.includes("crypto")||/^(?:crypto_balance|securities_balance)::/.test(canonicalFieldId))laws.push("SEOUL-408");
  if(procedure)laws.push("KR-ACT-611","SEOUL-424-current-version-unverified");
  return {forms:distinct(forms),laws:distinct(laws)};
 }
@@ -78,7 +79,7 @@ export function buildFeatureLineageAudit(catalog:IntakeCatalog,catalogSha256:str
     .map(w=>({id:w.id,ruleIds:[...w.ruleIds],link:"document_type_route_only_not_execution_proof" as const}));
    const linkedRuleIds=new Set(workflow.flatMap(w=>w.ruleIds));
    const risks=RISK_CATALOG.filter(r=>r.current_rule_ids?.some(id=>linkedRuleIds.has(id))).map(r=>({id:r.id,kind:"shared_rule_catalog_candidate" as CandidateStatus}));
-   const scope=reviewScope(route.familyId),forms=formCandidates(id,scope.forms),calc=calculatedFrom(typed);
+   const scope=reviewScope(route.familyId,id),forms=formCandidates(id,scope.forms),calc=calculatedFrom(typed);
    const existing=index.get(id);
    if(existing){
     // The same document extension ID can validly be declared under several
