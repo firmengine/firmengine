@@ -61,6 +61,14 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
   const creditorRows=input.bindings.rows.creditor??[];
   for(const [rowField,totalField] of [["principal","total_principal"],["interest","total_interest"]] as const) {
     const rowValues=creditorRows.map(row=>numeric(row[rowField])); const total=numeric(input.bindings.scalars[totalField]);
+    // D5106 displays creditor subtotals; an unparseable header total must
+    // not silently bypass the final row-to-total reconciliation. This is an
+    // internal integrity check, not legal recognition of a claim.
+    // D5110/D5111 use creditor rows but have no such total tokens.
+    if(input.formCode==="D5106"&&creditorRows.length>0&&total===null){
+      const issue:PreflightIssue={code:"REPEAT_ROW_TOTAL_UNVERIFIED",token:totalField,message:`Displayed ${totalField} is unresolved or malformed; creditor rows cannot be reconciled.`,severity:input.mode==="final"?"blocker":"warning"};
+      if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+    }
     if(rowValues.some(value=>value===null)) {
       const issue:PreflightIssue={code:"REPEAT_ROW_AMOUNT_FORMAT_INVALID",token:`creditor.${rowField}`,message:`Creditor row ${rowField} has an unparseable amount; no total can be certified.`,severity:input.mode==="final"?"blocker":"warning"};
       if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
