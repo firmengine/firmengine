@@ -131,6 +131,10 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
     deleteRecords:records=>db().batch(records.map(f=>db().prepare("DELETE FROM artifacts WHERE id = ? AND case_id = ? AND object_key = ?").bind(f.id,id,f.objectKey))),
     deleteObject:key=>bucket().delete(key),
     onCleanupFailure:report=>event(id,"export.cleanup_failed",{artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,failureCount:report.cleanupErrors.length}),
+    onCommitUncertain:report=>event(id,"export.manifest_commit_unconfirmed",{
+      artifactIds:report.records.map(record=>record.id),objectKeys:report.objectKeys,
+      reconciliationRequired:true
+    }).catch(()=>{}),
   });
   await event(id,"document_writer.prepared",writerReceipt);await event(id,"export.generated",{revision:data.context.revision,mode,files:generated.map(f=>({id:f.id,hash:f.hash,kind:f.kind})),writerReceipt});
   return jsonResponse(await caseResponse(savedCase??data),request,{headers:{"Cache-Control":"no-store"}});

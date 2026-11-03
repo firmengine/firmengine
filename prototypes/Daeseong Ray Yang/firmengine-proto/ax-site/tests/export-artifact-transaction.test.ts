@@ -64,7 +64,7 @@ test("partial record persistence failure removes this invocation rows and object
   assert.deepEqual([...h.objects.keys()], [h.other.objectKey]);
 });
 
-test("manifest compare-and-swap conflict rolls back only the staged export", async () => {
+test("manifest commit outcome uncertainty preserves staged records for reconciliation", async () => {
   const h = fixture(), conflict = Object.assign(new Error("case changed"), { status: 409 });
   await assert.rejects(commitExportArtifactTransaction({
     artifacts: h.artifacts,
@@ -74,9 +74,9 @@ test("manifest compare-and-swap conflict rolls back only the staged export", asy
     deleteRecords: async (records) => removeOwnedRows(h.rows, records),
     deleteObject: async (key) => { h.objects.delete(key); },
   }), (error) => error === conflict && (error as Error & { status: number }).status === 409);
-  assert.deepEqual([...h.rows.keys()], [h.other.record.id]);
-  assert.deepEqual([...h.objects.keys()], [h.other.objectKey]);
-  assert.deepEqual(h.manifest, [h.other.record.id]);
+  assert.deepEqual([...h.rows.keys()], [h.other.record.id, "doc-a", "doc-b"]);
+  assert.deepEqual([...h.objects.keys()], [h.other.objectKey, h.artifacts[0]!.objectKey, h.artifacts[1]!.objectKey]);
+  assert.deepEqual(h.manifest, [h.other.record.id], "a known rejected commit needs later orphan reconciliation");
 });
 
 test("successful manifest commit preserves rows and objects and returns commit result", async () => {
@@ -103,8 +103,8 @@ test("cleanup failures are reported while the original failure and other exports
   await assert.rejects(commitExportArtifactTransaction({
     artifacts: h.artifacts,
     upload: async (key, bytes) => { h.objects.set(key, bytes); },
-    persistRecords: async (records) => { for (const record of records) h.rows.set(record.id, record); },
-    commitManifest: async () => { throw conflict; },
+    persistRecords: async (records) => { for (const record of records) h.rows.set(record.id, record); throw conflict; },
+    commitManifest: async () => assert.fail("manifest not attempted after persistence failure"),
     deleteRecords: async () => { throw new Error("row cleanup unavailable"); },
     deleteObject: async (key) => {
       if (key === first.objectKey) throw new Error("one object cleanup unavailable");
@@ -130,6 +130,44 @@ test("post-commit logging failure propagates without deleting committed export a
     deleteObject: async (key) => { h.objects.delete(key); },
     afterCommit: async () => { throw loggingError; },
   }), (error) => error === loggingError);
+  assert.deepEqual(h.manifest, ["doc-a", "doc-b"]);
+  assert.ok(h.rows.has("doc-a") && h.rows.has("doc-b"));
+  assert.ok(h.objects.has(h.artifacts[0]!.objectKey) && h.objects.has(h.artifacts[1]!.objectKey));
+});
+
+
+test("D1 manifest committed but acknowledgement lost never deletes referenced R2 or SQL rows", async () => {
+  const h = fixture(), ackLost = new Error("D1_COMMIT_ACK_LOST");
+  const reports: unknown[] = [];
+  await assert.rejects(commitExportArtifactTransaction({
+    artifacts: h.artifacts,
+    upload: async (key, bytes) => { h.objects.set(key, bytes); },
+    persistRecords: async (records) => { for (const row of records) h.rows.set(row.id, row); },
+    commitManifest: async (records) => {
+      h.manifest = records.map(row => row.id); // Authoritative D1 commit completed.
+      throw ackLost; // A transport failure hides success from the writer.
+    },
+    deleteRecords: async () => assert.fail("never delete live DB rows on uncertain commit"),
+    deleteObject: async () => assert.fail("never delete live R2 bytes on uncertain commit"),
+    onCommitUncertain: (report) => { reports.push(report); },
+  }), error => error === ackLost);
+  assert.deepEqual(h.manifest, ["doc-a", "doc-b"]);
+  assert.ok(h.rows.has("doc-a") && h.rows.has("doc-b"));
+  assert.ok(h.objects.has(h.artifacts[0]!.objectKey) && h.objects.has(h.artifacts[1]!.objectKey));
+  assert.equal(reports.length, 1, "operator should be told reconciliation is required");
+});
+
+test("failure of uncertain-commit reporting cannot trigger destructive cleanup", async () => {
+  const h = fixture(), ackLost = new Error("D1_RESPONSE_UNAVAILABLE");
+  await assert.rejects(commitExportArtifactTransaction({
+    artifacts: h.artifacts,
+    upload: async (key, bytes) => { h.objects.set(key, bytes); },
+    persistRecords: async (records) => { for (const row of records) h.rows.set(row.id, row); },
+    commitManifest: async (records) => { h.manifest = records.map(row => row.id); throw ackLost; },
+    deleteRecords: async () => assert.fail("no destructive cleanup"),
+    deleteObject: async () => assert.fail("no destructive cleanup"),
+    onCommitUncertain: async () => { throw new Error("EVENT_LOG_UNAVAILABLE"); },
+  }), error => error === ackLost);
   assert.deepEqual(h.manifest, ["doc-a", "doc-b"]);
   assert.ok(h.rows.has("doc-a") && h.rows.has("doc-b"));
   assert.ok(h.objects.has(h.artifacts[0]!.objectKey) && h.objects.has(h.artifacts[1]!.objectKey));

@@ -17,6 +17,12 @@ export interface ExportArtifactCleanupReport<RecordType extends { id: string }> 
   cleanupErrors: readonly unknown[];
 }
 
+export interface ExportArtifactCommitUncertainReport<RecordType extends { id: string }> {
+  originalError: unknown;
+  records: readonly RecordType[];
+  objectKeys: readonly string[];
+}
+
 export interface ExportArtifactTransactionInput<RecordType extends { id: string }, Result> {
   artifacts: readonly StagedExportArtifact<RecordType>[];
   upload: (objectKey: string, bytes: Uint8Array, mime: string) => Promise<unknown>;
@@ -31,6 +37,11 @@ export interface ExportArtifactTransactionInput<RecordType extends { id: string 
   afterCommit?: (result: Result) => Promise<unknown>;
   /** Receives cleanup failures. Its own failure is swallowed to preserve the original error. */
   onCleanupFailure?: (report: ExportArtifactCleanupReport<RecordType>) => Promise<unknown> | unknown;
+  /** If a manifest write was attempted and its response is lost, SQL may already
+   * reference these exact R2 bytes. Report the uncertainty for reconciliation.
+   * Reporting failures never authorize destructive cleanup.
+   */
+  onCommitUncertain?: (report: ExportArtifactCommitUncertainReport<RecordType>) => Promise<unknown> | unknown;
 }
 
 function assertUniqueInvocationTargets<RecordType extends { id: string }>(artifacts: readonly StagedExportArtifact<RecordType>[]) {
@@ -70,6 +81,7 @@ export async function commitExportArtifactTransaction<RecordType extends { id: s
   const records = input.artifacts.map((artifact) => artifact.record);
   const attemptedObjectKeys: string[] = [];
   let persistenceAttempted = false;
+  let manifestCommitAttempted = false;
 
   let result: Result;
   try {
@@ -80,8 +92,20 @@ export async function commitExportArtifactTransaction<RecordType extends { id: s
     }
     persistenceAttempted = true;
     await input.persistRecords(records);
+    manifestCommitAttempted = true;
     result = await input.commitManifest(records);
   } catch (originalError) {
+    if (manifestCommitAttempted) {
+      // A D1 write can commit and lose its acknowledgement; even a reported
+      // conflict cannot prove all delayed commits are absent. Never delete a
+      // possibly live manifest's SQL rows or R2 bytes. Preserve for reconciliation.
+      try {
+        await input.onCommitUncertain?.({ originalError, records, objectKeys: attemptedObjectKeys });
+      } catch {
+        // Reporting cannot hide the original failure or permit data deletion.
+      }
+      throw originalError;
+    }
     const cleanupTasks: Promise<unknown>[] = [];
     if (persistenceAttempted && records.length) {
       cleanupTasks.push(Promise.resolve().then(() => input.deleteRecords(records)));
