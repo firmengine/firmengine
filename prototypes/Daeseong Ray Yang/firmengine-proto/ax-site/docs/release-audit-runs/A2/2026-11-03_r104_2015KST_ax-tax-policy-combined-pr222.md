@@ -23,7 +23,7 @@
 - **[Draft PR #222](https://github.com/firmengine/firmengine/pull/222)** — #194 기반 **stacked PR**, 부모 #194 head `14752a28f63e22805bbb35321cf873f52878e960`.
 - `lib/plan-reconciliation.ts` `policy?.applicability==="unknown"` → `policy?.applicability!=="confirmed"` (**금액·채권의 자동 법적 인정 판단 추가 없음**), blob `2a3645defb2b613da68f3a9044f149713925fd4e`→`60bed62146a254c2c08937592ebd308c3fa96858`.
 - `tests/a2-r84-law-tax-priority-review-parity.test.mjs` 기존 합성 confirmation 전달로 기존 기대 유지; `tests/a2-r104-ax-tax-policy-combined.test.mjs` 신규 54개 + TODO3. PR head `dc4a1c81c8ff09f625e49085e6e0f6566491d029`.
-- main 제품 코드 **수정 없음**. #222는 Draft/HOLD, #194/#203/#215/#221과 충돌·전체 CI/법률 검토 해결 전 병합 금지. #222의 PR mergeable=false는 현재 메타 결과이며 수동 충돌해소 확인·재검증 필요. 원본 고객 사례/개인정보/OCR 사실값/키/.env 저장 없음.
+- main 제품 코드 **수정 없음**. #222는 Draft/HOLD, #194/#203/#215/#221과 충돌·전체 CI/법률 검토 해결 전 병합 금지. #222 생성 직후 mergeable=false(비동기 계산 전), 이어서 재조회 결과 **mergeable=true**(부모 #194 대비) 확인. **main 병합 적합/PR #203·#215·#221 충돌 해결/전문가 승인 의미 아님**. 원본 고객 사례/개인정보/OCR 사실값/키/.env 저장 없음.
 
 ## 4. 계약·법적 원문 및 단계 경계
 
