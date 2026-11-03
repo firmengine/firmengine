@@ -2,6 +2,7 @@
 
 import {useEffect,useMemo,useState,type FormEvent} from "react";
 import type {CaseCommand} from "@/lib/case-command-contract";
+import type {CommandSubmitOutcome} from "@/lib/command-submit-outcome";
 import type {BusinessNetReview} from "@/lib/business-net-reconciliation";
 
 type CommandDraft=Omit<CaseCommand,"commandId"|"payloadVersion"|"expectedRevision"|"expectedStateFingerprint">;
@@ -26,7 +27,7 @@ async function readJson<T>(url:string):Promise<T>{
 export default function BusinessMonthlyReview({caseId,revision,roles,busy,reviews,onCommand}:{
  caseId:string;revision:number;roles:string[];busy:boolean;
  reviews:readonly BusinessNetReview[]|undefined;
- onCommand:(draft:CommandDraft)=>void|Promise<void>
+ onCommand:(draft:CommandDraft)=>Promise<CommandSubmitOutcome>
 }){
  const [data,setData]=useState<Loaded|null>(null),[error,setError]=useState("");
  const [month,setMonth]=useState(""),[registration,setRegistration]=useState("");
@@ -72,7 +73,7 @@ export default function BusinessMonthlyReview({caseId,revision,roles,busy,review
   setError("");
   void onCommand({commandType:"business.net.propose",target:{},
    patch:{businessRegistrationFactId:registration,grossFactId:gross,costFactIds:costs,month},
-   reason:reason.trim()});
+   reason:reason.trim()}).then(outcome=>{if(outcome!=="committed")setError(outcome==="rejected"?"사업소득 제안 기록이 거부되었습니다.":"제안 저장 결과가 불분명합니다. 기존 명령으로 확인하세요.");}).catch(cause=>setError(cause instanceof Error?cause.message:"사업소득 제안 저장을 확인하지 못했습니다."));
  };
  const money=(v:string|null)=>v===null?"확인 필요":(/^\-?\d+$/.test(v)?BigInt(v).toLocaleString("ko-KR")+"원":v);
  const sourceLabel=(id:string)=>{
@@ -130,7 +131,7 @@ export default function BusinessMonthlyReview({caseId,revision,roles,busy,review
         e.preventDefault();const why=approvalReason[review.id]?.trim()??"";
         if(why.length<15){setError("변호사 검토에는 상세한 법률·회계 판단 근거가 필요합니다.");return;}
         if(!window.confirm("매출·경비 원문, 동일사업자와 공식 법원 기준을 직접 검토하고 승인하시겠습니까?"))return;
-        setError("");void onCommand({commandType:"business.net.adopt",target:{reviewId:review.id},patch:{},reason:why});
+        setError("");void onCommand({commandType:"business.net.adopt",target:{reviewId:review.id},patch:{},reason:why}).then(outcome=>{if(outcome!=="committed")setError(outcome==="rejected"?"변호사 채택 기록이 거부되었습니다.":"채택 저장 결과가 불분명합니다. 기존 명령으로 확인하세요.");}).catch(cause=>setError(cause instanceof Error?cause.message:"변호사 채택 저장을 확인하지 못했습니다."));
        }}><label>변호사 독립 검토 및 비용 인정 근거<textarea required minLength={15} maxLength={4000}
         value={approvalReason[review.id]??""} onChange={e=>setApprovalReason(prev=>({...prev,[review.id]:e.target.value}))} rows={3}/></label>
         <button type="submit" className="button button-outline" disabled={busy||!data.status.officialPolicyApproved}>변호사 검토 승인</button>
