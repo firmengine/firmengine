@@ -128,7 +128,10 @@ for (const months of [36, 48, 60]) {
     test(`A2 LAW r84 ${months} months / ${c.id}: technical source coverage only`, () => {
       const { data, calculation } = fixture(months, c);
       const ledger = buildRepaymentPlanModel(data, calculation);
-      const checked = reconcilePlanLedger(data, calculation, ledger);
+      // Only the synthetic fixture supplies explicit policy confirmation; it is NOT attorney approval.
+      const policies = c.classification === "ordinary" && c.priority === "ordinary"
+        ? undefined : { priorityPolicies: { "SYN-DEBT": { deadlineInstallment: months, applicability: "confirmed" } } };
+      const checked = reconcilePlanLedger(data, calculation, ledger, policies);
       assert.equal(ledger.status, c.expectedLedger, JSON.stringify(ledger.issues));
       assert.equal(checked.status, c.expectedReconciliation, JSON.stringify(checked.issues));
       if (c.ledgerIssue) assert.ok(ledger.issues.includes(c.ledgerIssue), JSON.stringify(ledger.issues));
