@@ -383,8 +383,15 @@ export function calculateCase(data: CaseData, rules: RuleSet,index:CaseReadIndex
     // or business revenues. It is comparative evidence, not automatically an
     // independent current monthly payer; only explicit human recognition or
     // reviewed duplicate treatment can use/exclude it safely.
-    const historicalUnreviewed = source.sourceCalculationRole==="historical_tax_comparison" && source.recognition!=="accepted";
-    const historicalPeriodUnreviewed = source.sourceCalculationRole==="historical_tax_comparison" && !historicalUnreviewed &&
+    // A historical tax certificate is not promoted into independent current
+    // income by changing the mutable typed row's sourceCalculationRole.
+    const taxIncomeFactLinked=source.factIds.some(id=>{
+      const fact=index.byId.get(id),canonical=fact?.canonicalFieldId??fact?.fieldObservation?.canonicalFieldId??"";
+      return canonical.startsWith("tax_income::");
+    });
+    const historicalTaxSource=source.sourceCalculationRole==="historical_tax_comparison"||taxIncomeFactLinked;
+    const historicalUnreviewed = historicalTaxSource && source.recognition!=="accepted";
+    const historicalPeriodUnreviewed = historicalTaxSource && !historicalUnreviewed &&
       (source.aggregationReviewed!==true || !source.aggregationReviewReason?.trim() ||
        !["series_observation","independent_source"].includes(source.aggregationTreatment??"unknown"));
     // Exact VAT canonical source facts cannot turn into current net income simply
