@@ -34,7 +34,8 @@ export function reconciledCreditorMonthlyWon(
   const seenDebtMonth = new Set<string>();
   const classByDebt = new Map<string, string>();
   for (const row of ledger.rows) {
-    if (!Number.isSafeInteger(row.installment) || row.installment < 1 || row.installment > expectedInstallments ||
+    if (!row || typeof row !== "object" || Array.isArray(row) ||
+      !Number.isSafeInteger(row.installment) || row.installment < 1 || row.installment > expectedInstallments ||
       !allowed.has(row.claimClass) || typeof row.debtId !== "string" || !row.debtId.trim() ||
       !validWon(row.principalWon) || !validWon(row.interestWon) ||
       !validWon(row.otherComponentWon)) return null;
