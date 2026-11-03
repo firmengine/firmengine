@@ -85,3 +85,26 @@ test("document edits require a matching server-loaded base and hash",async()=>{
   const result=await reduceCaseCommand(data,cmd,{...actor,documentBases:[{artifactId:"artifact-1",fieldId:"statement",rowId:null,value:"base"}]});
   assert.equal(result.data.workflowState?.documentEdits[0]?.value,"updated");
 });
+
+test("non-monetary OCR fact correction rejects array/object payloads while preserving original fact",async()=>{
+ const data=factCase();
+ data.facts[0]!.key="person.name";
+ data.facts[0]!.logicalId="person:name";
+ data.facts[0]!.subjectId="person";
+ data.facts[0]!.value="Synthetic Alpha";
+ data.facts[0]!.rawValue="Synthetic Alpha";
+ delete data.facts[0]!.numeric;
+ delete data.facts[0]!.sourceUnit;
+ data.debts=[];
+ const baseValueHash=await commandHash({value:"Synthetic Alpha",sourceUnit:null});
+ for(const value of [["Synthetic Beta"],[["Synthetic Beta"]],{value:"Synthetic Beta"}]){
+   await assert.rejects(
+     reduceCaseCommand(data,command("fact.correct",{factId:"fact-1"},{value},{baseValueHash}),actor),
+     err("INVALID_COMMAND"));
+ }
+ assert.equal(data.context.revision,1);
+ assert.equal(currentFacts(data)[0]?.value,"Synthetic Alpha");
+ const valid=await reduceCaseCommand(data,command("fact.correct",{factId:"fact-1"},{value:"Synthetic Beta"},{baseValueHash}),actor);
+ assert.equal(currentFacts(valid.data)[0]?.value,"Synthetic Beta");
+ assert.equal(currentFacts(valid.data)[0]?.recognition,"unreviewed");
+});
