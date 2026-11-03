@@ -39,17 +39,24 @@ function validDate(s: string): boolean {
   const dt = new Date(`${s}T00:00:00.000Z`);
   return !Number.isNaN(dt.valueOf()) && dt.toISOString().slice(0, 10) === s;
 }
+/** Source evidence cannot be positive with blank, duplicate, or non-array Fact IDs. */
+function hasUsableFactIds(ids: unknown): ids is string[] {
+  return Array.isArray(ids) && ids.length > 0
+    && ids.every((id) => typeof id === "string" && id.trim().length > 0)
+    && new Set(ids).size === ids.length;
+}
 function wageCriterion(history: EvidenceValue<WageHistoryEvidence> | null, applicationDate: string | null): { status: Tri; factIds: string[]; detail: string } {
   const years = referencePositiveInteger("param.seoul.shortened_term.wage_history_years");
   const contract = referenceParameter<{ periodYears: number; wholePeriodField: string }>("param.seoul.shortened_term.wage_history_fact_contract");
-  if (!history || !applicationDate || !validDate(applicationDate) || !history.sourceValidated || !history.legallyRecognized || !history.factIds.length) return { status: "unknown", factIds: history?.factIds ?? [], detail: `최근 ${years}년 전체의 원문·최저임금 판본·법적 적용 검토가 완료된 급여 이력이 필요합니다.` };
+  if (!history || !applicationDate || !validDate(applicationDate) || !history.sourceValidated || !history.legallyRecognized || !hasUsableFactIds(history.factIds)) return { status: "unknown", factIds: hasUsableFactIds(history?.factIds) ? history!.factIds : [], detail: `최근 ${years}년 전체의 원문·최저임금 판본·법적 적용 검토가 완료된 급여 이력이 필요합니다.` };
   const value = history.value;
+  if (!value || typeof value !== "object" || typeof value.minimumWageVersion !== "string") return { status: "unknown", factIds: history.factIds, detail: "급여 이력 또는 최저임금 판본 자료형을 확인할 수 없습니다." };
   const reviewed = value.reviewedPeriodYears === years && typeof value.wholePeriodBelowMinimum === "boolean" ? value.wholePeriodBelowMinimum : value.reviewedPeriodYears === undefined && contract.periodYears === years && contract.wholePeriodField === "wholeTwoYearBelowMinimum" ? value.wholeTwoYearBelowMinimum : undefined;
   if (!value.minimumWageVersion.trim() || typeof reviewed !== "boolean") return { status: "unknown", factIds: history.factIds, detail: `최근 ${years}년 전체에 대한 명시적 법률검토 결론이 없습니다. 기존 기간의 증거 또는 월별 자료 프록시로 새 기간의 법률요건을 추정하지 않습니다.` };
   return { status: reviewed ? "yes" : "no", factIds: history.factIds, detail: `최근 ${years}년 전체 요건에 대한 source-backed 명시적 법률검토 결론입니다. 후보경로 제안일 뿐 인가 판단은 아닙니다.` };
 }
 function evidenceTri<T>(e: EvidenceValue<T> | null, test: (value: T) => boolean): { status: Tri; factIds: string[] } {
-  return e && e.sourceValidated && e.legallyRecognized && e.factIds.length ? { status: test(e.value) ? "yes" : "no", factIds: e.factIds } : { status: "unknown", factIds: e?.factIds ?? [] };
+  return e && e.sourceValidated && e.legallyRecognized && hasUsableFactIds(e.factIds) && typeof e.value === "boolean" ? { status: test(e.value) ? "yes" : "no", factIds: e.factIds } : { status: "unknown", factIds: hasUsableFactIds(e?.factIds) ? e!.factIds : [] };
 }
 export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   const court = referenceParameter<string>("param.seoul.shortened_term.court_id");
@@ -65,7 +72,10 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   if (input.courtId !== null && input.courtId !== court) return { ...base, status: "not_applicable", route: null, conditions: baseConditions, reason: "서울회생법원 준칙이므로 다른 관할에 적용하지 않습니다." };
   if (!validAppDate) return { ...base, status: "unknown", route: null, conditions: baseConditions, reason: "신청접수일이 없거나 유효하지 않아 시행 버전을 확인할 수 없습니다." };
   if (input.firstFilingDate! < effectiveFrom) return { ...base, status: "unsupported_version", route: null, conditions: baseConditions, reason: `${effectiveFrom} 시행 판본부터 지원합니다. 이전 사건을 아니오로 판단하지 않습니다.` };
-  const category16: Tri = input.categoryRoutes.some((r) => r.status === "yes") ? "yes" : input.categoryRoutes.length > 0 && input.categoryRoutes.every((r) => r.status === "no") ? "no" : "unknown";
+  // Gate positive categories by a usable source reference; this does not certify a Fact.
+  const evidencedRoutes = input.categoryRoutes.map((route) => route.status === "yes" && !hasUsableFactIds(route.factIds)
+    ? { ...route, status: "unknown" as const } : route);
+  const category16: Tri = evidencedRoutes.some((r) => r.status === "yes") ? "yes" : evidencedRoutes.length > 0 && evidencedRoutes.every((r) => r.status === "no") ? "no" : "unknown";
   const wage = wageCriterion(input.wageHistory, input.firstFilingDate);
   const debtBound = (input.totalDebtThresholdWon ?? referenceParameterDefinition("param.seoul.shortened_term.total_debt_max_won").value) === debtThreshold;
   const debt = evidenceTri(debtBound ? input.totalDebtAtMost50MillionWon : null, Boolean);
@@ -74,12 +84,13 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   const recentDebt = evidenceTri(recentBound ? input.noRecentYearDebtExceptGoodsPurchaseCard : null, Boolean);
   const conditions = [...baseConditions,
     { id: "category_1_to_6", status: category16, factIds: [], detail: "제2항 제1~6호 중 하나의 법률특정 요건을 직접 검토한 증거" },
-    ...input.categoryRoutes.map((r) => ({ id: r.id, status: r.status, factIds: r.factIds, detail: `${r.article}: ${r.requiredProof}` })),
+    ...evidencedRoutes.map((r) => ({ id: r.id, status: r.status, factIds: r.factIds, detail: `${r.article}: ${r.requiredProof}` })),
     { id: "wage_below_minimum_full_two_years", ...wage },
     { id: "total_debt_at_most_50m", ...debt, detail: `총채무 ${BigInt(debtThreshold).toLocaleString("ko-KR")}원 이하` },
     { id: "no_individual_creditors", ...creditors, detail: "개인채권자 없음 및 채권자목록 완전성" },
     { id: "no_recent_year_debt_except_goods_card", ...recentDebt, detail: `최근 ${recentDebtYears}년 발생 채무 없음(물품구입 신용카드채무 제외)` },
   ];
+  if (input.courtId === null) return { ...base, status: "unknown", route: null, conditions, reason: "관할법원 확인 전 서울 제424호 검토 후보를 승격하지 않습니다." };
   if (category16 === "yes") return { ...base, status: "candidate_for_human_review", route: "category_1_to_6", conditions, reason: "법률특정 제1~6호 요건의 별도 검토 후보입니다. §614 및 법원 판단은 남아 있습니다." };
   const seven = [wage.status, debt.status, creditors.status, recentDebt.status];
   if (seven.every((x) => x === "yes")) return { ...base, status: "candidate_for_human_review", route: "category_7", conditions, reason: "제7호 누적조건 후보입니다. §614와 법원 심사는 남아 있습니다." };
