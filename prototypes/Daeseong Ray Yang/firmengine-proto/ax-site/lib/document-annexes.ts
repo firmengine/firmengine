@@ -49,7 +49,19 @@ export function repaymentPlanLedgerAnnex(data:CaseData,calculation:CalculationRe
  const totalsValid=[totals.principalWon,totals.interestWon,totals.otherComponentWon,totals.totalWon,totals.ordinaryWon,totals.priorityWon,totals.estateWon,totals.trusteeFeeWon].every(isWon);
  const budgetValuesValid=Object.values(reconciliation.unallocatedBudgets).every(isWon)&&monthIds.every(month=>isWon(reconciliation.unallocatedBudgets[`${month}:disposable_income`]));
  const capsValid=monthIds.every(month=>isWon(phaseFor(month)?.monthlyAvailableWon??calculation.monthlyPaymentWon));
- const monetaryValid=allMonthsPresent&&rowValuesValid&&totalsValid&&budgetValuesValid&&capsValid;
+ // Only a reconciled, complete ledger with independently matching source-row totals
+ // may present the calculated totals as a verified court-facing summary.
+ const totalsAgree=rowValuesValid&&totalsValid
+  &&totals.principalWon===sumWon(ledger.rows.map(row=>row.principalWon))
+  &&totals.interestWon===sumWon(ledger.rows.map(row=>row.interestWon))
+  &&totals.otherComponentWon===sumWon(ledger.rows.map(row=>row.otherComponentWon))
+  &&totals.totalWon===sumWon(ledger.rows.flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon]))
+  &&totals.ordinaryWon===sumWon(ledger.rows.filter(row=>row.claimClass==="ordinary").flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon]))
+  &&totals.priorityWon===sumWon(ledger.rows.filter(row=>row.claimClass==="priority").flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon]))
+  &&totals.estateWon===sumWon(ledger.rows.filter(row=>row.claimClass==="estate").flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon]))
+  &&totals.trusteeFeeWon===sumWon(ledger.rows.filter(row=>row.claimClass==="trustee_fee").flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon]));
+ const monetaryValid=allMonthsPresent&&rowValuesValid&&totalsValid&&budgetValuesValid&&capsValid
+  &&ledger.status==="complete"&&reconciliation.status==="reconciled"&&totalsAgree;
  const rows=ledger.rows.map(row=>[
   String(row.installment),row.paymentDate??missing,row.claimClass==="trustee_fee"?"회생위원 보수":row.debtId,
   showWon(row.principalWon),showWon(row.interestWon),sumWon([row.principalWon,row.interestWon,row.otherComponentWon]),
