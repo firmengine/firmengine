@@ -85,3 +85,37 @@ test("document edits require a matching server-loaded base and hash",async()=>{
   const result=await reduceCaseCommand(data,cmd,{...actor,documentBases:[{artifactId:"artifact-1",fieldId:"statement",rowId:null,value:"base"}]});
   assert.equal(result.data.workflowState?.documentEdits[0]?.value,"updated");
 });
+
+test("A1-DATA-017: page role withdrawal removes stale typed debt approval and creates a remap task",async()=>{
+  const before=factCase();
+  before.facts[0]!.recognition="accepted";
+  before.debts[0]!.legalReview="accepted";
+  before.context.inventoryComplete={income:"yes",debt:"yes",asset:"yes"};
+  const after=await reduceCaseCommand(before,command("document.role",{documentId:"doc-1",page:1},{role:"administrative"}),actor);
+  assert.equal(currentFacts(after.data).length,0,"the page has no active verified fact");
+  assert.equal(after.data.debts[0]?.legalReview,"unreviewed","the old typed legal acceptance is revoked");
+  assert.deepEqual(after.data.debts[0]?.factIds,[],"withdrawn evidence cannot remain attached to a live debt");
+  assert.equal(after.data.debts[0]?.principal?.amountWon,"100","historical amount remains for a reviewer");
+  assert.equal(after.data.facts.find(f=>f.id==="fact-1")?.state,"verified","original evidence history remains");
+  assert.equal(after.data.facts.at(-1)?.state,"retracted");
+  assert.equal(after.data.context.inventoryComplete.debt,"unknown");
+  assert.equal(after.data.workflowState?.projectionBlockers.some(b=>b.code==="WITHDRAWN_DOCUMENT_EVIDENCE"),true);
+  assert.equal(after.data.workflowState?.tasks.some(t=>t.type==="projection_remap"),true);
+  assert.equal((after.impact.projectionBlockers as unknown[]).length,1);
+  assert.equal(before.debts[0]?.legalReview,"accepted","pure reducer must not mutate its input");
+});
+
+test("A1-DATA-017: whole-document withdrawal also downgrades typed legal review and preserves history",async()=>{
+  const before=factCase();
+  before.facts[0]!.recognition="accepted";
+  before.debts[0]!.legalReview="accepted";
+  const after=await reduceCaseCommand(before,command("document.retract",{documentId:"doc-1"},{}),actor);
+  assert.equal(after.data.documents[0]?.status,"deleted");
+  assert.equal(currentFacts(after.data).length,0);
+  assert.deepEqual(after.data.debts[0]?.factIds,[]);
+  assert.equal(after.data.debts[0]?.legalReview,"unreviewed");
+  assert.equal(after.data.debts[0]?.principal?.amountWon,"100");
+  assert.equal(after.data.facts.at(-1)?.state,"retracted");
+  assert.equal(after.data.workflowState?.projectionBlockers.some(b=>b.code==="WITHDRAWN_DOCUMENT_EVIDENCE"),true);
+  assert.equal(after.data.workflowState?.tasks.some(t=>t.type==="projection_remap"),true);
+});
