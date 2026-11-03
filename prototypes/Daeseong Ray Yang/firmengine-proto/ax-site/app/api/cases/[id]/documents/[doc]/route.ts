@@ -1,4 +1,5 @@
 import { canUseRescueRole } from "../../../../../../lib/classification-recovery";
+import { matchesSingleActiveCaseDocument } from "../../../../../../lib/evidence-document-read-gate";
 import { createHash } from "node:crypto";
 import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
@@ -7,7 +8,11 @@ type Context={params:Promise<{id:string,doc:string}>};
 async function record(id:string,doc:string){
   const c=await getCase(id);if(!c.documents.some(d=>d.id===doc&&d.status==="active"))throw new HttpError(404,"사용 중인 문서를 찾을 수 없습니다.");
   const row=await db().prepare("SELECT * FROM documents WHERE id = ? AND case_id = ?").bind(doc,id).first<{id:string,sha256:string,name:string,page_count:number,original_key:string|null,ready:number}>();
-  if(!row)throw new HttpError(404,"문서를 찾을 수 없습니다.");return row;
+  if(!row)throw new HttpError(404,"문서를 찾을 수 없습니다.");
+  // SQL metadata alone cannot assert an active CaseData evidence identity.
+  if(!matchesSingleActiveCaseDocument(c.documents,doc,row.sha256))
+    throw new HttpError(409,"사건 문서와 SQL 원본 해시가 상충합니다. 원본 판본을 재확인하세요.");
+  return row;
 }
 export async function PUT(request:Request,{params}:Context){try{
   requireSameOrigin(request);const {id,doc}=await params,r=await record(id,doc),url=new URL(request.url),kind=url.searchParams.get("kind");
