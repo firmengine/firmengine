@@ -209,7 +209,13 @@ export function preserveAgreedFieldsAfterOmission(baseline:PageRead,baselineChec
     const oldAnchors=anchor(old,ri),candidates=next.records.map((record,index)=>({record,index,score:record.category!==old.category||taken.has(index)?0:oldAnchors.filter(([key,value])=>record.fields.some(f=>canonicalKey(f.key)===key&&f.value?.trim().normalize("NFKC")===value)).length})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
     const sameCategoryOld=baseline.records.filter(r=>r.category===old.category).length,sameCategoryNew=next.records.map((r,index)=>({r,index})).filter(x=>x.r.category===old.category&&!taken.has(x.index));
     const match=candidates.length&&(!candidates[1]||candidates[0].score>candidates[1].score)?candidates[0]:!oldAnchors.length&&sameCategoryOld===1&&sameCategoryNew.length===1?{record:sameCategoryNew[0].r,index:sameCategoryNew[0].index,score:0}:undefined;
-    if(!match){incomplete=true;return;}
+    // A reread anchor also needs to identify exactly one baseline row.
+    // Shared account/date anchors alone cannot assign a missing amount to one
+    // of several earlier transactions, even if the reread has only one row.
+    const competingBaseline=!!match&&oldAnchors.length>0&&baseline.records.some((other,otherIndex)=>
+      otherIndex!==ri&&other.category===old.category&&
+      anchor(other,otherIndex).filter(([key,value])=>match.record.fields.some(f=>canonicalKey(f.key)===key&&f.value?.trim().normalize("NFKC")===value)).length>=match.score);
+    if(!match||competingBaseline){incomplete=true;return;}
     taken.add(match.index);
     for(const field of confirmed){const key=canonicalKey(field.key),current=match.record.fields.find(f=>canonicalKey(f.key)===key);
       if(!current)match.record.fields.push(structuredClone(field));
