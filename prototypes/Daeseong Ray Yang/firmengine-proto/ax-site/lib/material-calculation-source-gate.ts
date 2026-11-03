@@ -66,10 +66,16 @@ export function auditMaterialCalculatorSources(data:CaseData,index:CaseReadIndex
    }
    const matched=rows.filter(row=>row.item.factIds.includes(fact.id)&&field.destination!.startsWith(row.category+"."));
    if(!matched.length){add("CALC_INPUT_UNCONNECTED_MATERIAL",field,fact.id);continue;}
+   // Contextual references across sections are allowed, but the same source
+   // observation must not finance a second monetary value in another section.
+   const crossCategoryMoneyConsumers=rows.filter(row=>row.item.factIds.includes(fact.id)&&!field.destination!.startsWith(row.category+".")&&(
+     row.category==="income"?moneyValue(row.item.net)!==null||moneyValue(row.item.gross)!==null:
+     row.category==="debt"?moneyValue(row.item.principal)!==null||moneyValue(row.item.interest)!==null:
+     moneyValue(row.item.grossValue)!==null));
    // A single exact source amount cannot license two typed financial rows.
    // Reuse for documentary cross-check is fine; duplicating a calculator amount is not.
    // Explicit splits need separate source-backed per-row allocations and a reviewed rule.
-   if(matched.length!==1){add("CALC_INPUT_MULTIPLE_TYPED_MATCHES",field,fact.id);continue;}
+   if(matched.length!==1||crossCategoryMoneyConsumers.length){add("CALC_INPUT_MULTIPLE_TYPED_MATCHES",field,fact.id);continue;}
    const expected=moneyValue(fact.numeric),prop=field.destination.split(".")[1];
    const actual=matched.map(row=>moneyValue((row.item as unknown as Record<string,unknown>)[prop] as NumericInput|null|undefined));
    if(actual.some(amount=>amount===null||amount!==expected))add("CALC_INPUT_AMOUNT_MISMATCH",field,fact.id);
