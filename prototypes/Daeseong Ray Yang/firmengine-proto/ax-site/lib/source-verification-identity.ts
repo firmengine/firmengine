@@ -8,7 +8,21 @@ export function sourceQuotesOverlap(a: unknown, b: unknown): boolean {
   if (typeof a !== "string" || typeof b !== "string") return false;
   const left = a.normalize("NFKC").replace(/\s+/gu, " ").trim();
   const right = b.normalize("NFKC").replace(/\s+/gu, " ").trim();
-  return !!left && !!right && (left === right || left.includes(right) || right.includes(left));
+  if (!left || !right) return false;
+  if (left === right) return true;
+  // A partial quote may not begin or end midway through a number or word.
+  // E.g. "100" cannot corroborate "1100"; "소득" cannot corroborate "가처분소득".
+  const token = /[\p{L}\p{N}]/u;
+  const containsWholeFragment = (longer: string, shorter: string) => {
+    for (let at = longer.indexOf(shorter); at !== -1; at = longer.indexOf(shorter, at + 1)) {
+      const before = at > 0 ? longer[at - 1] : "";
+      const after = at + shorter.length < longer.length ? longer[at + shorter.length] : "";
+      if ((!before || !token.test(before) || !token.test(shorter[0]))
+        && (!after || !token.test(after) || !token.test(shorter[shorter.length - 1]))) return true;
+    }
+    return false;
+  };
+  return left.length >= right.length ? containsWholeFragment(left, right) : containsWholeFragment(right, left);
 }
 
 export interface BBoxReceiptLocator {
