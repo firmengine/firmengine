@@ -54,3 +54,7 @@ main `projectLawgraphDocumentFields()`의 exact 행 선택 조건은 `["computed
 - **다음 r100 사용자·서류담당자:** #219와 #209/#205/#207/#195/#200/#212의 projection/final-form 충돌 및 테스트 독립 기대값 대조, 정식 Node 프로젝트 러너/tsc/CI, staging D1·R2, 실제 D5103/D5110/D5111 Word byte 재독. 최초 접수일·관할 Fact, 미승인 PV(#84)·잠정 변제원장(#215) 최종 게이트 별도 변호사·서류담당자 승인 HOLD.
 
 **합성 V8 부분 통과 ≠ Node 프로젝트 테스트 ≠ CI ≠ staging D1/R2/Cron ≠ Word/법원 공식 서식 동등성 ≠ 실무자/변호사 승인 ≠ 법원 인가.** RELEASE_READY 0건. 공개 Git에 개인정보/원본OCR/키/.env/비공개 정답 미기록. 운영 배포·운영 D1 마이그레이션·전자제출·인가 확정 **미수행**.
+
+## 5. 커밋 후 TypeScript 계약 확인 보완
+
+`StoredDocumentField.citation?: unknown` (`lib/case-lawgraph-store.ts` blob `eea435bb78f804c79a213c464af54e8014a3c3a5`)이므로 신규 Node 테스트 내 필드 직접 속성 접근 12곳을 `(row.citation as any)` 타입 단언 후 검사하도록 수정했다. 보완 커밋 `c0eaedac73c982b8b79f64138bfe3bcd1781abcd`, 테스트 파일 blob `57160f8ff612e89780d8b69b57cbddf38790ea14`. 타입 시그니처 정적 재독에 따른 수정이지 **실제 TypeScript/Node 프로젝트 컴파일 PASS 관찰이 아님**. Draft PR #219은 계속 HOLD.
