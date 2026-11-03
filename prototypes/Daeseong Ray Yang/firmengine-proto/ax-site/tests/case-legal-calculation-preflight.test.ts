@@ -37,3 +37,21 @@ test("no latest calculate run waits; it never substitutes an old run",()=>{
  const r=evaluateLegalCalculationPreflight({...base,current:false});
  assert.equal(r.status,"waiting_evidence");assert.equal(r.retryable,true);
 });
+
+test("computed Won outputs require exact integer KRW even if SQL status says computed",()=>{
+ const requiredOutputs=["monthlyIncomeWon"];
+ for(const invalid of ["unverified", "   ", "1.5", "1e5", false, [], {}, Number.MAX_SAFE_INTEGER+1]){
+  const r=evaluateLegalCalculationPreflight({...base,requiredOutputs,
+   observed:[{outputName:"monthlyIncomeWon",status:"computed",value:invalid}]});
+  assert.equal(r.ready,false, "invalid Won: "+JSON.stringify(invalid));
+  assert.ok(r.blockers.includes("REQUIRED_LEGAL_CALCULATOR_OUTPUT_UNRESOLVED:monthlyIncomeWon"));
+ }
+ for(const valid of ["0", "-5000", "999999999999999999999999", 0, 500]){
+  const r=evaluateLegalCalculationPreflight({...base,requiredOutputs,
+   observed:[{outputName:"monthlyIncomeWon",status:"computed",value:valid}]});
+  assert.equal(r.ready,true, "valid Won: "+String(valid));
+ }
+ const other=evaluateLegalCalculationPreflight({...base,requiredOutputs:["lawReviewFlag"],
+  observed:[{outputName:"lawReviewFlag",status:"reviewed_basis",value:false}]});
+ assert.equal(other.ready,true,"do not impose KRW semantics on non-money outputs");
+});
