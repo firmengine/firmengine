@@ -40,7 +40,7 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
  }
  const expectedInstallments=schedule.expectedInstallments??data.context.planMonths;
  if(expectedInstallments!==undefined&&expectedInstallments!==data.context.planMonths)issues.push("INSTALLMENT_COUNT_MISMATCH");
- const phases=[...schedule.phases].sort((a,b)=>a.firstInstallment-b.firstInstallment); let next=1;
+ const phases=[...schedule.phases].sort((a,b)=>a.firstInstallment-b.firstInstallment); let next=1;const planAnchor=phases[0]?.firstPaymentDate;
  if(new Set(phases.map(p=>p.id)).size!==phases.length)issues.push("DUPLICATE_PHASE_ID");
  const balances=new Map(data.debts.map(d=>[d.id,(BigInt(d.principal?.amountWon??"0")+BigInt(d.interest?.amountWon??"0"))]));
  for(const phase of phases){
@@ -56,17 +56,17 @@ export function buildRepaymentPlanModel(data:CaseData, calculation:CalculationRe
    for(let installment=phase.firstInstallment;installment<=phase.lastInstallment;installment++){
     const principal=BigInt(a.principalWon),interest=BigInt(a.interestWon);
     const balance=balances.get(debt.id)??0n, paid=principal+interest, after=balance>paid?balance-paid:0n;balances.set(debt.id,after);
-    const date=phase.firstPaymentDate??null, day=date?.slice(8,10),monthDate=date&&day?new Date(Date.UTC(Number(date.slice(0,4)),Number(date.slice(5,7))-1+installment-phase.firstInstallment,1)):null;
-    const paymentDate=monthDate?`${monthDate.getUTCFullYear().toString().padStart(4,"0")}-${(monthDate.getUTCMonth()+1).toString().padStart(2,"0")}-${Math.min(Number(day),new Date(Date.UTC(monthDate.getUTCFullYear(),monthDate.getUTCMonth()+1,0)).getUTCDate()).toString().padStart(2,"0")}`:null;
+     // Keep due dates anchored to the first installment, not to a clipped February phase start.
+     const paymentDate=planAnchor?addMonths(planAnchor,installment-1):null;
     rows.push({installment,paymentDate,phaseId:phase.id,debtId:debt.id,claimClass,principalWon:a.principalWon,interestWon:a.interestWon,otherComponentWon:"0",fundingSourceId:claimClass==="ordinary"?"ordinary_budget":claimClass==="priority"?"priority_budget":"estate_budget",balanceAfter:after.toString(),sourceIds:[...debt.factIds]});
    }
   }
   next=phase.lastInstallment+1;
  }
- for(let i=1;i<phases.length;i++){const previous=phases[i-1]!,current=phases[i]!;if(previous.firstPaymentDate&&current.firstPaymentDate){const expected=addMonths(previous.firstPaymentDate,previous.lastInstallment-previous.firstInstallment+1);if(expected&&expected!==current.firstPaymentDate)issues.push("PHASE_PAYMENT_DATES_NOT_CONTIGUOUS");}}
+ for(let i=1;i<phases.length;i++){const previous=phases[i-1]!,current=phases[i]!;if(previous.firstPaymentDate&&current.firstPaymentDate){const expected=planAnchor?addMonths(planAnchor,current.firstInstallment-1):null;if(expected&&expected!==current.firstPaymentDate)issues.push("PHASE_PAYMENT_DATES_NOT_CONTIGUOUS");}}
  if(expectedInstallments!==undefined&&next-1!==expectedInstallments)issues.push("TERM_BOUNDARY_MISMATCH");
  const feeInstallments=expectedInstallments??next-1;
- addTrusteeFeeRows(data,rows,feeInstallments,issues,month=>phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment)?.id??"manual-uncovered-month",month=>{const row=rows.find(r=>r.installment===month);if(row)return row.paymentDate;const phase=phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment);if(!phase?.firstPaymentDate)return null;return addMonths(phase.firstPaymentDate,month-phase.firstInstallment);});
+ addTrusteeFeeRows(data,rows,feeInstallments,issues,month=>phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment)?.id??"manual-uncovered-month",month=>{const row=rows.find(r=>r.installment===month);if(row)return row.paymentDate;const phase=phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment);if(!phase?.firstPaymentDate)return null;return planAnchor?addMonths(planAnchor,month-1):null;});
  const hasPriority=data.debts.some(d=>d.priority==="priority"||d.priority==="estate"||d.classification==="estate");
  if(hasPriority)for(const debt of data.debts.filter(d=>d.priority==="priority"||d.priority==="estate"||d.classification==="estate")){
   const amounts=[debt.principal?.amountWon,debt.interest?.amountWon];
