@@ -155,3 +155,28 @@ test("stale source dataVersion cannot be silently rebound to an unchanged case r
  await assert.rejects(()=>upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"}),
   /CORRECTION_SOURCE_DATA_VERSION_MISMATCH/);
 });
+
+test("response event before the court order cannot be linked as current correction evidence",()=>{
+ const {data,draft}=setup();
+ data.workflowState!.procedureEvents.find(e=>e.id==="received-answer")!.occurredAt="2026-10-20";
+ const proposal={...draft,responseEventId:"received-answer",responseDocumentIds:["answer"],receiptDocumentId:"receipt"};
+ assert.throws(()=>validateCorrectionItemDraft(data,proposal),/CORRECTION_RESPONSE_EVENT_UNBOUND/);
+});
+
+test("response recorded on the order date remains only an unresolved receipt candidate",()=>{
+ const {data,draft}=setup();
+ data.workflowState!.procedureEvents.find(e=>e.id==="received-answer")!.occurredAt="2026-10-30";
+ const proposal={...draft,responseEventId:"received-answer",responseDocumentIds:["answer"],receiptDocumentId:"receipt"};
+ assert.equal(validateCorrectionItemDraft(data,proposal).payload.responseEventId,"received-answer");
+});
+
+test("editing a previously linked response event to predate the order invalidates the stored item",async()=>{
+ const {data,db,draft}=setup();
+ const proposal={...draft,responseEventId:"received-answer",responseDocumentIds:["answer"],receiptDocumentId:"receipt"};
+ await upsertCourtCorrectionItem(db,{data,draft:proposal,actorId:"staff-reviewer"});
+ data.workflowState!.procedureEvents.find(e=>e.id==="received-answer")!.occurredAt="2026-10-20";
+ const list=await readCourtCorrectionItems(db,data);
+ assert.equal(list.items[0].sourceCurrent,false);
+ assert.equal(list.items[0].draft,null);
+ assert.equal(list.items[0].courtOrderSatisfied,false);
+});
