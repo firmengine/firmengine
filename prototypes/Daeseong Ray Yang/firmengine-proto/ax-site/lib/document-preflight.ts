@@ -42,7 +42,15 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
   // month row is a monetary misstatement even when the total is numerically valid.
   // This is FirmEngine's own final-review integrity gate, not official portal certification.
   if(input.formCode==="D5103"){
-    for(const [index,row]of (input.bindings.rows.month??[]).entries()){
+    const monthRows=input.bindings.rows.month??[];
+    // A supported monthly income with no corresponding source month rows
+    // cannot be presented as a complete month-by-month income statement.
+    // Internal data-integrity gate only: not certification of official e-form.
+    if(monthRows.length===0&&(numeric(input.bindings.scalars.approved_monthly_income)!==null||numeric(input.bindings.scalars.monthly_income)!==null)){
+      const issue:PreflightIssue={code:"D5103_MONTH_ROWS_MISSING",token:"month",message:"월소득 값은 있으나 월별 원천 행이 없습니다. 서류담당자의 확인이 필요합니다.",severity:input.mode==="final"?"blocker":"warning"};
+      if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+    }
+    for(const [index,row]of monthRows.entries()){
       const month=String(row.period??""),amount=String(row.net_income??"");
       if(!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)||numeric(amount)===null){
         const issue:PreflightIssue={code:"D5103_MONTH_EVIDENCE_UNRESOLVED",token:`month[${index}]`,message:"월별 귀속기간이나 검증된 순소득이 없습니다. 연간합계를 1개월 소득으로 기재할 수 없습니다.",severity:input.mode==="final"?"blocker":"warning"};
