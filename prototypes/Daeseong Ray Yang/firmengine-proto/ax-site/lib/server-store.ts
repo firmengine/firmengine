@@ -41,6 +41,16 @@ export async function jsonBody(request:Request){
 // A case revision tracks evidence changes. Manifest/review writes also need their
 // own CAS token so a stale export cannot overwrite a newer review or archive.
 const caseSnapshots=new WeakMap<CaseData,{id:string;revision:number;token:string}>();
+/** The exact revision/token read by getCase(), including R2-backed cases.
+ * It is a read snapshot, not current legal approval or a final DB guarantee.
+ */
+export function caseSnapshotIdentity(data:CaseData):{revision:number;token:string}{
+  const snapshot=caseSnapshots.get(data);
+  if(!snapshot||snapshot.id!==data.context.id||snapshot.revision!==data.context.revision)
+    throw new HttpError(409,"사건 원천판본을 다시 읽으세요.");
+  return {revision:snapshot.revision,token:snapshot.token};
+}
+
 const CASE_INLINE_LIMIT=500_000;
 type CaseSummary={documents:number;facts:number;status:"review_required"|"needs_evidence"};
 type CasePointer={_storage:"r2-case-v1";caseId:string;revision:number;key:string;sha256:string;summary:CaseSummary};
