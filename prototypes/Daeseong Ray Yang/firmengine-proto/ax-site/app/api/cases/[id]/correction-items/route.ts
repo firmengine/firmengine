@@ -1,8 +1,8 @@
 /** Authenticated staff entry of actual court correction-order sub-items.
  * This endpoint never accepts/approves the legal sufficiency of the item.
  */
-import {db,errorResponse,getCase,HttpError,jsonBody,requireSameOrigin} from "../../../../../lib/server-store.ts";
-import {requireAppRole} from "../../../../../lib/app-roles.ts";
+import {db,errorResponse,getCase,HttpError,jsonBody,requireSameOrigin,requireHumanActor} from "../../../../../lib/server-store.ts";
+import {requireAppRole,rolesForActor} from "../../../../../lib/app-roles.ts";
 import {getIntakeCatalog} from "../../../../../lib/intake-store.ts";
 import {readCourtCorrectionItems,upsertCourtCorrectionItem,type CorrectionItemDraft} from "../../../../../lib/preapproval-correction-item-store.ts";
 export const runtime="edge";
@@ -10,7 +10,14 @@ type Params={params:Promise<{id:string}>};
 export async function GET(request:Request,{params}:Params){
  try{
   requireSameOrigin(request);
-  const {id}=await params,data=await getCase(id);
+  const {id}=await params;
+  // Court-order itemization may contain private case facts: authorize scoped reads
+  // before loading the case or its D1 correction-item versions.
+  const reader=await requireHumanActor();
+  const readerRoles=await rolesForActor(reader,id);
+  if(!readerRoles.some(role=>["case_editor","caseworker_review","lawyer_review"].includes(role)))
+   throw new HttpError(403,"사건 검토 권한이 필요합니다.");
+  const data=await getCase(id);
   const result=await readCourtCorrectionItems(db(),data);
   return Response.json(result,{headers:{"Cache-Control":"no-store"}});
  }catch(error){return errorResponse(error);}
