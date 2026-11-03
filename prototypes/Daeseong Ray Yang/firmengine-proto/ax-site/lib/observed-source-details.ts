@@ -1,5 +1,6 @@
 import { currentFacts, describeStructuredSourceRefs, factHasValidStructuredRefs, factSourceLineageIssues, moneyValue, validSourceRef } from "./domain.ts";
 import type { CaseData, CaseReadIndex, Fact } from "./domain.ts";
+import { conflictingObservedFactIds } from "./observed-period-collision.ts";
 
 export interface ObservedDetailTable { title: string; headers: string[]; rows: string[][] }
 
@@ -26,22 +27,11 @@ function usable(data: CaseData, fact: Fact,index?:CaseReadIndex): boolean {
 export function observedSourceDetails(data: CaseData, kinds: string[],index?:CaseReadIndex): ObservedDetailTable {
   const selected = currentFacts(data,index).filter(fact => usable(data, fact,index) &&
     kinds.some(kind => kind === "*" || fact.key.toLowerCase().startsWith(kind.toLowerCase())));
-  const collisions = new Map<string, Set<string>>();
-  for (const fact of selected) {
-    // Each paragraph has its own source identity. Do not report distinct narrative
-    // paragraphs as competing readings of one scalar field.
-    const key = fact.key === "statement.text" && fact.logicalId.includes(":paragraph:")
-      ? fact.subjectId + "\0" + fact.logicalId
-      : fact.subjectId + "\0" + fact.key;
-    collisions.set(key, new Set([...(collisions.get(key) ?? []), value(data, fact)]));
-  }
+  const conflictingIds = conflictingObservedFactIds(selected, fact => value(data, fact));
   const rows = selected.map(fact => {
     const refs = fact.refs.filter(ref => validSourceRef(data, ref,index))
       .map(ref => `${data.documents.find(doc => doc.id === ref.documentId)?.name ?? ref.documentId}, p.${ref.page}: “${ref.quote}”`).concat(describeStructuredSourceRefs(data,fact)).join(" / ");
-    const conflictKey = fact.key === "statement.text" && fact.logicalId.includes(":paragraph:")
-      ? fact.subjectId + "\0" + fact.logicalId
-      : fact.subjectId + "\0" + fact.key;
-    const conflict = (collisions.get(conflictKey)?.size ?? 0) > 1;
+    const conflict = conflictingIds.has(fact.id);
     const paragraphSource = fact.key === "statement.text" && fact.logicalId.includes(":paragraph:")
       ? fact.logicalId.split(":paragraph:").at(-1) ?? ""
       : "";
