@@ -65,7 +65,14 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   if (input.courtId !== null && input.courtId !== court) return { ...base, status: "not_applicable", route: null, conditions: baseConditions, reason: "서울회생법원 준칙이므로 다른 관할에 적용하지 않습니다." };
   if (!validAppDate) return { ...base, status: "unknown", route: null, conditions: baseConditions, reason: "신청접수일이 없거나 유효하지 않아 시행 버전을 확인할 수 없습니다." };
   if (input.firstFilingDate! < effectiveFrom) return { ...base, status: "unsupported_version", route: null, conditions: baseConditions, reason: `${effectiveFrom} 시행 판본부터 지원합니다. 이전 사건을 아니오로 판단하지 않습니다.` };
-  const category16: Tri = input.categoryRoutes.some((r) => r.status === "yes") ? "yes" : input.categoryRoutes.length > 0 && input.categoryRoutes.every((r) => r.status === "no") ? "no" : "unknown";
+  // A category 1-6 positive status without even one usable source Fact ID
+  // must not become a positive evidence-backed candidate route. Existence and
+  // legal acceptance of referenced IDs remain duties of the upstream caller.
+  const evidencedRoutes = input.categoryRoutes.map((route) =>
+    route.status === "yes" && !(Array.isArray(route.factIds) && route.factIds.some((id) => typeof id === "string" && id.trim().length > 0))
+      ? { ...route, status: "unknown" as const }
+      : route);
+  const category16: Tri = evidencedRoutes.some((r) => r.status === "yes") ? "yes" : evidencedRoutes.length > 0 && evidencedRoutes.every((r) => r.status === "no") ? "no" : "unknown";
   const wage = wageCriterion(input.wageHistory, input.firstFilingDate);
   const debtBound = (input.totalDebtThresholdWon ?? referenceParameterDefinition("param.seoul.shortened_term.total_debt_max_won").value) === debtThreshold;
   const debt = evidenceTri(debtBound ? input.totalDebtAtMost50MillionWon : null, Boolean);
@@ -74,7 +81,7 @@ export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   const recentDebt = evidenceTri(recentBound ? input.noRecentYearDebtExceptGoodsPurchaseCard : null, Boolean);
   const conditions = [...baseConditions,
     { id: "category_1_to_6", status: category16, factIds: [], detail: "제2항 제1~6호 중 하나의 법률특정 요건을 직접 검토한 증거" },
-    ...input.categoryRoutes.map((r) => ({ id: r.id, status: r.status, factIds: r.factIds, detail: `${r.article}: ${r.requiredProof}` })),
+    ...evidencedRoutes.map((r) => ({ id: r.id, status: r.status, factIds: r.factIds, detail: `${r.article}: ${r.requiredProof}` })),
     { id: "wage_below_minimum_full_two_years", ...wage },
     { id: "total_debt_at_most_50m", ...debt, detail: `총채무 ${BigInt(debtThreshold).toLocaleString("ko-KR")}원 이하` },
     { id: "no_individual_creditors", ...creditors, detail: "개인채권자 없음 및 채권자목록 완전성" },

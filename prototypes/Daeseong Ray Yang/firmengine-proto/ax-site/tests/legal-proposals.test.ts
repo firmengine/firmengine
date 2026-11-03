@@ -55,6 +55,23 @@ test("Seoul 424 candidates require a known court even when substantive routes lo
   assert.equal(evaluateSeoul424({ ...base424, courtId: "seoul", firstFilingDate: "2026-09-30" }).status, "unsupported_version");
 });
 
+test("Seoul 424 category candidates require at least one usable source Fact ID", () => {
+  const route = noCategoryRoutes.map((item, i) => i === 0 ? { ...item, status: "yes" as const, factIds: [] } : item);
+  const missing = evaluateSeoul424({ ...base424, wageHistory: null, categoryRoutes: route });
+  assert.equal(missing.status, "unknown");
+  assert.equal(missing.route, null);
+  assert.equal(missing.conditions.find((x) => x.id === "category_1_to_6")?.status, "unknown");
+  assert.equal(missing.conditions.find((x) => x.id === route[0].id)?.status, "unknown");
+
+  const blank = evaluateSeoul424({ ...base424, wageHistory: null, categoryRoutes: route.map((r, i) => i === 0 ? { ...r, factIds: ["  "] } : r) });
+  assert.equal(blank.status, "unknown");
+  const sourced = evaluateSeoul424({ ...base424, wageHistory: null, categoryRoutes: route.map((r, i) => i === 0 ? { ...r, factIds: ["SYN-reviewed-source"] } : r) });
+  assert.equal(sourced.status, "candidate_for_human_review");
+  assert.equal(sourced.route, "category_1_to_6");
+  const independentSeven = evaluateSeoul424({ ...base424, categoryRoutes: route });
+  assert.equal(independentSeven.route, "category_7", "evidence for category 7 remains independent");
+});
+
 test("catalog fact polarity is explicit and unknowns remain unknown", () => {
   assert.equal(deriveNoPrivateCreditors(true), false);
   assert.equal(deriveNoPrivateCreditors(false), true);
