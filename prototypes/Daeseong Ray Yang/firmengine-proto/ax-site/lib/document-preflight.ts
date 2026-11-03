@@ -42,6 +42,20 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
   // month row is a monetary misstatement even when the total is numerically valid.
   // This is FirmEngine's own final-review integrity gate, not official portal certification.
   if(input.formCode==="D5103"){
+    // Internal readiness only: source-backed income previews are not an approval.
+    // No legal income recognition or statutory month-count rule is inferred here.
+    const observedIncomeVisible=!absent(input.bindings.scalars.monthly_income) ||
+      (input.bindings.rows.month??[]).some(row=>!absent(row.net_income));
+    if(observedIncomeVisible&&absent(input.bindings.scalars.approved_monthly_income)){
+      const issue:PreflightIssue={
+        code:"D5103_APPROVED_MONTHLY_INCOME_UNRESOLVED",token:"approved_monthly_income",
+        message:"관측 월소득은 있으나 검토된 대표기간의 승인 월소득이 미확정입니다. 최종본으로 승격하기 전 담당자 확인이 필요합니다.",
+        severity:input.mode==="final"?"blocker":"warning"
+      };
+      if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+    }
+  }
+  if(input.formCode==="D5103"){
     for(const [index,row]of (input.bindings.rows.month??[]).entries()){
       const month=String(row.period??""),amount=String(row.net_income??"");
       if(!/^\d{4}-(?:0[1-9]|1[0-2])$/.test(month)||numeric(amount)===null){
