@@ -207,8 +207,10 @@ export function preserveAgreedFieldsAfterOmission(baseline:PageRead,baselineChec
     const confirmed=old.fields.filter((f,fi)=>f.value!==null&&checksFor(baselineChecks,ri,fi).length===1&&validAgreement(f,checksFor(baselineChecks,ri,fi)[0]));
     if(!confirmed.length)return;
     const oldAnchors=anchor(old,ri),candidates=next.records.map((record,index)=>({record,index,score:record.category!==old.category||taken.has(index)?0:oldAnchors.filter(([key,value])=>record.fields.some(f=>canonicalKey(f.key)===key&&f.value?.trim().normalize("NFKC")===value)).length})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score);
-    const sameCategoryOld=baseline.records.filter(r=>r.category===old.category).length,sameCategoryNew=next.records.map((r,index)=>({r,index})).filter(x=>x.r.category===old.category&&!taken.has(x.index));
-    const match=candidates.length&&(!candidates[1]||candidates[0].score>candidates[1].score)?candidates[0]:!oldAnchors.length&&sameCategoryOld===1&&sameCategoryNew.length===1?{record:sameCategoryNew[0].r,index:sameCategoryNew[0].index,score:0}:undefined;
+    // Without a corroborated row anchor, a sole record of the same category
+    // may be a DIFFERENT row on omission reread. Do not copy a verified fact
+    // across that ambiguous identity boundary; require manual source review.
+    const match=candidates.length&&(!candidates[1]||candidates[0].score>candidates[1].score)?candidates[0]:undefined;
     if(!match){incomplete=true;return;}
     taken.add(match.index);
     for(const field of confirmed){const key=canonicalKey(field.key),current=match.record.fields.find(f=>canonicalKey(f.key)===key);
