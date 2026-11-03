@@ -20,6 +20,20 @@ export interface DocumentBindingInput{
 const sourceNumeric=(x:unknown)=>typeof x==="string"?x.replace(/[,\s₩원]/g,""):typeof x==="number"?String(x):null;
 const sameValue=(a:unknown,b:unknown)=>a===b||
   (sourceNumeric(a)!==null&&sourceNumeric(a)===sourceNumeric(b));
+// Monetary calculation links require a well-formed Won scalar on BOTH sides.
+// Unlike a draft text comparison, a malformed visible figure must not be
+// attributed to a persisted computed feature just because punctuation vanished.
+const strictWon=(x:unknown):bigint|null=>{
+ if(typeof x==="number"&&!Number.isSafeInteger(x))return null;
+ if(!["string","number","bigint"].includes(typeof x))return null;
+ const visible=String(x).trim().replace(/[−﹣－]/gu,"-");
+ if(!/^-?(?:₩\s*)?(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)\s*원?$/u.test(visible))return null;
+ try{return BigInt(visible.replace(/[,₩원\s]/gu,""));}catch{return null;}
+};
+const sameComputedWon=(a:unknown,b:unknown)=>{
+ const aa=strictWon(a),bb=strictWon(b);
+ return aa!==null&&bb!==null&&aa===bb;
+};
 const outputByToken:Record<string,string>={
  total_principal:"debtPrincipalWon",total_interest:"debtInterestWon",
  secured_debt_total:"securedDebtWon",unsecured_debt_total:"unsecuredDebtWon",
@@ -64,7 +78,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     const exact=output?calculationRows.filter(r=>r.outputName===output
        &&(ordinal===null?r.rowOrdinal===null:r.rowOrdinal===ordinal)
        &&(!subjectId||!r.subjectId||r.subjectId===subjectId)
-       &&["computed","provisional"].includes(r.status)&&sameValue(r.value,value)):[];
+       &&["computed","provisional"].includes(r.status)&&sameComputedWon(r.value,value)):[];
     const calcFeature=exact.length===1?exact[0]:null;
     const canonical=token.replace(/[A-Z]/g,x=>"_"+x.toLowerCase());
     // Exact source key and exact displayed value only. Unknown keys are not
