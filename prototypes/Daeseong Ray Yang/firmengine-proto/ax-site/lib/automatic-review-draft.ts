@@ -7,6 +7,7 @@ import {writeOfficePackage} from "./office-writer.ts";
 import {CURRENT_RULESET} from "./legal-rules.ts";
 import {referenceIdentity} from "./reference-runtime.ts";
 import {commitExportArtifactTransaction} from "./export-artifact-transaction.ts";
+import {buildAutomaticDraftManifestCas} from "./automatic-draft-manifest-cas.ts";
 import type {LegalAutomationServices} from "./case-legal-automation.ts";
 
 type Input=Parameters<LegalAutomationServices["generateDraft"]>[0];
@@ -78,14 +79,21 @@ export async function generateAutomaticReviewDraft(input:Input){
    .bind(f.id,input.caseId,input.caseRevision,f.name,f.kind,f.objectKey,f.hash,f.mime,now()))),
   commitManifest:async(records)=>{
    await assertCurrent(input);
+   const cas=buildAutomaticDraftManifestCas({
+    caseId:input.caseId,caseRevision:input.caseRevision,dataVersion:input.dataVersion,
+    calculationRunId:input.calculationRunId,legalReviewRunId:input.legalReviewRunId,
+    jobId:input.jobId,leaseToken:input.leaseToken,
+    referenceSha256:prepared.receipt.referenceRelease?.sha256??"",
+    runId,artifactsJson:JSON.stringify(records),receiptJson:handoffJson,at:now()
+   });
    const committed=await database.batch([
-    database.prepare("INSERT INTO analyses(id,case_id,revision,type,payload,at) VALUES(?, ?,?,'automatic_draft_writer_receipt',?,?)")
-      .bind("auto-draft-receipt:"+runId,input.caseId,input.caseRevision,handoffJson,now()),
-    database.prepare("UPDATE case_automatic_document_runs SET status='complete',artifacts_json=?,reason=NULL,updated_at=? WHERE id=? AND case_id=? AND data_version=? AND case_revision=? AND status='pending' AND EXISTS (SELECT 1 FROM case_legal_review_heads h JOIN case_calculation_heads c ON c.case_id=h.case_id WHERE h.case_id=? AND h.review_run_id=? AND h.calculation_run_id=? AND h.data_version=?)")
-      .bind(JSON.stringify(records),now(),runId,input.caseId,input.dataVersion,input.caseRevision,
-        input.caseId,input.legalReviewRunId,input.calculationRunId,input.dataVersion)
+    database.prepare(cas.receiptSql).bind(...cas.receiptParams),
+    database.prepare(cas.finishSql).bind(...cas.finishParams)
    ]);
-   if(!committed[1]?.meta.changes)fail("LEGAL_AUTOMATION_DRAFT_SOURCE_STALE");
+   // A D1 batch commits even if an UPDATE matches zero rows. Require both
+   // rows changed and never leave an orphan "successful" writer receipt.
+   if(committed[0]?.meta.changes!==1||committed[1]?.meta.changes!==1)
+    fail("LEGAL_AUTOMATION_DRAFT_SOURCE_STALE");
    return runId;
   },
   deleteRecords:records=>database.batch(records.map(f=>database.prepare(
