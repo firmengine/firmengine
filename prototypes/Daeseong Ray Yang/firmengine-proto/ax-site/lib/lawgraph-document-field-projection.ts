@@ -90,7 +90,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
      calcFeatureRefs:calcFeature?[calcFeature.id]:[],
      citation:{schemaVersion:LAWGRAPH_DOCUMENT_FIELD_VERSION,status,contextPath:contextPath??null,
       caseRevision:data.context.revision,calculationStatus:calcFeature?.status??null,
-      officialEformParity:"not_verified",manualReviewRequired:status!=="linked_calculation"&&status!=="exact_source_fact"&&status!=="case_context"}});
+      officialEformParity:"not_verified",manualReviewRequired:calcFeature?.status==="provisional"||(status!=="linked_calculation"&&status!=="exact_source_fact"&&status!=="case_context")}});
    }
   }
  }
