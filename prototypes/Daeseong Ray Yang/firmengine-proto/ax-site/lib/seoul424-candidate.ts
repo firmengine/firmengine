@@ -39,17 +39,23 @@ function validDate(s: string): boolean {
   const dt = new Date(`${s}T00:00:00.000Z`);
   return !Number.isNaN(dt.valueOf()) && dt.toISOString().slice(0, 10) === s;
 }
+/** Source evidence cannot be positive with blank, duplicate, or non-array Fact IDs. */
+function hasUsableFactIds(ids: unknown): ids is string[] {
+  return Array.isArray(ids) && ids.length > 0
+    && ids.every((id) => typeof id === "string" && id.trim().length > 0)
+    && new Set(ids).size === ids.length;
+}
 function wageCriterion(history: EvidenceValue<WageHistoryEvidence> | null, applicationDate: string | null): { status: Tri; factIds: string[]; detail: string } {
   const years = referencePositiveInteger("param.seoul.shortened_term.wage_history_years");
   const contract = referenceParameter<{ periodYears: number; wholePeriodField: string }>("param.seoul.shortened_term.wage_history_fact_contract");
-  if (!history || !applicationDate || !validDate(applicationDate) || !history.sourceValidated || !history.legallyRecognized || !history.factIds.length) return { status: "unknown", factIds: history?.factIds ?? [], detail: `최근 ${years}년 전체의 원문·최저임금 판본·법적 적용 검토가 완료된 급여 이력이 필요합니다.` };
+  if (!history || !applicationDate || !validDate(applicationDate) || !history.sourceValidated || !history.legallyRecognized || !hasUsableFactIds(history.factIds)) return { status: "unknown", factIds: hasUsableFactIds(history?.factIds) ? history!.factIds : [], detail: `최근 ${years}년 전체의 원문·최저임금 판본·법적 적용 검토가 완료된 급여 이력이 필요합니다.` };
   const value = history.value;
   const reviewed = value.reviewedPeriodYears === years && typeof value.wholePeriodBelowMinimum === "boolean" ? value.wholePeriodBelowMinimum : value.reviewedPeriodYears === undefined && contract.periodYears === years && contract.wholePeriodField === "wholeTwoYearBelowMinimum" ? value.wholeTwoYearBelowMinimum : undefined;
   if (!value.minimumWageVersion.trim() || typeof reviewed !== "boolean") return { status: "unknown", factIds: history.factIds, detail: `최근 ${years}년 전체에 대한 명시적 법률검토 결론이 없습니다. 기존 기간의 증거 또는 월별 자료 프록시로 새 기간의 법률요건을 추정하지 않습니다.` };
   return { status: reviewed ? "yes" : "no", factIds: history.factIds, detail: `최근 ${years}년 전체 요건에 대한 source-backed 명시적 법률검토 결론입니다. 후보경로 제안일 뿐 인가 판단은 아닙니다.` };
 }
 function evidenceTri<T>(e: EvidenceValue<T> | null, test: (value: T) => boolean): { status: Tri; factIds: string[] } {
-  return e && e.sourceValidated && e.legallyRecognized && e.factIds.length ? { status: test(e.value) ? "yes" : "no", factIds: e.factIds } : { status: "unknown", factIds: e?.factIds ?? [] };
+  return e && e.sourceValidated && e.legallyRecognized && hasUsableFactIds(e.factIds) ? { status: test(e.value) ? "yes" : "no", factIds: e.factIds } : { status: "unknown", factIds: hasUsableFactIds(e?.factIds) ? e!.factIds : [] };
 }
 export function evaluateSeoul424(input: Seoul424Input): CandidateResult {
   const court = referenceParameter<string>("param.seoul.shortened_term.court_id");
