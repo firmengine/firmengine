@@ -2,6 +2,7 @@
  * Never guesses provenance from visual similarity. Unknown sources stay
  * review-required but the exact rendered draft value is still recorded.
  */
+import {assertCalculationFormRunIdentity} from "./calculation-form-run-identity.ts";
 import {FORM_CONTRACTS} from "./form-contracts.ts";
 import {BASIC_FORM_CODES,type FormBindings} from "./form-mapping.ts";
 import {currentFacts,factSourceLineageIssues,requiredKindsForCase,type CaseData} from "./domain.ts";
@@ -98,9 +99,12 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
  return result;
 }
 export async function buildStoredLawgraphDocumentFields(database:D1Database,input:{
-  caseData:CaseData;calculationRunId:string;bindings:FormBindings;
+  caseData:CaseData;calculationRunId:string;expectedDataVersion:number;bindings:FormBindings;
   calculation:DocumentBindingInput["calculation"]
 }){
+ const run=await database.prepare("SELECT case_id AS caseId,case_revision AS caseRevision,data_version AS dataVersion FROM case_calculation_runs WHERE id=?")
+  .bind(input.calculationRunId).first<{caseId:string;caseRevision:number;dataVersion:number}>();
+ assertCalculationFormRunIdentity(run??null,{caseId:input.caseData.context.id,caseRevision:input.caseData.context.revision,dataVersion:input.expectedDataVersion});
  const rows=(await database.prepare("SELECT id,output_name AS outputName,subject_id AS subjectId,row_ordinal AS rowOrdinal,value_json AS valueJson,status,source_fact_ids_json AS factIdsJson FROM case_calculation_features WHERE run_id=?")
   .bind(input.calculationRunId).all<{id:string;outputName:string;subjectId:string|null;rowOrdinal:number|null;valueJson:string;status:string;factIdsJson:string}>()).results??[];
  const normalized=rows.map(row=>({id:row.id,outputName:row.outputName,subjectId:row.subjectId,
