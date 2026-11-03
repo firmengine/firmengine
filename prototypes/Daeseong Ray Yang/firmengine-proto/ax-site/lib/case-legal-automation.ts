@@ -145,7 +145,7 @@ async function finalizeReview(database:D1Database,job:Job,lease:string,service:L
   const forForms=executeCaseNodes(data,{includeDocumentBindings:true});
   if(!forForms.formBindings)throw new Error("FORM_BINDINGS_UNAVAILABLE");
   documentFields=await buildStoredLawgraphDocumentFields(database,{
-    caseData:data,calculationRunId:job.calculationRunId,bindings:forForms.formBindings,
+    caseData:data,calculationRunId:job.calculationRunId,expectedDataVersion:job.dataVersion,bindings:forForms.formBindings,
     calculation:forForms.assessment.calculation
   });
  }catch(error){documentFieldProjectionError=error instanceof Error?error.message:"FORM_PROJECTION_UNAVAILABLE";}
