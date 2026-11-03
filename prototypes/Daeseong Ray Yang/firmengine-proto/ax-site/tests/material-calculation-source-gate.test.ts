@@ -116,3 +116,31 @@ test("one exact net payroll observation cannot support two independent typed inc
  assert.equal(report.issues[0].code,"CALC_INPUT_MULTIPLE_TYPED_MATCHES");
  assert.equal(calculateCase(data,rules).monthlyIncomeWon,null);
 });
+
+test("one bank balance fact cannot also support a debt principal",()=>{
+ const data=setup("bank_account_balance::balance","1000000");
+ data.assets=[{id:"asset-1",kind:"deposit",label:"synthetic asset",grossValue:normalizeMoney("1000000"),factIds:["fact-1"]}];
+ data.debts=[{id:"debt-1",creditor:"synthetic creditor",principal:normalizeMoney("1000000"),secured:"no",classification:"ordinary",factIds:["fact-1"]}];
+ const report=auditMaterialCalculatorSources(data);
+ assert.deepEqual(report.issues.map(x=>x.code),["CALC_INPUT_MULTIPLE_TYPED_MATCHES"]);
+});
+test("one bank balance fact cannot also support wage income",()=>{
+ const data=setup("bank_account_balance::balance","1000000");
+ data.assets=[{id:"asset-1",kind:"deposit",label:"synthetic asset",grossValue:normalizeMoney("1000000"),factIds:["fact-1"]}];
+ data.incomes=[{id:"income-1",kind:"wage",label:"synthetic income",net:normalizeMoney("1000000"),factIds:["fact-1"]}];
+ assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_MULTIPLE_TYPED_MATCHES");
+});
+test("different cross-category monetary amount is still conflicting, including explicit zero",()=>{
+ for(const [source,other] of [["1000000","500000"],["0","0"]]){
+  const data=setup("bank_account_balance::balance",source);
+  data.assets=[{id:"asset-1",kind:"deposit",label:"synthetic asset",grossValue:normalizeMoney(source),factIds:["fact-1"]}];
+  data.debts=[{id:"debt-1",creditor:"synthetic creditor",interest:normalizeMoney(other),secured:"no",classification:"ordinary",factIds:["fact-1"]}];
+  assert.equal(auditMaterialCalculatorSources(data).issues[0]?.code,"CALC_INPUT_MULTIPLE_TYPED_MATCHES");
+ }
+});
+test("cross-category reference without a monetary value remains contextual rather than duplicated",()=>{
+ const data=setup("bank_account_balance::balance","1000000");
+ data.assets=[{id:"asset-1",kind:"deposit",label:"synthetic asset",grossValue:normalizeMoney("1000000"),factIds:["fact-1"]}];
+ data.debts=[{id:"debt-1",creditor:"synthetic creditor",principal:null,interest:null,secured:"no",classification:"unknown",factIds:["fact-1"]}];
+ assert.equal(auditMaterialCalculatorSources(data).issueCount,0);
+});
