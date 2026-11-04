@@ -23,7 +23,10 @@ const stable=(v:unknown):string=>v===null||typeof v!=="object"?JSON.stringify(v)
  Array.isArray(v)?"["+v.map(stable).join(",")+"]":
  "{"+Object.keys(v).sort().filter(k=>(v as Record<string,unknown>)[k]!==undefined).map(k=>JSON.stringify(k)+":"+stable((v as Record<string,unknown>)[k])).join(",")+"}";
 const digest=async(v:string)=>[...new Uint8Array(await crypto.subtle.digest("SHA-256",new TextEncoder().encode(v)))].map(x=>x.toString(16).padStart(2,"0")).join("");
+const CORRECTION_DEADLINE_CANONICAL_ID="procedure_court_orders::procedure.order.deadline";
 const linkedFact=(data:CaseData,fact:Fact,orderDocumentId:string)=>fact.state==="verified"&&fact.recognition==="accepted"&&
+ (!fact.canonicalFieldId||fact.canonicalFieldId===CORRECTION_DEADLINE_CANONICAL_ID)&&
+ (!fact.fieldObservation?.canonicalFieldId||fact.fieldObservation.canonicalFieldId===CORRECTION_DEADLINE_CANONICAL_ID)&&
  fact.refs.some(ref=>ref.documentId===orderDocumentId&&validSourceRef(data,ref));
 export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDraft):{payload:CorrectionItemDraft;orderDocumentSha256:string}{
  if(data.structuredTest||data.referenceTest||data.evaluationClone)throw fail("CORRECTION_SYNTHETIC_CASE_WRITE_FORBIDDEN");

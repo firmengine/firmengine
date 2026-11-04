@@ -65,6 +65,16 @@ test("a deadline from a non-current or unaccepted fact cannot be substituted for
  data.facts[0].recognition="unreviewed";
  assert.throws(()=>validateCorrectionItemDraft(data,draft),/CORRECTION_DEADLINE_NOT_SOURCE_BOUND/);
 });
+test("explicit non-deadline canonical facts cannot satisfy a court correction deadline even with the legacy key",()=>{
+ const {data,draft}=setup();
+ // A page-local legacy key must not override a conflicting precise OCR canonical identity.
+ data.facts[0].canonicalFieldId="procedure_court_orders::procedure.order.case_number";
+ assert.throws(()=>validateCorrectionItemDraft(data,draft),/CORRECTION_DEADLINE_NOT_SOURCE_BOUND/);
+ data.facts[0].canonicalFieldId="procedure_court_orders::procedure.order.deadline";
+ assert.equal(validateCorrectionItemDraft(data,draft).payload.deadline?.date,"2026-11-09");
+ data.facts[0].fieldObservation={canonicalFieldId:"procedure_court_orders::procedure.order.order_date"} as Fact["fieldObservation"];
+ assert.throws(()=>validateCorrectionItemDraft(data,draft),/CORRECTION_DEADLINE_NOT_SOURCE_BOUND/);
+});
 test("append-only D1 item revision, idempotent repeat, and read are review-only",async()=>{
  const {sqlite,data,db,draft}=setup();
  const first=await upsertCourtCorrectionItem(db,{data,draft,actorId:"staff-reviewer"});
