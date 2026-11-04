@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
 const source = readFileSync(new URL("../lib/form-mapping.ts", import.meta.url), "utf8");
 const begin = source.indexOf("scalars.monthly_business_income = ");
 assert.notEqual(begin, -1, "business income binding must exist");
-const end = source.indexOf(";\\n", begin);
+const end = source.indexOf(";\n", begin);
 assert.ok(end > begin, "business income projection must terminate");
 const expression = source.slice(begin, end + 1).replaceAll("monthlyObservedAverageWon!", "monthlyObservedAverageWon");
 const evaluate = new Function("data", "calculation", "business", "amount", "MISSING_FORM_VALUE",
