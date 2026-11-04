@@ -164,3 +164,23 @@ test("a clipped secondary source reference remains explicit incomplete evidence"
   assert.ok(packet.payload.providedFacts[0].truncatedFields.includes("refs"));
   assert.ok(packet.coverage.truncatedFactIdsByCheck[check.id].includes(source.id));
 });
+
+test("source-less facts are excluded before legal AI packet construction without treating 0 as proof",()=>{
+  const data=createCase("Synthetic source anchor audit","synthetic-source-anchor-r23","2026-10-31");
+  const check=risk("income-source-anchor","income.net");
+  const unanchored=fact("unanchored-string",check.features[0],"UNANCHORED_SYNTHETIC_SENTINEL");unanchored.refs=[];
+  const unanchoredZero=fact("unanchored-zero",check.features[0],"0");unanchoredZero.refs=[];
+  const unanchoredNull=fact("unanchored-null",check.features[0],"0");unanchoredNull.refs=[];unanchoredNull.value=null;
+  const anchored=fact("anchored",check.features[0],"150000");
+  const packet=buildLegalReviewPacket({data,facts:[unanchored,unanchoredZero,unanchoredNull,anchored],checks:[check],rules:[],guidance:[],findings:[],transactionReview:null});
+  assert.deepEqual(packet.providedFactIds,["anchored"]);
+  assert.equal(packet.coverage.featureCounts["income-source-anchor:income.net"].total,1);
+  assert.ok(!packet.text.includes("UNANCHORED_SYNTHETIC_SENTINEL"),"unanchored raw values must not reach the model");
+  assert.ok(!packet.text.includes("unanchored-zero"),"unanchored zero must not be used as observed 0");
+  const missing=buildLegalReviewPacket({data,facts:[unanchored,unanchoredZero,unanchoredNull],checks:[check],rules:[],guidance:[],findings:[],transactionReview:null});
+  assert.deepEqual(missing.providedFactIds,[]);
+  assert.equal(missing.coverage.featureCounts["income-source-anchor:income.net"].total,0,"missing sources are not supplied evidence");
+  const structured=fact("structured",check.features[0],"100000");structured.refs=[];structured.structuredRefs=[{sourceRecordId:"synthetic-row",jsonPointer:"/income/net"}];
+  const structuredPacket=buildLegalReviewPacket({data,facts:[structured],checks:[check],rules:[],guidance:[],findings:[],transactionReview:null});
+  assert.deepEqual(structuredPacket.providedFactIds,["structured"],"source-anchored structured records remain visible for human review");
+});
