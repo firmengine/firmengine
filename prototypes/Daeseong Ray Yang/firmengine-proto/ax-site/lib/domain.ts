@@ -374,6 +374,9 @@ export function normalizeMoney(rawValue: string | number | null | undefined, uni
   const match = /^([+-]?)(\d+)(?:\.(\d+))?$/.exec(text);
   const units: Record<string, bigint> = { KRW: ONE, won: ONE, 원: ONE, thousand_won: BigInt(1000), 천원: BigInt(1000), ten_thousand_won: BigInt(10000), manwon: BigInt(10000), 만원: BigInt(10000), million_won: BigInt(1000000), 백만원: BigInt(1000000), 억원: BigInt(100000000) };
   const scale = units[unit];
+  // A literal won/KRW source amount must not be rescaled as thousands or ten-thousands.
+  if (/\d\s*(?:원|KRW)\s*$/i.test(String(rawValue).trim()) && scale !== ONE)
+    return { ...result, normalizationStatus: "invalid" };
   if (!match || !scale || text.length > 100) return { ...result, normalizationStatus: "invalid" };
   const fraction = match[3] ?? "";
   const denominator = BigInt(10) ** BigInt(fraction.length);
