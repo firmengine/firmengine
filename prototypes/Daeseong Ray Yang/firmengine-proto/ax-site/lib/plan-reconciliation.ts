@@ -19,6 +19,12 @@ const nat=(v:unknown)=>typeof v==="string"&&/^\d+$/.test(v);
 export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,ledger:PlanLedger,options:{priorityPolicies?:Record<string,PriorityCoveragePolicy>}={}):PlanReconciliation {
  const issues=[...ledger.issues],byMonth=new Map<number,typeof ledger.rows>();
  if(ledger.status==="blocked")issues.push("PLAN_LEDGER_BLOCKED");
+ // A human-reviewed schedule must not reconcile when an installment lacks a
+ // payment date. Generated/unreviewed proposals may remain date-unknown.
+ if(data.context.paymentSchedule?.reviewed){
+  const missingDates=[...new Set(ledger.rows.filter(row=>!row.paymentDate).map(row=>row.installment))].sort((a,b)=>a-b);
+  for(const installment of missingDates)issues.push("REVIEWED_PAYMENT_DATE_MISSING:"+installment);
+ }
  for(const r of ledger.rows){
   if(!Number.isInteger(r.installment)||r.installment<1)issues.push("INVALID_INSTALLMENT");
   const list=byMonth.get(r.installment)??[];list.push(r);byMonth.set(r.installment,list);
