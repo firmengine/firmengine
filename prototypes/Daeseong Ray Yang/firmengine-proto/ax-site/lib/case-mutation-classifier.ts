@@ -56,6 +56,19 @@ export function assertNonSourceCaseChange(previous:CaseData,next:CaseData,
        afterReviews.at(-1)?.status!=="proposed")
      throw new Error("NON_SOURCE_BUSINESS_PROPOSAL_NOT_APPEND_ONLY");
  }
+ // A legal disposition or edited document is exactly one append-only human
+ // workflow record. Ignoring the whole array would let an old lawyer approval
+ // or an old document edit be rewritten while masquerading as review-only.
+ if(category==="review_only"&&(commandType==="legalCheck.dispose"||commandType==="document.edit")){
+   const beforeRows=commandType==="legalCheck.dispose"
+     ?previous.workflowState?.legalDispositions??[]:previous.workflowState?.documentEdits??[];
+   const afterRows=commandType==="legalCheck.dispose"
+     ?next.workflowState?.legalDispositions??[]:next.workflowState?.documentEdits??[];
+   if(afterRows.length!==beforeRows.length+1||
+       JSON.stringify(afterRows.slice(0,-1))!==JSON.stringify(beforeRows))
+     throw new Error(commandType==="legalCheck.dispose"
+       ?"NON_SOURCE_LEGAL_DISPOSITION_NOT_APPEND_ONLY":"NON_SOURCE_DOCUMENT_EDIT_NOT_APPEND_ONLY");
+ }
  const before=projected(previous,category,commandType),after=projected(next,category,commandType);
  if(JSON.stringify(before)!==JSON.stringify(after))throw new Error("NON_SOURCE_MUTATION_CHANGED_EVIDENCE");
  // A review-only save must actually be an authenticated workflow change;

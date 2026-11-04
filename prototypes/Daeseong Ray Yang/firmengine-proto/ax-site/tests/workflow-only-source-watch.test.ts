@@ -73,3 +73,31 @@ test("business income source proposal is an append-only workflow event, not a ne
  next.workflowState!.businessNetReviews![0]!.status="stale";
  assert.throws(()=>assertNonSourceCaseChange(older,next,"review_only","business.net.propose"),/NOT_APPEND_ONLY/);
 });
+
+test("lawyer dispositions cannot rewrite or remove an earlier human review in a review-only save",()=>{
+ const before=sample();before.workflowState!.legalDispositions=[{checkId:"prior",status:"accepted",actor:"lawyer-prior"} as any];
+ const valid=structuredClone(before);valid.workflowState!.version+=1;
+ valid.workflowState!.legalDispositions.push({checkId:"next",status:"accepted",actor:"lawyer-next"} as any);
+ assert.doesNotThrow(()=>assertNonSourceCaseChange(before,valid,"review_only","legalCheck.dispose"));
+ const forged=structuredClone(valid);forged.workflowState!.legalDispositions[0]!.actor="forged";
+ assert.throws(()=>assertNonSourceCaseChange(before,forged,"review_only","legalCheck.dispose"),/LEGAL_DISPOSITION_NOT_APPEND_ONLY/);
+ const removed=structuredClone(valid);removed.workflowState!.legalDispositions.shift();
+ assert.throws(()=>assertNonSourceCaseChange(before,removed,"review_only","legalCheck.dispose"),/LEGAL_DISPOSITION_NOT_APPEND_ONLY/);
+ const addedTwice=structuredClone(valid);addedTwice.workflowState!.legalDispositions.push({checkId:"third",status:"needs_review"} as any);
+ assert.throws(()=>assertNonSourceCaseChange(before,addedTwice,"review_only","legalCheck.dispose"),/LEGAL_DISPOSITION_NOT_APPEND_ONLY/);
+});
+
+test("document edit saves append one entry and preserve all earlier edits",()=>{
+ const before=sample();before.workflowState!.documentEdits=[{id:"prior-edit",value:"original"} as any];
+ const valid=structuredClone(before);valid.workflowState!.version+=1;
+ valid.workflowState!.documentEdits.push({id:"new-edit",value:"updated"} as any);
+ valid.exportManifest!.files[0]!.status="invalidated";
+ valid.exportManifest!.reviews={caseworker:null,lawyer:null};
+ assert.doesNotThrow(()=>assertNonSourceCaseChange(before,valid,"review_only","document.edit"));
+ const forged=structuredClone(valid);(forged.workflowState!.documentEdits[0] as any).value="altered";
+ assert.throws(()=>assertNonSourceCaseChange(before,forged,"review_only","document.edit"),/DOCUMENT_EDIT_NOT_APPEND_ONLY/);
+ const removed=structuredClone(valid);removed.workflowState!.documentEdits.shift();
+ assert.throws(()=>assertNonSourceCaseChange(before,removed,"review_only","document.edit"),/DOCUMENT_EDIT_NOT_APPEND_ONLY/);
+ const extra=structuredClone(valid);extra.workflowState!.documentEdits.push({id:"third"} as any);
+ assert.throws(()=>assertNonSourceCaseChange(before,extra,"review_only","document.edit"),/DOCUMENT_EDIT_NOT_APPEND_ONLY/);
+});
