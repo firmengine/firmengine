@@ -60,3 +60,31 @@ test("post-approval exception scenarios stay inventoried but out of current exec
  }
  assert.equal(RISK_CATALOG.length,95);
 });
+
+
+test("stale caller accepted IDs cannot validate retracted, disputed, null, or errored Facts",()=>{
+  // The accepted ID set comes from a different stage and may be stale. Only
+  // a current verified, recognized, nonempty source may be marked supported.
+  const invalid=[
+    {state:"retracted",recognition:"rejected",value:"synthetic"},
+    {state:"verified",recognition:"disputed",value:"synthetic"},
+    {state:"verified",recognition:"accepted",value:null},
+    {state:"verified",recognition:"accepted",value:undefined},
+    {state:"verified",recognition:"accepted",value:" "},
+    {state:"verified",recognition:"accepted",value:"synthetic",validation:[{severity:"error",code:"SYNTHETIC_BAD_SOURCE"}]},
+  ];
+  for(const patch of invalid){
+    const fact={id:"f1",key:"applicant.address",state:"verified",recognition:"accepted",value:"synthetic",...patch};
+    const audit=auditPreapprovalLegalCatalog(input([fact],["f1"]));
+    const feature=audit.rules.find(row=>row.ruleId==="KR-PR-002")!.features.find(row=>row.featureKey==="applicant.address")!;
+    assert.equal(feature.status,"source_unverified_or_unaccepted",JSON.stringify(patch));
+    assert.equal(audit.courtApprovalInferred,false);
+  }
+  for(const value of [0,false]){
+    const fact={id:"f1",key:"applicant.address",state:"verified",recognition:"accepted",value};
+    const audit=auditPreapprovalLegalCatalog(input([fact],["f1"]));
+    const feature=audit.rules.find(row=>row.ruleId==="KR-PR-002")!.features.find(row=>row.featureKey==="applicant.address")!;
+    assert.equal(feature.status,"source_supported_needs_legal_application");
+    assert.equal(audit.rules.find(row=>row.ruleId==="KR-PR-002")!.legalFinding,null);
+  }
+});
