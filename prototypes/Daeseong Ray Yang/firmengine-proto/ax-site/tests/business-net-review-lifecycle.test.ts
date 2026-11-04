@@ -6,7 +6,7 @@ import {createCase,normalizeMoney,type CaseData,type Fact} from "../lib/domain.t
 import {caseWorkflow} from "../lib/case-workflow-state.ts";
 import {reduceCaseCommand} from "../lib/case-commands.ts";
 import type {CaseCommand} from "../lib/case-command-contract.ts";
-import {proposeBusinessNet,adoptBusinessNet,preflightBusinessNet,reviewedBusinessIncomeIds,type BusinessNetSelection} from "../lib/business-net-reconciliation.ts";
+import {proposeBusinessNet,adoptBusinessNet,preflightBusinessNet,validBusinessNetReview,reviewedBusinessIncomeIds,type BusinessNetSelection} from "../lib/business-net-reconciliation.ts";
 import {calculateCase} from "../lib/assessment.ts";
 import {buildFormBindings,MISSING_FORM_VALUE} from "../lib/form-mapping.ts";
 import {buildRepaymentPlanModel} from "../lib/repayment-plan-model.ts";
@@ -245,6 +245,23 @@ test("a staff proposal cannot also be adopted by the same actor, even if the act
  assert.throws(()=>adoptBusinessNet(d,proposal.id,"same-user",
    "No self-review permitted under source and legal policy",
    "2026-10-30T00:00:01Z"),/BUSINESS_REVIEW_APPROVAL_INVALID/);
+});
+
+test("historical self-approved monthly net cannot remain an effective legal income approval",async()=>{
+ setPolicy();
+ const {d,selection}=input(1,"2026-01-01","2026-01-31");
+ const {review,income}=await adopt(d,selection);
+ assert.equal(validBusinessNetReview(d,review),true,"Independent approved synthetic receipt starts valid");
+ assert.equal(reviewedBusinessIncomeIds(d).has(income.id),true);
+ // Simulate a previously persisted two-role approval by one actor. Keep the
+ // immutable receipt and income object; it must no longer grant current status.
+ review.reviewer=review.proposer;
+ assert.equal(validBusinessNetReview(d,review),false);
+ assert.equal(reviewedBusinessIncomeIds(d).has(income.id),false);
+ // Actor IDs with legacy whitespace must never bypass the independence test.
+ review.reviewer=" "+review.proposer+" ";
+ assert.equal(validBusinessNetReview(d,review),false);
+ assert.equal(reviewedBusinessIncomeIds(d).has(income.id),false);
 });
 
 test("twelve approved business source-months reconcile D5103, D5110, creditor allocation and liquidation without inventing money",async()=>{
