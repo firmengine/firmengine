@@ -115,3 +115,21 @@ test("proposal wrapper requires reviewed fact aggregates and current case releas
   c.context.ruleApplicationReviewed = false;
   assert.equal(buildLegalProposals(c).objectionMinimum.status, "unsupported_version");
 });
+
+test("Seoul 424 with unknown or blank court cannot promote even a reviewed route", () => {
+  for (const courtId of [null, "", " "]) {
+    const categorySeven = evaluateSeoul424({ ...base424, courtId });
+    assert.equal(categorySeven.status, "unknown");
+    assert.equal(categorySeven.route, null);
+    assert.equal(categorySeven.conditions.find((entry) => entry.id === "court_scope")?.status, "unknown");
+    const categoryOne = evaluateSeoul424({
+      ...base424, courtId,
+      categoryRoutes: [{ ...noCategoryRoutes[0], status: "yes" as const }],
+    });
+    assert.equal(categoryOne.status, "unknown");
+    assert.equal(categoryOne.route, null);
+    assert.equal(categoryOne.courtApprovalInferred, false);
+  }
+  assert.equal(evaluateSeoul424({ ...base424, courtId: "seoul" }).status, "candidate_for_human_review");
+  assert.equal(evaluateSeoul424({ ...base424, courtId: "busan" }).status, "not_applicable");
+});
