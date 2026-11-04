@@ -1,9 +1,10 @@
 import { touchCase } from "../../../../../lib/domain";
 import { db,errorResponse,event,getCase,HttpError,jsonBody,now,requireSameOrigin,saveCase } from "../../../../../lib/server-store";
 import { SAMPLE_SHA256,samplePageRole } from "../../../../../lib/sample-manifest";
+import { canRegisterCaseEvidence } from "../../../../../lib/evidence-registration-boundary";
 export async function POST(request:Request,{params}:{params:Promise<{id:string}>}){try{
   requireSameOrigin(request);const {id}=await params,body=await jsonBody(request),c=await getCase(id);
-  if(c.structuredTest)throw new HttpError(409,"가정 추출 합성 시나리오에서는 증빙 문서를 추가할 수 없습니다.");
+  if(!canRegisterCaseEvidence(c))throw new HttpError(409,"합성·기준시험 또는 평가 복제 사건에서는 증빙 문서를 추가할 수 없습니다.");
   if(typeof body.sha256!=="string"||!/^[a-f0-9]{64}$/.test(body.sha256))throw new HttpError(400,"파일 해시를 확인하세요.");
   if(!Number.isInteger(body.pageCount)||body.pageCount<1||body.pageCount>600)throw new HttpError(400,"파일당 1~600쪽까지 등록할 수 있습니다.");
   const existing=c.documents.find(d=>d.status==="active"&&d.sha256===body.sha256);
