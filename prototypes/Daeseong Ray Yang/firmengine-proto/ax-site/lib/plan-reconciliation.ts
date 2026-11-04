@@ -19,6 +19,9 @@ const nat=(v:unknown)=>typeof v==="string"&&/^\d+$/.test(v);
 export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,ledger:PlanLedger,options:{priorityPolicies?:Record<string,PriorityCoveragePolicy>}={}):PlanReconciliation {
  const issues=[...ledger.issues],byMonth=new Map<number,typeof ledger.rows>();
  if(ledger.status==="blocked")issues.push("PLAN_LEDGER_BLOCKED");
+ // A provisional/generated/unrecognized ledger is never an independently verified plan.
+ // Arithmetic remains visible, but final reconciliation cannot assert readiness.
+ if(ledger.status!=="complete"&&ledger.status!=="blocked")issues.push("PLAN_LEDGER_NOT_REVIEWED");
  for(const r of ledger.rows){
   if(!Number.isInteger(r.installment)||r.installment<1)issues.push("INVALID_INSTALLMENT");
   const list=byMonth.get(r.installment)??[];list.push(r);byMonth.set(r.installment,list);
