@@ -99,7 +99,7 @@ export async function persistCaseLawgraphReview(db:D1Database,input:PersistCaseL
 }
 
 interface ReviewHead {review_run_id:string;data_version:number;case_revision:number;calculation_run_id:string;input_sha256:string;model:string;status:string;complete:number;expected_check_ids_json:string;summary:string;created_at:string;}
-export async function listCaseLawgraphReview(db:D1Database,input:{caseId:string;expectedDataVersion?:number;limit?:number;offset?:number}){
+export async function listCaseLawgraphReview(db:D1Database,input:{caseId:string;expectedDataVersion?:number;expectedReviewRunId?:string;limit?:number;offset?:number}){
   const limit=input.limit??100,offset=input.offset??0;
   if(!input.caseId||!Number.isSafeInteger(limit)||limit<1||limit>500||!Number.isSafeInteger(offset)||offset<0)throw fault("INVALID_CASE_LEGAL_REVIEW_QUERY");
   const stateSql="SELECT c.revision,s.data_version,h.run_id AS calculation_run_id,h.data_version AS calculation_data_version,h.case_revision AS calculation_case_revision FROM cases c LEFT JOIN case_data_change_state s ON s.case_id=c.id LEFT JOIN case_calculation_heads h ON h.case_id=c.id WHERE c.id=?";
@@ -107,11 +107,16 @@ export async function listCaseLawgraphReview(db:D1Database,input:{caseId:string;
   if(!state)throw fault("LEGAL_REVIEW_CASE_NOT_FOUND");
   if(input.expectedDataVersion!==undefined&&state.data_version!==input.expectedDataVersion)throw fault("LEGAL_REVIEW_VERSION_MISMATCH");
   const head=await db.prepare("SELECT h.*,r.model,r.status,r.complete,r.expected_check_ids_json,r.summary,r.created_at FROM case_legal_review_heads h JOIN case_legal_review_runs r ON r.id=h.review_run_id WHERE h.case_id=?").bind(input.caseId).first<ReviewHead>();
+  // An active legal review can change without a case/source revision change.
+  if(input.expectedReviewRunId!==undefined&&input.expectedReviewRunId!==head?.review_run_id)throw fault("LEGAL_REVIEW_VERSION_MISMATCH");
   const checkRows=head?(await db.prepare("SELECT * FROM case_legal_conditions WHERE review_run_id=? ORDER BY ordinal").bind(head.review_run_id).all<{condition_id:string;status:LegalConditionStatus;reason:string;source_fact_ids_json:string;rule_ids_json:string;missing_documents_json:string;next_action:string}>()).results??[]:[];
   const total=head?await db.prepare("SELECT COUNT(*) AS n FROM case_document_field_values WHERE review_run_id=?").bind(head.review_run_id).first<{n:number}>():null;
   const fieldRows=head?(await db.prepare("SELECT * FROM case_document_field_values WHERE review_run_id=? ORDER BY ordinal LIMIT ? OFFSET ?").bind(head.review_run_id,limit,offset).all<{id:string;ordinal:number;form_code:string;artifact_kind:string;token:string;subject_id:string|null;row_ordinal:number|null;value_json:string;value_kind:string;source_fact_ids_json:string;calculation_feature_refs_json:string;citation_json:string}>()).results??[]:[];
   const after=await db.prepare(stateSql).bind(input.caseId).first<typeof state>();
   if(stable(after)!==stable(state))throw fault("LEGAL_REVIEW_VERSION_MISMATCH");
+  // Detect a run switch while this page was being read; revision/dataVersion alone cannot fence it.
+  const activeHead=await db.prepare("SELECT review_run_id FROM case_legal_review_heads WHERE case_id=?").bind(input.caseId).first<{review_run_id:string}>();
+  if((activeHead?.review_run_id??null)!==(head?.review_run_id??null))throw fault("LEGAL_REVIEW_VERSION_MISMATCH");
   const headStale=!!head&&(head.data_version!==state.data_version||head.case_revision!==state.revision||head.calculation_run_id!==state.calculation_run_id||head.data_version!==state.calculation_data_version||head.case_revision!==state.calculation_case_revision);
   return {schemaVersion:CASE_LAWGRAPH_STORE_VERSION,caseId:input.caseId,currentDataVersion:state.data_version,currentCaseRevision:state.revision,runId:head?.review_run_id??null,dataVersion:head?.data_version??null,caseRevision:head?.case_revision??null,calculationRunId:head?.calculation_run_id??null,inputSha256:head?.input_sha256??null,
     model:head?.model??null,status:head?.status??"missing",complete:head?.complete===1,headStale,summary:head?.summary??null,expectedCheckIds:head?JSON.parse(head.expected_check_ids_json):[],
