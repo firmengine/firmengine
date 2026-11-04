@@ -214,7 +214,7 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   // form income amount when the case-wide calculation is explicitly blocked.
   scalars.monthly_business_income = calculation.monthlyIncomeWon !== null &&
     data.context.inventoryComplete.income === "yes" &&
-    (business.length>0||!data.incomes.some(s=>s.kind==="business")) &&
+    business.length>0 &&
     business.every((r) => r.monthlyObservedAverageWon !== null) ?
     amount(business.reduce((sum,row)=>sum+BigInt(row.monthlyObservedAverageWon!),0n).toString()) : MISSING_FORM_VALUE;
   for (const prefix of ["career", "enforcement", "prior", "family"]) {
