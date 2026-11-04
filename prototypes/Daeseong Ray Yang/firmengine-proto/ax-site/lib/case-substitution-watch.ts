@@ -23,6 +23,9 @@ async function snapshot(database:D1Database,caseId:string):Promise<Snapshot>{
  return result;
 }
 export async function scanCaseSubstitutions(database:D1Database,input:{caseId:string;source:Source}){
+ // Alerts arriving after the policy read begins must remain newer than the
+ // persisted watermark so the next drain re-evaluates them, not ten minutes later.
+ const scanStartedAt=iso();
  const {caseId}=input;
  if(typeof caseId!=="string"||!caseId.trim()||caseId.length>300)throw new Error("INVALID_CASE_SUBSTITUTION_CASE");
  const before=await snapshot(database,caseId);
@@ -83,7 +86,7 @@ export async function scanCaseSubstitutions(database:D1Database,input:{caseId:st
  prepared.push(database.prepare(`INSERT INTO case_substitution_watch_heads(case_id,case_revision,source_data_version,catalog_version,policy_signal,active_requirement_ids_json,next_scan_at,scanned_at)
    SELECT ?,?,?,?,?,?,NULL,? WHERE ${caseGuard}
    ON CONFLICT(case_id) DO UPDATE SET case_revision=excluded.case_revision,source_data_version=excluded.source_data_version,catalog_version=excluded.catalog_version,policy_signal=excluded.policy_signal,active_requirement_ids_json=excluded.active_requirement_ids_json,scanned_at=excluded.scanned_at`)
-   .bind(caseId,before.caseRevision,before.dataVersion,catalogVersion,currentContext.policySignal,JSON.stringify(sorted),now,caseId,before.caseRevision,before.dataVersion));
+   .bind(caseId,before.caseRevision,before.dataVersion,catalogVersion,currentContext.policySignal,JSON.stringify(sorted),scanStartedAt,caseId,before.caseRevision,before.dataVersion));
  await database.batch(prepared);
  const current=await snapshot(database,caseId);
  if(current.caseRevision!==before.caseRevision||current.dataVersion!==before.dataVersion)return {caseId,status:"superseded" as const};
