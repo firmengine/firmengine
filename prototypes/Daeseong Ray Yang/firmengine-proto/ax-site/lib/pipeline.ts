@@ -1,4 +1,5 @@
 import { legalReviewInputFingerprint } from "./legal-review-identity.ts";
+import { referenceIdentity } from "./reference-runtime.ts";
 import { renderPromptPolicy, legalReviewInstructions } from "./reference-prompts.ts";
 import { buildCaseExecutionPlan } from "./case-execution";
 import { runCaseCalculatorNode } from "./case-agent";
@@ -151,7 +152,7 @@ export async function processNext(caseId:string,jobIds?:string[]){
     activeSourceHash=document.sha256;
     const currentPage=data.pages.find(p=>p.documentId===j.document_id&&p.page===j.page);
     if(!currentPage||currentPage.role!==j.role||["filed_form","administrative"].includes(currentPage.role)||["filed_form","administrative"].includes(samplePageRole(document.sha256,j.page).role))throw new HttpError(409,"분리된 제출본·행정자료 또는 역할이 변경된 페이지는 모델에 전달하지 않습니다.");
-    const cacheKey=extractionCacheKey({documentId:j.document_id,documentHash:document.sha256,pages:[j.page],mappingVersion:j.document_type||"unknown",promptVersion:PROMPT_VERSION,model:OCR_MODEL,ruleReleaseId:CURRENT_RULESET.id});
+    const cacheKey=extractionCacheKey({documentId:j.document_id,documentHash:document.sha256,pages:[j.page],mappingVersion:j.document_type||"unknown",promptVersion:PROMPT_VERSION,model:OCR_MODEL,ruleReleaseId:CURRENT_RULESET.id,referenceSha256:referenceIdentity()?.sha256});
     saved=j.result?JSON.parse(j.result) as SavedResult:{};saved.taskRunId??=crypto.randomUUID();
     if(j.stage==="reverify")saved={taskRunId:saved.taskRunId,classification:saved.classification,classificationAttempts:saved.classificationAttempts,classificationRecovery:saved.classificationRecovery,read:saved.read,firstRead:saved.read,extractionRead:saved.read,extractionPasses:saved.extractionPasses,reverification:saved.reverification,priorReadArchive:saved.priorReadArchive};
     commitRetryCount=saved.commit?.casConflictCount??0;
@@ -509,7 +510,7 @@ export async function reverifyPage(caseId:string,jobId:string){
   if(!extractionPasses.length||extractionPasses.some(pass=>!isSourceReadModel(pass.model)||pass.sourceHash!==document.sha256||pass.baseImageHash!==job.image_hash||!pass.promptVersion?.trim()||! /^[a-f0-9]{64}$/i.test(pass.promptHash)||!pass.verifiedAt))throw new HttpError(409,"저장된 OCR 추출의 모델·프롬프트·원본 provenance가 부족하거나 현재 원본과 달라 재검증할 수 없습니다.");
   const image=await bucket().get(job.image_key);if(!image)throw new HttpError(404,"페이지 이미지가 없습니다. 해당 파일을 다시 업로드하세요.");
   if(await hashBytes(await image.arrayBuffer())!==job.image_hash)throw new HttpError(409,"저장된 페이지 이미지가 변경되어 재검증을 시작하지 않았습니다.");
-  const currentCacheKey=extractionCacheKey({documentId:job.document_id,documentHash:document.sha256,pages:[job.page],mappingVersion:job.document_type||"unknown",promptVersion:PROMPT_VERSION,model:OCR_MODEL,ruleReleaseId:CURRENT_RULESET.id});
+  const currentCacheKey=extractionCacheKey({documentId:job.document_id,documentHash:document.sha256,pages:[job.page],mappingVersion:job.document_type||"unknown",promptVersion:PROMPT_VERSION,model:OCR_MODEL,ruleReleaseId:CURRENT_RULESET.id,referenceSha256:referenceIdentity()?.sha256});
   const readHash=await hashText(JSON.stringify(read)),requestedAt=now();
   let archive:PriorReadArchive|undefined;
   const resultHash=await hashText(job.result),archiveKey=`cases/${caseId}/documents/${job.document_id}/read-history/${job.page}/${resultHash}.json`;
