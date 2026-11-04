@@ -26,6 +26,8 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
   if(r.claimClass==="trustee_fee"&&(r.debtId!=="system:trustee-fee"||r.principalWon!=="0"||r.interestWon!=="0"||r.fundingSourceId!=="disposable_income"))issues.push("INVALID_TRUSTEE_FEE_ROW");
  }
  const expected=data.context.paymentSchedule?.expectedInstallments??data.context.planMonths??0;
+ // A missing/invalid schedule term must not reconcile an empty ledger to a confirmed zero.
+ if(!Number.isSafeInteger(expected)||expected<1)issues.push("PLAN_TERM_UNVERIFIED");
  if(expected>0){for(let m=1;m<=expected;m++)if(!byMonth.has(m))issues.push("MISSING_MONTH:"+m);for(const m of byMonth.keys())if(m>expected)issues.push("MONTH_AFTER_TERM:"+m);}
  const unallocatedBudgets:Record<string,string>={};
  for(const [month,rows] of byMonth){
@@ -78,6 +80,14 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
  const sums=ledger.rows.reduce<typeof zero>((a,r)=>({principalWon:(BigInt(a.principalWon)+BigInt(r.principalWon)).toString(),interestWon:(BigInt(a.interestWon)+BigInt(r.interestWon)).toString(),otherComponentWon:(BigInt(a.otherComponentWon)+BigInt(r.otherComponentWon)).toString(),totalWon:(BigInt(a.totalWon)+BigInt(r.principalWon)+BigInt(r.interestWon)+BigInt(r.otherComponentWon)).toString()}),zero);
  const classSums={ordinaryWon:"0",priorityWon:"0",estateWon:"0",trusteeFeeWon:"0"};
  for(const row of ledger.rows){const key=row.claimClass==="ordinary"?"ordinaryWon":row.claimClass==="priority"?"priorityWon":row.claimClass==="estate"?"estateWon":"trusteeFeeWon";classSums[key]=(BigInt(classSums[key])+BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon)).toString();}
- if(calculation.planTotalWon!==null&&BigInt(classSums.ordinaryWon)!==BigInt(calculation.planTotalWon))legalReviewTasks.push("ORDINARY_ALLOCATION_UNRESOLVED");
+ // A recorded ordinary payment total is an independent integrity invariant.
+ // Keep mismatch/missing values open for human review; do not reinterpret them as zero.
+ if(!nat(calculation.planTotalWon)){
+  issues.push("ORDINARY_PLAN_TOTAL_UNVERIFIED");
+  legalReviewTasks.push("ORDINARY_ALLOCATION_UNRESOLVED");
+ }else if(BigInt(classSums.ordinaryWon)!==BigInt(calculation.planTotalWon)){
+  issues.push("ORDINARY_PLAN_TOTAL_MISMATCH");
+  legalReviewTasks.push("ORDINARY_ALLOCATION_UNRESOLVED");
+ }
  return {status:issues.length?"blocked":"reconciled",issues:[...new Set(issues)],totals:{...sums,...classSums},unallocatedBudgets,priorityPayoffInstallment:payoff,priorityCoverage,...(legalReviewTasks.length?{legalReviewTasks:[...new Set(legalReviewTasks)]}:{})};
 }
