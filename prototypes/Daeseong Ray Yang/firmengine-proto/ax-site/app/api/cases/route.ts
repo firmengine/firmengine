@@ -6,7 +6,8 @@ export async function POST(request:Request){try{
   requireSameOrigin(request);const body=await jsonBody(request);
   const c=createCase(String(body.name||"새 개인회생 사건").slice(0,100));
   if(/^\d{4}-\d{2}-\d{2}$/.test(body.applicationDate||""))c.context.applicationDate=c.context.asOf=body.applicationDate;
-  c.context.courtId=typeof body.courtId==="string"?body.courtId.slice(0,50):"seoul";
+  const submittedCourt=typeof body.courtId==="string"?body.courtId.trim().slice(0,50):"";
+  c.context.courtId=submittedCourt||"unknown";
   c.context.ruleReleaseId=CURRENT_RULESET.id;
   await db().prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at) VALUES (?,?,?,?,?,?,?)").bind(c.context.id,c.context.caseName,await actor(),c.context.revision,JSON.stringify(c),now(),now()).run();
   await event(c.context.id,"case.created",{name:c.context.caseName});
