@@ -134,10 +134,17 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(problems.length)return base(r,problems,"restored");
   const accepted=input.matches.filter(m=>m.requirementId===r.requirementId&&m.state==="accepted"
     &&m.subjectLinkId===input.subjectLink?.linkId&&input.documents.some(d=>d.id===m.documentId&&d.status==="active"&&d.sha256===m.sourceDocumentHash));
-  const approvedMatches=accepted.filter(match=>match.pageIds.some(pageId=>{
+  // An accepted match may contain filed-form or administrative pages.
+  // Only current evidence pages can satisfy one component of A <- B+C.
+  const evidenceType=(match:DocumentMatch,pageId:string):string|null=>{
     const prefix=match.documentId+":";
-    return pageId.startsWith(prefix)&&selected.includes(observedType(input,match.documentId,Number(pageId.slice(prefix.length)))??"");
-  }));
+    if(!pageId.startsWith(prefix))return null;
+    const pageNumber=Number(pageId.slice(prefix.length));
+    if(!Number.isSafeInteger(pageNumber)||pageNumber<1)return null;
+    if(!input.pages.some(p=>p.documentId===match.documentId&&p.page===pageNumber&&p.role==="evidence"))return null;
+    return observedType(input,match.documentId,pageNumber);
+  };
+  const approvedMatches=accepted.filter(match=>match.pageIds.some(pageId=>selected.includes(evidenceType(match,pageId)??"")));
   const proofMatched=new Map<string,string[]>(),support=new Set<string>();
   for(const field of fields)proofMatched.set(field,[]);
   for(const proof of review.proofs){
@@ -161,10 +168,8 @@ export async function reconcileDocumentSubstitution(input:SubstitutionContext):P
   if(!accepted.length)problems.push("NO_ACCEPTED_ALTERNATIVE_DOCUMENT");
   if(missing.length)problems.push("REQUIRED_PROOF_FIELDS_MISSING");
   if(!periodCovered(review,approvedMatches))problems.push("REQUIRED_PERIOD_NOT_COVERED");
-  if(selected.some(docType=>!accepted.some(m=>m.pageIds.some(pageId=>{
-    const prefix=m.documentId+":";if(!pageId.startsWith(prefix))return false;
-    return observedType(input,m.documentId,Number(pageId.slice(prefix.length)))===docType;
-  }))))problems.push("SELECTED_ALTERNATIVE_NOT_MATCHED");
+  if(selected.some(docType=>!approvedMatches.some(m=>m.pageIds.some(pageId=>evidenceType(m,pageId)===docType))))
+    problems.push("SELECTED_ALTERNATIVE_NOT_MATCHED");
   return {
     status:problems.length?"restored":"inactive_by_substitution",
     activeRequest:problems.length>0,

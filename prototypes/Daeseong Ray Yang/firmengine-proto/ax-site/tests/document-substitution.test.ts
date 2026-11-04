@@ -143,3 +143,23 @@ test("two substitutes can jointly cover distinct proof slots without overwriting
  assert.equal(a.status,"inactive_by_substitution");
  assert.deepEqual(a.supportDocumentIds,["doc-bank","doc-paystub"]);
 });
+
+test("A <- B+C does not count a staff-accepted non-evidence page as the second document",async()=>{
+ const r=orig();
+ r.substitutionReview={...review,alternativeDocumentTypeIds:["salary_bank_statement","salary_statement"],employerSigned:true};
+ const otherDoc:EvidenceDocument={id:"doc-paystub",name:"Synthetic signed payroll",sha256:"b".repeat(64),status:"active",pages:[1]};
+ const otherPage:EvidencePage={documentId:"doc-paystub",page:1,role:"evidence",documentType:"shared-document:salary_statement@payroll_payslip",text:"synthetic"};
+ const otherMatch:DocumentMatch={...m,matchId:"m-paystub",documentId:"doc-paystub",pageIds:["doc-paystub:1"],sourceDocumentHash:otherDoc.sha256};
+ const common={requirement:r,documents:[...docs,otherDoc],matches:[m,otherMatch]};
+ const valid=await reconcileDocumentSubstitution(input({...common,pages:[...pages,otherPage]}));
+ assert.equal(valid.activeRequest,false,"two accepted evidence-role alternatives may satisfy the selected published route");
+ for(const role of ["administrative","filed_form"] as const){
+  const result=await reconcileDocumentSubstitution(input({...common,pages:[...pages,{...otherPage,role}]}));
+  assert.equal(result.activeRequest,true,"a non-evidence page cannot complete selected B+C: "+role);
+  assert.equal(result.status,"restored");
+  assert.ok(result.reasonCodes.includes("SELECTED_ALTERNATIVE_NOT_MATCHED"));
+ }
+ const onlyB=await reconcileDocumentSubstitution(input({...common,matches:[m,{...otherMatch,state:"proposed"}],pages:[...pages,otherPage]}));
+ assert.equal(onlyB.activeRequest,true,"B-only must not silently satisfy B+C");
+ assert.ok(onlyB.reasonCodes.includes("SELECTED_ALTERNATIVE_NOT_MATCHED"));
+});
