@@ -52,6 +52,8 @@ export interface MappedPublicForm {
 const clean = (value: unknown) => String(value ?? "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g, "�");
 const present = (value: unknown): string => value === undefined || value === null || value === "" ? MISSING_FORM_VALUE : clean(typeof value === "object" ? JSON.stringify(value) : value);
 const amount = (value: string | null | undefined): string => value !== undefined && value !== null && /^-?\d+$/.test(value) ? BigInt(value).toLocaleString("ko-KR") : MISSING_FORM_VALUE;
+/** Do not parse malformed engine money as an observed 0 or throw while building a draft form. */
+const parseExactWon = (value: unknown): bigint | null => typeof value === "string" && /^-?\d+$/.test(value) ? BigInt(value) : null;
 const numeric = (value: NumericInput | null | undefined): string => { const n = moneyValue(value); return n === null ? MISSING_FORM_VALUE : amount(n.toString()); };
 const claimLabels: Record<string,string> = { ordinary:"일반채권", secured:"담보채권", tax:"조세채권", estate:"재단채권", non_dischargeable:"면책 제외 검토 채권", disputed:"다툼 있는 채권", unknown:"분류 확인 필요" };
 const assetLabels: Record<string,string> = { cash:"현금",deposit:"예금",insurance:"보험 해약환급금",vehicle:"자동차",real_estate:"부동산",lease_deposit:"임차보증금",business:"사업용 재산",receivable:"채권",retirement:"퇴직금",other:"기타 재산" };
@@ -137,7 +139,8 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
     }) ? amount(calculation.monthlyIncomeWon) : MISSING_FORM_VALUE,
   });
   // D5110's ③=①−② and ⑤=③−④ are a different quantity from an approved ordinary-claim payment.
-  const beforeFee = calculation.monthlyIncomeWon === null || calculation.recognizedLivingCostWon === null ? null : BigInt(calculation.monthlyIncomeWon) - BigInt(calculation.recognizedLivingCostWon);
+  const incomeForForm = parseExactWon(calculation.monthlyIncomeWon), livingCostForForm = parseExactWon(calculation.recognizedLivingCostWon);
+  const beforeFee = incomeForForm === null || livingCostForForm === null ? null : incomeForForm - livingCostForForm;
   const fee = moneyValue(data.context.monthlyTrusteeFee);
   const afterFee = beforeFee === null || fee === null || fee < 0n ? null : beforeFee - fee;
   scalars.form_pre_fee_disposable = beforeFee === null ? MISSING_FORM_VALUE : amount(beforeFee.toString());
@@ -212,11 +215,10 @@ export function buildFormBindings(data: CaseData, calculation: CalculationResult
   // The source group may have a plausible observed average while another
   // money source/selected month is still missing. Never render it as a court
   // form income amount when the case-wide calculation is explicitly blocked.
-  scalars.monthly_business_income = calculation.monthlyIncomeWon !== null &&
+  const observedBusinessTotal = business.length > 0 ? business.reduce<bigint | null>((sum,row)=>{const value=parseExactWon(row.monthlyObservedAverageWon);return sum===null||value===null?null:sum+value;},0n) : null;
+  scalars.monthly_business_income = parseExactWon(calculation.monthlyIncomeWon) !== null &&
     data.context.inventoryComplete.income === "yes" &&
-    business.length>0 &&
-    business.every((r) => r.monthlyObservedAverageWon !== null) ?
-    amount(business.reduce((sum,row)=>sum+BigInt(row.monthlyObservedAverageWon!),0n).toString()) : MISSING_FORM_VALUE;
+    observedBusinessTotal !== null ? amount(observedBusinessTotal.toString()) : MISSING_FORM_VALUE;
   for (const prefix of ["career", "enforcement", "prior", "family"]) {
     const grouped = new Map<string, Record<string, string>>();
     for (const fact of facts) {
