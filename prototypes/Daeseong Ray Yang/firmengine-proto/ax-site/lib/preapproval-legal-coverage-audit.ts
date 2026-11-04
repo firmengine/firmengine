@@ -33,7 +33,14 @@ export function auditPreapprovalLegalCatalog(input:{
  const rules=input.rules.map(rule=>{
   const requirements=(rule.required_features??[]).map(key=>{
    const observed=currentFacts.get(key)??[];
-   const eligible=observed.filter(f=>input.sourceValidatedAcceptedFactIds.has(f.id));
+   // The supplied ID set is only a source-verification assertion. Re-check
+   // the observed Fact itself so a stale/poisoned caller set cannot promote
+   // retracted, disputed, missing or invalid evidence into legal coverage.
+   const eligible=observed.filter(f=>input.sourceValidatedAcceptedFactIds.has(f.id)
+    &&f.state==="verified"&&f.recognition==="accepted"
+    &&f.value!==null&&f.value!==undefined
+    &&!(typeof f.value==="string"&&!f.value.trim())
+    &&!f.validation?.some(issue=>issue.severity==="error"));
    let enteredCaseValue:unknown=undefined;
    if(key.startsWith("context.")){
     const field=key.slice(8);
