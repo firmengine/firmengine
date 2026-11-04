@@ -65,3 +65,9 @@ main `case-execution.ts` 원조건식:
 - 다음 **r129 IT**: #240의 타입체크+실제 Node test, #237→#239+#221/#43 호환 및 기존 테스트 assertion 전수, `raw→Fact→typed→calculation→ledger→D1 SQL→D5110/11 DOCX` 동일 케이스 snapshot E2E; 법률/회계 승인, Staging D1/R2/Cron/실제 Word 바이트는 개별 분리.
 
 **제품 최종 인수 0건.** 실제 프로젝트 Node 러너/전체 CI·staging D1/R2/Cron·공식 DOCX·법률/계산사무장/변호사 승인/사이트 배포 모두 미실행·미인증. 비공개 원천·고객 문서·키/.env·비공개 정답 공개 없음. 운영배포·운영 마이그레이션·전자제출·법원 인가 확정 **미실행**.
+
+## 7. 중앙 보드 동기화 시도 결과 (후속 회차 필수)
+
+중앙 `docs/PRODUCT_RELEASE_INTEGRATION_BOARD.md`의 `A2-AX-004/015/017/018` **기존 항목을 보존해 각 ID에 r128 영수증 링크만 추가**하려고 파일 SHA `31b6361612312f3aa3e37578cf580f6196b66b37`을 먼저 확인했다. 그러나 보드가 약 643KB여서 GitHub 커넥터의 `update_file`에서 ReadTimeout/내부 오류, 대체 Git blob 쓰기에서도 내부 오류가 발생했다. 최종 재조회에서 원래 blob SHA가 동일하고 해당 ID에 **r128 본문이 아직 없음**을 확인했다. **따라서 중앙 보드는 이 회차 갱신 완료라고 주장하지 않는다.** r128 검증 사실과 A2-AX ID 매핑은 이 독립 영수증에 남았으며, 다음 회차에서 보드 충돌 없는 병합을 재시도해야 한다. 이 문제로 **체크박스는 모두 미완료 [ ]**, 제품 인수 상태 변동 없음.
+
+미병합 #239에는 기존 테스트의 `generated/provisional → reconciled` 기대와 #239 변경의 불일치 가능성을 PR 댓글로 전달했다. 이것 역시 프로젝트 Node CI 실행의 대체가 아니다.
