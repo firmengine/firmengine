@@ -64,6 +64,11 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     if(rowValues.some(value=>value===null)) {
       const issue:PreflightIssue={code:"REPEAT_ROW_AMOUNT_FORMAT_INVALID",token:`creditor.${rowField}`,message:`Creditor row ${rowField} has an unparseable amount; no total can be certified.`,severity:input.mode==="final"?"blocker":"warning"};
       if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+    } else if(rowValues.length&&total===null) {
+      // A valid source row cannot certify an absent or malformed printed total.
+      // This is document integrity only; no court-recognized amount is inferred.
+      const issue:PreflightIssue={code:"REPEAT_TOTAL_AMOUNT_UNVERIFIED",token:totalField,message:`Creditor ${totalField} is absent or invalid; source rows cannot be reconciled.`,severity:input.mode==="final"?"blocker":"warning"};
+      if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
     } else if(rowValues.length&&total!==null) {
       const sum=rowValues.reduce((acc,value)=>acc+value!,0n);
       if(sum!==total) blockers.push({code:"REPEAT_ROW_TOTAL_MISMATCH",token:`creditor.${rowField}`,message:`Creditor row ${rowField} sum does not match ${totalField}.`,severity:"blocker"});
