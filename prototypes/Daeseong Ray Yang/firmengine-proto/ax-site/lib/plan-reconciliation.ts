@@ -18,9 +18,13 @@ const nat=(v:unknown)=>typeof v==="string"&&/^\d+$/.test(v);
 
 export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,ledger:PlanLedger,options:{priorityPolicies?:Record<string,PriorityCoveragePolicy>}={}):PlanReconciliation {
  const issues=[...ledger.issues],byMonth=new Map<number,typeof ledger.rows>();
+ const debtIds=new Set(data.debts.map(debt=>debt.id));
+ const expectedFundingByClass={ordinary:"ordinary_budget",priority:"priority_budget",estate:"estate_budget",trustee_fee:"disposable_income"} as const;
  if(ledger.status==="blocked")issues.push("PLAN_LEDGER_BLOCKED");
  for(const r of ledger.rows){
   if(!Number.isInteger(r.installment)||r.installment<1)issues.push("INVALID_INSTALLMENT");
+  if(r.claimClass!=="trustee_fee"&&!debtIds.has(r.debtId))issues.push("LEDGER_DEBT_MISSING:"+r.debtId);
+  if(r.fundingSourceId!==expectedFundingByClass[r.claimClass])issues.push("INVALID_LEDGER_FUNDING_SOURCE:"+r.installment+":"+r.debtId);
   const list=byMonth.get(r.installment)??[];list.push(r);byMonth.set(r.installment,list);
   for(const amount of [r.principalWon,r.interestWon,r.otherComponentWon,r.balanceAfter])if(!nat(amount))issues.push("INVALID_LEDGER_MONEY");
   if(r.claimClass==="trustee_fee"&&(r.debtId!=="system:trustee-fee"||r.principalWon!=="0"||r.interestWon!=="0"||r.fundingSourceId!=="disposable_income"))issues.push("INVALID_TRUSTEE_FEE_ROW");
@@ -29,6 +33,7 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
  if(expected>0){for(let m=1;m<=expected;m++)if(!byMonth.has(m))issues.push("MISSING_MONTH:"+m);for(const m of byMonth.keys())if(m>expected)issues.push("MONTH_AFTER_TERM:"+m);}
  const unallocatedBudgets:Record<string,string>={};
  for(const [month,rows] of byMonth){
+  if(rows.filter(r=>r.claimClass==="trustee_fee").length>1)issues.push("DUPLICATE_TRUSTEE_FEE_MONTH:"+month);
   const creditorRows=rows.filter(r=>r.claimClass!=="trustee_fee");
   if(new Set(creditorRows.map(r=>r.debtId)).size!==creditorRows.length)issues.push("DUPLICATE_DEBT_MONTH:"+month);
   const budgets={ordinary:calculation.ordinaryRepaymentBudgetWon,priority:data.context.monthlyPriorityPayment?.amountWon,estate:data.context.monthlyEstatePayment?.amountWon,trustee_fee:moneyValue(data.context.monthlyTrusteeFee)?.toString()??null};
