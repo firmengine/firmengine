@@ -11,6 +11,7 @@ import { EXECUTION_CONTRACT_VERSION } from "./execution-catalog.ts";
 import { snapshotSha256 } from "./calculator-tools.ts";
 import { buildDerivedExecution, completeDerivedEvaluation, DERIVED_EVALUATION_INLINE_LIMIT, isDerivedEvaluation, pendingDerivedEvaluation, type DerivedEvaluationEnvelope, type ExecutionSnapshot } from "./reactive-evaluation.ts";
 import { getCaseDataRecomputeEligibility, recomputeCaseDataUpdate } from "./case-data-recompute.ts";
+import { invalidWorkflowArrayFields } from "./case-workflow-contract.ts";
 
 export class HttpError extends Error { constructor(public status:number,message:string){super(message);} }
 export const now=()=>new Date().toISOString();
@@ -58,6 +59,9 @@ export async function getCase(id:string):Promise<CaseData>{
     const bytes=await object.arrayBuffer();if(await sha256(bytes)!==stored.sha256)throw new HttpError(409,"사건 저장 상태를 확인한 뒤 다시 불러오세요.");
     try{data=JSON.parse(new TextDecoder().decode(bytes)) as CaseData;}catch{throw new HttpError(409,"사건 저장 상태를 확인한 뒤 다시 불러오세요.");}
   }else data=stored as CaseData;
+  if(!data||typeof data!=="object")throw new HttpError(409,"CASE_PAYLOAD_INVALID");
+  const invalidWorkflowFields=invalidWorkflowArrayFields(data.workflowState);
+  if(invalidWorkflowFields.length)throw new HttpError(409,`WORKFLOW_ARRAY_CONTRACT_REVIEW_REQUIRED:${invalidWorkflowFields.join(",")}`);
   if(typeof row.storageToken!=="string"||data.context.id!==id||data.context.revision!==row.revision)throw new HttpError(409,"사건 저장 상태를 확인한 뒤 다시 불러오세요.");
   caseSnapshots.set(data,{id,revision:row.revision,token:row.storageToken});return data;
 }
