@@ -11,6 +11,7 @@ import {legalEvidenceCriterion} from "./legal-evidence-criteria.ts";
 import { persistPageExtractionRows } from "./extraction-row-store.ts";
 import { AI_MODEL,OCR_MODEL,applyExtraction,createCaseReadIndex,currentFacts,extractionCacheKey,factHasValidStructuredRefs,factSourceLineageIssues,touchCase,validSourceRef,type CaseData,type EvidenceModel } from "./domain";
 import { callLuna,imageContent,type Usage } from "./luna";
+import {recordBestEffortLegalUsageEvent} from "./legal-model-usage-checkpoint.ts";
 import { applyFirstVerification,applyTargetedRepair,DOC_FIELDS,EXTRACT_INSTRUCTIONS,PAGE_COMPLETENESS_INSTRUCTIONS,SOURCE_BBOX_INSTRUCTIONS,STATEMENT_SCOPE_RELATION_VERIFY_INSTRUCTIONS,getRepairTargets,PAGE_SCHEMA,PROMPT_VERSION,preserveAgreedFieldsAfterOmission,projectPage,sourceInstructions,validatePageRead,VERIFY_SCHEMA,type FieldReviewCheck,type PageRead } from "./extraction";
 import { bucket,connection,db,event,getCase,HttpError,now,saveCase } from "./server-store";
 import { MISSING_FIELD_REVIEW_INSTRUCTIONS,shouldRetryMissingSource,validateMissingFieldCues,type MissingFieldCue } from "./coverage-review";
@@ -564,14 +565,17 @@ export async function reviewLegal(caseId:string){
   const packetFactIds=new Set(packet.providedFactIds),providedFacts=facts.filter(f=>packetFactIds.has(f.id)&&f.state!=="disputed"&&f.state!=="retracted"&&f.recognition!=="rejected"&&(factHasValidStructuredRefs(data,f)||f.refs.length&&f.refs.every(ref=>validSourceRef(data,ref,sourceIndex)))&&!factSourceLineageIssues(data,[f.id],sourceIndex).some(issue=>["STALE_OR_RETRACTED_FACT","DISPUTED_OR_REJECTED_FACT","SOURCE_REFERENCE_INVALID","SOURCE_VERIFICATION_RECEIPT_INVALID"].includes(issue)));
   const checks=gateLegalReviewChecks({batch,response:value.checks,providedFacts,eligibleFactIds:new Set(providedFacts.map(f=>f.id)),validRuleIds,coverage:packet.coverage,calculationValues:assessment.calculation as unknown as Record<string,unknown>});
   // Usage is logged separately here to avoid moving the case revision between checklist batches.
-  await event(caseId,"model.call",{agent:"legal_checklist",...usage});
+  // Legal advisory still stores usage in its durable analysis row. A failed
+  // secondary event log must not turn a completed paid request into a retry.
+  const usageEventWriteFailed=await recordBestEffortLegalUsageEvent(
+    ()=>event(caseId,"model.call",{agent:"legal_checklist",...usage}));
   const afterRow=await db().prepare("SELECT data_version AS version FROM case_data_change_state WHERE case_id=?")
     .bind(caseId).first<{version:number}>();
   if(afterRow?.version!==sourceDataVersion||await snapshotSha256(await getCase(caseId))!==calculator.receipt.inputSha256){
     await event(caseId,"legal_advisory.superseded",{calculatorExecution:calculator.receipt});
     return {remaining:catalog.length,stage:"legal_snapshot_changed",checks:[]};
   }
-  await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),caseId,data.context.revision,"legal_advisory",JSON.stringify({checks,summary:value.summary,sourceDataVersion,evidenceCoverage:packet.coverage,reviewInputFingerprint:await legalReviewInputFingerprint(data,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION),calculatorExecution:calculator.receipt,model:usage.model,usage,scope:"법적 검토 보조 · 승인확률/자동인정 아님"}),now()).run();
+  await db().prepare("INSERT INTO analyses (id,case_id,revision,type,payload,at) VALUES (?,?,?,?,?,?)").bind(crypto.randomUUID(),caseId,data.context.revision,"legal_advisory",JSON.stringify({checks,summary:value.summary,sourceDataVersion,evidenceCoverage:packet.coverage,reviewInputFingerprint:await legalReviewInputFingerprint(data,calculator.receipt.referenceRelease.sha256,EXECUTION_CONTRACT_VERSION),calculatorExecution:calculator.receipt,model:usage.model,usage,usageEventWriteFailed,scope:"법적 검토 보조 · 승인확률/자동인정 아님"}),now()).run();
   await event(caseId,"calculator.tool_called",calculator.receipt);
   return {remaining:catalog.length-completed.size-checks.length,stage:"legal_review",checks,evidenceCoverage:packet.coverage,calculatorExecution:calculator.receipt};
 }
