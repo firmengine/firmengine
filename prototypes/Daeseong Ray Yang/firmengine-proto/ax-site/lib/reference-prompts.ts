@@ -36,6 +36,7 @@ export function renderPromptPolicy(id: string, params: Record<string, unknown> =
   const policy = referencePromptPolicy(id);
   const template = readReferenceValue<unknown>(id, policy.template);
   if (typeof template !== "string") throw new Error("REFERENCE_PROMPT_TEMPLATE_TYPE_INVALID");
+  if (!template.trim()) throw new Error("REFERENCE_PROMPT_TEMPLATE_BLANK");
   if (policy.lockedSafetyInvariant && template !== policy.template) throw new Error("REFERENCE_PROMPT_SAFETY_INVARIANT_LOCKED");
   const expected = new Set(policy.placeholders);
   const actual = new Set([...template.matchAll(/\{\{([A-Za-z][A-Za-z0-9_]*)\}\}/g)].map(match => match[1]));
