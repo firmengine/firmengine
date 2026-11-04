@@ -101,15 +101,39 @@ export function buildCaseExecutionPlan(data:CaseData, assessment:Assessment=asse
   };
 }
 
+/**
+ * Technical finalization hold: preserve an unobserved plan total and any review
+ * issues even if the gross calculation has no planTotalWon.
+ * This is not legal recognition of an installment schedule or priority deadline.
+ */
+export function planFinalizationBlockers(
+  ledger:ReturnType<typeof buildRepaymentPlanModel>,
+  reconciliation:ReturnType<typeof reconcilePlanLedger>,
+  planTotalWon:string|null,
+  schedule:CaseData["context"]["paymentSchedule"],
+):string[]{
+  const hasExplicitSchedule=(schedule?.phases.length??0)>0;
+  const applies=hasExplicitSchedule||planTotalWon!==null||ledger.rows.length>0||
+    ledger.status==="blocked"||reconciliation.status==="blocked"||
+    (reconciliation.legalReviewTasks?.length??0)>0;
+  if(!applies)return [];
+  const statusIssues=ledger.status==="blocked"||reconciliation.status==="blocked"
+    ?(reconciliation.issues.length?reconciliation.issues:ledger.issues.length?ledger.issues:["PLAN_RECONCILIATION_UNVERIFIED"]):[];
+  return [
+    ...statusIssues,
+    ...(ledger.rows.length>0&&planTotalWon===null?["PLAN_TOTAL_UNOBSERVED"]:[]),
+    ...(reconciliation.legalReviewTasks??[]),
+    ...(hasExplicitSchedule&&(!schedule?.reviewed||!schedule.reviewReason?.trim())?["PAYMENT_SCHEDULE_REVIEW_REQUIRED"]:[]),
+  ];
+}
+
 export function executeCaseNodes(data:CaseData,options:{includeDocumentBindings?:boolean;referenceBundles?:readonly ReferenceBundle[]}={}) {
   const scenarios=Array.isArray(data.disposalScenarios)?data.disposalScenarios:[];
   const baseAssessment=assessCase(data,CURRENT_RULESET);
   const calculationContract=adaptCalculationInput(data,baseAssessment.calculation);
   const planLedger=buildRepaymentPlanModel(data,baseAssessment.calculation);
   const planReconciliation=reconcilePlanLedger(data,baseAssessment.calculation,planLedger);
-  const hasExplicitSchedule=(data.context.paymentSchedule?.phases.length??0)>0;
-  const planValidationApplies=hasExplicitSchedule||baseAssessment.calculation.planTotalWon!==null;
-  const planBlockers=planValidationApplies?[...(planLedger.status==="blocked"||planReconciliation.status==="blocked"?(planReconciliation.issues.length?planReconciliation.issues:planLedger.issues):[]),...(planReconciliation.legalReviewTasks??[]),...(hasExplicitSchedule&&(!data.context.paymentSchedule?.reviewed||!data.context.paymentSchedule.reviewReason?.trim())?["PAYMENT_SCHEDULE_REVIEW_REQUIRED"]:[])]:[];
+  const planBlockers=planFinalizationBlockers(planLedger,planReconciliation,baseAssessment.calculation.planTotalWon,data.context.paymentSchedule);
   const calculationBlockers=calculationContract.applicable&&calculationContract.status==="blocked"?calculationContract.blockers:[];
   const contractIssues=[...calculationBlockers,...(calculationContract.applicable?calculationContract.warnings.map(warning=>"CALCULATION_CONTRACT_REVIEW:"+warning):[])];
   const referenceApplication=resolveReferenceApplicationForCase(data,options.referenceBundles??[],currentReferenceSnapshot());
