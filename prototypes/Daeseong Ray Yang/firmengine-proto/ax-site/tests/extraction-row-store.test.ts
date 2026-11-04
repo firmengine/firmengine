@@ -17,8 +17,9 @@ function setup(){
   sqlite.prepare("INSERT INTO cases (id,name,owner,revision,payload,created_at,updated_at,storage_token) VALUES ('case-1','Synthetic','owner',1,'{}','at','at','token')").run();
   sqlite.prepare("INSERT INTO documents (id,case_id,name,sha256,page_count,ready,created_at) VALUES ('doc-1','case-1','Synthetic.pdf',?,2,1,'at')").run(hash);
   let beforeBatch:(()=>void)|undefined;
-  const database={prepare(sql:string){let values:SQLInputValue[]=[];const statement={bind(...args:SQLInputValue[]){values=args;return statement;},async first<T>(){return sqlite.prepare(sql).get(...values) as T??null;},async all<T>(){return{results:sqlite.prepare(sql).all(...values) as T[]};},async run(){const result=sqlite.prepare(sql).run(...values);return{meta:{changes:Number(result.changes)}};}};return statement;},async batch(statements:Array<{run():Promise<unknown>}>){beforeBatch?.();beforeBatch=undefined;sqlite.exec("BEGIN IMMEDIATE");try{const results=[];for(const s of statements)results.push(await s.run());sqlite.exec("COMMIT");return results;}catch(error){sqlite.exec("ROLLBACK");throw error;}}} as unknown as D1Database;
-  return{sqlite,database,race:()=>{beforeBatch=()=>sqlite.prepare("UPDATE cases SET revision=revision+1 WHERE id='case-1'").run();},close:()=>sqlite.close()};
+  let beforeSelect:((sql:string)=>void)|undefined;
+  const database={prepare(sql:string){let values:SQLInputValue[]=[];const statement={bind(...args:SQLInputValue[]){values=args;return statement;},async first<T>(){return sqlite.prepare(sql).get(...values) as T??null;},async all<T>(){beforeSelect?.(sql);return{results:sqlite.prepare(sql).all(...values) as T[]};},async run(){const result=sqlite.prepare(sql).run(...values);return{meta:{changes:Number(result.changes)}};}};return statement;},async batch(statements:Array<{run():Promise<unknown>}>){beforeBatch?.();beforeBatch=undefined;sqlite.exec("BEGIN IMMEDIATE");try{const results=[];for(const s of statements)results.push(await s.run());sqlite.exec("COMMIT");return results;}catch(error){sqlite.exec("ROLLBACK");throw error;}}} as unknown as D1Database;
+  return{sqlite,database,race:()=>{beforeBatch=()=>sqlite.prepare("UPDATE cases SET revision=revision+1 WHERE id='case-1'").run();},onSelect:(hook:(sql:string)=>void)=>{beforeSelect=hook;},close:()=>sqlite.close()};
 }
 const sourceRead=():PageRead=>({documentType:"shared-document:bank_statement@bank_transactions",complete:false,warnings:["Synthetic only"],records:[
   {category:"transaction",label:"row A",fields:[
@@ -243,4 +244,26 @@ test("stored unknown-unit money remains in the source SQL but cannot become a tr
   assert.ok(amount.validation.includes("SOURCE_MONETARY_UNIT_MISSING"));
   assert.equal(projectPage(raw,"doc-1",1,hash).transactions.length,0);
  }finally{h.close();}
+});
+
+test("same-revision OCR page head change during feature read rejects stale rows",async()=>{
+  const h=setup();try{
+    const original=await persistPageExtractionRows(h.database,input());
+    const changed=sourceRead();changed.records[1].fields[0].value="27";
+    const replacement=await persistPageExtractionRows(h.database,input(changed));
+    assert.notEqual(original.runId,replacement.runId);
+    h.sqlite.prepare("UPDATE case_extraction_heads SET run_id=? WHERE case_id='case-1' AND source_document_id='doc-1' AND page=1").run(original.runId);
+    let moved=false;
+    h.onSelect(sql=>{
+      if(!moved&&sql.startsWith("SELECT f.*")){
+        moved=true;
+        h.sqlite.prepare("UPDATE case_extraction_heads SET run_id=? WHERE case_id='case-1' AND source_document_id='doc-1' AND page=1").run(replacement.runId);
+      }
+    });
+    await assert.rejects(listCaseExtractionRows(h.database,{caseId:"case-1",expectedRevision:1}),/CASE_REVISION_MISMATCH/);
+    assert.equal(moved,true);
+    assert.equal((h.sqlite.prepare("SELECT revision FROM cases WHERE id='case-1'").get() as {revision:number}).revision,1);
+    const refreshed=await listCaseExtractionRows(h.database,{caseId:"case-1",expectedRevision:1});
+    assert.equal(refreshed.records[1].fields[0].value,"27");
+  }finally{h.close();}
 });
