@@ -1,13 +1,14 @@
 import { canUseRescueRole } from "../../../../../../lib/classification-recovery";
 import { createHash } from "node:crypto";
-import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
+import { bucket,caseSnapshotIdentity,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
 import { rescueSpecs } from "../../../../../../lib/scan-quality";
 type Context={params:Promise<{id:string,doc:string}>};
 async function record(id:string,doc:string){
   const c=await getCase(id);if(!c.documents.some(d=>d.id===doc&&d.status==="active"))throw new HttpError(404,"사용 중인 문서를 찾을 수 없습니다.");
+  const source=caseSnapshotIdentity(c);
   const row=await db().prepare("SELECT * FROM documents WHERE id = ? AND case_id = ?").bind(doc,id).first<{id:string,sha256:string,name:string,page_count:number,original_key:string|null,ready:number}>();
-  if(!row)throw new HttpError(404,"문서를 찾을 수 없습니다.");return row;
+  if(!row)throw new HttpError(404,"문서를 찾을 수 없습니다.");return {...row,sourceRevision:source.revision,sourceToken:source.token};
 }
 export async function PUT(request:Request,{params}:Context){try{
   requireSameOrigin(request);const {id,doc}=await params,r=await record(id,doc),url=new URL(request.url),kind=url.searchParams.get("kind");
@@ -28,9 +29,9 @@ export async function PUT(request:Request,{params}:Context){try{
       if(failed?.status==="rejected")throw failed.reason;
       if(bytes!==length)throw new HttpError(400,"실제 전송 크기가 지정한 파일 크기와 다릅니다.");
       if(hash.digest("hex")!==r.sha256)throw new HttpError(422,"전송한 파일과 등록된 해시가 다릅니다. 다시 업로드하세요.");
-      const updated=await db().prepare("UPDATE documents SET original_key = ?,ready = 1 WHERE id = ? AND case_id = ? AND ready = 0 AND sha256 = ?").bind(key,doc,id,r.sha256).run();
+      const updated=await db().prepare("UPDATE documents SET original_key = ?,ready = 1 WHERE id = ? AND case_id = ? AND ready = 0 AND sha256 = ? AND EXISTS (SELECT 1 FROM cases c WHERE c.id = documents.case_id AND c.revision = ? AND c.storage_token = ?)").bind(key,doc,id,r.sha256,r.sourceRevision,r.sourceToken).run();
       if(updated.meta.changes){retained=true;return Response.json({stored:true});}
-      const latest=await db().prepare("SELECT sha256,original_key,ready FROM documents WHERE id = ? AND case_id = ?").bind(doc,id).first<{sha256:string;original_key:string|null;ready:number}>();
+      const latest=await db().prepare("SELECT d.sha256,d.original_key,d.ready FROM documents d JOIN cases c ON c.id=d.case_id AND c.revision=? AND c.storage_token=? WHERE d.id = ? AND d.case_id = ?").bind(r.sourceRevision,r.sourceToken,doc,id).first<{sha256:string;original_key:string|null;ready:number}>();
       if(latest?.ready===1&&latest.original_key&&latest.sha256===r.sha256)return Response.json({stored:true,idempotent:true});
       throw new HttpError(409,"문서 업로드 상태가 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");
     }finally{
