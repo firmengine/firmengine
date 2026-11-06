@@ -37,7 +37,15 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
     const issue={code:"FIELD_UNRESOLVED",token:field.token,message:reason,severity:(input.mode==="final"&&needsValue?"blocker":"warning") as "blocker"|"warning"};
     if(input.mode==="final"&&needsValue) blockers.push(issue); else warnings.push(issue);
   }
-  const numeric = (value:unknown):bigint|null => { const text=String(value??"").replace(/[\s,₩원]/g,""); return /^-?\d+$/.test(text)?BigInt(text):null; };
+  const numeric = (value:unknown):bigint|null => {
+    if(value===null||value===undefined)return null;
+    if(typeof value==="number"&&!Number.isSafeInteger(value))return null;
+    if(!["number","bigint","string"].includes(typeof value))return null;
+    const visible=String(value).trim().replace(/[−﹣－]/gu,"-");
+    // Internal review only: reject malformed printed amounts rather than repairing them.
+    if(!/^-?(?:₩\s*)?(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)\s*원?$/u.test(visible))return null;
+    try{return BigInt(visible.replace(/[,₩원\s]/gu,""));}catch{return null;}
+  };
   // D5103 is a month-by-month form view; rendering an annual total in one
   // month row is a monetary misstatement even when the total is numerically valid.
   // This is FirmEngine's own final-review integrity gate, not official portal certification.
@@ -53,7 +61,10 @@ export async function evaluateDocumentPreflight(input:{formCode:string;bindings:
   const creditorRows=input.bindings.rows.creditor??[];
   for(const [rowField,totalField] of [["principal","total_principal"],["interest","total_interest"]] as const) {
     const rowValues=creditorRows.map(row=>numeric(row[rowField])); const total=numeric(input.bindings.scalars[totalField]);
-    if(rowValues.length&&total!==null&&rowValues.every(value=>value!==null)) {
+    if(rowValues.some(value=>value===null)) {
+      const issue:PreflightIssue={code:"REPEAT_ROW_AMOUNT_FORMAT_INVALID",token:`creditor.${rowField}`,message:`Creditor row ${rowField} has an unparseable amount; no total can be certified.`,severity:input.mode==="final"?"blocker":"warning"};
+      if(input.mode==="final")blockers.push(issue);else warnings.push(issue);
+    } else if(rowValues.length&&total!==null) {
       const sum=rowValues.reduce((acc,value)=>acc+value!,0n);
       if(sum!==total) blockers.push({code:"REPEAT_ROW_TOTAL_MISMATCH",token:`creditor.${rowField}`,message:`Creditor row ${rowField} sum does not match ${totalField}.`,severity:"blocker"});
     }
