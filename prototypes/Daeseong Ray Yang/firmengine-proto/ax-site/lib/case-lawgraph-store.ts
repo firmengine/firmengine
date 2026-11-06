@@ -54,8 +54,11 @@ export function automatedDraftEligibility(input:AutomatedDraftEligibilityInput){
   for(const name of required){
     const candidates=input.requiredCalculationFields.filter(f=>f.outputName===name);
     if(candidates.length!==1||candidates[0].value===null||candidates[0].value===undefined||candidates[0].value===""||candidates[0].value==="unknown")reasons.push("CALCULATION_VALUE_MISSING:"+name);
-    else if(["blocked","missing","conflict"].includes(candidates[0].status??""))reasons.push("CALCULATION_VALUE_UNRESOLVED:"+name);
     else if(candidates[0].value==="not_met")reasons.push("CALCULATION_CONDITION_FAILED:"+name);
+    // A known numeric value is not authoritative when its calculation state is
+    // unobserved, not applicable, conflicted, or otherwise unsupported.
+    else if(!["computed","provisional"].includes(candidates[0].status??""))reasons.push("CALCULATION_VALUE_UNRESOLVED:"+name);
+    else if(/Won$/.test(name)&&(typeof candidates[0].value!=="string"||!/^-?\d+$/.test(candidates[0].value)))reasons.push("CALCULATION_VALUE_MISSING:"+name);
   }
   if(input.explicitFailures?.length)reasons.push("EXPLICIT_FAILURE_PRESENT");
   return {eligible:reasons.length===0,mode:"draft" as const,reasons:[...new Set(reasons)],missingCheckIds:missing,requiredCalculationOutputNames:[...required],courtApprovalInferred:false,canFinalize:false,humanFinalGate:"unchanged" as const};
