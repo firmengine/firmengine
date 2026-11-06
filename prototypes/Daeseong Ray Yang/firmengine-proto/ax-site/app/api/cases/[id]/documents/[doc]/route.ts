@@ -1,4 +1,5 @@
 import { canUseRescueRole } from "../../../../../../lib/classification-recovery";
+import { commitOriginalUploadPointer, OriginalUploadCommitUncertain } from "../../../../../../lib/original-upload-commit";
 import { createHash } from "node:crypto";
 import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
@@ -28,11 +29,32 @@ export async function PUT(request:Request,{params}:Context){try{
       if(failed?.status==="rejected")throw failed.reason;
       if(bytes!==length)throw new HttpError(400,"실제 전송 크기가 지정한 파일 크기와 다릅니다.");
       if(hash.digest("hex")!==r.sha256)throw new HttpError(422,"전송한 파일과 등록된 해시가 다릅니다. 다시 업로드하세요.");
-      const updated=await db().prepare("UPDATE documents SET original_key = ?,ready = 1 WHERE id = ? AND case_id = ? AND ready = 0 AND sha256 = ?").bind(key,doc,id,r.sha256).run();
-      if(updated.meta.changes){retained=true;return Response.json({stored:true});}
-      const latest=await db().prepare("SELECT sha256,original_key,ready FROM documents WHERE id = ? AND case_id = ?").bind(doc,id).first<{sha256:string;original_key:string|null;ready:number}>();
-      if(latest?.ready===1&&latest.original_key&&latest.sha256===r.sha256)return Response.json({stored:true,idempotent:true});
-      throw new HttpError(409,"문서 업로드 상태가 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");
+      // A D1 update can commit and then lose its response. Re-read the
+      // authoritative SQL pointer before deciding whether our R2 key is safe
+      // to delete. If that read is unavailable, retain the object for repair.
+      let decision;
+      try {
+        decision=await commitOriginalUploadPointer({
+          objectKey:key,expectedSha256:r.sha256,
+          writePointer:async()=>{
+            const result=await db().prepare("UPDATE documents SET original_key = ?,ready = 1 WHERE id = ? AND case_id = ? AND ready = 0 AND sha256 = ?").bind(key,doc,id,r.sha256).run();
+            return result.meta.changes;
+          },
+          readPointer:()=>db().prepare("SELECT sha256,original_key,ready FROM documents WHERE id = ? AND case_id = ?").bind(doc,id).first<{sha256:string;original_key:string|null;ready:number}>(),
+        });
+      }catch(commitError){
+        if(commitError instanceof OriginalUploadCommitUncertain){
+          // Prefer a possible unreferenced object to destroying bytes which a
+          // late D1 commit may already reference.
+          retained=true;
+          throw new HttpError(503,"원본 저장 확인이 지연됐습니다. 업로드 파일을 보존했으니 상태를 조회한 뒤 재시도하세요.");
+        }
+        if(commitError instanceof Error&&commitError.message==="ORIGINAL_UPLOAD_POINTER_CONFLICT")
+          throw new HttpError(409,"문서 업로드 상태가 변경되었습니다. 최신 내용을 불러온 뒤 다시 시도하세요.");
+        throw commitError;
+      }
+      retained=decision.retainObject;
+      return Response.json({stored:true,...(decision.idempotent?{idempotent:true}:{}),...(decision.recovered?{recovered:true}:{})});
     }finally{
       if(!retained)try{await bucket().delete(key);}catch{/* Unreferenced staging data is never exposed as an original. */}
     }
