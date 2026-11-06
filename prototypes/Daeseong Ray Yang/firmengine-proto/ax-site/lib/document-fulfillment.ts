@@ -146,8 +146,16 @@ export async function deriveRequirementStatus(input: FulfillmentDependencyInput 
   const mapping = requirement.mappingRequired || !requirement.requiredFieldGroups.length&&!requirement.noRequiredFieldsApproved || input.applicability === "unknown" || !input.subjectLink || input.subjectLink.status !== "confirmed";
   const requestedMonths=input.requiredMonths??periodMonthCount(requirement.requiredPeriod);
   const requiredMonths=requestedMonths===null||requestedMonths===undefined?null:Number.isSafeInteger(requestedMonths)&&requestedMonths>=1&&requestedMonths<=120?requestedMonths:121;
-  const months = new Set(accepted.flatMap(m => m.coveredPeriod ? coveredMonths(m.coveredPeriod.start,m.coveredPeriod.end) : [])).size;
-  const partialPeriod = requiredMonths != null && months < requiredMonths;
+  // A dated request can be satisfied only by evidence covering the requested months.
+  // Twelve months from another calendar year are not twelve requested months.
+  const suppliedMonths = new Set(accepted.flatMap(m => m.coveredPeriod ? coveredMonths(m.coveredPeriod.start,m.coveredPeriod.end) : []));
+  const requestedRange = /\b(\d{4}-(?:0[1-9]|1[0-2]))\D+(\d{4}-(?:0[1-9]|1[0-2]))\b/.exec(requirement.requiredPeriod);
+  const requestedMonthSet = requestedRange && validCoverageRange(requestedRange[1], requestedRange[2])
+    ? new Set(coveredMonths(requestedRange[1], requestedRange[2]))
+    : null;
+  const partialPeriod = requestedMonthSet
+    ? [...requestedMonthSet].some(month => !suppliedMonths.has(month))
+    : requiredMonths != null && suppliedMonths.size < requiredMonths;
   const invalidCoverage=accepted.some(m=>m.coveredPeriod&&!validCoverageRange(m.coveredPeriod.start,m.coveredPeriod.end));
   let engineFulfillment: EngineFulfillment = hasStale ? "stale" : mapping ? "mapping_required" : invalidCoverage || accepted.length > 1 && duplicatePeriods(accepted) ? "conflict" : accepted.length === 0 ? "missing" : partialPeriod ? "partial" : input.requiredFieldGroupsMet === false ? "partial" : "complete";
   if (input.applicability === "not_applicable") engineFulfillment = "missing";
