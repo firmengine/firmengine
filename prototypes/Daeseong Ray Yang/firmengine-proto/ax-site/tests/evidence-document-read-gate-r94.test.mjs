@@ -1,0 +1,12 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { matchesSingleActiveCaseDocument as matches } from '../lib/evidence-document-read-gate.ts';
+const A='a'.repeat(64), B='b'.repeat(64);
+test('active CaseData SHA matches SQL SHA',()=>assert.equal(matches([{id:'DOC',status:'active',sha256:A}],'DOC',A),true));
+test('active CaseData SHA A diverges from SQL SHA B',()=>assert.equal(matches([{id:'DOC',status:'active',sha256:A}],'DOC',B),false));
+test('wrong case document ID fails',()=>assert.equal(matches([{id:'OTHER',status:'active',sha256:A}],'DOC',A),false));
+test('withdrawn evidence fails',()=>assert.equal(matches([{id:'DOC',status:'withdrawn',sha256:A}],'DOC',A),false));
+test('two active copies of same ID fail closed',()=>assert.equal(matches([{id:'DOC',status:'active',sha256:A},{id:'DOC',status:'active',sha256:A}],'DOC',A),false));
+test('missing / NULL / malformed SQL SHA fail closed',()=>{for(const v of [undefined,null,'','bad','A'.repeat(64)])assert.equal(matches([{id:'DOC',status:'active',sha256:A}],'DOC',v),false)});
+test('malformed identical SHA cannot masquerade as valid evidence',()=>assert.equal(matches([{id:'DOC',status:'active',sha256:'bad'}],'DOC','bad'),false));
+test('unrelated active document does not affect unique match',()=>assert.equal(matches([{id:'DOC',status:'active',sha256:A},{id:'OTHER',status:'active',sha256:B}],'DOC',A),true));
