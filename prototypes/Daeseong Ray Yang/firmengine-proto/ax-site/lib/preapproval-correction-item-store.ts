@@ -56,6 +56,7 @@ export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDr
     draft.receiptDocumentId!==null&&!data.documents.some(d=>d.id===draft.receiptDocumentId&&d.status==="active"))
    throw fail("CORRECTION_RESPONSE_DOCUMENT_UNKNOWN");
  if(draft.responseEventId!==null){
+  if(!responseOrderUnambiguous(data,draft.courtEventId,order.courtReference))throw fail("CORRECTION_RESPONSE_ORDER_AMBIGUOUS");
   const reply=data.workflowState?.procedureEvents.find(e=>e.id===draft.responseEventId&&
     ["submitted","received","amended"].includes(e.state)&&e.courtReference===order.courtReference);
   if(!reply||draft.responseDocumentIds.some(id=>!reply.sourceDocumentIds.includes(id))||
@@ -72,6 +73,14 @@ export function validateCorrectionItemDraft(data:CaseData,draft:CorrectionItemDr
    deadline:deadline?{...deadline}:null};
  return {payload,orderDocumentSha256:document.sha256};
 }
+/** A docket reference identifies a case, not a particular correction order.
+ * Until an explicit response-to-order link exists, multiple orders sharing one
+ * docket cannot safely adopt a response event by courtReference alone. */
+const responseOrderUnambiguous=(data:CaseData,courtEventId:string,courtReference:string|null)=>{
+ if(!courtReference)return false;
+ const orders=(data.workflowState?.procedureEvents??[]).filter(e=>e.state==="correction_requested"&&e.courtReference===courtReference);
+ return orders.length===1&&orders[0].id===courtEventId;
+};
 type Head={versionId:string};
 async function currentVersion(database:D1Database,caseId:string){
  return database.prepare("SELECT c.revision AS revision,s.data_version AS dataVersion FROM cases c JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=?")
@@ -143,12 +152,13 @@ export async function readCourtCorrectionItems(database:D1Database,data:CaseData
      linkedFact(data,f,row.orderDocumentId));
   const relatedResponse=payload?.responseEventId===null?
       !payload?.responseDocumentIds.length&&payload?.receiptDocumentId===null:
-      (data.workflowState?.procedureEvents??[]).some(e=>e.id===payload?.responseEventId&&
+      (responseOrderUnambiguous(data,row.courtEventId,event?.courtReference??null)&&
+       (data.workflowState?.procedureEvents??[]).some(e=>e.id===payload?.responseEventId&&
        ["submitted","received","amended"].includes(e.state)&&e.courtReference===event?.courtReference&&
        (payload?.responseDocumentIds??[]).every(id=>e.sourceDocumentIds.includes(id)&&
          data.documents.some(d=>d.id===id&&d.status==="active"))&&
        (!payload?.receiptDocumentId||(e.sourceDocumentIds.includes(payload.receiptDocumentId)&&
-         data.documents.some(d=>d.id===payload.receiptDocumentId&&d.status==="active"))));
+         data.documents.some(d=>d.id===payload.receiptDocumentId&&d.status==="active")))));
   const currentSource=!!doc&&doc.sha256===row.orderDocumentSha256&&!!event&&
    event.sourceDocumentIds.includes(row.orderDocumentId)&&
    row.sourceCaseRevision===current.revision&&row.sourceDataVersion===current.dataVersion&&
