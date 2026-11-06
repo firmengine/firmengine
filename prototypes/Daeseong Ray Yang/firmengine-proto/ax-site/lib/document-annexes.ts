@@ -32,14 +32,71 @@ function field(data:CaseData,fs:Fact[],kind:"bank_account"|"lease",name:string,i
 export type AnnexTable={title:string;headers:string[];rows:string[][];summary?:{title:string;headers:string[];rows:string[][]};status:"source_backed"|"blocked";notes:string[]};
 /** Office schedule projection. It never reconstructs installments from allocation totals. */
 export function repaymentPlanLedgerAnnex(data:CaseData,calculation:CalculationResult,ledger:PlanLedger,reconciliation:PlanReconciliation):AnnexTable{
- const monthIds=[...new Set(ledger.rows.map(r=>r.installment))].sort((a,b)=>a-b),phaseFor=(month:number)=>data.context.paymentSchedule?.phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment),
-  rows=ledger.rows.map(row=>[String(row.installment),row.paymentDate??missing,row.claimClass==="trustee_fee"?"회생위원 보수":row.debtId,row.principalWon,row.interestWon,(BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon)).toString(),row.phaseId,row.otherComponentWon,row.fundingSourceId,row.balanceAfter]),
-  summaryRows=monthIds.map(month=>{const monthRows=ledger.rows.filter(r=>r.installment===month),principal=monthRows.reduce((n,r)=>n+BigInt(r.principalWon),0n),interest=monthRows.reduce((n,r)=>n+BigInt(r.interestWon),0n),fee=monthRows.filter(r=>r.claimClass==="trustee_fee").reduce((n,r)=>n+BigInt(r.otherComponentWon),0n),claims=monthRows.filter(r=>r.claimClass!=="trustee_fee").reduce((n,r)=>n+BigInt(r.principalWon)+BigInt(r.interestWon)+BigInt(r.otherComponentWon),0n),total=claims+fee,cap=phaseFor(month)?.monthlyAvailableWon??calculation.monthlyPaymentWon??missing;return [`회차 ${month}`,phaseFor(month)?.id??(ledger.rows[0]?.phaseId??missing),cap,principal.toString(),interest.toString(),fee.toString(),claims.toString(),total.toString(),reconciliation.unallocatedBudgets[`${month}:disposable_income`]??missing,reconciliation.status==="reconciled"?"대조 완료":"대조 보류"]});
+ // Unverified amounts must not throw or silently become zero in a court-facing annex.
+ const isWon=(v:unknown):v is string=>typeof v==="string"&&/^\d+$/.test(v);
+ const showWon=(v:unknown):string=>isWon(v)?v:missing;
+ const sumWon=(values:readonly unknown[]):string=>{
+  let total=0n;
+  for(const value of values){if(!isWon(value))return missing;total+=BigInt(value);}
+  return total.toString();
+ };
+ const monthIds=[...new Set(ledger.rows.map(r=>r.installment))].sort((a,b)=>a-b);
+ const phaseFor=(month:number)=>data.context.paymentSchedule?.phases.find(p=>month>=p.firstInstallment&&month<=p.lastInstallment);
  const term=data.context.paymentSchedule?.expectedInstallments??data.context.planMonths??0;
- const totals=ledger.rows.reduce((a,r)=>({principal:a.principal+BigInt(r.principalWon),interest:a.interest+BigInt(r.interestWon),other:a.other+BigInt(r.otherComponentWon)}),{principal:0n,interest:0n,other:0n});
- if(monthIds.length)summaryRows.push(["총계",String(term),"",totals.principal.toString(),totals.interest.toString(),totals.other.toString(),(BigInt(reconciliation.totals.ordinaryWon)+BigInt(reconciliation.totals.priorityWon)+BigInt(reconciliation.totals.estateWon)).toString(),reconciliation.totals.totalWon,Object.entries(reconciliation.unallocatedBudgets).filter(([key])=>key.endsWith(":disposable_income")).reduce((n,[,v])=>n+BigInt(v),0n).toString(),reconciliation.status==="reconciled"?"합계 대조 완료":"대조 보류"]);
- const blocked=ledger.status==="blocked"||reconciliation.status==="blocked";
- return {title:"개인회생 변제예정액표 · PlanLedger",headers:["회차","변제일","채권·비용 ID","원금(원)","이자(원)","합계(원)","적용 단계","기타·수수료(원)","재원","잔액 후(원)"],rows,summary:{title:"PlanLedger 월별 예산·지급·잔액 대조",headers:["회차","단계","채권 예산(원)","원금 합계(원)","이자 합계(원)","수수료(원)","채권 지급(원)","전체 지급(원)","가용소득 잔액(원)","검증 상태"],rows:summaryRows},status:!blocked&&ledger.status==="complete"?"source_backed":"blocked",notes:["채권자별 변제액, 단계 일정, D5110 월액은 이 PlanLedger 행을 공유합니다. 월별로 금액이 변하면 단일 월액은 확인 필요로 표시합니다.","회생위원 보수는 해당 회차의 별도 비용 행으로 표시하며 일반·우선·재단채권 예산에 합산하지 않습니다.","우선·재단채권은 법적 분류를 확정하지 않으며, 확인된 채권 잔액의 전액 변제 여부와 최종 회차를 별도로 대조합니다.",...(ledger.issues.length?ledger.issues.map(issue=>"PlanLedger 입력 점검: "+issue):[]),...(reconciliation.issues.length?reconciliation.issues.map(issue=>"정합성 점검: "+issue):[]),...(ledger.status!=="complete"?["이 일정은 계산·검토 전 제안이며 법적 승인이나 최종 검토를 의미하지 않습니다."]:[])]};
+ const allMonthsPresent=Number.isSafeInteger(term)&&term>0&&monthIds.length===term&&monthIds.every((month,i)=>month===i+1);
+ const rowValuesValid=ledger.rows.every(row=>[row.principalWon,row.interestWon,row.otherComponentWon,row.balanceAfter].every(isWon));
+ const totals=reconciliation.totals;
+ const totalsValid=[totals.principalWon,totals.interestWon,totals.otherComponentWon,totals.totalWon,totals.ordinaryWon,totals.priorityWon,totals.estateWon,totals.trusteeFeeWon].every(isWon);
+ const budgetValuesValid=Object.values(reconciliation.unallocatedBudgets).every(isWon)&&monthIds.every(month=>isWon(reconciliation.unallocatedBudgets[`${month}:disposable_income`]));
+ const capsValid=monthIds.every(month=>isWon(phaseFor(month)?.monthlyAvailableWon??calculation.monthlyPaymentWon));
+ const monetaryValid=allMonthsPresent&&rowValuesValid&&totalsValid&&budgetValuesValid&&capsValid;
+ const rows=ledger.rows.map(row=>[
+  String(row.installment),row.paymentDate??missing,row.claimClass==="trustee_fee"?"회생위원 보수":row.debtId,
+  showWon(row.principalWon),showWon(row.interestWon),sumWon([row.principalWon,row.interestWon,row.otherComponentWon]),
+  row.phaseId,showWon(row.otherComponentWon),row.fundingSourceId,showWon(row.balanceAfter)
+ ]);
+ const summaryRows=monthIds.map(month=>{
+  const monthRows=ledger.rows.filter(row=>row.installment===month);
+  const creditorRows=monthRows.filter(row=>row.claimClass!=="trustee_fee");
+  const feeRows=monthRows.filter(row=>row.claimClass==="trustee_fee");
+  return [
+   `회차 ${month}`,phaseFor(month)?.id??(ledger.rows[0]?.phaseId??missing),
+   showWon(phaseFor(month)?.monthlyAvailableWon??calculation.monthlyPaymentWon),
+   sumWon(monthRows.map(row=>row.principalWon)),
+   sumWon(monthRows.map(row=>row.interestWon)),
+   sumWon(feeRows.map(row=>row.otherComponentWon)),
+   sumWon(creditorRows.flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon])),
+   sumWon(monthRows.flatMap(row=>[row.principalWon,row.interestWon,row.otherComponentWon])),
+   showWon(reconciliation.unallocatedBudgets[`${month}:disposable_income`]),
+   monetaryValid&&reconciliation.status==="reconciled"?"대조 완료":"대조 보류"
+  ];
+ });
+ if(monthIds.length)summaryRows.push([
+  "총계",String(term),"",
+  sumWon(ledger.rows.map(row=>row.principalWon)),
+  sumWon(ledger.rows.map(row=>row.interestWon)),
+  sumWon(ledger.rows.map(row=>row.otherComponentWon)),
+  monetaryValid?sumWon([totals.ordinaryWon,totals.priorityWon,totals.estateWon]):missing,
+  monetaryValid?showWon(totals.totalWon):missing,
+  monetaryValid?sumWon(monthIds.map(month=>reconciliation.unallocatedBudgets[`${month}:disposable_income`])):missing,
+  monetaryValid&&reconciliation.status==="reconciled"?"합계 대조 완료":"대조 보류"
+ ]);
+ const blocked=ledger.status==="blocked"||reconciliation.status==="blocked"||!monetaryValid;
+ return {title:"개인회생 변제예정액표 · PlanLedger",
+  headers:["회차","변제일","채권·비용 ID","원금(원)","이자(원)","합계(원)","적용 단계","기타·수수료(원)","재원","잔액 후(원)"],
+  rows,summary:{title:"PlanLedger 월별 예산·지급·잔액 대조",
+   headers:["회차","단계","채권 예산(원)","원금 합계(원)","이자 합계(원)","수수료(원)","채권 지급(원)","전체 지급(원)","가용소득 잔액(원)","검증 상태"],rows:summaryRows},
+  status:!blocked&&ledger.status==="complete"?"source_backed":"blocked",
+  notes:[
+   "채권자별 변제액, 단계 일정, D5110 월액은 이 PlanLedger 행을 공유합니다. 월별로 금액이 변하면 단일 월액은 확인 필요로 표시합니다.",
+   "회생위원 보수는 해당 회차의 별도 비용 행으로 표시하며 일반·우선·재단채권 예산에 합산하지 않습니다.",
+   "우선·재단채권은 법적 분류를 확정하지 않으며, 확인된 채권 잔액의 전액 변제 여부와 최종 회차를 별도로 대조합니다.",
+   ...(!monetaryValid?["원본/정규화 원금·이자·수수료·잔액·예산 또는 기간이 미확정·누락·오인식이므로 금액 대조를 완료하지 않았습니다."]:[]),
+   ...(ledger.issues.length?ledger.issues.map(issue=>"PlanLedger 입력 점검: "+issue):[]),
+   ...(reconciliation.issues.length?reconciliation.issues.map(issue=>"정합성 점검: "+issue):[]),
+   ...(ledger.status!=="complete"?["이 일정은 계산·검토 전 제안이며 법적 승인이나 최종 검토를 의미하지 않습니다."]:[])
+  ]
+ };
 }
 function subjects(data:CaseData,kind:"bank_account"|"lease",index?:CaseReadIndex):string[]{const facts=currentFacts(data,index),groups=new Map<string,Fact[]>();for(const f of facts){if(accountOrLeaseKey(f,kind))groups.set(f.subjectId,[...(groups.get(f.subjectId)??[]),f]);}return [...groups].filter(([id,fs])=>{const ref=fs[0]?.refs[0],doc=data.documents.find(d=>d.id===ref?.documentId),page=data.pages.find(p=>p.documentId===doc?.id&&p.page===ref?.page),type=norm((doc?.type??"")+" "+(page?.documentType??"")),explicit=fs.some(f=>norm(f.key).startsWith(kind+".")||norm(f.key).startsWith("other."+kind+".")),cat=id.split(":").at(-2),docMatch=kind==="bank_account"?/bank.?account|account.?statement|예금|계좌/.test(type):/lease|임대차|임대계약/.test(type);return explicit||(docMatch&&(cat==="other"||cat==="asset"));}).map(x=>x[0]);}
 function rowFacts(data:CaseData,id:string,kind:"bank_account"|"lease",index?:CaseReadIndex){return currentFacts(data,index).filter(f=>f.subjectId===id&&accountOrLeaseKey(f,kind));}
