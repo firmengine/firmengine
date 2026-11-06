@@ -18,6 +18,21 @@ const nat=(v:unknown)=>typeof v==="string"&&/^\d+$/.test(v);
 
 export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,ledger:PlanLedger,options:{priorityPolicies?:Record<string,PriorityCoveragePolicy>}={}):PlanReconciliation {
  const issues=[...ledger.issues],byMonth=new Map<number,typeof ledger.rows>();
+ // Prevent untrusted/null money and unrecognized claim/funding classes from
+ // reaching BigInt arithmetic or being silently counted as trustee fees.
+ // Zero amounts below are placeholders only; the result remains blocked.
+ const ledgerFunding:Record<string,string>={ordinary:"ordinary_budget",priority:"priority_budget",estate:"estate_budget",trustee_fee:"disposable_income"};
+ const invalidRowIndexes=ledger.rows.flatMap((row,index)=>
+   !Number.isSafeInteger(row.installment)||row.installment<1||
+   !Object.hasOwn(ledgerFunding,row.claimClass)||ledgerFunding[row.claimClass]!==row.fundingSourceId||
+   [row.principalWon,row.interestWon,row.otherComponentWon,row.balanceAfter].some(v=>!nat(v))
+    ?[index+1]:[]);
+ if(invalidRowIndexes.length)return {
+  status:"blocked",issues:[...new Set([...ledger.issues,...invalidRowIndexes.map(i=>"INVALID_LEDGER_ROW:"+i)])],
+  totals:{principalWon:"0",interestWon:"0",otherComponentWon:"0",totalWon:"0",ordinaryWon:"0",priorityWon:"0",estateWon:"0",trusteeFeeWon:"0"},
+  unallocatedBudgets:{},priorityPayoffInstallment:{},priorityCoverage:{},
+  legalReviewTasks:["LEDGER_INPUT_STRUCTURAL_FAILURE"]
+ };
  if(ledger.status==="blocked")issues.push("PLAN_LEDGER_BLOCKED");
  for(const r of ledger.rows){
   if(!Number.isInteger(r.installment)||r.installment<1)issues.push("INVALID_INSTALLMENT");
@@ -60,6 +75,9 @@ export function reconcilePlanLedger(data:CaseData,calculation:CalculationResult,
   const cap=BigInt(principal)+BigInt(interest);let paid=0n,when:number|null=null;
   for(const row of [...rows].sort((a,b)=>a.installment-b.installment)){
    paid+=BigInt(row.principalWon)+BigInt(row.interestWon)+BigInt(row.otherComponentWon);
+   // A numeric remaining balance still must equal the original claim less paid amounts.
+   const expectedBalanceAfter=paid<cap?cap-paid:0n;
+   if(row.balanceAfter!==expectedBalanceAfter.toString())issues.push("BALANCE_AFTER_MISMATCH:"+debt.id+":"+row.installment);
    if(paid>cap)issues.push("PAYMENT_EXCEEDS_CLAIM:"+debt.id);
    if(when===null&&paid>=cap)when=row.installment;
   }
