@@ -1,13 +1,14 @@
 import { canUseRescueRole } from "../../../../../../lib/classification-recovery";
 import { createHash } from "node:crypto";
-import { bucket,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
+import { bucket,caseSnapshotIdentity,db,errorResponse,getCase,HttpError,now,requireSameOrigin,sha256 } from "../../../../../../lib/server-store";
 import { samplePageRole } from "../../../../../../lib/sample-manifest";
 import { rescueSpecs } from "../../../../../../lib/scan-quality";
 type Context={params:Promise<{id:string,doc:string}>};
 async function record(id:string,doc:string){
   const c=await getCase(id);if(!c.documents.some(d=>d.id===doc&&d.status==="active"))throw new HttpError(404,"사용 중인 문서를 찾을 수 없습니다.");
+  const source=caseSnapshotIdentity(c);
   const row=await db().prepare("SELECT * FROM documents WHERE id = ? AND case_id = ?").bind(doc,id).first<{id:string,sha256:string,name:string,page_count:number,original_key:string|null,ready:number}>();
-  if(!row)throw new HttpError(404,"문서를 찾을 수 없습니다.");return row;
+  if(!row)throw new HttpError(404,"문서를 찾을 수 없습니다.");return {...row,sourceRevision:source.revision,sourceToken:source.token};
 }
 export async function PUT(request:Request,{params}:Context){try{
   requireSameOrigin(request);const {id,doc}=await params,r=await record(id,doc),url=new URL(request.url),kind=url.searchParams.get("kind");
@@ -84,11 +85,31 @@ export async function PUT(request:Request,{params}:Context){try{
   const contentType=request.headers.get("content-type")||"";if(!["image/jpeg","image/png","image/webp"].includes(contentType))throw new HttpError(415,"페이지는 JPEG·PNG·WEBP 이미지여야 합니다.");
   const bytes=await request.arrayBuffer();if(bytes.byteLength>8_000_000)throw new HttpError(413,"페이지 이미지는 8MB까지 지원합니다.");
   const hash=await sha256(bytes),key=`cases/${id}/documents/${doc}/pages/${page}/${hash}`;
-  if(job.image_hash===hash)return Response.json({stored:true,page,idempotent:true});
+  // The first lookup is a preflight, not authorization to adopt a page after
+  // an intervening document withdrawal or role/source change.
+  const currentPage=()=>db().prepare("SELECT p.image_hash,p.status,p.role FROM page_jobs p JOIN cases c ON c.id=p.case_id AND c.revision=? AND c.storage_token=? JOIN documents d ON d.id=p.document_id AND d.case_id=p.case_id AND d.sha256=? WHERE p.id=? AND p.case_id=? AND p.document_id=? AND p.page=?")
+    .bind(r.sourceRevision,r.sourceToken,r.sha256,`${doc}:${page}`,id,doc,page)
+    .first<{image_hash:string|null;status:string;role:string}>();
+  const currentImage=(row:{image_hash:string|null;status:string;role:string}|null)=>row?.image_hash===hash
+    && row.role===job.role && !["withdrawn","held"].includes(row.status)
+    && !["filed_form","administrative"].includes(row.role);
+  if(job.image_hash===hash){
+    if(currentImage(await currentPage()))return Response.json({stored:true,page,idempotent:true});
+    throw new HttpError(409,"문서 또는 페이지 상태가 변경되었습니다. 최신 상태를 다시 읽으세요.");
+  }
   if(job.image_hash)throw new HttpError(409,"기존 페이지 이미지를 덮어쓸 수 없습니다. 원본 변경은 새 문서로 올리고 이전 문서를 철회하세요.");
   await bucket().put(key,bytes,{httpMetadata:{contentType}});
-  const updated=await db().prepare("UPDATE page_jobs SET image_key = ?,image_hash = ?,status = 'pending',stage = 'waiting',error = NULL,attempts = 0,updated_at = ? WHERE id = ? AND case_id = ? AND image_hash IS NULL AND status = 'awaiting_upload'").bind(key,hash,now(),`${doc}:${page}`,id).run();
-  if(!updated.meta.changes){const latest=await db().prepare("SELECT image_hash FROM page_jobs WHERE id = ? AND case_id = ?").bind(`${doc}:${page}`,id).first<{image_hash:string|null}>();if(latest?.image_hash!==hash)throw new HttpError(409,"페이지가 다른 요청에서 변경되었습니다.");}
+  const updated=await db().prepare("UPDATE page_jobs SET image_key = ?,image_hash = ?,status = 'pending',stage = 'waiting',error = NULL,attempts = 0,updated_at = ? WHERE id = ? AND case_id = ? AND document_id = ? AND page = ? AND role = ? AND image_hash IS NULL AND status = 'awaiting_upload' AND EXISTS (SELECT 1 FROM cases c WHERE c.id=page_jobs.case_id AND c.revision=? AND c.storage_token=?) AND EXISTS (SELECT 1 FROM documents d WHERE d.id=page_jobs.document_id AND d.case_id=page_jobs.case_id AND d.sha256=?)")
+    .bind(key,hash,now(),`${doc}:${page}`,id,doc,page,job.role,r.sourceRevision,r.sourceToken,r.sha256).run();
+  const changes=updated?.meta?.changes;
+  if(changes!==1){
+    const latest=await currentPage();
+    if(currentImage(latest))return Response.json({stored:true,page,idempotent:true});
+    if(changes===0)throw new HttpError(409,"문서 또는 페이지 상태가 변경되었습니다. 최신 상태를 다시 읽으세요.");
+    // Missing/invalid D1 ACK is not a proven 0-row update. Leave any uploaded
+    // R2 staging object intact for read-only reconciliation; never approve it.
+    throw new HttpError(503,"페이지 저장 확인이 지연됐습니다. 원본 판본을 재확인한 뒤 재시도하세요.");
+  }
   return Response.json({stored:true,page});
 }catch(e){return errorResponse(e);}}
 export async function GET(request:Request,{params}:Context){try{
