@@ -41,6 +41,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
  const {data,bindings,calculationRows}=input;
  const facts=currentFacts(data).filter(f=>f.state==="verified"&&f.recognition==="accepted"
    &&!f.validation.some(x=>x.severity==="error")&&!factSourceLineageIssues(data,[f.id]).length);
+ const verifiedFactIds=new Set(facts.map(f=>f.id));
  const subjectIds:Record<string,string[]>={
   creditor:input.calculation.debtRows.map(r=>r.id),
   asset:input.calculation.assetRows.map(r=>r.id),
@@ -72,7 +73,11 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     const matchingFacts=field.kind==="source"&&subjectId!==null
       ?facts.filter(f=>f.subjectId===subjectId&&(f.key===token||f.key===canonical)&&sameValue(f.numeric?.amountWon??f.value,value))
       :field.kind==="source"?facts.filter(f=>(f.key===token||f.key===canonical)&&sameValue(f.numeric?.amountWon??f.value,value)):[];
-    const sourceIds=[...new Set([...(calcFeature?.sourceFactIds??[]),...matchingFacts.map(f=>f.id)])];
+    // A matching calculation number does not prove that its source Fact IDs
+    // belong to the current accepted case snapshot.
+    const calcFactIds=Array.isArray(calcFeature?.sourceFactIds)?calcFeature.sourceFactIds.filter(id=>typeof id==="string"):[];
+    const calculationSourceUnverified=!!calcFeature&&(!Array.isArray(calcFeature.sourceFactIds)||calcFactIds.length!==calcFeature.sourceFactIds.length||calcFactIds.some(id=>!verifiedFactIds.has(id)));
+    const sourceIds=[...new Set([...calcFactIds,...matchingFacts.map(f=>f.id)])];
     const contextPath=ordinal===null?contextByToken[token]:undefined;
     const contextReady=!!contextPath&&!missing(value)&&(
       token==="client_name"?value===data.context.applicant?.name:
@@ -83,7 +88,7 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
       token==="repayment_months"?String(value)===String(data.context.planMonths):
       token==="present_value_basis"?value===data.context.presentValueBasis:
       token==="monthly_trustee_fee"?sameValue(value,data.context.monthlyTrusteeFee?.amountWon):false);
-    const status=missing(value)?"missing_value":calcFeature?"linked_calculation":
+    const status=missing(value)?"missing_value":calcFeature?(calculationSourceUnverified?"lineage_review_required":"linked_calculation"):
       matchingFacts.length===1?"exact_source_fact":contextReady?"case_context":"lineage_review_required";
     result.push({formCode:code,artifactKind:kind,token,subjectId,rowOrdinal:ordinal,
      value:value??null,valueKind:field.kind,sourceFactIds:sourceIds,
