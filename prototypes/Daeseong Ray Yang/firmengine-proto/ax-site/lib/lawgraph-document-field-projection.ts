@@ -2,6 +2,7 @@
  * Never guesses provenance from visual similarity. Unknown sources stay
  * review-required but the exact rendered draft value is still recorded.
  */
+import {decodeStoredCalculationEvidence} from "./calculation-form-evidence-decoder.ts";
 import {FORM_CONTRACTS} from "./form-contracts.ts";
 import {BASIC_FORM_CODES,type FormBindings} from "./form-mapping.ts";
 import {currentFacts,factSourceLineageIssues,requiredKindsForCase,type CaseData} from "./domain.ts";
@@ -104,7 +105,7 @@ export async function buildStoredLawgraphDocumentFields(database:D1Database,inpu
  const rows=(await database.prepare("SELECT id,output_name AS outputName,subject_id AS subjectId,row_ordinal AS rowOrdinal,value_json AS valueJson,status,source_fact_ids_json AS factIdsJson FROM case_calculation_features WHERE run_id=?")
   .bind(input.calculationRunId).all<{id:string;outputName:string;subjectId:string|null;rowOrdinal:number|null;valueJson:string;status:string;factIdsJson:string}>()).results??[];
  const normalized=rows.map(row=>({id:row.id,outputName:row.outputName,subjectId:row.subjectId,
-    rowOrdinal:row.rowOrdinal,status:row.status,value:JSON.parse(row.valueJson),sourceFactIds:JSON.parse(row.factIdsJson) as string[]}));
+    rowOrdinal:row.rowOrdinal,status:row.status,...decodeStoredCalculationEvidence(row)}));
  return projectLawgraphDocumentFields({data:input.caseData,bindings:input.bindings,
   calculationRows:normalized,calculation:input.calculation});
 }
