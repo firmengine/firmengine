@@ -55,6 +55,14 @@ export function observeField(type: string, field: ObservationInput, source: {doc
   if (["blank", "not_seen", "illegible"].includes(state) && field.value !== null) { state = "unknown"; issues.push("state_value_conflict"); }
   if (["blank", "masked", "explicit_none"].includes(state) && (!field.quote?.trim() || !bboxValid(field.bbox))) { state = "unknown"; issues.push("state_anchor_missing"); }
   if (state === "explicit_none" && field.value !== null && !field.value.trim()) { state = "unknown"; issues.push("explicit_none_without_source_token"); }
+  // Numeric observations, including explicit 0, never establish source absence.
+  // Preserve the raw OCR token but downgrade a contradictory absence assertion.
+  if (state === "explicit_none" && field.value !== null && /^(?:₩\s*)?[+-]?\d+(?:,\d{3})*(?:\.\d+)?\s*(?:원|KRW|%|명|건|개|회|개월)?$/i.test(field.value.trim())) {
+    state = "unknown"; issues.push("explicit_none_numeric_value_conflict");
+  }
+  // A coverage gap does not represent an observed source claim.
+  if (recordIndex === null && state !== "unknown") { state = "unknown"; issues.push("catalog_gap_claim_without_observation"); }
+
   let claim: ApplicabilityClaim = ["applicable", "not_applicable"].includes(field.applicability ?? "") ? field.applicability! : "unknown";
   const quote = field.applicabilityQuote?.trim() || null;
   // It is only a quoted source claim, never a reviewed case-level decision.
@@ -65,6 +73,7 @@ export function observeField(type: string, field: ObservationInput, source: {doc
   // Require an explicit source-none token; case-level applicability remains a
   // separate, unreviewed decision even when the document makes that claim.
   if (claim === "not_applicable" && state !== "explicit_none") { claim = "unknown"; issues.push("not_applicable_without_explicit_none"); }
+  if (recordIndex === null && claim !== "unknown") { claim = "unknown"; issues.push("catalog_gap_applicability_claim_ignored"); }
   const extractionState = recordIndex === null ? "not_observed" : state === "present" ? (field.confidence === "clear" ? "value_read" : "uncertain") : state === "blank" || state === "explicit_none" ? "source_empty" : state === "masked" || state === "illegible" ? "source_obscured" : state === "not_seen" ? "not_observed" : state === "conflicting" ? "conflict" : "uncertain";
   return { version: FIELD_OBSERVATION_VERSION, ...source, recordIndex, fieldIndex, origin: recordIndex === null ? "catalog_gap" : "source_read",
     canonicalFieldId: definition?.global_field_id ?? null, familyId: contract?.family_id ?? null,
