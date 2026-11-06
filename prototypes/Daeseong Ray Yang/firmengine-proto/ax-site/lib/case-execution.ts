@@ -109,7 +109,7 @@ export function executeCaseNodes(data:CaseData,options:{includeDocumentBindings?
   const planReconciliation=reconcilePlanLedger(data,baseAssessment.calculation,planLedger);
   const hasExplicitSchedule=(data.context.paymentSchedule?.phases.length??0)>0;
   const planValidationApplies=hasExplicitSchedule||baseAssessment.calculation.planTotalWon!==null;
-  const planBlockers=planValidationApplies?[...(planLedger.status==="blocked"||planReconciliation.status==="blocked"?(planReconciliation.issues.length?planReconciliation.issues:planLedger.issues):[]),...(planReconciliation.legalReviewTasks??[]),...(hasExplicitSchedule&&(!data.context.paymentSchedule?.reviewed||!data.context.paymentSchedule.reviewReason?.trim())?["PAYMENT_SCHEDULE_REVIEW_REQUIRED"]:[])]:[];
+  const planBlockers=planValidationApplies?[...(planLedger.status==="provisional"?["PLAN_LEDGER_NOT_REVIEWED"]:[]),...(planLedger.status==="blocked"||planReconciliation.status==="blocked"?(planReconciliation.issues.length?planReconciliation.issues:planLedger.issues):[]),...(planReconciliation.legalReviewTasks??[]),...(hasExplicitSchedule&&(!data.context.paymentSchedule?.reviewed||!data.context.paymentSchedule.reviewReason?.trim())?["PAYMENT_SCHEDULE_REVIEW_REQUIRED"]:[])]:[];
   const calculationBlockers=calculationContract.applicable&&calculationContract.status==="blocked"?calculationContract.blockers:[];
   const contractIssues=[...calculationBlockers,...(calculationContract.applicable?calculationContract.warnings.map(warning=>"CALCULATION_CONTRACT_REVIEW:"+warning):[])];
   const referenceApplication=resolveReferenceApplicationForCase(data,options.referenceBundles??[],currentReferenceSnapshot());
