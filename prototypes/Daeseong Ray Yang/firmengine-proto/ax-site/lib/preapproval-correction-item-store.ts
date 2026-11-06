@@ -118,20 +118,29 @@ export async function upsertCourtCorrectionItem(database:D1Database,input:{data:
  return {caseId,versionId,unchanged:false,courtOrderSatisfied:false};
 }
 export async function readCourtCorrectionItems(database:D1Database,data:CaseData){
- const current=await currentVersion(database,data.context.id);
+ const caseId=data.context.id;
+ // D1 batch provides one transactional read snapshot for case version and
+ // correction item heads. It is an as-of-query view, NOT a guarantee that
+ // the result remains current after the response or after another worker writes.
+ const snapshot=await database.batch([
+  database.prepare("SELECT c.revision AS revision,s.data_version AS dataVersion FROM cases c JOIN case_data_change_state s ON s.case_id=c.id WHERE c.id=?").bind(caseId),
+  database.prepare(
+   "SELECT h.court_event_id AS courtEventId,h.item_no AS itemNo,h.version_id AS versionId,"+
+   "h.source_case_revision AS sourceCaseRevision,h.source_data_version AS sourceDataVersion,"+
+   "v.order_document_id AS orderDocumentId,v.order_document_sha256 AS orderDocumentSha256,v.payload_json AS payloadJson,"+
+   "v.actor_id AS actorId,v.created_at AS createdAt "+
+   "FROM case_court_correction_item_heads h JOIN case_court_correction_item_versions v ON v.id=h.version_id "+
+   "WHERE h.case_id=? ORDER BY h.court_event_id,h.item_no LIMIT 1001"
+  ).bind(caseId)
+ ]);
+ // Missing or malformed D1 results are UNOBSERVED, never an empty item list.
+ if(!Array.isArray(snapshot)||snapshot.length!==2||!Array.isArray(snapshot[0]?.results)||!Array.isArray(snapshot[1]?.results))
+  throw fail("CORRECTION_ITEM_READ_SNAPSHOT_UNOBSERVED");
+ const current=(snapshot[0].results as unknown as Array<{revision:number;dataVersion:number}>)[0];
  if(!current||current.revision!==data.context.revision)throw fail("CORRECTION_CASE_REVISION_MISMATCH");
- const rows=(await database.prepare(
-  "SELECT h.court_event_id AS courtEventId,h.item_no AS itemNo,h.version_id AS versionId,"+
-  "h.source_case_revision AS sourceCaseRevision,h.source_data_version AS sourceDataVersion,"+
-  "v.order_document_id AS orderDocumentId,v.order_document_sha256 AS orderDocumentSha256,v.payload_json AS payloadJson,"+
-  "v.actor_id AS actorId,v.created_at AS createdAt "+
-  "FROM case_court_correction_item_heads h JOIN case_court_correction_item_versions v ON v.id=h.version_id "+
-  "WHERE h.case_id=? ORDER BY h.court_event_id,h.item_no LIMIT 1001")
-   .bind(data.context.id).all<{courtEventId:string;itemNo:number;versionId:string;sourceCaseRevision:number;sourceDataVersion:number;
-    orderDocumentId:string;orderDocumentSha256:string;payloadJson:string;actorId:string;createdAt:string}>()).results??[];
+ const rows=snapshot[1].results as unknown as Array<{courtEventId:string;itemNo:number;versionId:string;sourceCaseRevision:number;sourceDataVersion:number;
+    orderDocumentId:string;orderDocumentSha256:string;payloadJson:string;actorId:string;createdAt:string}>;
  if(rows.length>1000)throw fail("CORRECTION_ITEM_LIST_TRUNCATED");
- const after=await currentVersion(database,data.context.id);
- if(!after||after.revision!==current.revision||after.dataVersion!==current.dataVersion)throw fail("CORRECTION_CASE_REVISION_MISMATCH");
  const items=rows.map(row=>{
   const doc=data.documents.find(d=>d.id===row.orderDocumentId&&d.status==="active");
   const event=data.workflowState?.procedureEvents.find(e=>e.id===row.courtEventId&&e.state==="correction_requested");
