@@ -17,9 +17,20 @@ export interface DocumentBindingInput{
   incomeRows:{id:string}[];debtRows:{id:string}[];assetRows:{id:string}[];
  };
 }
-const sourceNumeric=(x:unknown)=>typeof x==="string"?x.replace(/[,\s₩원]/g,""):typeof x==="number"?String(x):null;
-const sameValue=(a:unknown,b:unknown)=>a===b||
-  (sourceNumeric(a)!==null&&sourceNumeric(a)===sourceNumeric(b));
+// Exact currency representation is required for calculation-origin provenance.
+const sourceNumeric=(x:unknown):string|null=>{
+ if(typeof x==="number")return Number.isSafeInteger(x)?String(x):null;
+ if(typeof x!=="string")return null;
+ const value=x.trim();
+ if(!/^(?:₩\s*)?-?(?:0|[1-9]\d*|[1-9]\d{0,2}(?:,\d{3})+)(?:\s*원)?$/.test(value))return null;
+ const normalized=value.replace(/^₩\s*/,"").replace(/\s*원$/,"").replaceAll(",","");
+ return normalized==="-0"?null:normalized;
+};
+const sameNumericValue=(a:unknown,b:unknown)=>{
+ const left=sourceNumeric(a),right=sourceNumeric(b);
+ return left!==null&&right!==null&&left===right;
+};
+const sameValue=(a:unknown,b:unknown)=>a===b||sameNumericValue(a,b);
 const outputByToken:Record<string,string>={
  total_principal:"debtPrincipalWon",total_interest:"debtInterestWon",
  secured_debt_total:"securedDebtWon",unsecured_debt_total:"unsecuredDebtWon",
@@ -64,13 +75,13 @@ export function projectLawgraphDocumentFields(input:DocumentBindingInput):Stored
     const exact=output?calculationRows.filter(r=>r.outputName===output
        &&(ordinal===null?r.rowOrdinal===null:r.rowOrdinal===ordinal)
        &&(!subjectId||!r.subjectId||r.subjectId===subjectId)
-       &&["computed","provisional"].includes(r.status)&&sameValue(r.value,value)):[];
+       &&["computed","provisional"].includes(r.status)&&sameNumericValue(r.value,value)):[];
     const calcFeature=exact.length===1?exact[0]:null;
     const canonical=token.replace(/[A-Z]/g,x=>"_"+x.toLowerCase());
     // Exact source key and exact displayed value only. Unknown keys are not
     // automatically bound to other parties, periods or source documents.
     const matchingFacts=field.kind==="source"&&subjectId!==null
-      ?facts.filter(f=>f.subjectId===subjectId&&(f.key===token||f.key===canonical)&&sameValue(f.numeric?.amountWon??f.value,value))
+      ?facts.filter(f=>f.subjectId===subjectId&&(f.key===token||f.key===canonical)&&(output?sameNumericValue(f.numeric?.amountWon??f.value,value):sameValue(f.numeric?.amountWon??f.value,value)))
       :field.kind==="source"?facts.filter(f=>(f.key===token||f.key===canonical)&&sameValue(f.numeric?.amountWon??f.value,value)):[];
     const sourceIds=[...new Set([...(calcFeature?.sourceFactIds??[]),...matchingFacts.map(f=>f.id)])];
     const contextPath=ordinal===null?contextByToken[token]:undefined;
